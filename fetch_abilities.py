@@ -107,6 +107,41 @@ SLUG_OVERRIDES = {
     "maushold":                "maushold-family-of-four",
     # Gimmighoul
     "gimmighoul":              "gimmighoul-chest",
+    # Arceus forms — all share the same ability (Multitype); map to base Arceus
+    "arceus-bug":     "arceus", "arceus-dark":     "arceus", "arceus-dragon":   "arceus",
+    "arceus-electric":"arceus", "arceus-fairy":    "arceus", "arceus-fighting":  "arceus",
+    "arceus-fire":    "arceus", "arceus-flying":   "arceus", "arceus-ghost":    "arceus",
+    "arceus-grass":   "arceus", "arceus-ground":   "arceus", "arceus-ice":      "arceus",
+    "arceus-poison":  "arceus", "arceus-psychic":  "arceus", "arceus-rock":     "arceus",
+    "arceus-steel":   "arceus", "arceus-water":    "arceus",
+    # Galarian forms with punctuation/special names
+    "galarian farfetch'd":     "farfetchd-galar",
+    "galarian mr. mime":       "mr-mime-galar",
+    # Necrozma fusions (DB names differ from what we expected)
+    "necrozma-dawn-wings":     "necrozma-dawn",
+    "necrozma-dusk-mane":      "necrozma-dusk",
+    # Nidoran
+    "nidoran-female":          "nidoran-f",
+    "nidoran-male":            "nidoran-m",
+    # Ogerpon masks
+    "ogerpon-cornerstone":     "ogerpon-cornerstone-mask",
+    "ogerpon-hearthflame":     "ogerpon-hearthflame-mask",
+    "ogerpon-wellspring":      "ogerpon-wellspring-mask",
+    # Paldean Tauros
+    "paldean tauros":          "tauros-paldea-combat",
+    "paldean tauros aqua":     "tauros-paldea-aqua",
+    "paldean tauros blaze":    "tauros-paldea-blaze",
+    # Gendered / size forms with no separate PokeAPI entry
+    "gourgeist":               "gourgeist-average",
+    "jellicent":               "jellicent-male",
+    "oinkologne":              "oinkologne-male",
+    "pumpkaboo":               "pumpkaboo-average",
+    "pyroar":                  "pyroar",
+    "wormadam":                "wormadam-plant",
+    # Pichu spiky-eared — no separate PokeAPI entry
+    "pichu-spiky-eared":       "pichu",
+    # Zygarde
+    "zygarde":                 "zygarde-50",
 }
 
 
