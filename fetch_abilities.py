@@ -3,7 +3,7 @@ Fetch Pokemon abilities from PokeAPI and populate draft_tiers.ability1/2/3.
 Run once after setting up the database:
     python fetch_abilities.py
 
-Uses the pokemon_db table (slug→ID) to map draft_tiers names to PokeAPI slugs.
+Only processes rows that are missing ability1 (safe to re-run).
 """
 import sqlite3
 import urllib.request
@@ -24,10 +24,100 @@ REGIONAL_PREFIXES = {
     "Paldean": "paldea",
 }
 
+# Explicit overrides: DB display name (lowercased) → PokeAPI slug
+SLUG_OVERRIDES = {
+    # Punctuation
+    "farfetch'd":              "farfetchd",
+    "sirfetch'd":              "sirfetchd",
+    "flabébé":                 "flabebe",
+    # Aegislash — no base-form entry, use shield forme
+    "aegislash":               "aegislash-shield",
+    # Basculin default form
+    "basculin":                "basculin-red-striped",
+    # Basculegion
+    "basculegion":             "basculegion-male",
+    # Calyrex riders
+    "calyrex-ice-rider":       "calyrex-ice",
+    "calyrex-shadow-rider":    "calyrex-shadow",
+    # Darmanitan forms
+    "darmanitan":              "darmanitan-standard",
+    "galarian darmanitan":     "darmanitan-galar-standard",
+    # Deoxys forms (all share same ability)
+    "deoxys":                  "deoxys-normal",
+    "deoxys-attack":           "deoxys-attack",
+    "deoxys-defense":          "deoxys-defense",
+    "deoxys-speed":            "deoxys-speed",
+    # Dudunsparce
+    "dudunsparce":             "dudunsparce-two-segment",
+    # Eiscue
+    "eiscue":                  "eiscue-ice",
+    # Eternatus
+    "eternamax eternatus":     "eternatus-eternamax",
+    # Frillish (gendered)
+    "frillish":                "frillish-male",
+    # Indeedee
+    "indeedee":                "indeedee-male",
+    # Meowstic
+    "meowstic":                "meowstic-male",
+    # Morpeko
+    "morpeko":                 "morpeko-full-belly",
+    # Oricorio forms
+    "oricorio":                "oricorio-baile",
+    # Toxtricity
+    "toxtricity":              "toxtricity-amped",
+    # Urshifu
+    "urshifu":                 "urshifu-single-strike",
+    # Zacian / Zamazenta
+    "zacian":                  "zacian-hero",
+    "zamazenta":               "zamazenta-hero",
+    # Giratina
+    "giratina":                "giratina-altered",
+    # Shaymin
+    "shaymin":                 "shaymin-land",
+    # Tornadus / Thundurus / Landorus / Enamorus
+    "tornadus":                "tornadus-incarnate",
+    "thundurus":               "thundurus-incarnate",
+    "landorus":                "landorus-incarnate",
+    "enamorus":                "enamorus-incarnate",
+    # Keldeo
+    "keldeo":                  "keldeo-ordinary",
+    # Meloetta
+    "meloetta":                "meloetta-aria",
+    # Hoopa
+    "hoopa":                   "hoopa-confined",
+    # Necrozma fusions
+    "dusk mane necrozma":      "necrozma-dusk",
+    "dawn wings necrozma":     "necrozma-dawn",
+    # Wishiwashi
+    "wishiwashi":              "wishiwashi-solo",
+    # Mimikyu
+    "mimikyu":                 "mimikyu-disguised",
+    # Minior
+    "minior":                  "minior-red-meteor",
+    # Lycanroc
+    "lycanroc":                "lycanroc-midday",
+    # Comfey (no override needed usually)
+    # Palafin
+    "palafin":                 "palafin-zero",
+    # Squawkabilly
+    "squawkabilly":            "squawkabilly-green-plumage",
+    # Tatsugiri
+    "tatsugiri":               "tatsugiri-curly",
+    # Maushold
+    "maushold":                "maushold-family-of-four",
+    # Gimmighoul
+    "gimmighoul":              "gimmighoul-chest",
+}
+
 
 def name_to_slugs(name: str) -> list[str]:
     """Generate PokeAPI slug candidates for a display name."""
     base = name.lower().strip()
+
+    # Check explicit overrides first
+    if base in SLUG_OVERRIDES:
+        return [SLUG_OVERRIDES[base]]
+
     slugs = []
 
     # Regional prefix forms: "Alolan Ninetales" → "ninetales-alola"
@@ -49,7 +139,7 @@ def name_to_slugs(name: str) -> list[str]:
     if base.startswith("primal "):
         slugs.append(f"{base[7:].replace(' ', '-')}-primal")
 
-    # Simple slug fallback
+    # Simple slug fallback (replace non-alphanumeric with hyphens)
     slugs.append(re.sub(r"[^a-z0-9]+", "-", base).strip("-"))
 
     # Deduplicate preserving order
@@ -66,7 +156,7 @@ def fetch_abilities(slug: str) -> tuple[str, str, str]:
     url = f"https://pokeapi.co/api/v2/pokemon/{slug}"
     req = urllib.request.Request(url, headers={"User-Agent": "YuriCupLeagueApp/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             data = json.loads(r.read().decode())
     except Exception:
         return "", "", ""
@@ -103,6 +193,7 @@ def main():
             ab1, ab2, ab3 = fetch_abilities(slug)
             if ab1:
                 break
+            time.sleep(0.2)  # extra pause between slug attempts
 
         if ab1:
             conn.execute(
@@ -113,11 +204,10 @@ def main():
         else:
             failed.append(row["name"])
 
-        if (i + 1) % 50 == 0:
+        if (i + 1) % 25 == 0:
             conn.commit()
             print(f"  {i + 1}/{len(rows)} processed ({updated} updated)...")
-        # Be polite to PokeAPI
-        time.sleep(0.1)
+        time.sleep(0.2)
 
     conn.commit()
     conn.close()
@@ -125,10 +215,8 @@ def main():
     print(f"\nDone! Updated {updated}/{len(rows)} Pokemon with abilities.")
     if failed:
         print(f"Could not fetch abilities for {len(failed)} Pokemon:")
-        for n in sorted(failed)[:30]:
+        for n in sorted(failed):
             print(f"  - {n}")
-        if len(failed) > 30:
-            print(f"  ... and {len(failed) - 30} more")
 
 
 if __name__ == "__main__":
