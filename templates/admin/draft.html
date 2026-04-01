@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Admin: Draft Setup – {{ league_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-white tracking-tight">Draft Setup</h1>
+      <p class="text-xs text-gray-500 mt-0.5">Manage draft sessions, snake order, and round structure</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{{ url_for('draft_sheet') }}" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 border border-gray-700 hover:border-gray-500 transition-colors">Draft Sheet</a>
+      <a href="{{ url_for('draft_live') }}" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">Live Draft</a>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="space-y-2 mb-6">
+    {% for category, msg in messages %}
+    <div class="px-4 py-3 rounded-lg text-sm font-medium flash-anim
+      {% if category == 'success' %}text-green-400 border border-green-700{% elif category == 'warning' %}text-yellow-400 border border-yellow-700{% else %}text-gray-300 border border-gray-700{% endif %}"
+      style="background:#0f1623;">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ── Active Session Controls ── -->
+  {% if active_session %}
+  <div class="rounded-xl border border-yellow-600/40 p-5 mb-6" style="background:#0f1623;">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="w-2 h-2 rounded-full {% if active_session.status == 'active' %}bg-green-400 animate-pulse{% else %}bg-yellow-400{% endif %}"></div>
+      <h2 class="text-sm font-bold text-white uppercase tracking-wider">Active Session: {{ active_session.name }}</h2>
+      <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold
+        {% if active_session.status == 'active' %}text-green-400 border border-green-700{% else %}text-yellow-400 border border-yellow-700{% endif %}"
+        style="background:rgba(0,0,0,0.3);">{{ active_session.status|upper }}</span>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div class="rounded-lg p-3 border border-gray-800 text-center" style="background:#080c14;">
+        <div class="text-xl font-black text-yellow-400">{{ active_session.current_pick }}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Current Pick</div>
+      </div>
+      <div class="rounded-lg p-3 border border-gray-800 text-center" style="background:#080c14;">
+        <div class="text-xl font-black text-white">{{ active_session.current_round }}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Current Round</div>
+      </div>
+      <div class="rounded-lg p-3 border border-gray-800 text-center" style="background:#080c14;">
+        <div class="text-xl font-black text-gray-300">{{ active_session.season or '—' }}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Season</div>
+      </div>
+      <div class="rounded-lg p-3 border border-gray-800 text-center" style="background:#080c14;">
+        <div class="text-sm font-black text-gray-400">{{ active_session.created_at[:10] if active_session.created_at else '—' }}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Created</div>
+      </div>
+    </div>
+
+    <!-- Control buttons -->
+    <div class="flex flex-wrap gap-2 mb-4">
+      {% if active_session.status == 'setup' %}
+      <form method="POST">
+        <input type="hidden" name="action" value="start">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold text-black hover:opacity-90 transition-opacity"
+                style="background:linear-gradient(90deg,#22c55e,#16a34a);">Start Draft</button>
+      </form>
+      {% elif active_session.status == 'active' %}
+      <form method="POST">
+        <input type="hidden" name="action" value="pause">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold text-black hover:opacity-90 transition-opacity"
+                style="background:linear-gradient(90deg,#facc15,#f59e0b);">Pause</button>
+      </form>
+      {% elif active_session.status == 'paused' %}
+      <form method="POST">
+        <input type="hidden" name="action" value="resume">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold text-black hover:opacity-90 transition-opacity"
+                style="background:linear-gradient(90deg,#22c55e,#16a34a);">Resume</button>
+      </form>
+      {% endif %}
+
+      <form method="POST">
+        <input type="hidden" name="action" value="complete">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold text-white border border-gray-600 hover:border-blue-500 hover:text-blue-400 transition-colors"
+                style="background:#080c14;"
+                onclick="return confirm('Mark draft as complete?')">Mark Complete</button>
+      </form>
+
+      <form method="POST">
+        <input type="hidden" name="action" value="reset">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold text-red-400 border border-red-800 hover:border-red-500 transition-colors"
+                style="background:#080c14;"
+                onclick="return confirm('Reset draft? This will delete ALL picks for this session!')">Reset Draft</button>
+      </form>
+    </div>
+
+    <!-- Override: set current pick -->
+    <form method="POST" class="flex items-center gap-2">
+      <input type="hidden" name="action" value="set_pick">
+      <input type="hidden" name="session_id" value="{{ active_session.id }}">
+      <label class="text-xs text-gray-400 font-medium whitespace-nowrap">Override pick #:</label>
+      <input type="number" name="pick_number" value="{{ active_session.current_pick }}" min="1"
+             class="w-20 px-2 py-1.5 rounded text-sm text-white border border-gray-700 focus:border-yellow-500 focus:outline-none"
+             style="background:#080c14;">
+      <button type="submit" class="px-3 py-1.5 rounded text-xs font-bold text-gray-300 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors"
+              style="background:#080c14;">Set</button>
+    </form>
+
+    <!-- Snake order for active session -->
+    {% if active_snake %}
+    <div class="mt-4 pt-4 border-t border-gray-800">
+      <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Snake Order (Round 1)</h3>
+      <form method="POST" class="flex flex-wrap gap-2 items-end">
+        <input type="hidden" name="action" value="update_snake">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        {% for coach in active_snake %}
+        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700" style="background:#080c14;">
+          {% if coach.logo_url %}
+          <img src="{{ coach.logo_url }}" class="w-5 h-5 object-contain rounded" alt="">
+          {% else %}
+          <div class="w-5 h-5 rounded flex items-center justify-center font-black text-white"
+               style="background:{{ coach.color or '#374151' }};font-size:8px;">{{ coach.team_name[:2].upper() }}</div>
+          {% endif %}
+          <span class="text-xs text-gray-300 font-medium">{{ coach.team_name }}</span>
+          <input type="hidden" name="snake_order" value="{{ coach.id }}">
+        </div>
+        {% endfor %}
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ── Create New Session ── -->
+  <div class="rounded-xl border border-gray-700/60 p-5 mb-6" style="background:#0f1623;">
+    <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Create New Draft Session</h2>
+    <form method="POST" class="space-y-4">
+      <input type="hidden" name="action" value="create_session">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Session Name</label>
+          <input type="text" name="name" required placeholder="e.g. Season 3 Draft"
+                 class="w-full px-3 py-2 rounded-lg text-sm text-white border border-gray-700 focus:border-yellow-500 focus:outline-none"
+                 style="background:#080c14;">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Season (optional)</label>
+          <input type="text" name="season" placeholder="e.g. S3"
+                 class="w-full px-3 py-2 rounded-lg text-sm text-white border border-gray-700 focus:border-yellow-500 focus:outline-none"
+                 style="background:#080c14;">
+        </div>
+      </div>
+
+      <!-- Snake order selector -->
+      <div>
+        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+          Snake Order (select coaches in order — Pool A first, then Pool B)
+        </label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto p-1">
+          {% set pools = ['A', 'B'] %}
+          {% for pool in pools %}
+          <div class="col-span-full">
+            <div class="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 mt-1">Pool {{ pool }}</div>
+          </div>
+          {% for coach in coaches if coach.pool == pool %}
+          <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-700 hover:border-gray-500 cursor-pointer transition-colors" style="background:#080c14;">
+            <input type="checkbox" name="snake_order" value="{{ coach.id }}" class="rounded" style="accent-color:#facc15;">
+            {% if coach.logo_url %}
+            <img src="{{ coach.logo_url }}" class="w-5 h-5 object-contain rounded flex-shrink-0" alt="">
+            {% else %}
+            <div class="w-5 h-5 rounded flex items-center justify-center font-black text-white flex-shrink-0"
+                 style="background:{{ coach.color or '#374151' }};font-size:8px;">{{ coach.team_name[:2].upper() }}</div>
+            {% endif %}
+            <span class="text-xs text-gray-300 font-medium truncate">{{ coach.team_name }}</span>
+          </label>
+          {% endfor %}
+          {% endfor %}
+        </div>
+        <p class="text-xs text-gray-600 mt-1">Note: The order in which you check the boxes will be used as the draft order.</p>
+      </div>
+
+      <button type="submit" class="px-5 py-2 rounded-lg text-sm font-bold text-black hover:opacity-90 transition-opacity"
+              style="background:linear-gradient(90deg,#facc15,#f59e0b);">Create Session</button>
+    </form>
+  </div>
+
+  <!-- ── Round Structure Editor ── -->
+  <div class="rounded-xl border border-gray-700/60 p-5 mb-6" style="background:#0f1623;">
+    <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-1">Round Structure</h2>
+    <p class="text-xs text-gray-500 mb-4">Defines which tiers are drafted in each round and how many picks per coach.</p>
+
+    <form method="POST">
+      <input type="hidden" name="action" value="save_rounds">
+      <div>
+        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">JSON Structure</label>
+        <textarea name="rounds_json" rows="16"
+                  class="w-full px-3 py-2 rounded-lg text-xs text-green-300 font-mono border border-gray-700 focus:border-yellow-500 focus:outline-none resize-y"
+                  style="background:#080c14;">{{ round_structure_json }}</textarea>
+        <p class="text-xs text-gray-600 mt-1">Each entry: <code class="text-gray-400">{"name": "Tier 1", "tier_filter": "Tier 1", "picks_per_coach": 2}</code> · Use <code class="text-gray-400">"any"</code> for tier_filter to allow any pokemon.</p>
+      </div>
+      <button type="submit" class="mt-3 px-4 py-2 rounded-lg text-sm font-bold text-black hover:opacity-90 transition-opacity"
+              style="background:linear-gradient(90deg,#22c55e,#16a34a);">Save Round Structure</button>
+    </form>
+  </div>
+
+  <!-- ── Session History ── -->
+  {% if sessions %}
+  <div class="rounded-xl border border-gray-700/60 p-5" style="background:#0f1623;">
+    <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-4">All Sessions</h2>
+    <div class="space-y-2">
+      {% for s in sessions %}
+      <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-800" style="background:#080c14;">
+        <span class="text-xs px-2 py-0.5 rounded font-bold
+          {% if s.status == 'active' %}text-green-400 border border-green-800
+          {% elif s.status == 'paused' %}text-yellow-400 border border-yellow-800
+          {% elif s.status == 'completed' %}text-blue-400 border border-blue-800
+          {% else %}text-gray-500 border border-gray-700{% endif %}">{{ s.status }}</span>
+        <span class="text-sm font-bold text-white flex-1">{{ s.name }}</span>
+        {% if s.season %}<span class="text-xs text-gray-500">{{ s.season }}</span>{% endif %}
+        <span class="text-xs text-gray-600">Pick {{ s.current_pick }}</span>
+        <span class="text-xs text-gray-700">{{ s.created_at[:10] if s.created_at else '' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

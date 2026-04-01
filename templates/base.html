@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ league_name }}{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'lb': '#080c14',
+            'lc': '#0f1623',
+            'lb2': '#111827',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { background-color: #080c14; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #080c14; }
+    ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #facc15; }
+
+    /* ── Nav underline ── */
+    .nav-link { position: relative; transition: color 0.18s; }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px; left: 0;
+      width: 0; height: 2px;
+      background: #facc15;
+      border-radius: 1px;
+      transition: width 0.18s ease;
+    }
+    .nav-link:hover::after, .nav-link.active::after { width: 100%; }
+    .nav-link.active { color: #facc15; }
+
+    /* ── Teams dropdown ── */
+    .teams-dropdown { position: relative; }
+    .teams-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 220px;
+      background: #0f1623;
+      border: 1px solid rgba(55,65,81,0.8);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 100;
+      overflow: hidden;
+      animation: fadeDropdown 0.15s ease;
+    }
+    @keyframes fadeDropdown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .teams-dropdown:hover .teams-dropdown-menu,
+    .teams-dropdown:focus-within .teams-dropdown-menu { display: block; }
+    .teams-dropdown-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      font-size: 0.8rem; color: #9ca3af;
+      transition: background 0.12s, color 0.12s;
+      text-decoration: none;
+    }
+    .teams-dropdown-item:hover { background: rgba(250,204,21,0.07); color: #facc15; }
+    .teams-dropdown-swatch {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .teams-dropdown-pool-header {
+      padding: 6px 14px 4px;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      color: rgba(250,204,21,0.4);
+      text-transform: uppercase;
+      border-top: 1px solid rgba(55,65,81,0.5);
+    }
+    .teams-dropdown-pool-header:first-child { border-top: none; }
+    .teams-dropdown-all {
+      display: block; text-align: center;
+      padding: 8px 14px;
+      font-size: 0.75rem; font-weight: 600; color: #facc15;
+      border-top: 1px solid rgba(55,65,81,0.5);
+      transition: background 0.12s;
+      text-decoration: none;
+    }
+    .teams-dropdown-all:hover { background: rgba(250,204,21,0.07); }
+
+    /* ── Flash ── */
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .flash-anim { animation: slideDown 0.25s ease; }
+
+    /* ── Sprite ── */
+    .sprite { image-rendering: pixelated; }
+
+    /* ── Card glow on hover ── */
+    .card-hover {
+      transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .card-hover:hover {
+      box-shadow: 0 0 24px rgba(250,204,21,0.12);
+      border-color: rgba(250,204,21,0.4) !important;
+      transform: translateY(-1px);
+    }
+
+    /* ── Section divider gradient ── */
+    .section-line {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #1e2d45 30%, #1e2d45 70%, transparent);
+    }
+
+    /* ── Week badge ── */
+    .wk-W { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .wk-L { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .wk-T { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3); }
+
+    /* ── Table alternating rows ── */
+    .alt-row:nth-child(even) { background: rgba(255,255,255,0.02); }
+  </style>
+</head>
+<body class="h-full flex flex-col text-gray-100 antialiased" style="background-color:#080c14;">
+
+<!-- ═══════════════════ NAVBAR ═══════════════════ -->
+<nav class="sticky top-0 z-50 border-b border-gray-800/80 backdrop-blur-sm" style="background-color:rgba(8,12,20,0.97);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center h-16 gap-8">
+
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
+        <img src="https://i.imgur.com/zt776Sk.jpeg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 8px rgba(227,53,13,0.3)">
+        <span class="font-bold text-base tracking-wide text-yellow-400 hover:text-yellow-300 transition-colors hidden sm:block">{{ league_name }}</span>
+      </a>
+
+      <!-- Desktop links -->
+      <div class="hidden md:flex items-center gap-5 flex-1">
+        <a href="/"             class="nav-link text-sm text-gray-400 hover:text-yellow-400">Standings</a>
+
+        <!-- Teams dropdown -->
+        <div class="teams-dropdown flex items-center h-16">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 flex items-center gap-1 focus:outline-none">
+            Teams
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="teams-dropdown-menu">
+            {% set pool_a = nav_coaches | selectattr('pool', 'equalto', 'A') | list %}
+            {% set pool_b = nav_coaches | selectattr('pool', 'equalto', 'B') | list %}
+            {% if pool_a %}
+              <div class="teams-dropdown-pool-header">Pool A</div>
+              {% for c in pool_a %}
+              <a href="/team/{{ c.id }}" class="teams-dropdown-item">
+                <span class="teams-dropdown-swatch" style="background:{{ c.color or '#374151' }};"></span>
+                <span class="truncate">{{ c.team_name }}</span>
+                <span class="ml-auto text-gray-700 text-xs truncate">{{ c.coach_name }}</span>
+              </a>
+              {% endfor %}
+            {% endif %}
+            {% if pool_b %}
+              <div class="teams-dropdown-pool-header">Pool B</div>
+              {% for c in pool_b %}
+              <a href="/team/{{ c.id }}" class="teams-dropdown-item">
+                <span class="teams-dropdown-swatch" style="background:{{ c.color or '#374151' }};"></span>
+                <span class="truncate">{{ c.team_name }}</span>
+                <span class="ml-auto text-gray-700 text-xs truncate">{{ c.coach_name }}</span>
+              </a>
+              {% endfor %}
+            {% endif %}
+            {% if not pool_a and not pool_b %}
+              <div class="teams-dropdown-pool-header">No teams yet</div>
+            {% endif %}
+            <a href="/teams" class="teams-dropdown-all">View all teams &rarr;</a>
+          </div>
+        </div>
+
+        <a href="/schedule"     class="nav-link text-sm text-gray-400 hover:text-yellow-400">Schedule</a>
+        <a href="/draft"        class="nav-link text-sm text-gray-400 hover:text-yellow-400">Draft</a>
+        <a href="/draftboard"   class="nav-link text-sm text-gray-400 hover:text-yellow-400">Draft Board</a>
+        <a href="/draft-prep"   class="nav-link text-sm text-gray-400 hover:text-yellow-400">Draft Prep</a>
+        <a href="/battle-prep"  class="nav-link text-sm text-gray-400 hover:text-yellow-400">Battle Prep</a>
+        <a href="/damage-calc"  class="nav-link text-sm text-gray-400 hover:text-yellow-400">Damage Calc</a>
+        <a href="/replays"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Replays</a>
+        <a href="/transactions" class="nav-link text-sm text-gray-400 hover:text-yellow-400">Transactions</a>
+        <a href="/mvp"          class="nav-link text-sm text-gray-400 hover:text-yellow-400">MVP Race</a>
+        <a href="/pokedex"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Pokédex</a>
+        <a href="/rules"        class="nav-link text-sm text-gray-400 hover:text-yellow-400">Rules</a>
+        <a href="/playoffs"     class="nav-link text-sm text-gray-400 hover:text-yellow-400">Playoffs</a>
+        <a href="/seasons"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Past Seasons</a>
+      </div>
+
+      <!-- Right auth -->
+      <div class="hidden md:flex items-center gap-2 ml-auto">
+        {% if session.get('role') == 'admin' %}
+          <a href="/admin" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-red-950/70 border border-red-800/60 text-red-400 hover:bg-red-900/60 hover:text-red-300 transition-all">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            Admin Panel
+          </a>
+        {% endif %}
+        {% if session.get('user_id') %}
+          <span class="text-xs text-gray-500 font-medium px-1">{{ session.get('username') }}</span>
+          <a href="/logout" class="px-3 py-1.5 rounded-md text-xs font-semibold border border-gray-700 text-gray-400 hover:border-yellow-500/60 hover:text-yellow-400 transition-all">Sign out</a>
+        {% else %}
+          <a href="/login" class="px-4 py-1.5 rounded-md text-xs font-bold bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-colors">Sign in</a>
+        {% endif %}
+      </div>
+
+      <!-- Mobile hamburger -->
+      <button id="mobile-btn" class="md:hidden ml-auto p-2 rounded-md text-gray-500 hover:text-yellow-400 hover:bg-gray-800/60 transition-all">
+        <svg id="ham-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg id="x-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="hidden md:hidden border-t border-gray-800/60" style="background-color:rgba(8,12,20,0.98);">
+    <div class="px-4 py-3 space-y-0.5">
+      <a href="/"             class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Standings</a>
+      <!-- Teams expandable -->
+      <div>
+        <button onclick="toggleMobileTeams()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">
+          <span>Teams</span>
+          <svg id="mobile-teams-chevron" class="w-3.5 h-3.5 opacity-50 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div id="mobile-teams-list" class="hidden pl-3 pb-1 space-y-0.5">
+          {% set pool_a = nav_coaches | selectattr('pool', 'equalto', 'A') | list %}
+          {% set pool_b = nav_coaches | selectattr('pool', 'equalto', 'B') | list %}
+          {% if pool_a %}
+            <div class="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-widest text-yellow-500/40">Pool A</div>
+            {% for c in pool_a %}
+            <a href="/team/{{ c.id }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">
+              <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>
+              {{ c.team_name }}
+            </a>
+            {% endfor %}
+          {% endif %}
+          {% if pool_b %}
+            <div class="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-widest text-yellow-500/40">Pool B</div>
+            {% for c in pool_b %}
+            <a href="/team/{{ c.id }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">
+              <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>
+              {{ c.team_name }}
+            </a>
+            {% endfor %}
+          {% endif %}
+          <a href="/teams" class="block px-3 py-1.5 text-xs font-semibold text-yellow-500 hover:text-yellow-400 transition-colors">All teams &rarr;</a>
+        </div>
+      </div>
+      <a href="/schedule"     class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Schedule</a>
+      <a href="/draft"        class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Draft</a>
+      <a href="/draftboard"   class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Draft Board</a>
+      <a href="/draft-prep"   class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Draft Prep</a>
+      <a href="/damage-calc"  class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Damage Calc</a>
+      <a href="/replays"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Replays</a>
+      <a href="/transactions" class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Transactions</a>
+      <a href="/mvp"          class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">MVP Race</a>
+      <a href="/rules"        class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Rules</a>
+      <a href="/pokedex"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Pokédex</a>
+      <a href="/playoffs"     class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Playoffs</a>
+      <a href="/seasons"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Past Seasons</a>
+      <div class="pt-2 mt-2 border-t border-gray-800/60 space-y-1">
+        {% if session.get('role') == 'admin' %}
+          <a href="/admin" class="block px-3 py-2 rounded-lg text-sm text-red-400 bg-red-950/40 hover:bg-red-950/60">Admin Panel</a>
+        {% endif %}
+        {% if session.get('user_id') %}
+          <div class="px-3 py-1 text-xs text-gray-600">Signed in as <span class="text-gray-400">{{ session.get('username') }}</span></div>
+          <a href="/logout" class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Sign out</a>
+        {% else %}
+          <a href="/login" class="block px-3 py-2 rounded-lg text-sm text-center font-bold bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-colors">Sign in</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════ FLASH MESSAGES ═══════════════════ -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-3 space-y-2">
+      {% for category, message in messages %}
+        <div class="flash-anim flex items-center gap-3 px-4 py-3 rounded-xl border text-sm
+          {% if category in ['error','danger'] %}bg-red-950/50 border-red-700/40 text-red-300
+          {% elif category == 'success' %}bg-green-950/50 border-green-700/40 text-green-300
+          {% elif category == 'warning' %}bg-yellow-950/50 border-yellow-700/40 text-yellow-300
+          {% else %}bg-blue-950/50 border-blue-700/40 text-blue-300{% endif %}">
+          <span class="flex-1">{{ message }}</span>
+          <button onclick="this.parentElement.remove()" class="opacity-40 hover:opacity-80 transition-opacity">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="flex-1">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer class="mt-20 border-t border-gray-800/50" style="background-color:#080c14;">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <img src="https://i.imgur.com/zt776Sk.jpeg" alt="League Logo" class="rounded-full object-cover flex-shrink-0" style="width:18px;height:18px;">
+        <span class="text-sm font-bold text-gray-500">{{ league_name }}</span>
+      </div>
+      <div class="flex items-center gap-5">
+        <a href="/"             class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Standings</a>
+        <a href="/schedule"     class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Schedule</a>
+        <a href="/draftboard"   class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Draft Board</a>
+        <a href="/rules"        class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Rules</a>
+      </div>
+      <p class="text-xs text-gray-800">Pokemon Draft League</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mobile menu
+  const mBtn = document.getElementById('mobile-btn');
+  const mMenu = document.getElementById('mobile-menu');
+  const hamIco = document.getElementById('ham-icon');
+  const xIco = document.getElementById('x-icon');
+  mBtn.addEventListener('click', () => {
+    const hidden = mMenu.classList.toggle('hidden');
+    hamIco.classList.toggle('hidden', !hidden);
+    xIco.classList.toggle('hidden', hidden);
+  });
+
+  // Active nav highlight
+  const p = window.location.pathname;
+  document.querySelectorAll('.nav-link').forEach(a => {
+    const h = a.getAttribute('href');
+    if (h && (h === p || (h.length > 1 && p.startsWith(h)))) {
+      a.classList.add('active');
+    }
+  });
+
+  // Mobile teams toggle
+  function toggleMobileTeams() {
+    const list = document.getElementById('mobile-teams-list');
+    const chevron = document.getElementById('mobile-teams-chevron');
+    const hidden = list.classList.toggle('hidden');
+    chevron.style.transform = hidden ? '' : 'rotate(180deg)';
+  }
+
+  // Auto-open mobile teams if on a team page
+  if (p.startsWith('/team')) {
+    const list = document.getElementById('mobile-teams-list');
+    const chevron = document.getElementById('mobile-teams-chevron');
+    if (list) { list.classList.remove('hidden'); chevron.style.transform = 'rotate(180deg)'; }
+  }
+</script>
+</body>
+</html>

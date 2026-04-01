@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Admin – {{ league_name }}{% endblock %}
+{% block content %}
+
+<h1 class="text-3xl font-bold mb-2 text-red-400">⚙️ Admin Panel</h1>
+<p class="text-gray-400 mb-8">Manage all league data from here.</p>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+    <a href="/admin/settings" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">🏷️</div>
+        <div class="font-bold text-lg text-white">League Settings</div>
+        <div class="text-gray-400 text-sm mt-1">Name, season, budget, format, mechanic</div>
+    </a>
+
+    <a href="/admin/teams" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">🏟️</div>
+        <div class="font-bold text-lg text-white">Teams</div>
+        <div class="text-gray-400 text-sm mt-1">Add, edit, or remove teams and coaches</div>
+        <div class="mt-3 text-yellow-400 text-sm font-semibold">{{ coaches | length }} teams</div>
+    </a>
+
+    <a href="/admin/schedule" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">📅</div>
+        <div class="font-bold text-lg text-white">Schedule & Results</div>
+        <div class="text-gray-400 text-sm mt-1">Create matches and enter week results</div>
+    </a>
+
+    <a href="/admin/transactions" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">🔄</div>
+        <div class="font-bold text-lg text-white">Transactions</div>
+        <div class="text-gray-400 text-sm mt-1">Log FA pickups, drops, and trades</div>
+    </a>
+
+    <a href="/admin/rules" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">📜</div>
+        <div class="font-bold text-lg text-white">Rules</div>
+        <div class="text-gray-400 text-sm mt-1">Edit league rule sections</div>
+    </a>
+
+    <a href="/admin/tiers" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">🎯</div>
+        <div class="font-bold text-lg text-white">Draft Tier List</div>
+        <div class="text-gray-400 text-sm mt-1">Manage available Pokemon and point costs</div>
+    </a>
+
+    <a href="/admin/users" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">👥</div>
+        <div class="font-bold text-lg text-white">User Accounts</div>
+        <div class="text-gray-400 text-sm mt-1">Create coach accounts and manage passwords</div>
+    </a>
+
+    <a href="/admin/seasons" class="bg-gray-800 border border-gray-700 hover:border-purple-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">🗂️</div>
+        <div class="font-bold text-lg text-white">Season Management</div>
+        <div class="text-gray-400 text-sm mt-1">Archive current season & start a new one</div>
+    </a>
+
+    <a href="/admin/playoffs" class="bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-xl p-6 transition-all hover:scale-[1.02]">
+        <div class="text-3xl mb-2">🏆</div>
+        <div class="font-bold text-lg text-white">Playoffs</div>
+        <div class="text-gray-400 text-sm mt-1">Generate bracket & enter playoff results</div>
+    </a>
+
+</div>
+
+{% if coaches %}
+<div class="mt-10">
+    <h2 class="text-xl font-bold mb-4 text-gray-300">Quick Roster Access</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        {% for c in coaches %}
+        <a href="/admin/roster/{{ c.id }}" class="bg-gray-800 border border-gray-700 hover:border-blue-500 rounded-lg px-3 py-2 text-sm text-center transition-all">
+            <div class="font-semibold text-white truncate">{{ c.team_name }}</div>
+            <div class="text-xs text-gray-400">{{ c.coach_name }}</div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

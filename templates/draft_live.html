@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}Live Draft – {{ league_name }}{% endblock %}
+
+{% block content %}
+
+{% set tier_colors = {
+  "Uber 1":    "background:linear-gradient(90deg,#7f1d1d,#991b1b); color:#fca5a5;",
+  "Uber 2":    "background:linear-gradient(90deg,#7c2d12,#9a3412); color:#fdba74;",
+  "Tier 1":    "background:linear-gradient(90deg,#1e3a5f,#1e40af); color:#93c5fd;",
+  "Tier 2":    "background:linear-gradient(90deg,#3b0764,#6b21a8); color:#d8b4fe;",
+  "Tier 3":    "background:linear-gradient(90deg,#134e4a,#0f766e); color:#5eead4;",
+  "Tier 4":    "background:linear-gradient(90deg,#1a2e1a,#166534); color:#86efac;",
+  "Tier 5":    "background:linear-gradient(90deg,#1f2937,#374151); color:#9ca3af;",
+  "Free Pick": "background:linear-gradient(90deg,#713f12,#92400e); color:#fde68a;",
+} %}
+
+<div class="max-w-full px-2 py-4">
+
+{% if session is none %}
+  <!-- No active session -->
+  <div class="max-w-lg mx-auto text-center py-20">
+    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background:#0f1623; border:2px solid #374151;">
+      <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <h2 class="text-xl font-black text-white mb-2">No Active Draft</h2>
+    <p class="text-gray-500 text-sm mb-6">There is no live draft session at the moment.</p>
+    <div class="flex items-center justify-center gap-3">
+      <a href="{{ url_for('draft_sheet') }}" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-300 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">View Draft Sheet</a>
+      {% if is_admin %}
+      <a href="{{ url_for('admin_draft') }}" class="px-4 py-2 rounded-lg text-sm font-bold text-black" style="background:linear-gradient(90deg,#facc15,#f59e0b);">Admin: Setup Draft</a>
+      {% endif %}
+    </div>
+  </div>
+
+{% else %}
+
+  <!-- Session header -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-2">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold
+          {% if session.status == 'active' %}text-green-400 border border-green-600{% elif session.status == 'paused' %}text-yellow-400 border border-yellow-600{% else %}text-gray-400 border border-gray-600{% endif %}"
+          style="background:rgba(0,0,0,0.3);">
+          {% if session.status == 'active' %}
+          <span class="relative flex h-1.5 w-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span></span>
+          {% endif %}
+          {{ session.status|upper }}
+        </span>
+        <h1 class="text-xl font-black text-white">{{ session.name }}</h1>
+        {% if session.season %}<span class="text-xs text-gray-500">{{ session.season }}</span>{% endif %}
+      </div>
+      {% if current_slot %}
+      <p class="text-sm text-gray-400">
+        Round <span class="text-white font-bold">{{ current_slot[2] }}</span>
+        · Pick <span class="text-yellow-400 font-bold">#{{ current_slot[0] }}</span>
+        · <span class="text-gray-300">{{ coaches_map[current_coach_id].team_name if current_coach_id in coaches_map else '?' }}</span>'s turn
+      </p>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('draft_sheet') }}" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 border border-gray-700 hover:border-gray-500 transition-colors">Sheet View</a>
+      {% if is_admin %}
+      <a href="{{ url_for('admin_draft') }}" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">Admin Controls</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Pick order strip -->
+  {% if next_5 %}
+  <div class="px-2 mb-4">
+    <div class="flex items-center gap-2 overflow-x-auto pb-1">
+      <span class="text-xs text-gray-600 font-bold uppercase tracking-wider whitespace-nowrap">Up next:</span>
+      {% for pick_num, r_idx, slot, cid in next_5 %}
+      {% set c = coaches_map.get(cid, {}) %}
+      <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border flex-shrink-0
+                  {% if loop.first %}border-yellow-500{% else %}border-gray-700{% endif %}"
+           style="background:#0f1623; {% if loop.first %}box-shadow:0 0 10px rgba(250,204,21,0.2);{% endif %}">
+        {% if c.get('logo_url') %}
+        <img src="{{ c.logo_url }}" class="w-5 h-5 object-contain rounded" alt="">
+        {% else %}
+        <div class="w-5 h-5 rounded flex items-center justify-center text-xs font-black text-white"
+             style="background:{{ c.get('color','#374151') }};font-size:8px;">{{ c.get('team_name','?')[:2].upper() }}</div>
+        {% endif %}
+        <div>
+          <div class="text-xs font-bold {% if loop.first %}text-yellow-400{% else %}text-gray-300{% endif %} leading-tight">{{ c.get('team_name','?') }}</div>
+          <div class="text-gray-600 leading-tight" style="font-size:10px;">{{ slot }} · #{{ pick_num }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Draft grid -->
+  {% macro render_live_grid(coaches_pool, grid, max_picks, pool_label) %}
+  <div class="mb-6">
+    <div class="flex items-center gap-2 mb-2 px-1">
+      <div class="w-1 h-4 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <h3 class="text-xs font-bold text-white uppercase tracking-wider">Pool {{ pool_label }}</h3>
+    </div>
+    <div class="overflow-x-auto rounded-xl border border-gray-800/60" style="background:#080c14;">
+      <table class="border-collapse text-xs" style="min-width:max-content;">
+        <thead>
+          <tr style="background:#0a0f1a; border-bottom:2px solid #1f2937;">
+            <th class="px-3 py-2 text-left text-gray-600 font-bold uppercase tracking-wider sticky left-0 z-10 whitespace-nowrap" style="background:#0a0f1a; min-width:70px;">Tier</th>
+            {% for coach in coaches_pool %}
+            <th class="px-2 py-1.5 text-center {% if coach.id == current_coach_id %}ring-2 ring-yellow-500{% endif %}"
+                style="min-width:130px; {% if coach.id == current_coach_id %}background:rgba(250,204,21,0.06);{% endif %}">
+              <div class="flex flex-col items-center gap-1">
+                {% if coach.logo_url %}
+                <img src="{{ coach.logo_url }}" class="w-7 h-7 object-contain rounded" alt="">
+                {% else %}
+                <div class="w-7 h-7 rounded flex items-center justify-center text-xs font-black text-white"
+                     style="background:{{ coach.color or '#374151' }};">{{ coach.team_name[:2].upper() }}</div>
+                {% endif %}
+                <div class="font-bold {% if coach.id == current_coach_id %}text-yellow-400{% else %}text-white{% endif %} text-xs leading-tight">{{ coach.team_name }}</div>
+                {% if coach.id == current_coach_id %}<div class="text-yellow-500 text-xs leading-tight" style="font-size:9px;">PICKING</div>{% endif %}
+              </div>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for tier in tier_order %}
+          {% set tier_max = max_picks[tier] %}
+          {% for row_idx in range(tier_max) %}
+          <tr class="border-b border-gray-800/30 hover:bg-gray-800/10 transition-colors">
+            {% if row_idx == 0 %}
+            <td class="px-2 py-1 font-bold whitespace-nowrap sticky left-0 z-10 text-xs"
+                rowspan="{{ tier_max }}"
+                style="{{ tier_colors[tier] }} border-right:2px solid rgba(255,255,255,0.08);">
+              {{ tier }}
+            </td>
+            {% endif %}
+            {% for coach in coaches_pool %}
+            {% set cell_pokemon = grid[tier][coach.id] %}
+            <td class="px-1.5 py-1 text-center align-middle {% if coach.id == current_coach_id %}{% if session.status == 'active' %}bg-yellow-900/10{% endif %}{% endif %}"
+                style="border-left:1px solid #1f2937;">
+              {% if row_idx < cell_pokemon|length %}
+              {% set poke = cell_pokemon[row_idx] %}
+              <div class="flex items-center gap-1 justify-center flex-wrap">
+                <span class="inline-flex items-center justify-center w-5 h-4 rounded text-xs font-bold"
+                      style="background:rgba(250,204,21,0.12); color:#facc15; font-size:9px;">{{ poke.points }}</span>
+                <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}"
+                     onerror="this.style.display='none'"
+                     class="w-6 h-6 object-contain sprite flex-shrink-0"
+                     alt="{{ poke.pokemon_name }}">
+                <span class="text-gray-300 font-medium leading-tight truncate max-w-[70px]" title="{{ poke.pokemon_name }}">{{ poke.pokemon_name }}</span>
+                {% if poke.is_tera_captain and mechanic_tera == '1' %}<span style="font-size:8px;font-weight:800;color:#22d3ee;background:rgba(6,182,212,0.2);border:1px solid #06b6d4;padding:0 3px;border-radius:2px;flex-shrink:0;" title="Tera Captain">T</span>{% endif %}
+                {% if poke.is_zmove_captain and mechanic_zmove == '1' %}<span style="font-size:8px;font-weight:800;color:#a78bfa;background:rgba(139,92,246,0.2);border:1px solid #8b5cf6;padding:0 3px;border-radius:2px;flex-shrink:0;" title="Z-Move Captain">Z</span>{% endif %}
+              </div>
+              {% else %}
+              <span class="text-gray-800">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endmacro %}
+
+  {{ render_live_grid(coaches_a, grid_a, max_a, "A") }}
+  {{ render_live_grid(coaches_b, grid_b, max_b, "B") }}
+
+  <!-- Pick section -->
+  {% if can_pick and session.status == 'active' and current_slot %}
+  <div class="mt-6 px-2">
+    <div class="rounded-xl border border-yellow-600/40 p-4" style="background:#0f1623;">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+        <h3 class="text-sm font-bold text-white">
+          {% if is_admin %}Admin: {% endif %}Make a Pick
+          <span class="text-yellow-400">– {{ current_slot[2] }}</span>
+        </h3>
+      </div>
+
+      {# Show who this pick is being made for #}
+      {% if current_coach_id and coaches_map.get(current_coach_id) %}
+      {% set picking_coach = coaches_map[current_coach_id] %}
+      <div class="flex items-center gap-3 mb-4 p-3 rounded-lg border border-gray-700/40" style="background:#0a0f1a;">
+        <span class="text-xs text-gray-500 font-bold uppercase tracking-wider flex-shrink-0">Picking for:</span>
+        {% if picking_coach.get('logo_url') %}
+        <img src="{{ picking_coach.logo_url }}" class="w-8 h-8 object-contain rounded flex-shrink-0" alt="">
+        {% endif %}
+        <div>
+          <div class="text-sm font-bold text-white leading-tight">{{ picking_coach.get('team_name','?') }}</div>
+          <div class="text-xs text-gray-500 leading-tight">{{ picking_coach.get('coach_name','?') }}</div>
+        </div>
+        {% if is_admin and current_coach_id != session.get('coach_id') %}
+        <span class="ml-auto text-xs font-bold px-2 py-0.5 rounded-full text-orange-300 border border-orange-700/40" style="background:rgba(194,65,12,0.15);">Admin pick</span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Search -->
+      <div class="mb-3">
+        <input type="text" id="poke-search" placeholder="Search Pokémon name…"
+               class="w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-yellow-500 focus:outline-none transition-colors"
+               style="background:#080c14;"
+               oninput="filterPokes(this.value)">
+      </div>
+
+      <!-- Available pokemon grid -->
+      <div id="poke-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 max-h-72 overflow-y-auto pr-1">
+        {% for poke in avail_pokemon %}
+        <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card">
+          <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
+          <button type="submit"
+                  class="w-full flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 hover:border-yellow-500 hover:bg-yellow-900/10 transition-colors text-center group"
+                  style="background:#080c14;"
+                  data-name="{{ poke.name|lower }}">
+            <img src="{{ pokemon_sprite_url(poke.name) }}"
+                 onerror="this.style.display='none'"
+                 class="w-10 h-10 object-contain sprite">
+            <span class="text-xs font-medium text-gray-300 group-hover:text-white leading-tight truncate w-full" title="{{ poke.name }}">{{ poke.name }}</span>
+            <span class="text-xs font-bold" style="color:#facc15;">{{ poke.points }}pts</span>
+            {% if poke.tier_label %}<span class="text-gray-600 leading-tight" style="font-size:9px;">{{ poke.tier_label }}</span>{% endif %}
+          </button>
+        </form>
+        {% else %}
+        <div class="col-span-full text-center py-8 text-gray-600 text-sm">No Pokémon available for this tier.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+  function filterPokes(q) {
+    q = q.toLowerCase().trim();
+    document.querySelectorAll('#poke-grid .poke-card').forEach(function(card) {
+      var btn = card.querySelector('button');
+      var name = btn ? btn.dataset.name : '';
+      card.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+  }
+  </script>
+
+  {% elif session.status == 'paused' %}
+  <div class="mt-4 px-2">
+    <div class="rounded-lg border border-yellow-700/40 px-4 py-3 text-center" style="background:#1a1208;">
+      <span class="text-yellow-400 font-bold text-sm">Draft is paused.</span>
+    </div>
+  </div>
+  {% elif current_slot is none %}
+  <div class="mt-4 px-2">
+    <div class="rounded-lg border border-green-700/40 px-4 py-3 text-center" style="background:#0a1a0a;">
+      <span class="text-green-400 font-bold text-sm">Draft is complete!</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Captain Selection Panel ── #}
+  {% if my_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
+  <div class="mt-6 px-2">
+    <div class="rounded-xl border border-gray-700/40 p-4" style="background:#0f1623;">
+      <h3 class="text-sm font-bold text-white mb-3">
+        <span style="color:#22d3ee;">T</span>/<span style="color:#a78bfa;">Z</span> Captain Selection
+        <span class="text-gray-600 font-normal text-xs ml-2">≤13pts each · combined ≤18pts</span>
+      </h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+        {% for poke in my_picks %}
+        <div class="flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700/60" style="background:#080c14;">
+          <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}"
+               onerror="this.style.display='none'"
+               class="w-10 h-10 object-contain"
+               alt="{{ poke.pokemon_name }}">
+          <span class="text-xs text-gray-300 font-medium leading-tight text-center">{{ poke.pokemon_name }}</span>
+          <span class="text-xs font-bold" style="color:#facc15;">{{ poke.points }}pts</span>
+          <div class="flex gap-1 mt-0.5">
+            {% if mechanic_tera == '1' %}
+            <form method="POST" action="{{ url_for('draft_live_set_captain') }}" class="inline">
+              <input type="hidden" name="pokemon_name" value="{{ poke.pokemon_name }}">
+              <input type="hidden" name="captain_type" value="tera">
+              <input type="hidden" name="coach_id" value="{{ poke.coach_id }}">
+              <input type="hidden" name="value" value="{{ '0' if poke.is_tera_captain else '1' }}">
+              <button type="submit"
+                      class="px-1.5 py-0.5 rounded text-xs font-bold transition-colors"
+                      style="{% if poke.is_tera_captain %}background:rgba(6,182,212,0.25);border:1px solid #06b6d4;color:#22d3ee;{% else %}background:rgba(55,65,81,0.4);border:1px solid rgba(55,65,81,0.6);color:#6b7280;{% endif %}"
+                      {% if not poke.is_tera_captain and poke.points > 13 %}disabled title="Pokémon must be ≤13pts"{% endif %}>
+                T
+              </button>
+            </form>
+            {% endif %}
+            {% if mechanic_zmove == '1' %}
+            <form method="POST" action="{{ url_for('draft_live_set_captain') }}" class="inline">
+              <input type="hidden" name="pokemon_name" value="{{ poke.pokemon_name }}">
+              <input type="hidden" name="captain_type" value="zmove">
+              <input type="hidden" name="coach_id" value="{{ poke.coach_id }}">
+              <input type="hidden" name="value" value="{{ '0' if poke.is_zmove_captain else '1' }}">
+              <button type="submit"
+                      class="px-1.5 py-0.5 rounded text-xs font-bold transition-colors"
+                      style="{% if poke.is_zmove_captain %}background:rgba(139,92,246,0.25);border:1px solid #8b5cf6;color:#a78bfa;{% else %}background:rgba(55,65,81,0.4);border:1px solid rgba(55,65,81,0.6);color:#6b7280;{% endif %}"
+                      {% if not poke.is_zmove_captain and poke.points > 13 %}disabled title="Pokémon must be ≤13pts"{% endif %}>
+                Z
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+{% endif %}
+</div>
+
+<!-- Auto-refresh every 30 seconds when active -->
+{% if session and session.status == 'active' %}
+<script>
+  setTimeout(function() { window.location.reload(); }, 30000);
+</script>
+{% endif %}
+
+{% endblock %}

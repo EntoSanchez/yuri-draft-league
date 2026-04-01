@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Draft – {{ league_name }}{% endblock %}
+
+{% block content %}
+
+{# ── Tier color config ── #}
+{% set tcfg = {
+  "Uber 1":    {"border": "#991b1b", "text": "#fca5a5", "bg": "rgba(127,29,29,0.3)"},
+  "Uber 2":    {"border": "#9a3412", "text": "#fdba74", "bg": "rgba(124,45,18,0.3)"},
+  "Tier 1":    {"border": "#1d4ed8", "text": "#93c5fd", "bg": "rgba(30,58,138,0.25)"},
+  "Tier 2":    {"border": "#7e22ce", "text": "#d8b4fe", "bg": "rgba(59,7,100,0.25)"},
+  "Tier 3":    {"border": "#0f766e", "text": "#5eead4", "bg": "rgba(19,78,74,0.25)"},
+  "Tier 4":    {"border": "#15803d", "text": "#86efac", "bg": "rgba(20,83,45,0.25)"},
+  "Tier 5":    {"border": "#374151", "text": "#9ca3af", "bg": "rgba(31,41,55,0.25)"},
+  "Mega":      {"border": "#0891b2", "text": "#67e8f9", "bg": "rgba(8,145,178,0.15)"},
+  "Free Pick": {"border": "#b45309", "text": "#fde68a", "bg": "rgba(120,53,15,0.25)"},
+} %}
+
+{# ── Macro: one filled pick row ── #}
+{% macro pick_row(poke, is_free) %}
+<div class="flex items-center gap-1.5 py-0.5 px-1 rounded {% if is_free %}bg-green-900/10{% endif %}">
+  <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}"
+       onerror="this.src='{{ pokemon_static_sprite_url(poke.pokemon_name) }}';this.onerror=null;"
+       class="w-6 h-6 object-contain flex-shrink-0 sprite" alt="">
+  <span class="text-xs text-gray-200 truncate flex-1 leading-tight" title="{{ poke.pokemon_name }}">{{ poke.pokemon_name }}</span>
+  {% if is_free %}
+  <span class="text-xs font-bold text-green-400 flex-shrink-0">FREE</span>
+  {% else %}
+  <span class="text-xs font-bold flex-shrink-0" style="color:#facc15;">{{ poke.points }}pt</span>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Macro: one empty slot row ── #}
+{% macro empty_row(is_free) %}
+<div class="flex items-center gap-1.5 py-0.5 px-1">
+  <div class="w-6 h-6 flex-shrink-0 rounded border border-dashed border-gray-700/50"></div>
+  <span class="text-xs text-gray-700 italic flex-1">—</span>
+  {% if is_free %}<span class="text-xs text-green-800 flex-shrink-0">FREE</span>{% endif %}
+</div>
+{% endmacro %}
+
+{# ── Macro: one tier section box ── #}
+{% macro tier_section(label, tier_key, paid_picks, paid_cap, free_picks, free_cap) %}
+{% set cfg = tcfg[tier_key] %}
+{% set total_filled = paid_picks|length + free_picks|length %}
+{% set total_cap    = paid_cap + free_cap %}
+<div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
+  {# Section header #}
+  <div class="flex items-center justify-between px-2.5 py-1" style="background:{{ cfg.bg }};">
+    <span class="text-xs font-black" style="color:{{ cfg.text }};">{{ label }}</span>
+    <div class="flex items-center gap-1.5">
+      {% if free_cap > 0 %}
+      <span class="text-xs" style="color:{{ cfg.text }}; opacity:0.5;">{{ paid_cap }}+<span style="color:#4ade80;">{{ free_cap }}✦</span></span>
+      {% endif %}
+      <span class="text-xs font-bold px-1.5 py-0.5 rounded-full"
+            style="background:rgba(0,0,0,0.3); color:{% if total_filled == total_cap %}#4ade80{% else %}{{ cfg.text }}{% endif %};">
+        {{ total_filled }}/{{ total_cap }}
+      </span>
+    </div>
+  </div>
+  {# Rows #}
+  <div class="px-2 py-1.5 space-y-0.5" style="background:rgba(0,0,0,0.25);">
+    {# Paid slots first #}
+    {% for poke in paid_picks %}{{ pick_row(poke, false) }}{% endfor %}
+    {% for _ in range([paid_cap - paid_picks|length, 0]|max) %}{{ empty_row(false) }}{% endfor %}
+    {# Free slots #}
+    {% for poke in free_picks %}{{ pick_row(poke, true) }}{% endfor %}
+    {% for _ in range([free_cap - free_picks|length, 0]|max) %}{{ empty_row(true) }}{% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
+{# ── Uber config derived from settings ── #}
+{% set uber_on = settings.get('mechanic_uber', '0') == '1' %}
+{% set uber_combo = settings.get('uber_combination', '2_bronze') %}
+{% set uber_slots = 0 %}
+{% if uber_on %}
+  {% if uber_combo == '1_platinum' %}
+    {% set uber_slots = 1 %}
+  {% else %}
+    {% set uber_slots = 2 %}
+  {% endif %}
+{% endif %}
+{% set total_cap = 5 + 1 + 3 + uber_slots %}{# tiers 1-5 + mega + free picks + uber slots #}
+
+{# ── Macro: full team card ── #}
+{% macro team_card(team) %}
+{% set c = team.coach %}
+{% set s = team.slots %}
+{% set rem = team.remaining %}
+{% set total_picks = s.uber1|length + s.uber2|length
+   + s.tier1|length + s.tier1f|length
+   + s.tier2|length + s.tier2f|length
+   + s.tier3|length + s.tier3f|length
+   + s.tier4|length + s.tier4f|length
+   + s.tier5|length + s.tier5f|length
+   + s.mega|length + s.free|length %}
+{% if not uber_on %}{% set total_picks = total_picks - s.uber1|length - s.uber2|length %}{% endif %}
+<div class="rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col" style="background:#080c14;">
+
+  {# ── Card header ── #}
+  <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60" style="background:#0a0f1a;">
+    {% if c.logo_url %}
+    <img src="{{ c.logo_url }}" class="w-9 h-9 object-contain rounded flex-shrink-0" alt="">
+    {% else %}
+    <div class="w-9 h-9 rounded flex items-center justify-center font-black text-white flex-shrink-0"
+         style="background:{{ c.color or '#374151' }};font-size:10px;">{{ c.team_name[:2].upper() }}</div>
+    {% endif %}
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-black text-white truncate leading-tight">{{ c.team_name }}</div>
+      <div class="text-xs text-gray-500 truncate leading-tight">{{ c.coach_name }}</div>
+    </div>
+    <div class="flex-shrink-0 text-right leading-none">
+      <div class="text-xl font-black
+        {% if rem >= 15 %}text-green-400{% elif rem >= 8 %}text-yellow-400{% elif rem >= 0 %}text-red-400{% else %}text-red-600{% endif %}">
+        {{ rem }}
+      </div>
+      <div class="text-gray-600" style="font-size:9px;">pts left</div>
+    </div>
+  </div>
+
+  {# ── Tier sections ── #}
+  <div class="px-3 pt-2.5 pb-1 flex-1">
+    {% if uber_on %}
+    {{ tier_section("Uber 1",     "Uber 1",    [], 0, s.uber1,            1) }}
+    {% if uber_slots == 2 %}
+    {{ tier_section("Uber 2",     "Uber 2",    [], 0, s.uber2,            1) }}
+    {% endif %}
+    {% endif %}
+    {{ tier_section("Tier 1",     "Tier 1",    [], 0, s.tier1 + s.tier1f, 1) }}
+    {{ tier_section("Tier 2",     "Tier 2",    [], 0, s.tier2 + s.tier2f, 1) }}
+    {{ tier_section("Tier 3",     "Tier 3",    [], 0, s.tier3 + s.tier3f, 1) }}
+    {{ tier_section("Tier 4",     "Tier 4",    [], 0, s.tier4 + s.tier4f, 1) }}
+    {{ tier_section("Tier 5",     "Tier 5",    [], 0, s.tier5 + s.tier5f, 1) }}
+    {{ tier_section("Mega",       "Mega",      [], 0, s.mega,              1) }}
+    {{ tier_section("Free Picks", "Free Pick", s.free,   3, [], 0) }}
+  </div>
+
+  {# ── Progress footer ── #}
+  <div class="px-4 py-2 border-t border-gray-800/40 flex items-center justify-between" style="background:#0a0f1a;">
+    <span class="text-xs text-gray-600">{{ total_picks }}/{{ total_cap }} picks</span>
+    <div class="w-28 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+      <div class="h-full rounded-full"
+           style="width:{{ ((total_picks / total_cap) * 100)|round|int }}%;
+                  background:{% if total_picks == total_cap %}#22c55e{% elif total_picks >= (total_cap * 0.6)|int %}#facc15{% else %}#3b82f6{% endif %};"></div>
+    </div>
+  </div>
+
+</div>
+{% endmacro %}
+
+{# ── Macro: render one pool ── #}
+{% macro render_pool(teams, pool_label) %}
+<div class="mb-10">
+  <div class="flex items-center gap-3 mb-4">
+    <div class="w-1 h-6 rounded-full flex-shrink-0" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+    <h2 class="text-base font-black text-white uppercase tracking-wider">Pool {{ pool_label }}</h2>
+    <div class="h-px flex-1 bg-gray-800/60"></div>
+    <span class="text-xs text-gray-600">{{ teams|length }} teams</span>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for team in teams %}{{ team_card(team) }}{% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
+
+<div class="max-w-full px-3 sm:px-6 py-6">
+
+  {# ── Page header ── #}
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-white tracking-tight">Draft</h1>
+      <p class="text-xs text-gray-500 mt-0.5">{{ league_name }} — rosters by team</p>
+    </div>
+    <div class="flex items-center gap-3">
+      {% if active_session %}
+      <a href="{{ url_for('draft_live') }}"
+         class="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm text-black"
+         style="background:linear-gradient(90deg,#facc15,#f59e0b);">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+        </span>
+        Live Draft
+      </a>
+      {% endif %}
+      {% if session.get('role') == 'admin' %}
+      <a href="{{ url_for('admin_draft') }}"
+         class="px-4 py-2 rounded-lg font-bold text-sm text-gray-300 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">
+        Admin Draft
+      </a>
+      {% endif %}
+      <a href="{{ url_for('draft_board') }}"
+         class="px-4 py-2 rounded-lg font-bold text-sm text-gray-300 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">
+        Draft Board
+      </a>
+    </div>
+  </div>
+
+  {# ── Slot legend ── #}
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-1 mb-6 px-1 text-xs text-gray-500">
+    <span class="font-bold text-gray-400 uppercase tracking-wider">Slots per team:</span>
+    {% if uber_on %}
+    <span><span class="text-green-500">FREE</span>
+      {% if uber_slots == 1 %}Uber ×1
+      {% else %}Uber 1 ×1 · Uber 2 ×1{% endif %}
+    </span>
+    {% endif %}
+    <span><span class="text-green-500">FREE</span> Tier 1–5: ×1 each</span>
+    <span><span class="text-green-500">FREE</span> Mega: ×1</span>
+    <span>Free Picks ×3 <span class="text-gray-600">(any tier, costs pts)</span></span>
+    <span class="text-gray-600">{{ total_cap }} total picks</span>
+  </div>
+
+  {{ render_pool(teams_a, "A") }}
+  {{ render_pool(teams_b, "B") }}
+
+</div>
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}Pokédex – {{ league_name }}{% endblock %}
+{% block content %}
+
+<!-- ── Header ── -->
+<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">{{ league_name }}</p>
+    <h1 class="text-3xl font-black text-white">Pokédex</h1>
+    <p class="text-sm text-gray-500 mt-1">{{ pokemon | length }} Pokémon · Points update with the current tier list</p>
+  </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+  <!-- ── Filters ── -->
+  <div class="flex flex-wrap gap-2 mb-6">
+    <!-- Search -->
+    <div class="relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input id="dex-search" type="text" placeholder="Search Pokémon..."
+             oninput="filterDex()"
+             class="pl-9 pr-4 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none transition-colors w-56"
+             style="background-color:#0f1623;">
+    </div>
+
+    <!-- Type 1 filter -->
+    <select id="dex-type" onchange="filterDex()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none transition-colors"
+            style="background-color:#0f1623;">
+      <option value="">All Types</option>
+      {% set all_types = [] %}
+      {% for p in pokemon %}
+        {% if p.type1 and p.type1 not in all_types %}{% set _ = all_types.append(p.type1) %}{% endif %}
+        {% if p.type2 and p.type2 not in all_types %}{% set _ = all_types.append(p.type2) %}{% endif %}
+      {% endfor %}
+      {% for t in all_types | sort %}
+        <option value="{{ t }}">{{ t }}</option>
+      {% endfor %}
+    </select>
+
+    <!-- Points filter -->
+    <select id="dex-pts" onchange="filterDex()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none transition-colors"
+            style="background-color:#0f1623;">
+      <option value="">All Points</option>
+      <option value="in_tier">In Tier List</option>
+      <option value="not_in_tier">Not in Tier List</option>
+    </select>
+
+    <!-- Sort -->
+    <select id="dex-sort" onchange="sortDex()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none transition-colors"
+            style="background-color:#0f1623;">
+      <option value="id">Sort: # (Dex Order)</option>
+      <option value="name">Sort: Name</option>
+      <option value="pts">Sort: Points</option>
+      <option value="hp">Sort: HP</option>
+      <option value="atk">Sort: Atk</option>
+      <option value="def">Sort: Def</option>
+      <option value="spa">Sort: SpA</option>
+      <option value="spd">Sort: SpD</option>
+      <option value="spe">Sort: Spe</option>
+      <option value="bst">Sort: BST</option>
+    </select>
+
+    <button onclick="document.getElementById('dex-search').value='';document.getElementById('dex-type').value='';document.getElementById('dex-pts').value='';filterDex();"
+            class="px-4 py-2 rounded-xl border border-gray-700 text-sm text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all"
+            style="background-color:#0f1623;">
+      Clear
+    </button>
+
+    <div class="ml-auto flex items-center">
+      <span id="dex-count" class="text-xs text-gray-600 font-medium"></span>
+    </div>
+  </div>
+
+  <!-- ── Type colors legend ── -->
+  <div class="flex flex-wrap gap-1.5 mb-6" id="type-legend">
+  </div>
+
+  <!-- ── Table ── -->
+  <div class="rounded-xl border border-gray-800 overflow-hidden" style="background-color:#0f1623;">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" id="dex-table">
+        <thead>
+          <tr class="border-b border-gray-800">
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 w-12">#</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Pokémon</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Type</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-yellow-600">Pts</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600">HP</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-red-700">Atk</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-orange-700">Def</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-blue-600">SpA</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-green-700">SpD</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-purple-600">Spe</th>
+            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">BST</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/60" id="dex-body">
+          {% for p in pokemon %}
+          {% set bst = p.hp + p.atk + p.def_stat + p.spa + p.spd + p.spe %}
+          <tr class="dex-row hover:bg-gray-800/20 transition-colors"
+              data-name="{{ p.display_name.lower() }}"
+              data-type1="{{ p.type1.lower() }}"
+              data-type2="{{ p.type2.lower() }}"
+              data-pts="{{ p.draft_points if p.draft_points is not none else '' }}"
+              data-hp="{{ p.hp }}"
+              data-atk="{{ p.atk }}"
+              data-def="{{ p.def_stat }}"
+              data-spa="{{ p.spa }}"
+              data-spd="{{ p.spd }}"
+              data-spe="{{ p.spe }}"
+              data-bst="{{ bst }}"
+              data-id="{{ p.pokeapi_id }}">
+            <td class="px-4 py-2 text-xs text-gray-600 font-mono">{{ p.pokeapi_id }}</td>
+            <td class="px-4 py-2">
+              <div class="flex items-center gap-2.5">
+                <img src="{{ pokemon_sprite_url(p.pokeapi_name) }}"
+                     onerror="this.style.display='none'"
+                     class="w-8 h-8 object-contain flex-shrink-0" alt="">
+                <span class="font-semibold text-white text-sm">{{ p.display_name }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-2">
+              <div class="flex gap-1">
+                {% if p.type1 %}
+                  <span class="type-badge type-{{ p.type1.lower() }} px-2 py-0.5 rounded text-xs font-bold">{{ p.type1 }}</span>
+                {% endif %}
+                {% if p.type2 %}
+                  <span class="type-badge type-{{ p.type2.lower() }} px-2 py-0.5 rounded text-xs font-bold">{{ p.type2 }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="px-3 py-2 text-center">
+              {% if p.draft_points is not none %}
+                <span class="inline-block px-2 py-0.5 rounded-lg text-xs font-black text-yellow-300" style="background:rgba(250,204,21,0.12);border:1px solid rgba(250,204,21,0.25);">
+                  {{ p.draft_points }}
+                </span>
+              {% else %}
+                <span class="text-gray-800 text-xs">—</span>
+              {% endif %}
+            </td>
+            {% macro stat_bar(val, color, max_val=255) %}
+            <td class="px-3 py-2 text-center">
+              <div class="flex flex-col items-center gap-0.5">
+                <span class="text-xs font-bold text-gray-200">{{ val }}</span>
+                <div class="w-10 h-1 rounded-full bg-gray-800">
+                  <div class="h-1 rounded-full {{ color }}" style="width:{{ [val * 100 // max_val, 100] | min }}%"></div>
+                </div>
+              </div>
+            </td>
+            {% endmacro %}
+            {{ stat_bar(p.hp, 'bg-green-500', 255) }}
+            {{ stat_bar(p.atk, 'bg-red-500', 190) }}
+            {{ stat_bar(p.def_stat, 'bg-orange-500', 230) }}
+            {{ stat_bar(p.spa, 'bg-blue-500', 194) }}
+            {{ stat_bar(p.spd, 'bg-teal-500', 230) }}
+            {{ stat_bar(p.spe, 'bg-purple-500', 180) }}
+            <td class="px-3 py-2 text-center text-xs font-bold text-gray-400">{{ bst }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="dex-empty" class="hidden text-center py-16">
+    <p class="text-gray-600 text-sm">No Pokémon match your filters.</p>
+    <button onclick="document.getElementById('dex-search').value='';document.getElementById('dex-type').value='';document.getElementById('dex-pts').value='';filterDex();"
+            class="mt-3 text-xs text-yellow-500 hover:text-yellow-400">Clear filters</button>
+  </div>
+
+</div>
+
+<style>
+/* Type badge colors */
+.type-normal    { background:#A8A878; color:#fff; }
+.type-fire      { background:#F08030; color:#fff; }
+.type-water     { background:#6890F0; color:#fff; }
+.type-electric  { background:#F8D030; color:#333; }
+.type-grass     { background:#78C850; color:#fff; }
+.type-ice       { background:#98D8D8; color:#333; }
+.type-fighting  { background:#C03028; color:#fff; }
+.type-poison    { background:#A040A0; color:#fff; }
+.type-ground    { background:#E0C068; color:#333; }
+.type-flying    { background:#A890F0; color:#fff; }
+.type-psychic   { background:#F85888; color:#fff; }
+.type-bug       { background:#A8B820; color:#fff; }
+.type-rock      { background:#B8A038; color:#fff; }
+.type-ghost     { background:#705898; color:#fff; }
+.type-dragon    { background:#7038F8; color:#fff; }
+.type-dark      { background:#705848; color:#fff; }
+.type-steel     { background:#B8B8D0; color:#333; }
+.type-fairy     { background:#EE99AC; color:#333; }
+.type-stellar   { background:#40B5A5; color:#fff; }
+</style>
+
+<script>
+function filterDex() {
+  const search = document.getElementById('dex-search').value.toLowerCase().trim();
+  const type   = document.getElementById('dex-type').value.toLowerCase();
+  const pts    = document.getElementById('dex-pts').value;
+
+  let visible = 0;
+  document.querySelectorAll('.dex-row').forEach(row => {
+    const name  = row.dataset.name  || '';
+    const type1 = row.dataset.type1 || '';
+    const type2 = row.dataset.type2 || '';
+    const hasPts = row.dataset.pts !== '';
+
+    const nameOk = !search || name.includes(search);
+    const typeOk = !type   || type1 === type || type2 === type;
+    const ptsOk  = !pts || (pts === 'in_tier' && hasPts) || (pts === 'not_in_tier' && !hasPts);
+    const show = nameOk && typeOk && ptsOk;
+
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+
+  const countEl = document.getElementById('dex-count');
+  if (countEl) countEl.textContent = `${visible} Pokémon`;
+  document.getElementById('dex-empty').classList.toggle('hidden', visible > 0);
+}
+
+function sortDex() {
+  const key = document.getElementById('dex-sort').value;
+  const tbody = document.getElementById('dex-body');
+  const rows = Array.from(tbody.querySelectorAll('.dex-row'));
+
+  rows.sort((a, b) => {
+    if (key === 'name') return a.dataset.name.localeCompare(b.dataset.name);
+    if (key === 'id')   return +a.dataset.id - +b.dataset.id;
+    if (key === 'pts') {
+      const ap = a.dataset.pts === '' ? -1 : +a.dataset.pts;
+      const bp = b.dataset.pts === '' ? -1 : +b.dataset.pts;
+      return bp - ap;
+    }
+    return +(b.dataset[key] || 0) - +(a.dataset[key] || 0);
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const total = document.querySelectorAll('.dex-row').length;
+  document.getElementById('dex-count').textContent = `${total} Pokémon`;
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Users – Admin{% endblock %}
+{% block content %}
+
+<div class="flex items-center gap-3 mb-6">
+    <a href="/admin" class="text-gray-400 hover:text-white">← Admin</a>
+    <h1 class="text-2xl font-bold text-yellow-400">👥 Manage Users</h1>
+</div>
+
+<p class="text-gray-400 mb-6 text-sm">
+    <strong>Admin</strong> — full access to all features.<br>
+    <strong>Coach</strong> — can view everything and submit match stats for their own team.
+</p>
+
+<!-- Add User -->
+<div class="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-8 max-w-xl">
+    <h2 class="font-bold text-lg mb-4 text-gray-200">Create Account</h2>
+    <form method="POST" class="grid grid-cols-2 gap-3">
+        <input type="hidden" name="action" value="add">
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Username *</label>
+            <input type="text" name="username" required placeholder="e.g. jordan"
+                   class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Password *</label>
+            <input type="password" name="password" required placeholder="Set password"
+                   class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Role</label>
+            <select name="role" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+                <option value="coach">Coach (submit stats only)</option>
+                <option value="admin">Admin (full access)</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Linked Team (optional)</label>
+            <select name="coach_id" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+                <option value="">— None —</option>
+                {% for c in coaches %}
+                <option value="{{ c.id }}">{{ c.coach_name }} ({{ c.team_name }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-span-2">
+            <button type="submit" class="px-5 py-2 bg-green-700 hover:bg-green-600 rounded font-semibold">
+                + Create Account
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- User list -->
+{% if users %}
+<div class="max-w-2xl space-y-2">
+    {% for u in users %}
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center gap-3 flex-wrap">
+        <div class="flex-1 min-w-0">
+            <div class="font-bold text-white">{{ u.username }}</div>
+            <div class="text-xs text-gray-400">
+                <span class="{% if u.role == 'admin' %}text-red-400{% else %}text-blue-400{% endif %}">{{ u.role }}</span>
+                {% if u.coach_name %} · {{ u.coach_name }}{% endif %}
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="togglePwForm({{ u.id }})" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Change PW</button>
+            {% if u.id != session.user_id %}
+            <form method="POST" onsubmit="return confirm('Delete user {{ u.username }}?')">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <button type="submit" class="px-3 py-1 bg-red-800 hover:bg-red-700 rounded text-xs">Delete</button>
+            </form>
+            {% endif %}
+        </div>
+        <div id="pw-{{ u.id }}" class="hidden w-full mt-2">
+            <form method="POST" class="flex gap-2">
+                <input type="hidden" name="action" value="change_password">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <input type="password" name="password" placeholder="New password" required
+                       class="bg-gray-900 border border-gray-600 rounded px-3 py-1.5 text-white text-sm focus:border-yellow-500 focus:outline-none flex-1">
+                <button type="submit" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-sm font-semibold">Save</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-500">No users yet.</p>
+{% endif %}
+
+<script>
+function togglePwForm(id) {
+    document.getElementById('pw-' + id).classList.toggle('hidden');
+}
+</script>
+
+{% endblock %}

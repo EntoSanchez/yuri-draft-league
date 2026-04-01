@@ -1,0 +1,638 @@
+{% extends "base.html" %}
+{% block title %}{{ coach.team_name }} – {{ league_name }}{% endblock %}
+{% block content %}
+
+<!-- ── Header ── -->
+<div class="relative overflow-hidden border-b border-gray-800/60"
+     style="background:linear-gradient(135deg,#0f1623 0%,#080c14 60%);">
+  <div class="absolute inset-0 opacity-8 pointer-events-none"
+       style="background:radial-gradient(ellipse at 10% 50%,{{ coach.color or '#374151' }} 0%,transparent 60%);"></div>
+
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+
+      <!-- Logo -->
+      {% if coach.logo_url %}
+        <img src="{{ coach.logo_url }}" class="w-20 h-20 object-contain rounded-2xl border border-gray-700/50 flex-shrink-0" alt="{{ coach.team_name }}">
+      {% else %}
+        <div class="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 border border-gray-700/50"
+             style="background-color:{{ coach.color or '#374151' }};">
+          {{ coach.team_name[:2].upper() }}
+        </div>
+      {% endif %}
+
+      <!-- Info -->
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold uppercase tracking-widest mb-0.5" style="color:{{ coach.color or '#6b7280' }};">Pool {{ coach.pool }}</p>
+        <h1 class="text-3xl font-black text-white leading-tight">{{ coach.team_name }}</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Coach: <span class="text-gray-200 font-semibold">{{ coach.coach_name }}</span>
+          {% if coach.showdown_name %}
+          · <span class="text-xs text-indigo-400 font-mono">
+              <a href="https://pokemonshowdown.com/users/{{ coach.showdown_name }}" target="_blank" rel="noopener"
+                 class="hover:text-indigo-300 transition-colors" title="Pokemon Showdown profile">
+                PS: {{ coach.showdown_name }}
+              </a>
+            </span>
+          {% endif %}
+        </p>
+      </div>
+
+      <!-- Record -->
+      {% if standing %}
+      <div class="flex-shrink-0 flex items-center gap-3">
+        <div class="text-center px-4 py-2 rounded-xl border border-gray-800" style="background:#0f1623;">
+          <div class="flex items-center gap-2 text-sm font-black">
+            <span class="text-green-400">{{ standing.W }}W</span>
+            <span class="text-gray-700">·</span>
+            <span class="text-red-400">{{ standing.L }}L</span>
+            {% if standing.T %}<span class="text-gray-700">·</span><span class="text-yellow-400">{{ standing.T }}T</span>{% endif %}
+          </div>
+          <div class="text-xs text-gray-600 mt-0.5 font-medium">
+            {% if standing.diff > 0 %}+{% endif %}{{ "%.1f"|format(standing.diff) }} diff · Rank #{{ standing.rank }}
+          </div>
+        </div>
+        {% if session.get('role') == 'admin' %}
+        <a href="/admin/roster/{{ coach.id }}" class="px-3 py-2 rounded-xl border border-gray-700 text-xs font-semibold text-gray-400 hover:border-yellow-500/50 hover:text-yellow-400 transition-all" style="background:#0f1623;">
+          Edit Roster
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+  <!-- ── Roster Preview (animated sprites lineup) ── -->
+  {% if roster %}
+  <section>
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <div class="w-1 h-5 rounded-full flex-shrink-0" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <h2 class="text-sm font-bold text-white uppercase tracking-wider">Roster</h2>
+      <span class="text-xs text-gray-600">{{ roster|length }} Pokémon</span>
+      {# Active mechanic badges #}
+      {% if settings.get('mechanic_tera','0') == '1' %}
+      <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(147,51,234,0.15);color:#c084fc;border:1px solid rgba(147,51,234,0.3);">★ Tera Captain</span>
+      {% endif %}
+      {% if settings.get('mechanic_zmove','0') == '1' %}
+      <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);">⚡ Z-Move Captain</span>
+      {% endif %}
+      {% if settings.get('mechanic_mega','0') == '1' %}
+      <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);">🔵 Mega Evolution</span>
+      {% endif %}
+      {% if settings.get('draft_free_pick_type','none') != 'none' %}
+      <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.3);">🆓 {% if settings.get('draft_free_pick_type') == 'one_mega' %}1 Free Mega{% else %}1 Free/Tier{% endif %}</span>
+      {% endif %}
+    </div>
+    <div class="rounded-xl border border-gray-800 p-4 overflow-x-auto" style="background:#0f1623;">
+      <div class="flex gap-3 min-w-max">
+        {% for p in roster %}
+        <div class="flex flex-col items-center gap-1 w-16 flex-shrink-0 group">
+          <div class="relative">
+            <img src="{{ pokemon_sprite_url(p.name) }}"
+                 onerror="this.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
+                 class="w-14 h-14 object-contain" alt="{{ p.name }}"
+                 title="{{ p.name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} ⭐ Tera Captain{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} ⚡ Z-Move Captain{% endif %}">
+            <div class="hidden w-14 h-14 items-center justify-center rounded-lg text-gray-700 text-xs font-bold border border-gray-800" style="background:#080c14;">?</div>
+            {# Captain badges stacked top-right #}
+            {% set badge_count = namespace(n=0) %}
+            {% if p.is_tera_captain and settings.get('mechanic_tera','0') == '1' %}
+            <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs" style="background:rgba(147,51,234,0.9);" title="Tera Captain">★</span>
+            {% set badge_count.n = badge_count.n + 1 %}
+            {% endif %}
+            {% if p.is_zmove_captain and settings.get('mechanic_zmove','0') == '1' %}
+            <span class="absolute -top-1 {% if badge_count.n > 0 %}-left-1{% else %}-right-1{% endif %} w-4 h-4 rounded-full flex items-center justify-center text-xs" style="background:rgba(234,179,8,0.9);" title="Z-Move Captain">⚡</span>
+            {% endif %}
+            {% if p.is_free_pick and settings.get('draft_free_pick_type','none') != 'none' %}
+            <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs" style="background:rgba(34,197,94,0.9);" title="Free Pick">F</span>
+            {% endif %}
+          </div>
+          <div class="text-center">
+            <span class="inline-block px-1.5 py-0.5 rounded text-xs font-black text-yellow-300" style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.2);">{% if p.is_free_pick and settings.get('draft_free_pick_type','none') != 'none' %}<span class="text-green-400 line-through opacity-60">{{ p.points }}</span>FREE{% else %}{{ p.points }}pt{% endif %}</span>
+          </div>
+          <p class="text-center text-gray-400 leading-tight" style="font-size:0.6rem;word-break:break-word;max-width:4rem;">{{ p.name.split(' ')[-1] if ' ' in p.name else p.name }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── Current Week Matchup ── -->
+  {% if matchup %}
+  <section>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <h2 class="text-sm font-bold text-white uppercase tracking-wider">Week {{ matchup.week }} Matchup</h2>
+      {% if matchup.my_score is not none and matchup.opp_score is not none %}
+        {% if matchup.my_score > matchup.opp_score %}
+          <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);">WIN</span>
+        {% elif matchup.my_score < matchup.opp_score %}
+          <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);">LOSS</span>
+        {% else %}
+          <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3);">TIE</span>
+        {% endif %}
+      {% else %}
+        <span class="text-xs text-gray-600">Pending</span>
+      {% endif %}
+    </div>
+
+    <div class="rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;">
+      <!-- Score bar -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-800/60" style="background:#111827;">
+        <div class="flex items-center gap-3">
+          {% if coach.logo_url %}
+            <img src="{{ coach.logo_url }}" class="w-7 h-7 object-contain rounded flex-shrink-0" alt="">
+          {% else %}
+            <div class="w-7 h-7 rounded flex-shrink-0 flex items-center justify-center text-xs font-black text-white" style="background:{{ coach.color or '#374151' }};"></div>
+          {% endif %}
+          <span class="text-sm font-bold text-white">{{ coach.team_name }}</span>
+        </div>
+        <div class="text-center">
+          {% if matchup.my_score is not none and matchup.opp_score is not none %}
+            <span class="text-xl font-black text-white font-mono">{{ matchup.my_score|int }} – {{ matchup.opp_score|int }}</span>
+          {% else %}
+            <span class="text-sm font-bold text-gray-600">vs.</span>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-bold text-white">{{ matchup.opp_team }}</span>
+          {% if matchup.opp_logo %}
+            <img src="{{ matchup.opp_logo }}" class="w-7 h-7 object-contain rounded flex-shrink-0" alt="">
+          {% else %}
+            <div class="w-7 h-7 rounded flex-shrink-0 flex items-center justify-center text-xs font-black text-white" style="background:{{ matchup.opp_color or '#374151' }};"></div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Side-by-side rosters -->
+      <div class="grid grid-cols-2 divide-x divide-gray-800/60">
+
+        <!-- My roster -->
+        <div class="p-4">
+          <div class="space-y-1">
+            {% for p in roster %}
+            <div class="flex items-center gap-2 py-1 border-b border-gray-800/30">
+              <img src="{{ pokemon_sprite_url(p.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.name) }}';" class="w-7 h-7 object-contain flex-shrink-0">
+              <div class="flex-1 min-w-0">
+                <span class="text-xs font-semibold text-gray-200 truncate block">{{ p.name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span class="text-purple-400 text-xs">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span class="text-yellow-400 text-xs">⚡</span>{% endif %}{% if p.is_free_pick and settings.get('draft_free_pick_type','none')!='none' %} <span class="text-green-400 text-xs">🆓</span>{% endif %}</span>
+                <div class="flex gap-0.5 mt-0.5 flex-wrap">
+                  {% if p.type1 %}<span class="type-badge type-{{ p.type1|lower }} px-1 rounded" style="font-size:0.6rem;font-weight:700;">{{ p.type1 }}</span>{% endif %}
+                  {% if p.type2 %}<span class="type-badge type-{{ p.type2|lower }} px-1 rounded" style="font-size:0.6rem;font-weight:700;">{{ p.type2 }}</span>{% endif %}
+                </div>
+              </div>
+              <span class="text-xs font-black text-yellow-400 flex-shrink-0">{{ p.points }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Opponent roster -->
+        <div class="p-4">
+          <div class="space-y-1">
+            {% for p in matchup.opp_roster %}
+            {% set opp_slug = p.pokemon_name.lower().replace(' ','-').replace("'",'').replace('.','') %}
+            {% set opp_pd = matchup.opp_pd_map.get(opp_slug, {}) %}
+            <div class="flex items-center gap-2 py-1 border-b border-gray-800/30 flex-row-reverse">
+              <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="w-7 h-7 object-contain flex-shrink-0">
+              <div class="flex-1 min-w-0 text-right">
+                <span class="text-xs font-semibold text-gray-200 truncate block">{{ p.pokemon_name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span class="text-purple-400">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span class="text-yellow-400">⚡</span>{% endif %}{% if p.is_free_pick and settings.get('draft_free_pick_type','none')!='none' %} <span class="text-green-400">🆓</span>{% endif %}</span>
+                <div class="flex gap-0.5 mt-0.5 flex-wrap justify-end">
+                  {% if opp_pd.type1 %}<span class="type-badge type-{{ opp_pd.type1|lower }} px-1 rounded" style="font-size:0.6rem;font-weight:700;">{{ opp_pd.type1 }}</span>{% endif %}
+                  {% if opp_pd.type2 %}<span class="type-badge type-{{ opp_pd.type2|lower }} px-1 rounded" style="font-size:0.6rem;font-weight:700;">{{ opp_pd.type2 }}</span>{% endif %}
+                </div>
+              </div>
+              <span class="text-xs font-black text-yellow-400 flex-shrink-0">{{ p.points }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── Match History ── -->
+  {% if match_history %}
+  <section>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <h2 class="text-sm font-bold text-white uppercase tracking-wider">Match History</h2>
+      <span class="text-xs text-gray-600">{{ match_history|length }} match{% if match_history|length != 1 %}es{% endif %}</span>
+    </div>
+
+    <div class="space-y-3">
+      {% for m in match_history|reverse %}
+      {% set result_color = '#4ade80' if m.result == 'W' else ('#f87171' if m.result == 'L' else '#facc15') %}
+      {% set result_bg = 'rgba(34,197,94,0.12)' if m.result == 'W' else ('rgba(239,68,68,0.12)' if m.result == 'L' else 'rgba(250,204,21,0.12)') %}
+
+      <div class="rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;">
+
+        <!-- Match header (always visible, clickable to expand) -->
+        <button class="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-800/30 transition-colors"
+                onclick="toggleMatch('mh-{{ loop.index }}')">
+
+          <!-- Week badge -->
+          <span class="flex-shrink-0 w-10 text-center text-xs font-black text-gray-500 uppercase">Wk{{ m.week }}</span>
+
+          <!-- Result pill -->
+          <span class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black"
+                style="color:{{ result_color }};background:{{ result_bg }};border:1px solid {{ result_color }}40;">
+            {{ m.result }}
+          </span>
+
+          <!-- Score -->
+          <span class="flex-shrink-0 font-mono font-black text-white text-sm">
+            {{ m.my_score|int }} – {{ m.opp_score|int }}
+          </span>
+
+          <!-- vs separator -->
+          <span class="text-gray-700 text-xs flex-shrink-0">vs.</span>
+
+          <!-- Opponent -->
+          <div class="flex items-center gap-2 flex-1 min-w-0">
+            {% if m.opp_logo %}
+              <img src="{{ m.opp_logo }}" class="w-6 h-6 object-contain rounded flex-shrink-0" onerror="this.style.display='none'">
+            {% else %}
+              <div class="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-xs font-black text-white"
+                   style="background:{{ m.opp_color or '#374151' }};"></div>
+            {% endif %}
+            <a href="/team/{{ m.opp_id }}" class="text-sm font-semibold text-gray-200 hover:text-yellow-400 transition-colors truncate"
+               onclick="event.stopPropagation()">{{ m.opp_team }}</a>
+          </div>
+
+          <!-- Pokemon preview strip (mini sprites) -->
+          <div class="flex gap-0.5 flex-shrink-0 items-center">
+            {% set preview_pokes = [] %}
+            {% for g in m.games %}{% for p in g.my_pokes %}{% if preview_pokes.append(p) %}{% endif %}{% endfor %}{% endfor %}
+            {% for p in m.legacy_my %}{% if preview_pokes.append(p) %}{% endif %}{% endfor %}
+            {% for p in preview_pokes[:6] %}
+            <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';"
+                 class="w-5 h-5 object-contain" title="{{ p.pokemon_name }}">
+            {% endfor %}
+          </div>
+
+          <!-- Chevron -->
+          <svg class="w-4 h-4 text-gray-600 flex-shrink-0 chevron-{{ loop.index }} transition-transform duration-200"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+
+        <!-- Expandable details -->
+        <div id="mh-{{ loop.index }}" class="hidden border-t border-gray-800/60">
+
+          {% if m.games %}
+          <!-- Per-game breakdown -->
+          {% for g in m.games %}
+          <div class="{% if not loop.first %}border-t border-gray-800/40{% endif %}">
+            <!-- Game header -->
+            <div class="flex items-center gap-3 px-4 py-2" style="background:#0a0f1a;">
+              <span class="text-xs font-black text-gray-500 uppercase w-14 flex-shrink-0">Game {{ g.game_number }}</span>
+              {% if g.my_won is not none %}
+                {% if g.my_won %}
+                  <span class="text-xs font-bold text-green-400">Won</span>
+                {% else %}
+                  <span class="text-xs font-bold text-red-400">Lost</span>
+                {% endif %}
+              {% endif %}
+              {% if g.replay_url %}
+              <a href="{{ g.replay_url }}" target="_blank" rel="noopener"
+                 class="ml-auto flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Watch Replay
+              </a>
+              {% endif %}
+            </div>
+            <!-- Game stats -->
+            <div class="grid grid-cols-2 divide-x divide-gray-800/40">
+              <!-- My pokes -->
+              <div class="p-3">
+                {% if g.my_pokes %}
+                <div class="space-y-0.5">
+                  {% for p in g.my_pokes %}
+                  <div class="flex items-center gap-2 py-0.5">
+                    <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="w-5 h-5 object-contain flex-shrink-0">
+                    <span class="text-xs text-gray-300 truncate flex-1">{{ p.pokemon_name }}</span>
+                    <span class="text-xs font-bold text-green-400 w-6 text-right">{{ p.kills|int }}K</span>
+                    <span class="text-xs font-bold text-red-400 w-6 text-right">{{ p.deaths|int }}D</span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-gray-700 italic">No stats.</p>
+                {% endif %}
+              </div>
+              <!-- Opp pokes -->
+              <div class="p-3">
+                {% if g.opp_pokes %}
+                <div class="space-y-0.5">
+                  {% for p in g.opp_pokes %}
+                  <div class="flex items-center gap-2 py-0.5 flex-row-reverse">
+                    <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="w-5 h-5 object-contain flex-shrink-0">
+                    <span class="text-xs text-gray-300 truncate flex-1 text-right">{{ p.pokemon_name }}</span>
+                    <span class="text-xs font-bold text-green-400 w-6 text-left">{{ p.kills|int }}K</span>
+                    <span class="text-xs font-bold text-red-400 w-6 text-left">{{ p.deaths|int }}D</span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-gray-700 italic text-right">No stats.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+
+          {% elif m.legacy_my or m.legacy_opp %}
+          <!-- Legacy stats (no game tracking) -->
+          <div class="grid grid-cols-2 divide-x divide-gray-800/40">
+            <div class="p-3">
+              {% for p in m.legacy_my %}
+              <div class="flex items-center gap-2 py-0.5">
+                <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="w-5 h-5 object-contain flex-shrink-0">
+                <span class="text-xs text-gray-300 truncate flex-1">{{ p.pokemon_name }}</span>
+                <span class="text-xs font-bold text-green-400 w-6 text-right">{{ p.kills|int }}K</span>
+                <span class="text-xs font-bold text-red-400 w-6 text-right">{{ p.deaths|int }}D</span>
+              </div>
+              {% else %}
+              <p class="text-xs text-gray-700 italic p-3">No stats recorded.</p>
+              {% endfor %}
+            </div>
+            <div class="p-3">
+              {% for p in m.legacy_opp %}
+              <div class="flex items-center gap-2 py-0.5 flex-row-reverse">
+                <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="w-5 h-5 object-contain flex-shrink-0">
+                <span class="text-xs text-gray-300 truncate flex-1 text-right">{{ p.pokemon_name }}</span>
+                <span class="text-xs font-bold text-green-400 w-6 text-left">{{ p.kills|int }}K</span>
+                <span class="text-xs font-bold text-red-400 w-6 text-left">{{ p.deaths|int }}D</span>
+              </div>
+              {% else %}
+              <p class="text-xs text-gray-700 italic p-3 text-right">No stats recorded.</p>
+              {% endfor %}
+            </div>
+          </div>
+
+          {% else %}
+          <p class="text-xs text-gray-700 italic p-4 text-center">No stats logged for this match.</p>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── Stats Table + Schedule side by side ── -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+    <!-- Schedule (1/3) -->
+    <section class="xl:col-span-1">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Schedule</h2>
+      </div>
+      <div class="rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;">
+        {% if schedule %}
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-gray-800" style="background:#111827;">
+              <th class="px-3 py-2 text-left text-gray-600 font-bold uppercase tracking-wider w-8">Wk</th>
+              <th class="px-3 py-2 text-left text-gray-600 font-bold uppercase tracking-wider">Opponent</th>
+              <th class="px-3 py-2 text-center text-gray-600 font-bold uppercase tracking-wider w-12">Result</th>
+              <th class="px-3 py-2 text-center text-gray-600 font-bold uppercase tracking-wider w-10">Diff</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800/40">
+            {% for m in schedule %}
+            {% set is_c1 = (m.coach1_id == coach.id) %}
+            {% set opp_team = m.c2_team if is_c1 else m.c1_team %}
+            {% set opp_id   = m.coach2_id if is_c1 else m.coach1_id %}
+            {% set my_score  = m.score1 if is_c1 else m.score2 %}
+            {% set opp_score = m.score2 if is_c1 else m.score1 %}
+            {% set has_result = (my_score is not none) and (opp_score is not none) %}
+            <tr class="hover:bg-gray-800/20 transition-colors {% if m.week == current_week %}border-l-2{% endif %}"
+                style="{% if m.week == current_week %}border-left-color:{{ coach.color or '#facc15' }};{% endif %}">
+              <td class="px-3 py-2 text-gray-600 font-bold">{{ m.week }}</td>
+              <td class="px-3 py-2">
+                <a href="/team/{{ opp_id }}" class="text-gray-300 hover:text-yellow-400 transition-colors font-medium truncate block max-w-[100px]">{{ opp_team }}</a>
+              </td>
+              <td class="px-3 py-2 text-center">
+                {% if has_result %}
+                  {% if my_score > opp_score %}
+                    <span class="inline-block w-6 text-center rounded font-bold" style="background:rgba(34,197,94,0.15);color:#4ade80;">W</span>
+                  {% elif my_score < opp_score %}
+                    <span class="inline-block w-6 text-center rounded font-bold" style="background:rgba(239,68,68,0.15);color:#f87171;">L</span>
+                  {% else %}
+                    <span class="inline-block w-6 text-center rounded font-bold" style="background:rgba(250,204,21,0.15);color:#facc15;">T</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-gray-700">—</span>
+                {% endif %}
+              </td>
+              <td class="px-3 py-2 text-center font-mono font-bold">
+                {% if has_result %}
+                  {% set diff = my_score - opp_score %}
+                  <span class="{% if diff > 0 %}text-green-400{% elif diff < 0 %}text-red-400{% else %}text-gray-500{% endif %}">
+                    {% if diff > 0 %}+{% endif %}{{ diff|int }}
+                  </span>
+                {% else %}
+                  <span class="text-gray-700">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-xs text-gray-700 text-center py-8">No schedule yet.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- Team Stats Table (2/3) -->
+    <section class="xl:col-span-2">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Team Stats</h2>
+      </div>
+      <div class="rounded-xl border border-gray-800 overflow-x-auto" style="background:#0f1623;">
+        {% if roster %}
+        <table class="text-xs whitespace-nowrap">
+          <thead>
+            <tr class="border-b border-gray-800" style="background:#111827;">
+              <th class="px-3 py-2 text-left text-gray-600 font-bold uppercase tracking-wider sticky left-0" style="background:#111827;">Pokémon</th>
+              <th class="px-2 py-2 text-left text-gray-600 font-bold uppercase tracking-wider">Type</th>
+              <th class="px-2 py-2 text-center text-yellow-600 font-bold uppercase tracking-wider">Pts</th>
+              <th class="px-2 py-2 text-center text-gray-600 font-bold uppercase tracking-wider">GP</th>
+              <th class="px-2 py-2 text-center text-green-700 font-bold uppercase tracking-wider">K</th>
+              <th class="px-2 py-2 text-center text-red-700 font-bold uppercase tracking-wider">D</th>
+              <th class="px-2 py-2 text-center text-gray-600 font-bold uppercase tracking-wider">+/-</th>
+              <th class="px-2 py-2 text-center text-gray-500 font-bold uppercase tracking-wider border-l border-gray-800/60">HP</th>
+              <th class="px-2 py-2 text-center text-red-700 font-bold uppercase tracking-wider">Atk</th>
+              <th class="px-2 py-2 text-center text-orange-700 font-bold uppercase tracking-wider">Def</th>
+              <th class="px-2 py-2 text-center text-blue-600 font-bold uppercase tracking-wider">SpA</th>
+              <th class="px-2 py-2 text-center text-green-700 font-bold uppercase tracking-wider">SpD</th>
+              <th class="px-2 py-2 text-center text-purple-600 font-bold uppercase tracking-wider">Spe</th>
+              <th class="px-2 py-2 text-center text-gray-600 font-bold uppercase tracking-wider border-l border-gray-800/60" title="Speed at 0 EVs">0</th>
+              <th class="px-2 py-2 text-center text-gray-600 font-bold uppercase tracking-wider" title="Speed at 252 EVs">252</th>
+              <th class="px-2 py-2 text-center text-yellow-700 font-bold uppercase tracking-wider" title="Speed at 252 EVs + Speed Nature">252+</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800/40">
+            {% for p in roster %}
+            <tr class="hover:bg-gray-800/20 transition-colors">
+              <!-- Pokemon name + sprite -->
+              <td class="px-3 py-2 sticky left-0" style="background:#0f1623;">
+                <div class="flex items-center gap-2 min-w-[130px]">
+                  <img src="{{ pokemon_sprite_url(p.name) }}"
+                       onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
+                       class="w-8 h-8 object-contain flex-shrink-0">
+                  <div>
+                    <div class="font-bold text-white leading-tight">{{ p.name }}</div>
+                    {% if p.is_tera_captain and settings.get('mechanic_tera','0') == '1' %}
+                    <span class="text-purple-400 text-xs font-bold">★ Tera Cap</span>
+                    {% endif %}
+                    {% if p.is_zmove_captain and settings.get('mechanic_zmove','0') == '1' %}
+                    <span class="text-yellow-400 text-xs font-bold">⚡ Z-Cap</span>
+                    {% endif %}
+                    {% if p.is_free_pick and settings.get('draft_free_pick_type','none') != 'none' %}
+                    <span class="text-green-400 text-xs font-bold">🆓 Free</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <!-- Types -->
+              <td class="px-2 py-2">
+                <div class="flex gap-0.5">
+                  {% if p.type1 %}<span class="type-badge type-{{ p.type1|lower }} px-1.5 py-0.5 rounded" style="font-size:0.65rem;font-weight:700;">{{ p.type1 }}</span>{% endif %}
+                  {% if p.type2 %}<span class="type-badge type-{{ p.type2|lower }} px-1.5 py-0.5 rounded" style="font-size:0.65rem;font-weight:700;">{{ p.type2 }}</span>{% endif %}
+                </div>
+              </td>
+              <!-- Points -->
+              <td class="px-2 py-2 text-center">
+                <span class="font-black text-yellow-400">{{ p.points }}</span>
+              </td>
+              <!-- Match stats -->
+              <td class="px-2 py-2 text-center text-gray-400 font-semibold">{{ p.gp if p.gp else '—' }}</td>
+              <td class="px-2 py-2 text-center font-bold text-green-400">{{ p.k if p.gp else '—' }}</td>
+              <td class="px-2 py-2 text-center font-bold text-red-400">{{ p.d if p.gp else '—' }}</td>
+              <td class="px-2 py-2 text-center font-bold">
+                {% if p.gp %}
+                  <span class="{% if p.kd > 0 %}text-green-400{% elif p.kd < 0 %}text-red-400{% else %}text-gray-500{% endif %}">
+                    {% if p.kd > 0 %}+{% endif %}{{ p.kd }}
+                  </span>
+                {% else %}
+                  <span class="text-gray-700">—</span>
+                {% endif %}
+              </td>
+              <!-- Base stats -->
+              <td class="px-2 py-2 text-center text-gray-300 font-bold border-l border-gray-800/40">{{ p.hp or '—' }}</td>
+              <td class="px-2 py-2 text-center text-gray-300 font-bold">{{ p.atk or '—' }}</td>
+              <td class="px-2 py-2 text-center text-gray-300 font-bold">{{ p.def_ or '—' }}</td>
+              <td class="px-2 py-2 text-center text-gray-300 font-bold">{{ p.spa or '—' }}</td>
+              <td class="px-2 py-2 text-center text-gray-300 font-bold">{{ p.spd or '—' }}</td>
+              <td class="px-2 py-2 text-center text-gray-300 font-bold">{{ p.spe or '—' }}</td>
+              <!-- Speed tiers -->
+              <td class="px-2 py-2 text-center text-gray-500 border-l border-gray-800/40">{{ p.spe_0 or '—' }}</td>
+              <td class="px-2 py-2 text-center text-gray-400">{{ p.spe_252 or '—' }}</td>
+              <td class="px-2 py-2 text-center text-yellow-600 font-bold">{{ p.spe_252p or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-xs text-gray-700 text-center py-8">No Pokemon on this roster yet.</p>
+        {% endif %}
+      </div>
+      {% if roster and roster[0].spe_0 %}
+      <p class="text-xs text-gray-700 mt-2 ml-1">Speed tiers at Lv100 with 31 IVs: 0=0EVs · 252=252EVs neutral · 252+=252EVs +nature</p>
+      {% endif %}
+    </section>
+
+  </div>
+
+</div>
+
+<style>
+/* Type badge colors (same as pokedex) */
+.type-normal    { background:#A8A878; color:#fff; }
+.type-fire      { background:#F08030; color:#fff; }
+.type-water     { background:#6890F0; color:#fff; }
+.type-electric  { background:#F8D030; color:#333; }
+.type-grass     { background:#78C850; color:#fff; }
+.type-ice       { background:#98D8D8; color:#333; }
+.type-fighting  { background:#C03028; color:#fff; }
+.type-poison    { background:#A040A0; color:#fff; }
+.type-ground    { background:#E0C068; color:#333; }
+.type-flying    { background:#A890F0; color:#fff; }
+.type-psychic   { background:#F85888; color:#fff; }
+.type-bug       { background:#A8B820; color:#fff; }
+.type-rock      { background:#B8A038; color:#fff; }
+.type-ghost     { background:#705898; color:#fff; }
+.type-dragon    { background:#7038F8; color:#fff; }
+.type-dark      { background:#705848; color:#fff; }
+.type-steel     { background:#B8B8D0; color:#333; }
+.type-fairy     { background:#EE99AC; color:#333; }
+.type-stellar   { background:#40B5A5; color:#fff; }
+</style>
+
+<script>
+function toggleMatch(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const idx = id.split('-')[1];
+  const chevron = document.querySelector('.chevron-' + idx);
+  el.classList.toggle('hidden');
+  if (chevron) chevron.classList.toggle('rotate-180');
+}
+</script>
+
+{% if youtube_id %}
+<!-- Floating Battle Music Player -->
+<div id="music-widget" style="position:fixed;bottom:20px;right:20px;z-index:100;">
+  <!-- Expanded player -->
+  <div id="music-expanded" style="background:#0f1623;border:1px solid rgba(250,204,21,0.35);border-radius:12px;overflow:hidden;width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.6);">
+    <div style="background:#1a1f2e;border-bottom:1px solid rgba(55,65,81,0.5);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:0.75rem;font-weight:700;color:#facc15;display:flex;align-items:center;gap:6px;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#facc15;animation:pulse 1.5s infinite;"></span>
+        🎵 Battle Music
+      </span>
+      <button onclick="toggleMusicPlayer()" title="Minimise"
+              style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:0.75rem;padding:0 2px;line-height:1;"
+              onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#6b7280'">▼</button>
+    </div>
+    <iframe width="300" height="169"
+            src="https://www.youtube.com/embed/{{ youtube_id }}?rel=0&modestbranding=1"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            style="display:block;"></iframe>
+  </div>
+  <!-- Minimised pill -->
+  <div id="music-mini" style="display:none;background:#0f1623;border:1px solid rgba(250,204,21,0.35);border-radius:30px;padding:8px 16px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.5);"
+       onclick="toggleMusicPlayer()">
+    <span style="font-size:0.75rem;font-weight:700;color:#facc15;">🎵 Battle Music</span>
+  </div>
+</div>
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+</style>
+<script>
+function toggleMusicPlayer() {
+  const expanded = document.getElementById('music-expanded');
+  const mini = document.getElementById('music-mini');
+  const isOpen = expanded.style.display !== 'none';
+  expanded.style.display = isOpen ? 'none' : '';
+  mini.style.display = isOpen ? '' : 'none';
+}
+</script>
+{% endif %}
+
+{% endblock %}

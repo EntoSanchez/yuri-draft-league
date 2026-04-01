@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Draft Tiers – Admin{% endblock %}
+{% block content %}
+
+<div class="flex items-center gap-3 mb-6">
+    <a href="/admin" class="text-gray-400 hover:text-white">← Admin</a>
+    <h1 class="text-2xl font-bold text-yellow-400">🎯 Draft Tier List</h1>
+</div>
+
+<p class="text-gray-400 mb-6 text-sm">
+    Define which Pokemon are available in your draft and their point costs. This powers the Draft Board.
+</p>
+
+<!-- Add single pokemon -->
+<div class="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6 max-w-2xl">
+    <h2 class="font-bold text-lg mb-4 text-gray-200">Add Pokemon</h2>
+    <form method="POST" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <input type="hidden" name="action" value="add">
+        <div class="sm:col-span-2">
+            <label class="block text-xs text-gray-400 mb-1">Pokemon Name *</label>
+            <input type="text" name="name" required placeholder="e.g. Garchomp"
+                   class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Points *</label>
+            <input type="number" name="points" required min="0" max="99" placeholder="e.g. 15"
+                   class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">Tier Label</label>
+            <input type="text" name="tier_label" placeholder="e.g. T1, Uber"
+                   class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <div class="flex items-center gap-4 col-span-2 sm:col-span-2">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" name="is_banned" class="accent-red-500">
+                <span class="text-gray-300">Banned</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" name="is_tera_banned" class="accent-purple-500">
+                <span class="text-gray-300">Tera Banned</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" name="is_mega" class="accent-blue-500">
+                <span class="text-blue-300">🔵 Mega</span>
+            </label>
+        </div>
+        <div class="col-span-2">
+            <button type="submit" class="px-5 py-2 bg-green-700 hover:bg-green-600 rounded font-semibold">+ Add</button>
+        </div>
+    </form>
+</div>
+
+<!-- Bulk import -->
+<div class="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-8 max-w-2xl">
+    <h2 class="font-bold text-lg mb-2 text-gray-200">Bulk Import</h2>
+    <p class="text-gray-400 text-sm mb-3">One Pokemon per line, format: <code class="bg-gray-700 px-1 rounded">PokemonName,Points</code></p>
+    <form method="POST">
+        <input type="hidden" name="action" value="bulk_import">
+        <textarea name="bulk_text" rows="10" placeholder="Garchomp,15&#10;Dragapult,18&#10;Salamence,12"
+                  class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm font-mono focus:border-yellow-500 focus:outline-none mb-3"></textarea>
+        <button type="submit" class="px-5 py-2 bg-blue-700 hover:bg-blue-600 rounded font-semibold">
+            Import List
+        </button>
+    </form>
+</div>
+
+<!-- Current tier list -->
+{% if tiers %}
+<div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-bold text-gray-300">Current Tier List ({{ tiers | length }} Pokemon)</h2>
+    <input id="search" type="text" placeholder="Filter..." oninput="filterTable()"
+           class="bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-white text-sm focus:border-yellow-500 focus:outline-none">
+</div>
+<div class="overflow-x-auto rounded-lg border border-gray-700 max-w-3xl">
+    <table class="w-full text-sm" id="tierTable">
+        <thead class="bg-gray-800 text-gray-400 uppercase text-xs">
+            <tr>
+                <th class="px-4 py-3 text-left">Pokemon</th>
+                <th class="px-3 py-3 text-center">Pts</th>
+                <th class="px-3 py-3 text-center">Tier</th>
+                <th class="px-3 py-3 text-center">Banned</th>
+                <th class="px-3 py-3 text-center">T-Ban</th>
+                <th class="px-3 py-3 text-center">Mega</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tiers %}
+            <tr class="border-t border-gray-700 hover:bg-gray-800/40 tier-row" id="trow-{{ t.id }}">
+                <td class="px-4 py-2">
+                    <div class="flex items-center gap-2">
+                        <img src="{{ pokemon_sprite_url(t.name) }}"
+                             onerror="this.style.display='none'" class="w-6 h-6" alt="">
+                        <span class="font-semibold {% if t.is_banned %}text-red-400 line-through opacity-60{% endif %}">{{ t.name }}</span>
+                    </div>
+                </td>
+                <td class="px-3 py-2 text-center"><span class="bg-gray-700 px-2 py-0.5 rounded text-xs font-bold">{{ t.points }}</span></td>
+                <td class="px-3 py-2 text-center text-gray-400 text-xs">{{ t.tier_label or '—' }}</td>
+                <td class="px-3 py-2 text-center">{% if t.is_banned %}<span class="text-red-400 text-xs font-bold">BAN</span>{% else %}—{% endif %}</td>
+                <td class="px-3 py-2 text-center">{% if t.is_tera_banned %}<span class="text-purple-400 text-xs font-bold">T-BAN</span>{% else %}—{% endif %}</td>
+                <td class="px-3 py-2 text-center">{% if t.is_mega %}<span class="text-blue-400 text-xs font-bold">🔵</span>{% else %}—{% endif %}</td>
+                <td class="px-4 py-2 text-right flex gap-2 justify-end">
+                    <button onclick="toggleTierEdit({{ t.id }})" class="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Edit</button>
+                    <form method="POST" class="inline" onsubmit="return confirm('Remove {{ t.name }}?')">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="tier_id" value="{{ t.id }}">
+                        <button type="submit" class="px-2 py-1 bg-red-800 hover:bg-red-700 rounded text-xs">Del</button>
+                    </form>
+                </td>
+            </tr>
+            <tr id="edit-tier-{{ t.id }}" class="hidden bg-gray-900">
+                <td colspan="6" class="px-4 py-3">
+                    <form method="POST" class="flex flex-wrap gap-3 items-end">
+                        <input type="hidden" name="action" value="edit">
+                        <input type="hidden" name="tier_id" value="{{ t.id }}">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Name</label>
+                            <input type="text" name="name" value="{{ t.name }}" required
+                                   class="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:border-yellow-500 focus:outline-none w-44">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Points</label>
+                            <input type="number" name="points" value="{{ t.points }}" min="0" max="99"
+                                   class="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:border-yellow-500 focus:outline-none w-20">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Tier Label</label>
+                            <input type="text" name="tier_label" value="{{ t.tier_label or '' }}"
+                                   class="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:border-yellow-500 focus:outline-none w-24">
+                        </div>
+                        <label class="flex items-center gap-1 text-xs cursor-pointer">
+                            <input type="checkbox" name="is_banned" {% if t.is_banned %}checked{% endif %} class="accent-red-500">Banned
+                        </label>
+                        <label class="flex items-center gap-1 text-xs cursor-pointer">
+                            <input type="checkbox" name="is_tera_banned" {% if t.is_tera_banned %}checked{% endif %} class="accent-purple-500">T-Ban
+                        </label>
+                        <label class="flex items-center gap-1 text-xs cursor-pointer">
+                            <input type="checkbox" name="is_mega" {% if t.is_mega %}checked{% endif %} class="accent-blue-500"><span class="text-blue-300">Mega</span>
+                        </label>
+                        <button type="submit" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-sm font-semibold">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-gray-500 text-center py-8">No Pokemon in tier list yet. Add them above.</p>
+{% endif %}
+
+<script>
+function toggleTierEdit(id) {
+    document.getElementById('edit-tier-' + id).classList.toggle('hidden');
+}
+function filterTable() {
+    const q = document.getElementById('search').value.toLowerCase();
+    document.querySelectorAll('.tier-row').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+}
+</script>
+
+{% endblock %}

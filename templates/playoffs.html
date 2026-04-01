@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% block title %}Playoffs – {{ league_name }}{% endblock %}
+{% block content %}
+
+<style>
+  /* ── Bracket Layout ── */
+  .bracket-scroll { overflow-x: auto; padding-bottom: 20px; }
+  .bracket { display: flex; gap: 0; align-items: stretch; min-width: max-content; }
+
+  .bracket-round { display: flex; flex-direction: column; width: 240px; min-width: 240px; }
+
+  .round-header {
+    text-align: center;
+    padding: 12px 16px 10px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #facc15;
+    background: rgba(250,204,21,0.06);
+    border-bottom: 1px solid rgba(250,204,21,0.15);
+    border-right: 1px solid rgba(55,65,81,0.35);
+  }
+
+  .round-matches {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 12px 0;
+    border-right: 1px solid rgba(55,65,81,0.35);
+  }
+
+  .match-slot {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 20px 8px 12px;
+    position: relative;
+    min-height: 88px;
+  }
+
+  /* Horizontal connector line extending right */
+  .match-slot::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    width: 20px;
+    height: 1px;
+    background: rgba(75,85,99,0.7);
+  }
+  .bracket-round:last-child .match-slot::after { display: none; }
+
+  /* Vertical connector – top match of pair goes down */
+  .match-slot.connect-top::before {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    bottom: 0;
+    width: 1px;
+    background: rgba(75,85,99,0.7);
+  }
+  /* Vertical connector – bottom match of pair goes up */
+  .match-slot.connect-bottom::before {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 0;
+    bottom: 50%;
+    width: 1px;
+    background: rgba(75,85,99,0.7);
+  }
+
+  /* ── Match Cards ── */
+  .match-card {
+    width: 204px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(55,65,81,0.65);
+    background: #0d1117;
+  }
+  .match-card.bye { opacity: 0.28; border-style: dashed; }
+  .match-card.has-winner { border-color: rgba(55,65,81,0.9); }
+
+  .match-player {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 9px;
+    min-height: 38px;
+    border-left: 3px solid transparent;
+  }
+  .match-player + .match-player { border-top: 1px solid rgba(55,65,81,0.5); }
+
+  /* Winner row: gold left border + subtle gold bg */
+  .match-player.winner {
+    background: rgba(250,204,21,0.09);
+    border-left-color: #facc15;
+  }
+  .match-player.loser { opacity: 0.32; }
+
+  .seed-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #6b7280;
+    min-width: 14px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .player-logo { width: 20px; height: 20px; border-radius: 3px; object-fit: contain; flex-shrink: 0; }
+  .player-logo-placeholder {
+    width: 20px; height: 20px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: 900; color: #fff; flex-shrink: 0;
+  }
+  .player-name {
+    font-size: 11px; font-weight: 700; color: #d1d5db;
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .player-name.tbd { color: #4b5563; font-style: italic; font-weight: 400; }
+  .player-score {
+    font-size: 12px; font-weight: 900; min-width: 16px; text-align: right; flex-shrink: 0; color: #6b7280;
+  }
+  .player-score.winner-score { color: #facc15; }
+  .player-score.loser-score  { color: #ef4444; opacity: 0.55; }
+
+  /* Stats link on match card */
+  .match-stats-link {
+    display: block;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    padding: 3px 0;
+    color: #4b5563;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid rgba(55,65,81,0.3);
+    text-decoration: none;
+    transition: color .15s, background .15s;
+  }
+  .match-stats-link:hover { color: #facc15; background: rgba(250,204,21,0.06); }
+
+  /* ── Champion Column ── */
+  .champ-round { display: flex; flex-direction: column; width: 180px; min-width: 180px; }
+  .champ-header {
+    text-align: center;
+    padding: 12px 16px 10px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #fbbf24;
+    background: rgba(251,191,36,0.08);
+    border-bottom: 1px solid rgba(251,191,36,0.2);
+  }
+  .champ-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+  }
+  .champ-card {
+    text-align: center;
+    padding: 20px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(251,191,36,0.45);
+    background: linear-gradient(135deg, rgba(146,64,14,0.35), rgba(180,83,9,0.35));
+    width: 148px;
+  }
+</style>
+
+<!-- Header -->
+<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg,#0f1623,#080c14);">
+  <div class="max-w-full px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Playoffs</p>
+    <h1 class="text-3xl font-black text-white">{{ league_name }} Playoffs</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      {% if settings.get('playoff_format','single') == 'double' %}Double{% else %}Single{% endif %} Elimination
+      · {{ settings.get('playoff_players','?') }} players
+      · {{ settings.get('playoff_match_format','BO1') }}
+      {% if settings.get('playoff_byes','0')|int > 0 %}· Top {{ settings.get('playoff_byes') }} with byes{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="px-4 sm:px-6 lg:px-8 py-8">
+
+{% if not has_bracket %}
+  <div class="text-center py-24">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full border border-gray-800 mb-4" style="background:#0f1623;">
+      <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <h2 class="text-lg font-bold text-gray-600 mb-1">Bracket not yet generated</h2>
+    <p class="text-sm text-gray-700">Check back once the admin sets up the playoff bracket.</p>
+    {% if session.get('role') == 'admin' %}
+      <a href="/admin/playoffs" class="mt-4 inline-block px-5 py-2.5 rounded-lg font-bold text-sm text-gray-900 bg-yellow-400 hover:bg-yellow-300 transition-colors">
+        Set up bracket →
+      </a>
+    {% endif %}
+  </div>
+{% else %}
+
+  {# ── Winners Bracket ── #}
+  {% if wb_rounds %}
+  <div class="mb-8">
+    {% if lb_rounds %}
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <h2 class="text-sm font-black text-white uppercase tracking-wider">Winners Bracket</h2>
+    </div>
+    {% endif %}
+    <div class="bracket-scroll">
+      <div class="bracket">
+
+        {% for rd in wb_rounds %}
+        <div class="bracket-round">
+          <div class="round-header">{{ rd.label }}</div>
+          <div class="round-matches">
+            {% for match in rd.matches %}
+            {% set is_odd = loop.index % 2 == 1 %}
+            <div class="match-slot {% if not loop.last and is_odd %}connect-top{% elif not loop.first and not is_odd %}connect-bottom{% endif %}">
+              {% if match.is_bye and not match.coach1 and not match.coach2 %}
+                {# empty placeholder #}
+              {% else %}
+              {% set p1_win = match.winner and match.winner.id == match.coach1_id %}
+              {% set p2_win = match.winner and match.winner.id == match.coach2_id %}
+              {% set p1_loss = match.winner and not p1_win %}
+              {% set p2_loss = match.winner and not p2_win %}
+              <div class="match-card {% if match.is_bye %}bye{% endif %} {% if match.winner %}has-winner{% endif %}">
+
+                {# Player 1 #}
+                <div class="match-player {% if p1_win %}winner{% elif p1_loss %}loser{% endif %}">
+                  <span class="seed-badge">{{ match.seed1 or '' }}</span>
+                  {% if match.coach1 %}
+                    {% if match.coach1.logo_url %}
+                      <img src="{{ match.coach1.logo_url }}" class="player-logo" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+                    {% else %}
+                      <div class="player-logo-placeholder" style="background:{{ match.coach1.color or '#374151' }};">{{ match.coach1.team_name[:2].upper() }}</div>
+                    {% endif %}
+                    <span class="player-name">{{ match.coach1.team_name }}</span>
+                  {% else %}
+                    <span class="player-name tbd">{% if match.is_bye %}BYE{% else %}TBD{% endif %}</span>
+                  {% endif %}
+                  {% if match.score1 is not none %}
+                    <span class="player-score {% if p1_win %}winner-score{% elif p1_loss %}loser-score{% endif %}">{{ match.score1 }}</span>
+                  {% endif %}
+                </div>
+
+                {# Player 2 #}
+                <div class="match-player {% if p2_win %}winner{% elif p2_loss %}loser{% endif %}">
+                  <span class="seed-badge">{{ match.seed2 or '' }}</span>
+                  {% if match.coach2 %}
+                    {% if match.coach2.logo_url %}
+                      <img src="{{ match.coach2.logo_url }}" class="player-logo" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+                    {% else %}
+                      <div class="player-logo-placeholder" style="background:{{ match.coach2.color or '#374151' }};">{{ match.coach2.team_name[:2].upper() }}</div>
+                    {% endif %}
+                    <span class="player-name">{{ match.coach2.team_name }}</span>
+                  {% else %}
+                    <span class="player-name tbd">{% if match.is_bye %}BYE{% else %}TBD{% endif %}</span>
+                  {% endif %}
+                  {% if match.score2 is not none %}
+                    <span class="player-score {% if p2_win %}winner-score{% elif p2_loss %}loser-score{% endif %}">{{ match.score2 }}</span>
+                  {% endif %}
+                </div>
+
+                {# Stats link for non-bye completed or in-progress matches #}
+                {% if not match.is_bye and match.coach1 and match.coach2 %}
+                  <a href="/admin/playoff_stats/{{ match.id }}" class="match-stats-link">
+                    {% if match.winner %}View Stats{% else %}Enter Stats{% endif %}
+                  </a>
+                {% endif %}
+
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+
+        {# Champion display #}
+        {% set finals = wb_rounds[-1].matches[0] if wb_rounds else none %}
+        {% if finals and finals.winner %}
+        <div class="champ-round">
+          <div class="champ-header">
+            <svg class="w-4 h-4 inline-block mb-0.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            Champion
+          </div>
+          <div class="champ-body">
+            <div class="champ-card">
+              {% if finals.winner.logo_url %}
+                <img src="{{ finals.winner.logo_url }}" class="w-14 h-14 rounded-lg object-contain mx-auto mb-3" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+              {% else %}
+                <div class="w-14 h-14 rounded-lg flex items-center justify-center font-black text-white text-xl mx-auto mb-3" style="background:{{ finals.winner.color or '#374151' }};">{{ finals.winner.team_name[:2].upper() }}</div>
+              {% endif %}
+              <div class="text-xs font-black text-yellow-300 uppercase tracking-widest mb-1">Champion</div>
+              <div class="text-sm font-black text-white leading-tight">{{ finals.winner.team_name }}</div>
+              <div class="text-xs text-yellow-500/70 mt-0.5">{{ finals.winner.coach_name }}</div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Losers Bracket ── #}
+  {% if lb_rounds %}
+  <div class="mt-10 mb-8">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-1 h-5 rounded-full bg-red-700"></div>
+      <h2 class="text-sm font-black text-white uppercase tracking-wider">Losers Bracket</h2>
+    </div>
+    <div class="bracket-scroll">
+      <div class="bracket">
+        {% for rd in lb_rounds %}
+        <div class="bracket-round">
+          <div class="round-header" style="color:#f87171;background:rgba(248,113,113,0.06);border-bottom-color:rgba(248,113,113,0.15);">Round {{ rd.round }}</div>
+          <div class="round-matches">
+            {% for match in rd.matches %}
+            <div class="match-slot">
+              <div class="match-card">
+                {% for player_id, seed, score in [
+                  (match.coach1_id, match.seed1, match.score1),
+                  (match.coach2_id, match.seed2, match.score2)
+                ] %}
+                {% set coach = match.coach1 if loop.first else match.coach2 %}
+                {% set is_win = match.winner and match.winner.id == player_id %}
+                {% set is_loss = match.winner and match.winner.id != player_id %}
+                <div class="match-player {% if is_win %}winner{% elif is_loss %}loser{% endif %}">
+                  <span class="seed-badge">{{ seed or '' }}</span>
+                  {% if coach %}
+                    {% if coach.logo_url %}
+                      <img src="{{ coach.logo_url }}" class="player-logo" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+                    {% else %}
+                      <div class="player-logo-placeholder" style="background:{{ coach.color or '#374151' }};">{{ coach.team_name[:2].upper() }}</div>
+                    {% endif %}
+                    <span class="player-name">{{ coach.team_name }}</span>
+                  {% else %}
+                    <span class="player-name tbd">TBD</span>
+                  {% endif %}
+                  {% if score is not none %}
+                    <span class="player-score {% if is_win %}winner-score{% elif is_loss %}loser-score{% endif %}">{{ score }}</span>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Admin link #}
+  {% if session.get('role') == 'admin' %}
+  <div class="mt-6 pt-4 border-t border-gray-800/40">
+    <a href="/admin/playoffs" class="text-xs text-yellow-500 hover:text-yellow-400 font-semibold">Admin: Manage bracket & enter results →</a>
+  </div>
+  {% endif %}
+
+{% endif %}
+</div>
+{% endblock %}

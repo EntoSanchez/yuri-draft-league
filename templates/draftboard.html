@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+{% block title %}Draft Board – {{ league_name }}{% endblock %}
+{% block content %}
+
+<!-- ── Page Header ── -->
+<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+  <div class="max-w-full px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Season Roster</p>
+    <h1 class="text-3xl font-black text-white">Draft Board</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      {% set total_drafted = drafted | length %}
+      {% set total_tiers = tiers | rejectattr('is_banned') | list | length %}
+      {{ total_drafted }} / {{ total_tiers }} drafted
+    </p>
+  </div>
+</div>
+
+<div class="px-4 sm:px-6 lg:px-8 py-6">
+
+  <!-- ── Controls Row ── -->
+  <div class="flex flex-wrap items-center gap-3 mb-6">
+
+    <!-- Pool filter -->
+    <div class="flex rounded-xl overflow-hidden border border-gray-700" style="background-color:#0f1623;">
+      <button onclick="setPool('')"  id="pool-all" class="pool-btn px-4 py-2 text-xs font-bold transition-all">All Pools</button>
+      <button onclick="setPool('A')" id="pool-A"   class="pool-btn px-4 py-2 text-xs font-bold transition-all border-l border-gray-700">Pool A</button>
+      <button onclick="setPool('B')" id="pool-B"   class="pool-btn px-4 py-2 text-xs font-bold transition-all border-l border-gray-700">Pool B</button>
+    </div>
+
+    <!-- Search -->
+    <div class="relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input id="db-search" type="text" placeholder="Search Pokémon..."
+             oninput="filterBoard()"
+             class="pl-9 pr-4 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none w-48"
+             style="background-color:#0f1623;">
+    </div>
+
+    <!-- Ability filter -->
+    <div class="relative">
+      <input id="db-ability" type="text" placeholder="Filter by ability..."
+             oninput="filterBoard()"
+             class="pl-3 pr-4 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none w-44"
+             style="background-color:#0f1623;" autocomplete="off">
+      <div id="ability-suggestions" class="hidden absolute z-50 top-full left-0 mt-1 rounded-xl border border-gray-700 shadow-xl overflow-y-auto max-h-48 w-56" style="background-color:#1a2233;"></div>
+    </div>
+
+    <!-- Move coverage filter -->
+    <select id="db-move" onchange="filterBoard()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
+            style="background-color:#0f1623;">
+      <option value="">All Moves</option>
+      {% for move in all_moves %}
+      <option value="{{ move }}">{{ move }}</option>
+      {% endfor %}
+    </select>
+
+    <!-- Status filter -->
+    <select id="db-status" onchange="filterBoard()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
+            style="background-color:#0f1623;">
+      <option value="">All Status</option>
+      <option value="available">Available</option>
+      <option value="drafted">Drafted</option>
+    </select>
+
+    <!-- Clear -->
+    <button onclick="clearFilters()"
+            class="px-4 py-2 rounded-xl border border-gray-700 text-sm text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all"
+            style="background-color:#0f1623;">Clear</button>
+
+    <!-- Legend -->
+    <div class="ml-auto flex flex-wrap items-center gap-4">
+      <span class="flex items-center gap-1.5 text-xs text-gray-500">
+        <span class="w-2.5 h-2.5 rounded-sm border border-gray-600" style="background:#0f1623;"></span>Available
+      </span>
+      <span class="flex items-center gap-1.5 text-xs text-gray-500">
+        <span class="w-2.5 h-2.5 rounded-sm" style="background:rgba(21,128,61,0.4);border:1px solid rgba(34,197,94,0.3);"></span>Drafted
+      </span>
+      <span class="flex items-center gap-1.5 text-xs text-gray-500">
+        <span class="w-2.5 h-2.5 rounded-sm" style="background:rgba(127,29,29,0.4);border:1px solid rgba(239,68,68,0.3);"></span>Banned
+      </span>
+      <span class="flex items-center gap-1.5 text-xs text-purple-400">
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        Tera Captain
+      </span>
+    </div>
+  </div>
+
+  {% if tiers %}
+
+  <!-- ── Column Board ── -->
+  <div class="overflow-x-auto pb-6" id="boardScrollArea">
+    <div class="flex gap-1 min-w-max items-start" id="boardContainer">
+
+      <!-- ── BANNED column ── -->
+      {% set banned_list = tiers | selectattr('is_banned') | list %}
+      {% if banned_list %}
+      <div class="board-col" data-col="banned">
+        <div class="board-col-header" style="background:linear-gradient(135deg,#7f1d1d,#991b1b);border-color:rgba(239,68,68,0.3);">
+          <div class="text-sm font-black text-red-200">Banned</div>
+          <div class="text-xs text-red-400/70 mt-0.5">{{ banned_list | length }} Pokémon</div>
+        </div>
+        <div class="board-col-body">
+          {% for t in banned_list %}
+          <div class="board-poke banned-poke"
+               data-name="{{ t.name.lower() }}"
+               data-status="banned"
+               data-pool=""
+               data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+               data-moves="{{ t.moves or '' }}">
+            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.display='none'"
+                 class="w-6 h-6 object-contain flex-shrink-0 opacity-40">
+            <span class="text-red-500/60 line-through text-xs truncate flex-1">{{ t.name }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ── One column per point tier ── -->
+      {% for group in tiers_by_pts %}
+      {% set non_banned = group.pokemon | rejectattr('is_banned') | list %}
+      {% if non_banned %}
+        {%- set lbl = group.label | lower -%}
+        {%- if 'uber' in lbl %}
+          {%- if 'platinum' in lbl %}
+            {% set hdr_bg = 'linear-gradient(135deg,#3d5a6e,#6a94a8)' %}
+            {% set hdr_border = 'rgba(160,205,220,0.55)' %}
+            {% set hdr_pts_color = '#d0eaf5' %}
+            {% set hdr_lbl_color = '#a8d4e6' %}
+            {% set hdr_body_bg = 'rgba(106,148,168,0.06)' %}
+          {%- elif 'gold' in lbl %}
+            {% set hdr_bg = 'linear-gradient(135deg,#6b5000,#b08800)' %}
+            {% set hdr_border = 'rgba(220,175,0,0.6)' %}
+            {% set hdr_pts_color = '#ffe766' %}
+            {% set hdr_lbl_color = '#ffd500' %}
+            {% set hdr_body_bg = 'rgba(176,136,0,0.06)' %}
+          {%- elif 'silver' in lbl %}
+            {% set hdr_bg = 'linear-gradient(135deg,#3a4050,#686e80)' %}
+            {% set hdr_border = 'rgba(180,186,200,0.5)' %}
+            {% set hdr_pts_color = '#d0d4e0' %}
+            {% set hdr_lbl_color = '#b0b8c8' %}
+            {% set hdr_body_bg = 'rgba(104,110,128,0.06)' %}
+          {%- elif 'bronze' in lbl %}
+            {% set hdr_bg = 'linear-gradient(135deg,#4a2208,#8c4a1c)' %}
+            {% set hdr_border = 'rgba(200,118,48,0.6)' %}
+            {% set hdr_pts_color = '#e8a05e' %}
+            {% set hdr_lbl_color = '#c87830' %}
+            {% set hdr_body_bg = 'rgba(140,74,28,0.06)' %}
+          {%- elif group.points >= 30 %}
+            {% set hdr_bg = 'linear-gradient(135deg,#3d5a6e,#6a94a8)' %}
+            {% set hdr_border = 'rgba(160,205,220,0.55)' %}
+            {% set hdr_pts_color = '#d0eaf5' %}
+            {% set hdr_lbl_color = '#a8d4e6' %}
+            {% set hdr_body_bg = 'rgba(106,148,168,0.06)' %}
+          {%- elif group.points >= 29 %}
+            {% set hdr_bg = 'linear-gradient(135deg,#6b5000,#b08800)' %}
+            {% set hdr_border = 'rgba(220,175,0,0.6)' %}
+            {% set hdr_pts_color = '#ffe766' %}
+            {% set hdr_lbl_color = '#ffd500' %}
+            {% set hdr_body_bg = 'rgba(176,136,0,0.06)' %}
+          {%- elif group.points >= 28 %}
+            {% set hdr_bg = 'linear-gradient(135deg,#3a4050,#686e80)' %}
+            {% set hdr_border = 'rgba(180,186,200,0.5)' %}
+            {% set hdr_pts_color = '#d0d4e0' %}
+            {% set hdr_lbl_color = '#b0b8c8' %}
+            {% set hdr_body_bg = 'rgba(104,110,128,0.06)' %}
+          {%- else %}
+            {% set hdr_bg = 'linear-gradient(135deg,#4a2208,#8c4a1c)' %}
+            {% set hdr_border = 'rgba(200,118,48,0.6)' %}
+            {% set hdr_pts_color = '#e8a05e' %}
+            {% set hdr_lbl_color = '#c87830' %}
+            {% set hdr_body_bg = 'rgba(140,74,28,0.06)' %}
+          {%- endif %}
+        {% elif 'tier 1' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#1e3a8a,#1d4ed8)' %}
+          {% set hdr_border = 'rgba(29,78,216,0.5)' %}
+          {% set hdr_pts_color = '#93c5fd' %}
+          {% set hdr_lbl_color = '#93c5fd' %}
+          {% set hdr_body_bg = 'rgba(30,58,138,0.06)' %}
+        {% elif 'tier 2' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#3b0764,#7e22ce)' %}
+          {% set hdr_border = 'rgba(126,34,206,0.5)' %}
+          {% set hdr_pts_color = '#d8b4fe' %}
+          {% set hdr_lbl_color = '#d8b4fe' %}
+          {% set hdr_body_bg = 'rgba(59,7,100,0.06)' %}
+        {% elif 'tier 3' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#134e4a,#0f766e)' %}
+          {% set hdr_border = 'rgba(15,118,110,0.5)' %}
+          {% set hdr_pts_color = '#5eead4' %}
+          {% set hdr_lbl_color = '#5eead4' %}
+          {% set hdr_body_bg = 'rgba(19,78,74,0.06)' %}
+        {% elif 'tier 4' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#14532d,#15803d)' %}
+          {% set hdr_border = 'rgba(21,128,61,0.5)' %}
+          {% set hdr_pts_color = '#86efac' %}
+          {% set hdr_lbl_color = '#86efac' %}
+          {% set hdr_body_bg = 'rgba(20,83,45,0.06)' %}
+        {% elif 'tier 5' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#1f2937,#374151)' %}
+          {% set hdr_border = 'rgba(55,65,81,0.6)' %}
+          {% set hdr_pts_color = '#9ca3af' %}
+          {% set hdr_lbl_color = '#9ca3af' %}
+          {% set hdr_body_bg = 'rgba(31,41,55,0.06)' %}
+        {% elif 'platinum' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#3d5a6e,#6a94a8)' %}
+          {% set hdr_border = 'rgba(160,205,220,0.55)' %}
+          {% set hdr_pts_color = '#d0eaf5' %}
+          {% set hdr_lbl_color = '#a8d4e6' %}
+          {% set hdr_body_bg = 'rgba(106,148,168,0.05)' %}
+        {% elif 'gold' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#6b5000,#b08800)' %}
+          {% set hdr_border = 'rgba(220,175,0,0.6)' %}
+          {% set hdr_pts_color = '#ffe766' %}
+          {% set hdr_lbl_color = '#ffd500' %}
+          {% set hdr_body_bg = 'rgba(176,136,0,0.05)' %}
+        {% elif 'silver' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#3a4050,#686e80)' %}
+          {% set hdr_border = 'rgba(180,186,200,0.5)' %}
+          {% set hdr_pts_color = '#d0d4e0' %}
+          {% set hdr_lbl_color = '#b0b8c8' %}
+          {% set hdr_body_bg = 'rgba(104,110,128,0.05)' %}
+        {% elif 'bronze' in lbl %}
+          {% set hdr_bg = 'linear-gradient(135deg,#4a2208,#8c4a1c)' %}
+          {% set hdr_border = 'rgba(200,118,48,0.6)' %}
+          {% set hdr_pts_color = '#e8a05e' %}
+          {% set hdr_lbl_color = '#c87830' %}
+          {% set hdr_body_bg = 'rgba(140,74,28,0.05)' %}
+        {% else %}
+          {%- set hdr_bg = 'linear-gradient(135deg,#1a1a1a,#111)' -%}
+          {%- set hdr_border = 'rgba(107,114,128,0.3)' -%}
+          {%- set hdr_pts_color = '#9ca3af' -%}
+          {%- set hdr_lbl_color = '#6b7280' -%}
+          {%- set hdr_body_bg = 'rgba(0,0,0,0)' -%}
+        {%- endif %}
+      <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}" style="border-color:{{ hdr_border }};">
+
+        <!-- Column header -->
+        <div class="board-col-header" style="background:{{ hdr_bg }};border-color:{{ hdr_border }};">
+          <div class="text-lg font-black leading-none" style="color:{{ hdr_pts_color }};">{{ group.points }}</div>
+          <div class="text-xs font-bold mt-0.5" style="color:{{ hdr_lbl_color }};">
+            {% if group.label %}{{ group.label }}{% else %}pts{% endif %}
+          </div>
+          <div class="text-xs mt-1 opacity-50" style="color:{{ hdr_pts_color }};">{{ non_banned | length }}</div>
+        </div>
+
+        <!-- Pokemon list -->
+        <div class="board-col-body" style="background-color:{{ hdr_body_bg }};">
+          {% for t in non_banned %}
+          {% set d_info = drafted.get(t.name) %}
+          {% set is_drafted = d_info is not none %}
+          {% set coach_pool = d_info.pool if is_drafted else '' %}
+
+          <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+               data-name="{{ t.name.lower() }}"
+               data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+               data-pool="{{ coach_pool }}"
+               data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+               data-moves="{{ t.moves or '' }}">
+
+            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.display='none'"
+                 class="w-6 h-6 object-contain flex-shrink-0 {% if not is_drafted %}opacity-75{% endif %}">
+
+            <span class="text-xs truncate flex-1 {% if is_drafted %}text-green-300{% else %}text-gray-300{% endif %} {% if t.is_tera_banned %}line-through opacity-60{% endif %}">
+              {{ t.name }}
+            </span>
+
+            {% if session.get('role') == 'admin' %}
+            <button onclick="editPts(event,{{ t.id }},{{ t.points }})"
+                    class="edit-pts-btn opacity-0 text-yellow-500/60 hover:text-yellow-400 flex-shrink-0 transition-opacity"
+                    title="Edit points">
+              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+              </svg>
+            </button>
+            {% endif %}
+
+            {% if is_drafted and d_info.is_tera_captain %}
+            <svg class="w-2.5 h-2.5 text-purple-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            {% endif %}
+
+            {% if is_drafted %}
+            <a href="/team/{{ d_info.coach_id }}"
+               class="board-badge flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-white no-underline"
+               style="background-color:{{ d_info.color or '#374151' }}; font-size:0.6rem; font-weight:800; max-width:52px; overflow:hidden;"
+               title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+              {% if d_info.logo_url %}
+                <img src="{{ d_info.logo_url }}" class="w-3 h-3 object-contain rounded flex-shrink-0" onerror="this.style.display='none'">
+              {% endif %}
+              <span class="truncate">{{ d_info.team_name }}</span>
+            </a>
+            {% endif %}
+
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- No results -->
+  <div id="db-empty" class="hidden text-center py-16">
+    <p class="text-gray-600 text-sm">No Pokémon match your filters.</p>
+    <button onclick="clearFilters()" class="mt-3 text-xs text-yellow-500 hover:text-yellow-400">Clear filters</button>
+  </div>
+
+  {% else %}
+  <div class="text-center py-24">
+    <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border border-gray-800 mb-6" style="background-color:#0f1623;">
+      <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-600 mb-2">No tier list yet</h2>
+    <p class="text-sm text-gray-700 mb-6">Build your draft tier list in the admin panel.</p>
+    {% if session.get('role') == 'admin' %}
+      <a href="/admin/tiers" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold text-sm hover:bg-yellow-300 transition-colors">
+        Add tiers &rarr;
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Admin: Points edit popover -->
+{% if session.get('role') == 'admin' %}
+<div id="pts-popover">
+  <div class="text-xs text-yellow-400 font-bold mb-2">Edit Points</div>
+  <div class="flex items-center gap-2">
+    <input id="pts-input" type="number" min="0" max="99"
+           class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-sm text-center focus:border-yellow-500 focus:outline-none"
+           onkeydown="if(event.key==='Enter') savePts()">
+    <button onclick="savePts()"
+            class="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded text-xs font-bold">Save</button>
+    <button onclick="closePtsPopover()"
+            class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-xs">✕</button>
+  </div>
+</div>
+{% endif %}
+
+<style>
+/* ── Column layout ── */
+.board-col {
+  display: flex;
+  flex-direction: column;
+  width: 175px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(55,65,81,0.6);
+}
+
+.board-col-header {
+  padding: 10px 10px 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(55,65,81,0.5);
+  flex-shrink: 0;
+}
+
+.board-col-body {
+  display: flex;
+  flex-direction: column;
+  background-color: #0f1623;
+  flex: 1;
+}
+
+/* ── Pokemon row ── */
+.board-poke {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(55,65,81,0.2);
+  transition: background 0.1s;
+  cursor: default;
+}
+.board-poke:last-child { border-bottom: none; }
+
+.avail-poke { background-color: #0f1623; }
+.avail-poke:hover { background: rgba(250,204,21,0.04); }
+
+.drafted-poke { background: rgba(21,128,61,0.12); }
+.drafted-poke:hover { background: rgba(21,128,61,0.2); }
+
+.banned-poke { background: rgba(127,29,29,0.15); }
+.banned-poke:hover { background: rgba(127,29,29,0.22); }
+
+/* ── Pool filter buttons ── */
+.pool-btn { color: #6b7280; }
+.pool-btn:hover { color: #facc15; }
+.pool-btn.active { color: #facc15; background: rgba(250,204,21,0.1); }
+
+/* ── Dimmed (filtered out pool) ── */
+.board-poke.pool-dim {
+  opacity: 0.25;
+}
+.board-poke.pool-dim .board-badge { display: none; }
+
+/* ── Admin edit button ── */
+.board-poke:hover .edit-pts-btn { opacity: 1; }
+
+/* ── Points edit popover ── */
+#pts-popover {
+  position: fixed;
+  z-index: 9999;
+  background: #1e2535;
+  border: 1px solid #facc15;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  display: none;
+}
+#pts-popover.open { display: block; }
+</style>
+
+<script>
+let currentPool = '';
+let currentSearch = '';
+let currentStatus = '';
+let currentAbility = '';
+let currentMove = '';
+
+function setPool(pool) {
+  currentPool = pool;
+  document.querySelectorAll('.pool-btn').forEach(b => b.classList.remove('active'));
+  const id = pool === '' ? 'pool-all' : 'pool-' + pool;
+  const btn = document.getElementById(id);
+  if (btn) btn.classList.add('active');
+  filterBoard();
+}
+
+function clearFilters() {
+  document.getElementById('db-search').value = '';
+  document.getElementById('db-status').value = '';
+  document.getElementById('db-move').value = '';
+  document.getElementById('db-ability').value = '';
+  currentSearch = '';
+  currentStatus = '';
+  currentMove = '';
+  currentAbility = '';
+  hideSuggestions();
+  setPool('');
+}
+
+function filterBoard() {
+  currentSearch  = document.getElementById('db-search').value.toLowerCase().trim();
+  currentStatus  = document.getElementById('db-status').value;
+  currentMove    = document.getElementById('db-move').value;
+  currentAbility = document.getElementById('db-ability').value.toLowerCase().trim();
+
+  let visible = 0;
+  const colVisible = {};
+
+  document.querySelectorAll('.board-poke').forEach(poke => {
+    const name     = poke.dataset.name     || '';
+    const status   = poke.dataset.status   || '';
+    const pool     = poke.dataset.pool     || '';
+    const abilities = poke.dataset.abilities || '';
+    const moves    = poke.dataset.moves    || '';
+    const col    = poke.closest('.board-col');
+    const colKey = col ? col.dataset.col : '';
+
+    const nameOk    = !currentSearch  || name.includes(currentSearch);
+    const statusOk  = !currentStatus  || status === currentStatus;
+    const moveOk    = !currentMove    || moves.split('|').includes(currentMove);
+    const abilityOk = !currentAbility || abilities.split('|').some(a => a && a.includes(currentAbility));
+
+    let poolDim = false;
+    if (currentPool && status === 'drafted') {
+      poolDim = (pool !== currentPool);
+    }
+
+    const show = nameOk && statusOk && moveOk && abilityOk;
+    poke.style.display = show ? '' : 'none';
+    if (show) {
+      poke.classList.toggle('pool-dim', poolDim);
+      if (!poolDim) {
+        visible++;
+        colVisible[colKey] = (colVisible[colKey] || 0) + 1;
+      } else {
+        colVisible[colKey] = colVisible[colKey] || 0;
+      }
+    }
+  });
+
+  document.querySelectorAll('.board-col').forEach(col => {
+    const key = col.dataset.col;
+    const hasVisible = document.querySelector(`.board-col[data-col="${key}"] .board-poke:not([style*="display: none"])`);
+    col.style.display = hasVisible ? '' : 'none';
+  });
+
+  const emptyEl = document.getElementById('db-empty');
+  if (emptyEl) emptyEl.classList.toggle('hidden', visible > 0 || !!currentPool);
+}
+
+// ── Ability autocomplete ──────────────────────────────────────────────────────
+function buildAbilityList() {
+  const set = new Set();
+  document.querySelectorAll('.board-poke').forEach(poke => {
+    (poke.dataset.abilities || '').split('|').forEach(a => { if (a) set.add(a); });
+  });
+  return Array.from(set).sort();
+}
+
+let _abilityList = null;
+
+function showSuggestions(val) {
+  if (!_abilityList) _abilityList = buildAbilityList();
+  const box = document.getElementById('ability-suggestions');
+  if (!val) { hideSuggestions(); return; }
+  const matches = _abilityList.filter(a => a.includes(val.toLowerCase())).slice(0, 12);
+  if (!matches.length) { hideSuggestions(); return; }
+  box.innerHTML = matches.map(a =>
+    `<div class="ability-sug px-3 py-1.5 text-xs text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-300 cursor-pointer capitalize"
+          onclick="selectAbility('${a}')">${a}</div>`
+  ).join('');
+  box.classList.remove('hidden');
+}
+
+function hideSuggestions() {
+  document.getElementById('ability-suggestions').classList.add('hidden');
+}
+
+function selectAbility(a) {
+  document.getElementById('db-ability').value = a;
+  hideSuggestions();
+  filterBoard();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setPool('');
+  const inp = document.getElementById('db-ability');
+  inp.addEventListener('input', () => showSuggestions(inp.value));
+  inp.addEventListener('focus', () => { if (inp.value) showSuggestions(inp.value); });
+  document.addEventListener('click', e => {
+    if (!inp.contains(e.target) && !document.getElementById('ability-suggestions').contains(e.target))
+      hideSuggestions();
+  });
+});
+
+// Init — called at end of DOMContentLoaded above
+// (setPool('') is called there after ability input setup)
+
+// ── Admin: inline point editing ──────────────────────────────────────────────
+let _editTierId = null;
+
+function editPts(e, tierId, currentPts) {
+  e.stopPropagation();
+  _editTierId = tierId;
+  const pop = document.getElementById('pts-popover');
+  const inp = document.getElementById('pts-input');
+  inp.value = currentPts;
+  // Position near the click
+  const x = Math.min(e.clientX, window.innerWidth - 180);
+  const y = Math.min(e.clientY + 8, window.innerHeight - 80);
+  pop.style.left = x + 'px';
+  pop.style.top  = y + 'px';
+  pop.classList.add('open');
+  inp.focus();
+  inp.select();
+}
+
+function savePts() {
+  if (!_editTierId) return;
+  const pts = document.getElementById('pts-input').value;
+  fetch('/admin/tiers/quick_pts', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `tier_id=${_editTierId}&points=${pts}`
+  }).then(r => {
+    if (r.ok) location.reload();
+    else alert('Error saving points.');
+  });
+  closePtsPopover();
+}
+
+function closePtsPopover() {
+  document.getElementById('pts-popover').classList.remove('open');
+  _editTierId = null;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePtsPopover();
+});
+document.addEventListener('click', e => {
+  const pop = document.getElementById('pts-popover');
+  if (pop && !pop.contains(e.target)) closePtsPopover();
+});
+</script>
+
+{% endblock %}

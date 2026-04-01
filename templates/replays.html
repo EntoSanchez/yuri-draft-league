@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Replays – {{ league_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-2xl font-black text-white tracking-tight">Match Replays</h1>
+      <p class="text-xs text-gray-500 mt-0.5">All recorded replays organized by week</p>
+    </div>
+    <a href="{{ url_for('schedule') }}" class="text-xs text-gray-500 hover:text-yellow-400 transition-colors font-medium">← Schedule</a>
+  </div>
+
+  {% if weeks %}
+    {% for week in weeks.keys()|sort %}
+    {% set replays = weeks[week] %}
+    <div class="mb-8">
+      <!-- Week header -->
+      <div class="flex items-center gap-3 mb-3">
+        <span class="px-3 py-1 rounded-full text-xs font-black text-black" style="background:linear-gradient(90deg,#facc15,#f59e0b);">Week {{ week }}</span>
+        <div class="flex-1 h-px" style="background:linear-gradient(90deg,rgba(250,204,21,0.3),transparent);"></div>
+        <span class="text-xs text-gray-600">{{ replays|length }} replay{{ 's' if replays|length != 1 else '' }}</span>
+      </div>
+
+      <div class="space-y-3">
+        {% for r in replays %}
+        <div class="rounded-xl border border-gray-800/60 overflow-hidden" style="background:#0f1623;">
+          <!-- Match bar -->
+          <div class="flex items-center gap-0 divide-x divide-gray-800/60">
+
+            <!-- Coach 1 -->
+            <div class="flex-1 flex items-center gap-3 px-4 py-3">
+              {% if r.c1_logo %}
+              <img src="{{ r.c1_logo }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="{{ r.c1_team }}">
+              {% else %}
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white flex-shrink-0"
+                   style="background:{{ r.c1_color or '#374151' }};">{{ r.c1_team[:2].upper() }}</div>
+              {% endif %}
+              <div>
+                <div class="font-bold text-white text-sm">{{ r.c1_team }}</div>
+                <div class="text-xs text-gray-500">{{ r.c1_coach }}</div>
+              </div>
+              {% if r.winner_coach_id == r.coach1_id %}
+              <span class="ml-auto px-2 py-0.5 rounded text-xs font-bold text-green-400" style="background:rgba(34,197,94,0.12);">W</span>
+              {% elif r.winner_coach_id == r.coach2_id %}
+              <span class="ml-auto px-2 py-0.5 rounded text-xs font-bold text-red-400" style="background:rgba(239,68,68,0.12);">L</span>
+              {% endif %}
+            </div>
+
+            <!-- VS + game badge -->
+            <div class="flex flex-col items-center justify-center px-4 py-3 gap-1 flex-shrink-0" style="min-width:90px;">
+              <span class="text-xs font-black text-gray-600 uppercase tracking-wider">vs</span>
+              <span class="px-2 py-0.5 rounded-full text-xs font-bold text-gray-400 border border-gray-700">Game {{ r.game_number }}</span>
+            </div>
+
+            <!-- Coach 2 -->
+            <div class="flex-1 flex items-center gap-3 px-4 py-3 flex-row-reverse text-right">
+              {% if r.c2_logo %}
+              <img src="{{ r.c2_logo }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="{{ r.c2_team }}">
+              {% else %}
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white flex-shrink-0"
+                   style="background:{{ r.c2_color or '#374151' }};">{{ r.c2_team[:2].upper() }}</div>
+              {% endif %}
+              <div>
+                <div class="font-bold text-white text-sm">{{ r.c2_team }}</div>
+                <div class="text-xs text-gray-500">{{ r.c2_coach }}</div>
+              </div>
+              {% if r.winner_coach_id == r.coach2_id %}
+              <span class="mr-auto px-2 py-0.5 rounded text-xs font-bold text-green-400" style="background:rgba(34,197,94,0.12);">W</span>
+              {% elif r.winner_coach_id == r.coach1_id %}
+              <span class="mr-auto px-2 py-0.5 rounded text-xs font-bold text-red-400" style="background:rgba(239,68,68,0.12);">L</span>
+              {% endif %}
+            </div>
+
+            <!-- Watch button -->
+            <div class="flex items-center justify-center px-4 py-3 flex-shrink-0">
+              <a href="{{ r.replay_url }}" target="_blank" rel="noopener"
+                 class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90"
+                 style="background:linear-gradient(90deg,#4f46e5,#7c3aed);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Watch
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+  <div class="text-center py-20">
+    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background:#0f1623; border:2px solid #374151;">
+      <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <h2 class="text-lg font-black text-white mb-2">No Replays Yet</h2>
+    <p class="text-gray-500 text-sm">Replays will appear here once matches have been played and recorded.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

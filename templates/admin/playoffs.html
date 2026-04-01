@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Playoffs – Admin{% endblock %}
+{% block content %}
+
+<div class="border-b border-gray-800/60" style="background:linear-gradient(135deg,#0f1623,#080c14);">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Admin</p>
+    <h1 class="text-3xl font-black text-white">Playoffs</h1>
+    <p class="text-sm text-gray-500 mt-1">Generate the bracket, manage settings, and enter match results.</p>
+  </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+  <!-- ── Generate Bracket ── -->
+  <div class="rounded-xl border border-yellow-900/40 overflow-hidden" style="background:#0f1623;">
+    <div class="h-1 w-full" style="background:linear-gradient(to right,#facc15,#f59e0b);"></div>
+    <div class="p-6">
+      <h2 class="text-lg font-bold text-white mb-1">Generate Bracket</h2>
+      <p class="text-sm text-gray-400 mb-5">Seeds are taken from the current overall standings (Pool A + B combined). Generating a new bracket will overwrite any existing one.</p>
+
+      <form method="POST" onsubmit="return !{{ 'true' if has_bracket else 'false' }} || confirm('This will overwrite the existing bracket. Continue?');">
+        <input type="hidden" name="action" value="generate">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Players</label>
+            <input type="number" name="num_players" min="2" max="64"
+                   value="{{ settings.get('playoff_players','12') }}"
+                   class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                   style="background:#080c14;">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Byes</label>
+            <input type="number" name="num_byes" min="0" max="32"
+                   value="{{ settings.get('playoff_byes','4') }}"
+                   class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                   style="background:#080c14;">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Format</label>
+            <select name="fmt"
+                    class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                    style="background:#080c14;">
+              <option value="single" {% if settings.get('playoff_format','single') == 'single' %}selected{% endif %}>Single Elimination</option>
+              <option value="double" {% if settings.get('playoff_format') == 'double' %}selected{% endif %}>Double Elimination</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Match Format</label>
+            <select name="match_format"
+                    class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                    style="background:#080c14;">
+              <option value="BO1" {% if settings.get('playoff_match_format','BO1') == 'BO1' %}selected{% endif %}>Best of 1</option>
+              <option value="BO3" {% if settings.get('playoff_match_format') == 'BO3' %}selected{% endif %}>Best of 3</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Seeding preview -->
+        {% if all_standings %}
+        <div class="mb-5 rounded-lg border border-gray-800/60 overflow-hidden">
+          <div class="px-4 py-2 border-b border-gray-800/60 text-xs font-bold uppercase tracking-wider text-gray-500" style="background:#080c14;">
+            Seeding Preview (overall standings)
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-0">
+            {% for row in all_standings %}
+            <div class="flex items-center gap-2 px-4 py-2 border-b border-gray-800/30 {% if not loop.last %}{% endif %}">
+              <span class="text-xs font-black w-5 text-right flex-shrink-0
+                {% if loop.index == 1 %}text-yellow-400
+                {% elif loop.index == 2 %}text-gray-300
+                {% elif loop.index == 3 %}text-amber-600
+                {% else %}text-gray-600{% endif %}">{{ loop.index }}</span>
+              {% if row.coach.logo_url %}
+                <img src="{{ row.coach.logo_url }}" class="w-6 h-6 rounded object-contain flex-shrink-0" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+              {% else %}
+                <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background:{{ row.coach.color or '#374151' }};font-size:8px;">{{ row.coach.team_name[:2].upper() }}</div>
+              {% endif %}
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-gray-300 truncate">{{ row.coach.team_name }}</div>
+                <div class="text-xs text-gray-600">{{ row.W }}-{{ row.L }}{% if row.T %}-{{ row.T }}{% endif %} <span class="text-gray-700">Pool {{ row.coach.pool }}</span></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="flex items-center gap-3">
+          <button type="submit"
+                  class="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-900 transition-all hover:brightness-110"
+                  style="background:linear-gradient(135deg,#facc15,#f59e0b);">
+            {{ 'Regenerate Bracket' if has_bracket else 'Generate Bracket' }}
+          </button>
+          {% if has_bracket %}
+          <a href="/playoffs" class="text-sm text-blue-400 hover:text-blue-300 font-semibold">View public bracket →</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if has_bracket %}
+
+  <!-- ── Enter Results ── -->
+  <div class="rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;">
+    <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+      <h2 class="text-lg font-bold text-white">Enter Results</h2>
+      <form method="POST" onsubmit="return confirm('Reset the entire bracket? All results will be lost.');">
+        <input type="hidden" name="action" value="reset">
+        <button type="submit" class="text-xs text-red-600 hover:text-red-400 font-semibold">Reset bracket</button>
+      </form>
+    </div>
+
+    {% set match_format = settings.get('playoff_match_format','BO1') %}
+    {% set max_score = 2 if match_format == 'BO3' else 1 %}
+
+    {% for rd in wb_rounds %}
+    <div class="border-b border-gray-800/60 last:border-0">
+      <div class="px-6 py-3 border-b border-gray-800/40" style="background:#080c14;">
+        <span class="text-xs font-black uppercase tracking-wider text-yellow-400/80">{{ rd.label }}</span>
+      </div>
+      <div class="divide-y divide-gray-800/40">
+        {% for match in rd.matches %}
+        {% if not match.is_bye %}
+        <div class="px-6 py-4 flex flex-wrap items-center gap-4">
+
+          <!-- Players -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1.5">
+              {% if match.coach1 %}
+                {% if match.coach1.logo_url %}
+                  <img src="{{ match.coach1.logo_url }}" class="w-6 h-6 rounded object-contain" alt="">
+                {% else %}
+                  <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-black text-white" style="background:{{ match.coach1.color or '#374151' }};font-size:8px;">{{ match.coach1.team_name[:2].upper() }}</div>
+                {% endif %}
+                <span class="text-sm font-bold text-white">{{ match.coach1.team_name }}</span>
+                <span class="text-xs text-gray-600">#{{ match.seed1 }}</span>
+              {% else %}
+                <span class="text-sm text-gray-600 italic">TBD</span>
+              {% endif %}
+              {% if match.winner_id == match.coach1_id %}
+                <span class="text-xs font-bold text-green-400">WIN</span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-2">
+              {% if match.coach2 %}
+                {% if match.coach2.logo_url %}
+                  <img src="{{ match.coach2.logo_url }}" class="w-6 h-6 rounded object-contain" alt="">
+                {% else %}
+                  <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-black text-white" style="background:{{ match.coach2.color or '#374151' }};font-size:8px;">{{ match.coach2.team_name[:2].upper() }}</div>
+                {% endif %}
+                <span class="text-sm font-bold text-white">{{ match.coach2.team_name }}</span>
+                <span class="text-xs text-gray-600">#{{ match.seed2 }}</span>
+              {% else %}
+                <span class="text-sm text-gray-600 italic">TBD</span>
+              {% endif %}
+              {% if match.winner_id == match.coach2_id %}
+                <span class="text-xs font-bold text-green-400">WIN</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Result entry or current score -->
+          {% if match.coach1 and match.coach2 %}
+          <div class="flex items-center gap-3 flex-shrink-0">
+            {% if match.winner_id %}
+              <span class="text-sm font-bold text-gray-400 font-mono">{{ match.score1 }} – {{ match.score2 }}</span>
+              <form method="POST" class="inline">
+                <input type="hidden" name="action" value="clear_result">
+                <input type="hidden" name="match_id" value="{{ match.id }}">
+                <button type="submit" class="text-xs text-gray-600 hover:text-red-400 transition-colors">Clear</button>
+              </form>
+            {% else %}
+              <form method="POST" class="flex items-center gap-2">
+                <input type="hidden" name="action" value="result">
+                <input type="hidden" name="match_id" value="{{ match.id }}">
+                <input type="number" name="score1" min="0" max="{{ max_score }}"
+                       placeholder="{{ match.coach1.team_name[:8] if match.coach1 else 'P1' }}"
+                       class="w-16 rounded-lg border border-gray-700 px-2 py-1.5 text-center text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                       style="background:#080c14;">
+                <span class="text-gray-600 text-sm font-bold">–</span>
+                <input type="number" name="score2" min="0" max="{{ max_score }}"
+                       placeholder="{{ match.coach2.team_name[:8] if match.coach2 else 'P2' }}"
+                       class="w-16 rounded-lg border border-gray-700 px-2 py-1.5 text-center text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                       style="background:#080c14;">
+                <button type="submit"
+                        class="px-3 py-1.5 rounded-lg font-bold text-xs text-gray-900 bg-yellow-400 hover:bg-yellow-300 transition-colors">
+                  Save
+                </button>
+              </form>
+            {% endif %}
+          </div>
+          {% else %}
+          <span class="text-xs text-gray-700 italic">Waiting for players</span>
+          {% endif %}
+
+          <!-- Stats link -->
+          <a href="/admin/playoff_stats/{{ match.id }}"
+             class="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-700 text-gray-400 hover:border-yellow-500/50 hover:text-yellow-400 transition-colors">
+            {% if match.winner_id %}View Stats{% else %}Enter Stats{% endif %}
+          </a>
+
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

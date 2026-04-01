@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Season Management – {{ league_name }}{% endblock %}
+{% block content %}
+
+<!-- ── Page Header ── -->
+<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Admin</p>
+    <h1 class="text-3xl font-black text-white">Season Management</h1>
+    <p class="text-sm text-gray-500 mt-1">Archive the current season and start a new one.</p>
+  </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+  <!-- ── Current Season Info ── -->
+  <div class="rounded-xl border border-gray-800 p-6" style="background-color:#0f1623;">
+    <h2 class="text-lg font-bold text-white mb-1">Current Season</h2>
+    <p class="text-2xl font-black text-yellow-400">{{ current_name }}</p>
+  </div>
+
+  <!-- ── Step 1: Archive ── -->
+  <div class="rounded-xl border border-blue-900/40 overflow-hidden" style="background-color:#0f1623;">
+    <div class="h-1 w-full" style="background:linear-gradient(to right,#3b82f6,#6366f1);"></div>
+    <div class="p-6">
+      <h2 class="text-lg font-bold text-white mb-1">Step 1 — Archive Current Season</h2>
+      <p class="text-sm text-gray-400 mb-5">
+        Takes a full snapshot of all current data (standings, rosters, schedule, stats, transactions, rules, tier list)
+        and saves it as a read-only archive. Do this <span class="text-yellow-400 font-semibold">before</span> starting a new season.
+      </p>
+      <form method="POST" onsubmit="return confirm('Archive the current season? This saves a full read-only snapshot.');">
+        <input type="hidden" name="action" value="archive">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input type="text" name="season_name" value="{{ current_name }}"
+                 placeholder="Archive label (e.g. Yuri Cup Season 8)"
+                 class="flex-1 rounded-xl border border-gray-700 px-4 py-2.5 text-white text-sm focus:border-blue-500/60 focus:outline-none"
+                 style="background-color:#080c14;">
+          <button type="submit"
+                  class="px-6 py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:brightness-110"
+                  style="background:linear-gradient(135deg,#3b82f6,#6366f1);">
+            Archive Season
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Step 2: New Season ── -->
+  <div class="rounded-xl border border-red-900/40 overflow-hidden" style="background-color:#0f1623;">
+    <div class="h-1 w-full" style="background:linear-gradient(to right,#e3350d,#facc15);"></div>
+    <div class="p-6">
+      <h2 class="text-lg font-bold text-white mb-1">Step 2 — Start New Season</h2>
+      <p class="text-sm text-gray-400 mb-5">
+        Clears all season-specific data. <span class="text-red-400 font-semibold">This cannot be undone</span> — archive first if you want to preserve the current season.
+      </p>
+      <form method="POST" onsubmit="return confirm('START NEW SEASON?\n\nThis will permanently delete all schedule, match stats, transactions, and rosters. Archive the season first if you haven\'t already.\n\nContinue?');">
+        <input type="hidden" name="action" value="new_season">
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">New Season Name</label>
+            <input type="text" name="new_name" placeholder="e.g. Yuri Cup Season 9" required
+                   class="w-full rounded-xl border border-gray-700 px-4 py-2.5 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                   style="background-color:#080c14;">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">What to carry over to the new season?</label>
+            <div class="space-y-2">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="keep_teams" value="1" checked
+                       class="w-4 h-4 rounded border-gray-600 accent-yellow-400">
+                <span class="text-sm text-gray-300">Keep teams & coaches</span>
+                <span class="text-xs text-gray-600">(uncheck to wipe all team data)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="keep_tiers" value="1" checked
+                       class="w-4 h-4 rounded border-gray-600 accent-yellow-400">
+                <span class="text-sm text-gray-300">Keep draft tier list</span>
+                <span class="text-xs text-gray-600">(uncheck to start with a blank tier list)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="keep_rules" value="1" checked
+                       class="w-4 h-4 rounded border-gray-600 accent-yellow-400">
+                <span class="text-sm text-gray-300">Keep rules</span>
+                <span class="text-xs text-gray-600">(uncheck to clear all rule sections)</span>
+              </label>
+            </div>
+            <p class="text-xs text-gray-600 mt-2">Schedule, match stats, transactions, and rosters are <strong class="text-gray-500">always cleared</strong>.</p>
+          </div>
+
+          <!-- Uber Picks -->
+          <div class="rounded-lg border border-gray-700/60 p-4" style="background:#080c14;">
+            <label class="flex items-center gap-3 cursor-pointer mb-3">
+              <input type="checkbox" name="mechanic_uber" value="1" id="new_uber_chk"
+                     class="w-4 h-4 rounded border-gray-600 accent-red-500"
+                     onchange="document.getElementById('new_uber_combo').style.display=this.checked?'block':'none'">
+              <span class="text-sm font-bold text-gray-300">Enable Uber Picks</span>
+              <span class="text-xs text-gray-600">(adds 1–2 Uber draft slots per team)</span>
+            </label>
+            <div id="new_uber_combo" style="display:none">
+              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Uber Combination</label>
+              <select name="uber_combination"
+                      class="w-full rounded-xl border border-gray-700 px-4 py-2.5 text-white text-sm focus:border-red-500/60 focus:outline-none"
+                      style="background-color:#0f1623;">
+                <option value="1_platinum">1 Platinum (30 pts) — 1 slot</option>
+                <option value="1_gold_1_bronze">1 Gold (29 pts) + 1 Bronze (27 pts) — 2 slots</option>
+                <option value="1_silver_1_bronze">1 Silver (28 pts) + 1 Bronze (27 pts) — 2 slots</option>
+                <option value="2_silver">2 Silver (28 pts each) — 2 slots</option>
+                <option value="2_bronze" selected>2 Bronze (27 pts each) — 2 slots</option>
+              </select>
+              <p class="text-xs text-gray-600 mt-1.5">Platinum 30 · Gold 29 · Silver 28 · Bronze 27</p>
+            </div>
+          </div>
+
+          <!-- Playoff Settings -->
+          <div class="rounded-lg border border-gray-700/60 p-4" style="background:#080c14;">
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Playoff Format</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Elimination</label>
+                <select name="playoff_format"
+                        class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                        style="background:#0f1623;">
+                  <option value="single">Single Elimination</option>
+                  <option value="double">Double Elimination</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Match Format</label>
+                <select name="playoff_match_format"
+                        class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                        style="background:#0f1623;">
+                  <option value="BO1">Best of 1</option>
+                  <option value="BO3">Best of 3</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Players in Playoffs</label>
+                <input type="number" name="playoff_players" value="12" min="2" max="64"
+                       class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                       style="background:#0f1623;">
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Top Seeds with Byes</label>
+                <input type="number" name="playoff_byes" value="4" min="0" max="32"
+                       class="w-full rounded-xl border border-gray-700 px-3 py-2 text-white text-sm focus:border-yellow-500/60 focus:outline-none"
+                       style="background:#0f1623;">
+              </div>
+            </div>
+            <p class="text-xs text-gray-600">Bracket can also be configured any time from Admin → Playoffs.</p>
+          </div>
+
+          <button type="submit"
+                  class="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-900 transition-all hover:brightness-110"
+                  style="background:linear-gradient(135deg,#facc15,#f59e0b);">
+            Start New Season
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Past Archives ── -->
+  {% if seasons %}
+  <div>
+    <div class="flex items-center gap-3 mb-4">
+      <h2 class="text-lg font-bold text-white">Past Seasons</h2>
+      <a href="/seasons" class="text-xs text-yellow-500 hover:text-yellow-400">View public archive &rarr;</a>
+    </div>
+    <div class="space-y-2">
+      {% for s in seasons %}
+      <div class="flex items-center gap-4 rounded-xl border border-gray-800 px-5 py-3" style="background-color:#0f1623;">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-white">{{ s.name }}</div>
+          <div class="text-xs text-gray-600">Archived {{ s.archived_at }}</div>
+        </div>
+        <a href="/seasons/{{ s.id }}" class="text-xs text-blue-400 hover:text-blue-300 font-medium">View</a>
+        <form method="POST" onsubmit="return confirm('Delete this archive? This cannot be undone.');" class="flex items-center">
+          <input type="hidden" name="action" value="delete_archive">
+          <input type="hidden" name="season_id" value="{{ s.id }}">
+          <button type="submit" class="text-xs text-red-700 hover:text-red-500 font-medium">Delete</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-10 text-gray-700 text-sm">No archived seasons yet.</div>
+  {% endif %}
+
+</div>
+{% endblock %}

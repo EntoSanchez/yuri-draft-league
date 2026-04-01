@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Teams – {{ league_name }}{% endblock %}
+{% block content %}
+
+<!-- ── Page Header ── -->
+<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">League Roster</p>
+    <h1 class="text-3xl font-black text-white">All Teams</h1>
+  </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+  {% if coaches %}
+    {% for pool_label in ['A', 'B'] %}
+      {% set pool_coaches = coaches | selectattr('pool', 'equalto', pool_label) | list %}
+      {% if pool_coaches %}
+        <!-- Pool Section Header -->
+        <div class="flex items-center gap-3 mb-6 {% if not loop.first %}mt-12{% endif %}">
+          <div class="w-1 h-7 rounded-full" style="background: linear-gradient(to bottom, #facc15, #e3350d);"></div>
+          <h2 class="text-xl font-bold text-white">Pool {{ pool_label }}</h2>
+          <div class="flex-1 section-line ml-3"></div>
+          <span class="text-xs text-gray-600 font-medium">{{ pool_coaches | length }} team{% if pool_coaches | length != 1 %}s{% endif %}</span>
+        </div>
+
+        <!-- Team Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {% for coach in pool_coaches %}
+            {% set s = standings.get(coach.id) %}
+            <a href="/team/{{ coach.id }}"
+               class="card-hover block rounded-xl border border-gray-800 overflow-hidden group"
+               style="background-color:#0f1623;">
+
+              <!-- Color accent strip -->
+              <div class="h-1 w-full" style="background: {{ coach.color or '#374151' }};"></div>
+
+              <div class="p-5">
+                <!-- Logo + Name -->
+                <div class="flex items-center gap-3 mb-4">
+                  {% if coach.logo_url %}
+                    <img src="{{ coach.logo_url }}" class="w-14 h-14 object-contain rounded-xl flex-shrink-0" alt="{{ coach.team_name }}">
+                  {% else %}
+                    <div class="w-14 h-14 rounded-xl flex items-center justify-center text-lg font-black text-white flex-shrink-0 shadow-inner"
+                         style="background-color:{{ coach.color or '#374151' }};">
+                      {{ coach.team_name[:2].upper() }}
+                    </div>
+                  {% endif %}
+                  <div class="min-w-0">
+                    <div class="font-bold text-white text-sm leading-snug truncate group-hover:text-yellow-400 transition-colors">{{ coach.team_name }}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{{ coach.coach_name }}</div>
+                    <div class="text-xs text-gray-700 mt-0.5 font-medium">Pool {{ coach.pool }}</div>
+                  </div>
+                </div>
+
+                <!-- Stats Bar -->
+                {% if s %}
+                <div class="rounded-lg border border-gray-800/60 px-3 py-2.5 flex items-center justify-between" style="background-color:#080c14;">
+                  <div class="text-center">
+                    <div class="text-base font-black text-green-400">{{ s.W }}</div>
+                    <div class="text-xs text-gray-600 font-medium">W</div>
+                  </div>
+                  <div class="text-gray-700 text-xs font-bold">–</div>
+                  <div class="text-center">
+                    <div class="text-base font-black text-red-400">{{ s.L }}</div>
+                    <div class="text-xs text-gray-600 font-medium">L</div>
+                  </div>
+                  {% if s.T %}
+                  <div class="text-gray-700 text-xs font-bold">–</div>
+                  <div class="text-center">
+                    <div class="text-base font-black text-yellow-400">{{ s.T }}</div>
+                    <div class="text-xs text-gray-600 font-medium">T</div>
+                  </div>
+                  {% endif %}
+                  <div class="h-8 w-px bg-gray-800"></div>
+                  <div class="text-center">
+                    <div class="text-sm font-bold
+                      {% if s.diff > 0 %}text-green-400
+                      {% elif s.diff < 0 %}text-red-400
+                      {% else %}text-gray-500{% endif %}">
+                      {{ '%+.1f' % s.diff if s.diff != 0 else '0' }}
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">Diff</div>
+                  </div>
+                </div>
+                {% else %}
+                <div class="rounded-lg border border-gray-800/40 px-3 py-2.5 text-center" style="background-color:#080c14;">
+                  <span class="text-xs text-gray-700">No results yet</span>
+                </div>
+                {% endif %}
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+  {% else %}
+    <div class="text-center py-24">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border border-gray-800 mb-6" style="background-color:#0f1623;">
+        <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-gray-600 mb-2">No teams yet</h2>
+      <p class="text-sm text-gray-700 mb-6">Add teams in the admin panel to get started.</p>
+      {% if session.get('role') == 'admin' %}
+        <a href="/admin/teams" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold text-sm hover:bg-yellow-300 transition-colors">
+          Add teams &rarr;
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

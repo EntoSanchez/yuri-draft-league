@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block title %}Match Stats – Admin{% endblock %}
+{% block content %}
+
+<div class="flex items-center gap-3 mb-2">
+  <a href="/admin/schedule" class="text-gray-400 hover:text-white text-sm">← Schedule</a>
+</div>
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <p class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-0.5">Week {{ match.week }} · {{ match_format }}</p>
+    <h1 class="text-2xl font-black text-white">
+      {{ match.c1_team }} <span class="text-gray-600 font-normal text-lg">vs</span> {{ match.c2_team }}
+    </h1>
+    {% if match.score1 is not none %}
+    <p class="text-sm text-gray-400 mt-0.5">
+      Current score:
+      <span class="font-mono font-black text-yellow-400">{{ match.score1|int }} – {{ match.score2|int }}</span>
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Add Game Card ── -->
+{% if games|length < max_games %}
+<div class="bg-gray-800 border border-gray-700 border-dashed rounded-xl p-5 mb-6 max-w-2xl">
+  <h2 class="font-bold text-base mb-3 text-gray-300">
+    + Add Game {{ games|length + 1 }}
+    {% if max_games > 1 %}<span class="text-gray-600 text-xs font-normal ml-1">(of {{ max_games }})</span>{% endif %}
+  </h2>
+  <form method="POST" class="flex flex-wrap gap-3 items-end">
+    <input type="hidden" name="action" value="add_game">
+    <input type="hidden" name="game_number" value="{{ games|length + 1 }}">
+    <div class="flex-1 min-w-[280px]">
+      <label class="block text-xs text-gray-400 mb-1">Replay URL</label>
+      <input type="url" name="replay_url"
+             placeholder="https://replay.pokemonshowdown.com/…"
+             class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-yellow-500 focus:outline-none">
+    </div>
+    <button type="submit" class="px-5 py-2 bg-yellow-600 hover:bg-yellow-500 rounded font-bold text-sm transition-colors">
+      Add Game
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- ── Game Cards ── -->
+{% for game in games %}
+{% set game_stats = stats_by_game.get(game.id, []) %}
+{% set c1_stats = game_stats | selectattr('coach_id', 'equalto', match.c1_id) | list %}
+{% set c2_stats = game_stats | selectattr('coach_id', 'equalto', match.c2_id) | list %}
+{% set game_lineups = lineups_by_game.get(game.id, {}) %}
+{% set c1_lineup = game_lineups.get(match.c1_id, []) %}
+{% set c2_lineup = game_lineups.get(match.c2_id, []) %}
+{% set gid = game.id %}
+
+<div class="rounded-xl border border-gray-700 mb-6 overflow-hidden max-w-4xl">
+
+  <!-- Game header: replay + winner + delete -->
+  <div class="px-5 py-3 flex items-center gap-4 flex-wrap" style="background:#111827;">
+    <span class="text-sm font-black text-yellow-400">Game {{ game.game_number }}</span>
+
+    <form method="POST" class="flex items-center gap-2 flex-1 min-w-[260px]">
+      <input type="hidden" name="action" value="update_game">
+      <input type="hidden" name="game_id" value="{{ game.id }}">
+      <input type="url" name="replay_url" value="{{ game.replay_url or '' }}"
+             placeholder="https://replay.pokemonshowdown.com/…"
+             class="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
+      <select name="winner_coach_id"
+              class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
+        <option value="">— Winner —</option>
+        <option value="{{ match.c1_id }}" {% if game.winner_coach_id == match.c1_id %}selected{% endif %}>{{ match.c1_name }} wins</option>
+        <option value="{{ match.c2_id }}" {% if game.winner_coach_id == match.c2_id %}selected{% endif %}>{{ match.c2_name }} wins</option>
+      </select>
+      <button type="submit" class="px-3 py-1 bg-blue-700 hover:bg-blue-600 rounded text-xs font-bold transition-colors">Save</button>
+    </form>
+
+    {% if game.replay_url %}
+    <a href="{{ game.replay_url }}" target="_blank" rel="noopener"
+       class="px-3 py-1 rounded text-xs font-bold bg-indigo-700/60 hover:bg-indigo-600 text-indigo-200 transition-colors flex items-center gap-1">
+      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      Watch
+    </a>
+    {% endif %}
+
+    {% if game.winner_coach_id %}
+    <span class="text-xs font-bold text-green-400">
+      ✓ {{ match.c1_name if game.winner_coach_id == match.c1_id else match.c2_name }} won
+    </span>
+    {% endif %}
+
+    <form method="POST" class="ml-auto" onsubmit="return confirm('Delete game {{ game.game_number }} and all its stats?')">
+      <input type="hidden" name="action" value="delete_game">
+      <input type="hidden" name="game_id" value="{{ game.id }}">
+      <button type="submit" class="px-2 py-1 bg-red-900/60 hover:bg-red-800 rounded text-xs text-red-300 transition-colors">Delete</button>
+    </form>
+  </div>
+
+  <!-- ── Lineups ── -->
+  <div class="px-5 py-4 border-t border-gray-800/60 bg-gray-900/30">
+    <h3 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">Lineups (select pokemon brought)</h3>
+    <div class="grid grid-cols-2 gap-4">
+      {% for label, cid, roster, lineup in [
+        (match.c1_name, match.c1_id, roster1, c1_lineup),
+        (match.c2_name, match.c2_id, roster2, c2_lineup)
+      ] %}
+      <div>
+        <p class="text-xs font-bold text-gray-400 mb-2">{{ label }}</p>
+        <!-- Current lineup pills -->
+        <div class="flex flex-wrap gap-1 mb-2 min-h-[24px]">
+          {% for ln in lineup %}
+          <form method="POST" class="inline">
+            <input type="hidden" name="action" value="remove_lineup">
+            <input type="hidden" name="lineup_id" value="{{ ln.id }}">
+            <button type="submit"
+                    class="flex items-center gap-1 text-xs bg-blue-900/50 hover:bg-red-900/60 border border-blue-700/50 hover:border-red-600 text-blue-200 hover:text-red-300 px-2 py-0.5 rounded transition-colors"
+                    title="Remove from lineup">
+              <img src="{{ pokemon_static_sprite_url(ln.pokemon_name) }}" onerror="this.style.display='none'"
+                   class="w-4 h-4 object-contain">
+              {{ ln.pokemon_name }} ✕
+            </button>
+          </form>
+          {% endfor %}
+          {% if lineup|length == 0 %}
+          <span class="text-xs text-gray-700 italic">None selected</span>
+          {% endif %}
+        </div>
+        <!-- Add to lineup dropdown -->
+        {% if lineup|length < 6 %}
+        <form method="POST" class="flex gap-2">
+          <input type="hidden" name="action" value="add_lineup">
+          <input type="hidden" name="game_id" value="{{ game.id }}">
+          <input type="hidden" name="coach_id" value="{{ cid }}">
+          {% set already = lineup | map(attribute='pokemon_name') | list %}
+          <select name="pokemon_name" required
+                  class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
+            <option value="">— Add pokemon —</option>
+            {% for p in (roster1 if cid == match.c1_id else roster2) %}
+            {% if p.pokemon_name not in already %}
+            <option value="{{ p.pokemon_name }}">{{ p.pokemon_name }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="px-3 py-1 bg-blue-700/70 hover:bg-blue-600 rounded text-xs font-bold transition-colors">+ Add</button>
+        </form>
+        {% else %}
+        <p class="text-xs text-green-500/70">Lineup full (6/6)</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Log KO ── -->
+  <div class="px-5 py-4 border-t border-gray-800/60 bg-gray-900/20">
+    <h3 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">Log KO</h3>
+    <form method="POST" class="flex flex-wrap gap-3 items-end">
+      <input type="hidden" name="action" value="log_ko">
+      <input type="hidden" name="game_id" value="{{ game.id }}">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">KO by ({{ match.c1_name }})</label>
+        <select name="attacker_pokemon" id="atk-{{ gid }}" required
+                onchange="syncKoForm({{ gid }})"
+                class="bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none min-w-[140px]">
+          <option value="">— Attacker —</option>
+          {% set c1_pokes = c1_lineup | map(attribute='pokemon_name') | list if c1_lineup else roster1 | map(attribute='pokemon_name') | list %}
+          {% for pname in c1_pokes %}
+          <option value="{{ pname }}" data-coach="{{ match.c1_id }}">{{ pname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="text-gray-500 text-sm font-bold self-end pb-2">→ KO'd →</div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">KO'd ({{ match.c2_name }})</label>
+        <select name="defender_pokemon" id="def-{{ gid }}" required
+                onchange="syncKoForm({{ gid }})"
+                class="bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none min-w-[140px]">
+          <option value="">— Defender —</option>
+          {% set c2_pokes = c2_lineup | map(attribute='pokemon_name') | list if c2_lineup else roster2 | map(attribute='pokemon_name') | list %}
+          {% for pname in c2_pokes %}
+          <option value="{{ pname }}" data-coach="{{ match.c2_id }}">{{ pname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <!-- Hidden coach id fields, set by JS -->
+      <input type="hidden" name="attacker_coach_id" id="atk-coach-{{ gid }}" value="{{ match.c1_id }}">
+      <input type="hidden" name="defender_coach_id" id="def-coach-{{ gid }}" value="{{ match.c2_id }}">
+      <button type="submit"
+              class="px-4 py-1.5 bg-red-700 hover:bg-red-600 rounded text-sm font-bold transition-colors self-end">
+        Log KO
+      </button>
+      <!-- Swap button: swap attacker/defender teams -->
+      <button type="button" onclick="swapKo({{ gid }})"
+              class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300 transition-colors self-end"
+              title="Swap which team is attacking/defending">
+        ⇄ Swap
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Stats side-by-side ── -->
+  <div class="grid grid-cols-2 divide-x divide-gray-800">
+    {% for label, cid, coach_stats in [
+      (match.c1_name, match.c1_id, c1_stats),
+      (match.c2_name, match.c2_id, c2_stats)
+    ] %}
+    <div>
+      <div class="px-4 py-2 text-xs font-black text-gray-400 uppercase tracking-wider border-b border-gray-800">{{ label }}</div>
+      {% if coach_stats %}
+      <table class="w-full text-xs">
+        <tbody>
+          {% for s in coach_stats %}
+          <tr class="border-b border-gray-800/40 hover:bg-gray-800/20">
+            <td class="px-3 py-1.5">
+              <div class="flex items-center gap-1.5">
+                <img src="{{ pokemon_sprite_url(s.pokemon_name) }}"
+                     onerror="this.src='{{ pokemon_static_sprite_url(s.pokemon_name) }}';this.onerror=null;"
+                     class="w-5 h-5 object-contain">
+                <span class="font-semibold text-gray-200">{{ s.pokemon_name }}</span>
+              </div>
+            </td>
+            <td class="px-2 py-1.5 text-center font-bold text-green-400">{{ s.kills|int }}K</td>
+            <td class="px-2 py-1.5 text-center font-bold text-red-400">{{ s.deaths|int }}D</td>
+            <td class="px-2 py-1.5 text-center">
+              <form method="POST">
+                <input type="hidden" name="action" value="delete_stat">
+                <input type="hidden" name="stat_id" value="{{ s.id }}">
+                <button type="submit" class="text-red-600 hover:text-red-400 text-xs font-bold">✕</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="px-4 py-3 text-xs text-gray-700 italic">No KOs logged yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Manual stat entry (advanced) ── -->
+  <details class="border-t border-gray-800/40">
+    <summary class="px-5 py-2 text-xs text-gray-600 cursor-pointer hover:text-gray-400 select-none">
+      Manual entry (advanced)
+    </summary>
+    <div class="px-5 py-3 bg-gray-900/40">
+      <form method="POST" class="flex flex-wrap gap-3 items-end">
+        <input type="hidden" name="action" value="add_stat">
+        <input type="hidden" name="game_id" value="{{ game.id }}">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Coach</label>
+          <select name="coach_id" required
+                  class="bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
+            <option value="{{ match.c1_id }}">{{ match.c1_name }}</option>
+            <option value="{{ match.c2_id }}">{{ match.c2_name }}</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-[160px]">
+          <label class="block text-xs text-gray-400 mb-1">Pokemon</label>
+          <select name="pokemon_name" required
+                  class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
+            <option value="">— Select —</option>
+            <optgroup label="{{ match.c1_name }}">
+              {% for p in roster1 %}<option value="{{ p.pokemon_name }}">{{ p.pokemon_name }}</option>{% endfor %}
+            </optgroup>
+            <optgroup label="{{ match.c2_name }}">
+              {% for p in roster2 %}<option value="{{ p.pokemon_name }}">{{ p.pokemon_name }}</option>{% endfor %}
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Kills</label>
+          <input type="number" name="kills" step="0.5" min="0" value="0"
+                 class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Deaths</label>
+          <input type="number" name="deaths" step="0.5" min="0" value="0"
+                 class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
+        </div>
+        <button type="submit" class="px-4 py-1.5 bg-green-700 hover:bg-green-600 rounded text-sm font-bold transition-colors">
+          + Add
+        </button>
+      </form>
+    </div>
+  </details>
+
+</div>
+{% endfor %}
+
+<!-- Legacy stats (no game_id) -->
+{% set legacy = stats_by_game.get(none, []) %}
+{% if legacy %}
+<div class="rounded-xl border border-gray-700/40 mb-6 overflow-hidden max-w-4xl opacity-70">
+  <div class="px-5 py-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-gray-700/40" style="background:#111827;">
+    Legacy Stats (pre-games system)
+  </div>
+  <div class="grid grid-cols-2 divide-x divide-gray-800">
+    {% for cid, label in [(match.c1_id, match.c1_name), (match.c2_id, match.c2_name)] %}
+    {% set coach_stats = legacy | selectattr('coach_id', 'equalto', cid) | list %}
+    <div>
+      <div class="px-4 py-2 text-xs font-bold text-gray-500 border-b border-gray-800">{{ label }}</div>
+      {% for s in coach_stats %}
+      <div class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-800/30 text-xs">
+        <span class="text-gray-300 flex-1">{{ s.pokemon_name }}</span>
+        <span class="text-green-400 font-bold">{{ s.kills|int }}K</span>
+        <span class="text-red-400 font-bold">{{ s.deaths|int }}D</span>
+        <form method="POST">
+          <input type="hidden" name="action" value="delete_stat">
+          <input type="hidden" name="stat_id" value="{{ s.id }}">
+          <button type="submit" class="text-red-700 hover:text-red-500 font-bold">✕</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="px-4 py-2 text-xs text-gray-700 italic">—</p>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if not games and not legacy %}
+<p class="text-gray-600 text-sm py-4">No games logged yet. Add a game above to start tracking stats.</p>
+{% endif %}
+
+<script>
+// Store team data for JS-driven KO form swap
+const matchData = {
+  c1_id: {{ match.c1_id }},
+  c2_id: {{ match.c2_id }},
+  c1_name: {{ match.c1_name | tojson }},
+  c2_name: {{ match.c2_name | tojson }},
+};
+
+function syncKoForm(gid) {
+  // Update hidden coach_id fields based on selected option's data-coach
+  const atkSel = document.getElementById('atk-' + gid);
+  const defSel = document.getElementById('def-' + gid);
+  const atkCoach = document.getElementById('atk-coach-' + gid);
+  const defCoach = document.getElementById('def-coach-' + gid);
+  const atkOpt = atkSel.options[atkSel.selectedIndex];
+  const defOpt = defSel.options[defSel.selectedIndex];
+  if (atkOpt && atkOpt.dataset.coach) atkCoach.value = atkOpt.dataset.coach;
+  if (defOpt && defOpt.dataset.coach) defCoach.value = defOpt.dataset.coach;
+}
+
+function swapKo(gid) {
+  const atkSel = document.getElementById('atk-' + gid);
+  const defSel = document.getElementById('def-' + gid);
+  const atkCoach = document.getElementById('atk-coach-' + gid);
+  const defCoach = document.getElementById('def-coach-' + gid);
+
+  // Swap option lists
+  const atkHTML = atkSel.innerHTML;
+  const defHTML = defSel.innerHTML;
+  atkSel.innerHTML = defHTML;
+  defSel.innerHTML = atkHTML;
+
+  // Swap labels
+  const labels = atkSel.closest('form').querySelectorAll('label');
+  const c1Name = matchData.c1_name;
+  const c2Name = matchData.c2_name;
+  labels[0].textContent = labels[0].textContent.includes(c1Name)
+    ? 'KO by (' + c2Name + ')' : 'KO by (' + c1Name + ')';
+  labels[1].textContent = labels[1].textContent.includes(c1Name)
+    ? 'KO\'d (' + c2Name + ')' : 'KO\'d (' + c1Name + ')';
+
+  // Swap coach values
+  const tmp = atkCoach.value;
+  atkCoach.value = defCoach.value;
+  defCoach.value = tmp;
+}
+</script>
+
+{% endblock %}

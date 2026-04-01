@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Rules – {{ league_name }}{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold text-yellow-400">📜 League Rules</h1>
+    {% if session.get('role') == 'admin' %}
+    <a href="/admin/rules" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm">✏️ Edit Rules</a>
+    {% endif %}
+</div>
+
+{% if rule_sections %}
+<div class="space-y-6">
+    {% for section in rule_sections %}
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h2 class="text-lg font-bold text-yellow-300 mb-3">{{ loop.index }}. {{ section.title }}</h2>
+        <div class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{{ section.content }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20 text-gray-500">
+    <p>No rules yet. <a href="/admin/rules" class="text-blue-400 underline">Add rules in Admin →</a></p>
+</div>
+{% endif %}
+
+{% endblock %}

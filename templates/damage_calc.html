@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Damage Calculator – {{ league_name }}{% endblock %}
+{% block content %}
+<style>
+  .calc-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px);
+    padding: 0;
+  }
+  .calc-frame {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #fff;
+  }
+</style>
+<div class="calc-wrapper">
+  <iframe
+    class="calc-frame"
+    src="/damage-calc/static/index.html"
+    title="Pokémon Damage Calculator"
+    allow="clipboard-read; clipboard-write"
+  ></iframe>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets
+.env
+
+# Temp files (Word/Excel lock files)
+~$*
+
+# Import/data files not needed in production
+*.xlsx
+*.docx
+
+# damage-calc dependencies (dist/ is kept — it's the built app)
+damage-calc/node_modules/
+damage-calc/calc/node_modules/
+damage-calc/build/

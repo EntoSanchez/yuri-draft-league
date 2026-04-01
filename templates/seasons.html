@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Past Seasons – {{ league_name }}{% endblock %}
+{% block content %}
+
+<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">{{ league_name }}</p>
+    <h1 class="text-3xl font-black text-white">Season Archive</h1>
+    <p class="text-sm text-gray-500 mt-1">Browse past season results and rosters.</p>
+  </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  {% if seasons %}
+    <div class="space-y-3">
+      {% for s in seasons %}
+      <a href="/seasons/{{ s.id }}"
+         class="flex items-center gap-5 rounded-xl border border-gray-800 px-6 py-4 transition-all hover:border-yellow-500/40 hover:shadow-lg hover:shadow-yellow-400/5 group"
+         style="background-color:#0f1623;">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border border-gray-700 group-hover:border-yellow-500/40"
+             style="background-color:#080c14;">
+          <svg class="w-5 h-5 text-gray-600 group-hover:text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-white group-hover:text-yellow-400 transition-colors">{{ s.name }}</div>
+          <div class="text-xs text-gray-600 mt-0.5">Archived {{ s.archived_at }}</div>
+        </div>
+        <svg class="w-4 h-4 text-gray-700 group-hover:text-yellow-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-24">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border border-gray-800 mb-6" style="background-color:#0f1623;">
+        <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-gray-600 mb-2">No archived seasons yet</h2>
+      <p class="text-sm text-gray-700">Past seasons will appear here once archived by the admin.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

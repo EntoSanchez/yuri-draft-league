@@ -1,0 +1,820 @@
+{% extends "base.html" %}
+{% block title %}Battle Prep – {{ league_name }}{% endblock %}
+{% block content %}
+<style>
+  .bp-page { display:flex; flex-direction:column; gap:20px; padding:16px; max-width:1400px; margin:0 auto; }
+  .section-header { font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; }
+  .team-select { background:#111827; border:1px solid #374151; border-radius:6px; color:#d1d5db; font-size:0.8rem; padding:4px 10px; cursor:pointer; }
+  .team-select:focus { border-color:#facc15; outline:none; }
+  .type-badge { display:inline-block; font-size:0.5rem; font-weight:700; padding:1px 5px; border-radius:3px; color:#fff; margin-right:2px; white-space:nowrap; }
+  .bp-chart td, .bp-chart th { width:28px; height:22px; text-align:center; font-size:0.55rem; border:1px solid rgba(55,65,81,0.2); padding:0; }
+  .stat-table { border-collapse:collapse; width:100%; font-size:0.65rem; }
+  .stat-table th { background:#1f2937; color:#6b7280; font-weight:600; padding:3px 6px; border:1px solid rgba(55,65,81,0.3); text-align:center; cursor:pointer; user-select:none; }
+  .stat-table th:hover { color:#facc15; }
+  .stat-table td { padding:2px 4px; border:1px solid rgba(55,65,81,0.2); text-align:center; }
+  .stat-table .ave-row td { background:#1f2937; color:#facc15; font-weight:700; border-top:2px solid rgba(55,65,81,0.5); }
+  .spd-table { border-collapse:collapse; font-size:0.6rem; }
+  .spd-table th, .spd-table td { border:1px solid rgba(55,65,81,0.25); padding:2px 4px; text-align:center; white-space:nowrap; }
+  .spd-table th { background:#0f172a; color:#9ca3af; font-weight:600; }
+  .spd-input { background:#0f172a; border:1px solid #374151; border-radius:3px; color:#d1d5db; width:36px; font-size:0.58rem; padding:1px 3px; text-align:center; }
+  .spd-select { background:#0f172a; border:1px solid #374151; border-radius:3px; color:#d1d5db; font-size:0.55rem; padding:1px 2px; }
+  .mc-cat-header { color:#f3f4f6; font-size:0.7rem; font-weight:700; padding:5px 12px; text-align:center; letter-spacing:0.05em; }
+  .mc-row { display:flex; align-items:center; justify-content:center; min-height:28px; gap:4px; border-bottom:1px solid rgba(55,65,81,0.12); }
+  .mc-move-label { flex:0 0 160px; text-align:center; font-size:0.65rem; font-weight:600; padding:3px 8px; color:#f3f4f6; }
+  .mc-sprites { display:flex; flex-wrap:wrap; align-items:center; gap:1px; width:120px; }
+  .mc-sprites img { width:22px; height:22px; object-fit:contain; }
+  .ac-item { display:flex; align-items:center; gap:8px; padding:5px 10px; cursor:pointer; font-size:0.78rem; color:#d1d5db; }
+  .ac-item:hover, .ac-item.active { background:#374151; }
+  .ac-item img { width:28px; height:28px; object-fit:contain; }
+</style>
+
+<div class="bp-page">
+
+  <!-- Team Selectors -->
+  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+    <div class="section-header">Select Teams</div>
+    <div class="grid grid-cols-2 gap-6">
+      <div>
+        <div class="text-xs text-gray-500 mb-2 font-semibold">My Team</div>
+        <select id="my-team-select" class="team-select w-full" onchange="loadTeams()">
+          <option value="">— Select your team —</option>
+        </select>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 mb-2 font-semibold">Opponent's Team</div>
+        <select id="opp-team-select" class="team-select w-full" onchange="loadTeams()">
+          <option value="">— Select opponent —</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team MU -->
+  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+    <div class="section-header">Team Matchup</div>
+    <div id="bp-team-mu"><div class="text-gray-600 text-sm">Select teams above to see the matchup.</div></div>
+  </div>
+
+  <!-- Type Charts -->
+  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+    <div class="flex items-center gap-6 mb-3">
+      <div class="section-header mb-0">Defensive Type Charts</div>
+      <label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+        <input type="checkbox" id="bp-abilities" checked onchange="renderAll()"> Abilities ON
+      </label>
+    </div>
+    <div class="space-y-5">
+      <div>
+        <div class="text-xs text-gray-400 font-semibold mb-2" id="opp-chart-label">Opponent</div>
+        <div class="overflow-x-auto"><table id="bp-opp-chart" class="bp-chart border-collapse text-center"></table></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-400 font-semibold mb-2" id="my-chart-label">My Team</div>
+        <div class="overflow-x-auto"><table id="bp-my-chart" class="bp-chart border-collapse text-center"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Comparison -->
+  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+    <div class="flex items-center gap-4 mb-3">
+      <div class="section-header mb-0">Stats Comparison</div>
+      <select id="stat-sort-key" class="team-select text-xs" onchange="renderStats()">
+        <option value="">Sort by…</option>
+        <option value="hp">HP</option>
+        <option value="atk">Atk</option>
+        <option value="defense">Def</option>
+        <option value="spa">SpA</option>
+        <option value="spd">SpD</option>
+        <option value="spe">Spe</option>
+        <option value="bst">BST</option>
+      </select>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="text-xs text-gray-500 font-semibold mb-1" id="my-stats-label">My Team</div>
+        <div class="overflow-x-auto"><table id="my-stats-table" class="stat-table"></table></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 font-semibold mb-1" id="opp-stats-label">Opponent</div>
+        <div class="overflow-x-auto"><table id="opp-stats-table" class="stat-table"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Speed Comparison -->
+  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+    <div class="section-header">Speed Comparison Chart</div>
+    <div class="text-xs text-gray-600 mb-3">
+      Cell = min EVs for your pokemon to outspeed opponent at their configured speed &nbsp;·&nbsp;
+      <span style="color:#4ade80">0</span> = already faster &nbsp;·&nbsp;
+      <span style="color:#f87171">N/A</span> = impossible even at 252 EVs &nbsp;·&nbsp;
+      <span style="color:#9ca3af">TIE</span> = exact tie &nbsp;·&nbsp;
+      Nature: <b>+</b>=×1.1 &nbsp; •=×1.0 &nbsp; <b>−</b>=×0.9 &nbsp; (Level 100)
+    </div>
+    <div class="overflow-x-auto"><div id="bp-speed-chart"></div></div>
+  </div>
+
+  <!-- Move Coverage -->
+  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+    <div class="section-header">Move Coverage</div>
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-3">
+      <select id="mc-category-filter"
+              onchange="renderMoveCoverage()"
+              class="rounded-lg border border-gray-700 bg-gray-800 text-white text-xs px-3 py-1.5 focus:border-yellow-500 focus:outline-none">
+        <option value="">All Categories</option>
+      </select>
+      <div class="text-xs text-gray-600 text-center">
+        Sprites <span style="color:#60a5fa;font-weight:700">left</span> (blue border) = My Team &nbsp;·&nbsp;
+        Sprites <span style="color:#f87171;font-weight:700">right</span> (red border) = Opponent &nbsp;·&nbsp;
+        Only moves present on at least one team are shown
+      </div>
+    </div>
+    <div id="bp-move-coverage" style="display:flex;flex-direction:column;align-items:center;"><div class="text-gray-600 text-sm">Select teams to see move coverage.</div></div>
+  </div>
+
+</div>
+
+<script>
+const COACHES = {{ coaches_json | safe }};
+
+const TYPE_COLORS = {
+  Normal:"#9ca3af",Fire:"#ef4444",Water:"#3b82f6",Electric:"#eab308",
+  Grass:"#22c55e",Ice:"#67e8f9",Fighting:"#b45309",Poison:"#a855f7",
+  Ground:"#d97706",Flying:"#818cf8",Psychic:"#ec4899",Bug:"#84cc16",
+  Rock:"#78716c",Ghost:"#6d28d9",Dragon:"#7c3aed",Dark:"#374151",
+  Steel:"#94a3b8",Fairy:"#f9a8d4"
+};
+
+const TYPES = ["Normal","Fire","Water","Grass","Electric","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
+
+// Gen 8 type effectiveness matrix [attacker][defender] ×100
+const EFF_MATRIX = [
+  [100,100,100,100,100,100,100,100,100,100,100,100,50,0,100,100,50,100],
+  [100,50,50,200,100,200,100,100,100,100,100,200,50,100,50,100,200,100],
+  [100,200,50,100,100,100,100,100,200,100,100,100,200,100,50,100,100,100],
+  [100,50,200,50,100,100,100,50,200,50,100,50,200,100,50,100,50,100],
+  [100,100,200,50,50,100,100,100,0,200,100,100,100,100,50,100,100,100],
+  [100,50,50,200,100,50,100,100,200,200,100,100,100,100,200,100,50,100],
+  [200,100,100,100,100,200,100,50,100,50,50,50,200,0,100,200,200,50],
+  [100,100,100,200,100,100,100,50,50,100,200,100,50,50,100,100,0,200],
+  [100,200,100,100,200,100,100,200,100,0,100,50,200,100,100,100,200,100],
+  [100,100,100,200,50,100,200,100,100,100,100,200,50,100,100,100,50,100],
+  [100,100,100,100,100,100,200,200,100,100,50,100,100,100,100,0,50,100],
+  [100,50,100,200,100,100,50,50,100,50,200,100,100,50,100,200,50,50],
+  [100,200,100,100,100,200,50,100,50,200,100,200,100,100,100,100,50,100],
+  [0,100,100,100,100,100,100,100,100,100,200,100,100,200,100,50,100,100],
+  [100,100,100,100,100,100,100,100,100,100,100,100,100,100,200,100,50,0],
+  [100,100,100,100,100,100,50,100,100,100,200,100,100,200,100,50,100,50],
+  [100,50,50,50,100,200,100,100,100,100,100,100,200,100,100,100,50,200],
+  [100,50,100,100,100,100,200,50,100,100,100,100,100,100,200,200,50,100],
+];
+
+const ABILITY_IMMUNITIES = {
+  "Levitate":["Ground"],"Earth Eater":["Ground"],
+  "Flash Fire":["Fire"],"Well-Baked Body":["Fire"],
+  "Volt Absorb":["Electric"],"Lightning Rod":["Electric"],"Motor Drive":["Electric"],
+  "Water Absorb":["Water"],"Dry Skin":["Water"],
+  "Sap Sipper":["Grass"],
+  "Wind Rider":["Flying"],
+};
+
+function getAbilityImmunities(p) {
+  const imm = {};
+  [p.ability1, p.ability2, p.ability3].filter(Boolean).forEach(ab => {
+    const types = ABILITY_IMMUNITIES[ab];
+    if (types) types.forEach(t => { imm[t] = 0; });
+  });
+  return imm;
+}
+
+// ── Move categories ──
+const BP_MOVE_CATS = [
+  { label:"Hazards", color:"#78350f", moves:[
+    {name:"Stealth Rock",color:"#92400e"},{name:"Spikes",color:"#44403c"},
+    {name:"Toxic Spikes",color:"#581c87"},{name:"Sticky Web",color:"#3f6212"},
+    {name:"Defog",color:"#4c1d95"},{name:"Rapid Spin",color:"#1f2937"},
+    {name:"Court Change",color:"#1e3a8a"},{name:"Mortal Spin",color:"#064e3b"},
+  ]},
+  { label:"Support", color:"#1e3a5f", moves:[
+    {name:"Wish",color:"#1f2937"},{name:"Heal Bell",color:"#374151"},
+    {name:"Aromatherapy",color:"#14532d"},{name:"Reflect",color:"#831843"},
+    {name:"Light Screen",color:"#9d174d"},{name:"Aurora Veil",color:"#1e3a8a"},
+    {name:"Safeguard",color:"#1f2937"},{name:"Lucky Chant",color:"#374151"},
+  ]},
+  { label:"Momentum", color:"#14532d", moves:[
+    {name:"Volt Switch",color:"#713f12"},{name:"U-turn",color:"#166534"},
+    {name:"Baton Pass",color:"#1f2937"},{name:"Teleport",color:"#831843"},
+    {name:"Parting Shot",color:"#1c1917"},{name:"Flip Turn",color:"#1f2937"},
+    {name:"Chilly Reception",color:"#1f2937"},{name:"Shed Tail",color:"#1f2937"},
+  ]},
+  { label:"Priority", color:"#1e3a8a", moves:[
+    {name:"Fake Out",color:"#1f2937"},{name:"Aqua Jet",color:"#1e3a8a"},
+    {name:"Bullet Punch",color:"#374151"},{name:"Mach Punch",color:"#7f1d1d"},
+    {name:"Ice Shard",color:"#1e3a5f"},{name:"Quick Attack",color:"#1f2937"},
+    {name:"Shadow Sneak",color:"#3b0764"},{name:"Sucker Punch",color:"#1c1917"},
+    {name:"Vacuum Wave",color:"#7f1d1d"},{name:"Grassy Glide",color:"#14532d"},
+    {name:"Extreme Speed",color:"#1f2937"},{name:"First Impression",color:"#3f6212"},
+    {name:"Accelerock",color:"#292524"},{name:"Water Shuriken",color:"#1e3a8a"},
+    {name:"Jet Punch",color:"#1e3a8a"},{name:"Upper Hand",color:"#7f1d1d"},
+  ]},
+  { label:"Phasing", color:"#2e1065", moves:[
+    {name:"Dragon Tail",color:"#4c1d95"},{name:"Roar",color:"#1f2937"},
+    {name:"Whirlwind",color:"#1e3a5f"},{name:"Circle Throw",color:"#7f1d1d"},
+    {name:"Haze",color:"#1c1917"},{name:"Perish Song",color:"#1e1b4b"},
+  ]},
+  { label:"Tactical Attacks", color:"#0f172a", moves:[
+    {name:"Knock Off",color:"#7f1d1d"},{name:"Body Press",color:"#7f1d1d"},
+    {name:"Freeze-Dry",color:"#1e3a5f"},{name:"Brick Break",color:"#7f1d1d"},
+    {name:"Psychic Fangs",color:"#831843"},{name:"Foul Play",color:"#1c1917"},
+    {name:"Trailblaze",color:"#14532d"},{name:"Stored Power",color:"#831843"},
+    {name:"Power Trip",color:"#1c1917"},{name:"Ice Spinner",color:"#1e3a5f"},
+    {name:"Chilling Water",color:"#1e3a8a"},{name:"Poltergeist",color:"#3b0764"},
+    {name:"Body Slam",color:"#374151"},{name:"Superpower",color:"#7f1d1d"},
+  ]},
+  { label:"Tactical Status", color:"#0c0a09", moves:[
+    {name:"Haze",color:"#1c1917"},{name:"Clear Smog",color:"#4c1d95"},
+    {name:"Recycle",color:"#1f2937"},{name:"Tailwind",color:"#1f2937"},
+    {name:"Encore",color:"#1f2937"},{name:"Gravity",color:"#1e3a5f"},
+    {name:"Taunt",color:"#1c1917"},{name:"Switcheroo",color:"#1f2937"},
+    {name:"Trick",color:"#1f2937"},{name:"Trick Room",color:"#1f2937"},
+    {name:"Healing Wish",color:"#831843"},{name:"Memento",color:"#1c1917"},
+    {name:"Instruct",color:"#4c1d95"},{name:"Magic Coat",color:"#1f2937"},
+    {name:"Disable",color:"#1f2937"},{name:"Embargo",color:"#1f2937"},
+    {name:"Psychic Noise",color:"#831843"},{name:"Alluring Voice",color:"#9d174d"},
+  ]},
+  { label:"Status", color:"#3b0764", moves:[
+    {name:"Toxic",color:"#581c87"},{name:"Will-O-Wisp",color:"#9a3412"},
+    {name:"Thunder Wave",color:"#713f12"},{name:"Glare",color:"#374151"},
+    {name:"Spore",color:"#14532d"},{name:"Stun Spore",color:"#166534"},
+    {name:"Sleep Powder",color:"#14532d"},{name:"Nuzzle",color:"#713f12"},
+    {name:"Hypnosis",color:"#3b0764"},{name:"Yawn",color:"#1f2937"},
+  ]},
+  { label:"Trap", color:"#1c1917", moves:[
+    {name:"Infestation",color:"#3f6212"},{name:"Block",color:"#1f2937"},
+    {name:"Mean Look",color:"#1f2937"},{name:"Fire Spin",color:"#9a3412"},
+    {name:"Whirlpool",color:"#1e3a8a"},{name:"Sand Tomb",color:"#92400e"},
+    {name:"Thunder Cage",color:"#713f12"},{name:"Wrap",color:"#1f2937"},
+    {name:"Pursuit",color:"#1c1917"},
+  ]},
+  { label:"Recovery", color:"#0f2027", moves:[
+    {name:"Soft-Boiled",color:"#1f2937"},{name:"Recover",color:"#1f2937"},
+    {name:"Roost",color:"#3b0764"},{name:"Slack Off",color:"#1f2937"},
+    {name:"Synthesis",color:"#14532d"},{name:"Milk Drink",color:"#1f2937"},
+    {name:"Moonlight",color:"#831843"},{name:"Morning Sun",color:"#713f12"},
+    {name:"Shore Up",color:"#92400e"},{name:"Strength Sap",color:"#14532d"},
+    {name:"Heal Order",color:"#3f6212"},{name:"Life Dew",color:"#1e3a8a"},
+    {name:"Pain Split",color:"#1f2937"},{name:"Rest",color:"#1e3a5f"},
+    {name:"Jungle Healing",color:"#14532d"},
+  ]},
+  { label:"Set Up", color:"#0f172a", moves:[
+    {name:"Swords Dance",color:"#1f2937"},{name:"Dragon Dance",color:"#3b0764"},
+    {name:"Nasty Plot",color:"#1c1917"},{name:"Calm Mind",color:"#831843"},
+    {name:"Cosmic Power",color:"#1f2937"},{name:"Agility",color:"#1f2937"},
+    {name:"Rock Polish",color:"#292524"},{name:"Bulk Up",color:"#7f1d1d"},
+    {name:"Quiver Dance",color:"#3b0764"},{name:"Curse",color:"#1f2937"},
+    {name:"Tail Glow",color:"#3f6212"},{name:"Hone Claws",color:"#1c1917"},
+    {name:"Iron Defense",color:"#374151"},{name:"Shell Smash",color:"#1f2937"},
+    {name:"Amnesia",color:"#831843"},{name:"Belly Drum",color:"#7f1d1d"},
+    {name:"Minimize",color:"#1f2937"},{name:"Shift Gear",color:"#374151"},
+    {name:"Coil",color:"#14532d"},{name:"Cotton Guard",color:"#3f6212"},
+    {name:"Acid Armor",color:"#581c87"},{name:"Autotomize",color:"#374151"},
+    {name:"Stockpile",color:"#1f2937"},{name:"Clangorous Soul",color:"#4c1d95"},
+    {name:"Victory Dance",color:"#14532d"},{name:"Torch Song",color:"#9a3412"},
+    {name:"Work Up",color:"#1f2937"},
+  ]},
+  { label:"Weather", color:"#1c1917", moves:[
+    {name:"Sunny Day",color:"#9a3412"},{name:"Rain Dance",color:"#1e3a8a"},
+    {name:"Sandstorm",color:"#92400e"},{name:"Hail",color:"#1f2937"},
+    {name:"Snow",color:"#1e3a5f"},{name:"Weather Ball",color:"#1f2937"},
+  ]},
+  { label:"Doubles Moves", color:"#172554", moves:[
+    {name:"Follow Me",color:"#1f2937"},{name:"Rage Powder",color:"#3f6212"},
+    {name:"Acid Spray",color:"#581c87"},{name:"After You",color:"#1f2937"},
+    {name:"Ally Switch",color:"#1f2937"},{name:"Beat Up",color:"#1c1917"},
+    {name:"Breaking Swipe",color:"#3f6212"},{name:"Bulldoze",color:"#92400e"},
+    {name:"Charm",color:"#831843"},{name:"Coaching",color:"#7f1d1d"},
+    {name:"Eerie Impulse",color:"#713f12"},{name:"Electro Web",color:"#713f12"},
+    {name:"Fake Tears",color:"#1f2937"},{name:"Heal Pulse",color:"#831843"},
+    {name:"Heat Wave",color:"#9a3412"},{name:"Helping Hand",color:"#1f2937"},
+    {name:"Howl",color:"#1f2937"},{name:"Icy Wind",color:"#1e3a5f"},
+    {name:"Imprison",color:"#1f2937"},{name:"Muddy Water",color:"#92400e"},
+    {name:"Pollen Puff",color:"#3f6212"},{name:"Quick Guard",color:"#1f2937"},
+    {name:"Screech",color:"#1f2937"},{name:"Snarl",color:"#1c1917"},
+    {name:"Super Fang",color:"#1f2937"},{name:"Wide Guard",color:"#1f2937"},
+    {name:"Dragon Cheer",color:"#3b0764"},
+  ]},
+];
+
+// ── State ──
+let myTeam  = [];
+let oppTeam = [];
+const mySpeedSettings  = {};
+const oppSpeedSettings = {};
+
+// ── Init ──
+function initSelects() {
+  const myEl  = document.getElementById("my-team-select");
+  const oppEl = document.getElementById("opp-team-select");
+  COACHES.forEach(c => {
+    const label = (c.team_name || c.name) + " (" + c.name + ")";
+    myEl.innerHTML  += `<option value="${c.id}">${label}</option>`;
+    oppEl.innerHTML += `<option value="${c.id}">${label}</option>`;
+  });
+  const filterEl = document.getElementById("mc-category-filter");
+  BP_MOVE_CATS.forEach(cat => {
+    filterEl.innerHTML += `<option value="${cat.label}">${cat.label}</option>`;
+  });
+}
+
+function loadTeams() {
+  const myId  = parseInt(document.getElementById("my-team-select").value);
+  const oppId = parseInt(document.getElementById("opp-team-select").value);
+  const myCoach  = COACHES.find(c => c.id === myId)  || null;
+  const oppCoach = COACHES.find(c => c.id === oppId) || null;
+  myTeam  = myCoach  ? myCoach.pokemon  : [];
+  oppTeam = oppCoach ? oppCoach.pokemon : [];
+  const myLabel  = myCoach  ? (myCoach.team_name  || myCoach.name)  : "My Team";
+  const oppLabel = oppCoach ? (oppCoach.team_name || oppCoach.name) : "Opponent";
+  document.getElementById("my-chart-label").textContent  = myLabel  + " (My Team)";
+  document.getElementById("opp-chart-label").textContent = oppLabel + " (Opponent)";
+  document.getElementById("my-stats-label").textContent  = myLabel;
+  document.getElementById("opp-stats-label").textContent = oppLabel;
+  renderAll();
+}
+
+function renderAll() {
+  renderTeamMU();
+  renderTypeChart("bp-opp-chart", oppTeam);
+  renderTypeChart("bp-my-chart",  myTeam);
+  renderStats();
+  renderSpeedChart();
+  renderMoveCoverage();
+}
+
+// ── helpers ──
+function typeBadge(type) {
+  const col = TYPE_COLORS[type] || "#4b5563";
+  return `<span class="type-badge" style="background:${col}">${type}</span>`;
+}
+
+function statColor(val, stat) {
+  if (!val) return "color:#4b5563";
+  const t = {hp:[50,75,100,130],atk:[50,75,100,130],defense:[50,75,100,130],
+             spa:[50,75,100,130],spd:[50,75,100,130],spe:[40,65,95,120],
+             bst:[300,420,520,600]}[stat] || [50,75,100,130];
+  if (val >= t[3]) return "background:rgba(34,197,94,0.35);color:#4ade80;font-weight:700";
+  if (val >= t[2]) return "background:rgba(34,197,94,0.15);color:#86efac";
+  if (val <= t[0]) return "background:rgba(239,68,68,0.35);color:#fca5a5";
+  if (val <= t[1]) return "background:rgba(239,68,68,0.15);color:#f87171";
+  return "color:#9ca3af";
+}
+
+// ── Team MU ──
+function renderTeamMU() {
+  const el = document.getElementById("bp-team-mu");
+  if (!myTeam.length && !oppTeam.length) {
+    el.innerHTML = `<div class="text-gray-600 text-sm">Select teams above to see the matchup.</div>`;
+    return;
+  }
+  function teamRow(team, label, color) {
+    if (!team.length) return "";
+    const c = color || "#374151";
+    const sorted = [...team].sort((a,b) => (b.spe||0) - (a.spe||0));
+    const cards = sorted.map(p => {
+      const types = [p.type1,p.type2].filter(Boolean).map(t=>typeBadge(t)).join("");
+      const abs = [p.ability1,p.ability2,p.ability3].filter(Boolean)
+        .map(a=>`<div style="font-size:0.45rem;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</div>`).join("");
+      return `<div style="display:flex;flex-direction:column;align-items:center;min-width:76px;max-width:86px;padding:4px;border:1px solid ${c}55;border-radius:6px;background:rgba(17,24,39,0.7);flex-shrink:0">
+        <div style="font-size:0.5rem;color:#d1d5db;font-weight:700;text-align:center;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">${p.name}</div>
+        <div style="font-size:0.48rem;color:#94a3b8;margin-bottom:2px">Spe ${p.spe||0}</div>
+        <img src="${p.sprite}" style="width:46px;height:46px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+        <div style="margin:2px 0;display:flex;flex-wrap:wrap;justify-content:center">${types}</div>
+        <div style="width:100%;margin-top:1px">${abs}</div>
+      </div>`;
+    }).join("");
+    return `<div style="margin-bottom:10px">
+      <div style="font-size:0.65rem;color:${c};font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">${label}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">${cards}</div>
+    </div>`;
+  }
+  const myCoach  = COACHES.find(c => c.pokemon === myTeam);
+  const oppCoach = COACHES.find(c => c.pokemon === oppTeam);
+  el.innerHTML =
+    teamRow(myTeam,  document.getElementById("my-chart-label").textContent,  myCoach?.color) +
+    (myTeam.length && oppTeam.length ? `<div style="border-top:1px solid rgba(55,65,81,0.4);margin:8px 0"></div>` : "") +
+    teamRow(oppTeam, document.getElementById("opp-chart-label").textContent, oppCoach?.color);
+}
+
+// ── Type Chart ──
+function renderTypeChart(tableId, pokemon) {
+  const tableEl = document.getElementById(tableId);
+  tableEl.innerHTML = "";
+  const abOn = document.getElementById("bp-abilities").checked;
+
+  // Header
+  const thead = document.createElement("thead");
+  const hRow  = document.createElement("tr");
+  const corner = document.createElement("th");
+  corner.style.cssText = "color:#6b7280;font-weight:normal;text-align:left;padding:2px 4px;font-size:0.5rem;width:80px;border:1px solid rgba(55,65,81,0.2)";
+  corner.textContent = "Def ↓ / Atk →";
+  hRow.appendChild(corner);
+  TYPES.forEach(t => {
+    const th = document.createElement("th");
+    const col = TYPE_COLORS[t] || "#4b5563";
+    th.style.cssText = `background:${col}22;color:${col};writing-mode:vertical-lr;transform:rotate(180deg);height:52px;font-size:0.5rem;font-weight:700;padding:2px 0;width:28px;border:1px solid rgba(55,65,81,0.2)`;
+    th.textContent = t;
+    hRow.appendChild(th);
+  });
+  thead.appendChild(hRow);
+  tableEl.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  if (!pokemon.length) {
+    const tr=document.createElement("tr"); const td=document.createElement("td");
+    td.colSpan=19; td.style.cssText="color:#4b5563;font-size:0.75rem;padding:8px;text-align:center";
+    td.textContent="No pokemon selected"; tr.appendChild(td); tbody.appendChild(tr);
+    tableEl.appendChild(tbody); return;
+  }
+
+  const colMults = TYPES.map(() => []);
+  pokemon.forEach(p => {
+    const dts = [p.type1,p.type2].filter(Boolean);
+    const imm = abOn ? getAbilityImmunities(p) : {};
+    const tr  = document.createElement("tr");
+    const nm  = document.createElement("td");
+    nm.style.cssText = "font-size:0.58rem;color:#9ca3af;text-align:left;padding:1px 4px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;border:1px solid rgba(55,65,81,0.2)";
+    const immK = Object.keys(imm);
+    nm.textContent = p.name + (immK.length?" ★":"");
+    if (immK.length) nm.title = "Ability: " + immK.join(", ") + " immune";
+    tr.appendChild(nm);
+    TYPES.forEach((at, ai) => {
+      let mult;
+      if (imm[at]===0) { mult=0; }
+      else {
+        mult=100;
+        dts.forEach(dt => { const di=TYPES.indexOf(dt); if(di>=0) mult=mult*EFF_MATRIX[ai][di]/100; });
+      }
+      colMults[ai].push(mult);
+      const td = document.createElement("td");
+      td.style.cssText = "width:28px;height:22px;text-align:center;font-size:0.58rem;border:1px solid rgba(55,65,81,0.2);padding:0";
+      const isAb = abOn && imm[at]===0;
+      if (isAb)         { td.style.cssText+=";background:rgba(139,92,246,0.3);color:#c4b5fd"; td.textContent="0"; td.title="Ability immune"; }
+      else if(mult===0) { td.style.cssText+=";background:rgba(59,130,246,0.35);color:#93c5fd"; td.textContent="0"; }
+      else if(mult<=25) { td.style.cssText+=";background:rgba(34,197,94,0.45);color:#4ade80;font-weight:700"; td.textContent="0.25"; }
+      else if(mult<=50) { td.style.cssText+=";background:rgba(34,197,94,0.2);color:#86efac"; td.textContent="0.5"; }
+      else if(mult===100){ td.style.cssText+=";color:#6b7280"; td.textContent="1"; }
+      else if(mult<=200) { td.style.cssText+=";background:rgba(251,146,60,0.25);color:#fb923c;font-weight:600"; td.textContent="2"; }
+      else               { td.style.cssText+=";background:rgba(239,68,68,0.4);color:#f87171;font-weight:700"; td.textContent="4"; }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // Total row
+  function mts(m){if(m===0)return -2;if(m<=25)return -2;if(m<=50)return -1;if(m<=100)return 0;if(m<=200)return 1;return 2;}
+  const totRow = document.createElement("tr");
+  totRow.style.borderTop = "2px solid rgba(55,65,81,0.6)";
+  const tl = document.createElement("td");
+  tl.style.cssText = "font-size:0.58rem;color:#6b7280;text-align:left;padding:2px 4px;font-weight:700;border:1px solid rgba(55,65,81,0.2)";
+  tl.textContent = "Total"; totRow.appendChild(tl);
+  TYPES.forEach((_,ai) => {
+    const ms = colMults[ai];
+    const sc = ms.reduce((a,m)=>a+mts(m),0);
+    const td = document.createElement("td");
+    td.style.cssText = "width:28px;height:22px;text-align:center;font-size:0.6rem;font-weight:700;border:1px solid rgba(55,65,81,0.2);padding:0";
+    const w4=ms.filter(m=>m>200).length,w2=ms.filter(m=>m>100&&m<=200).length,
+          im=ms.filter(m=>m===0).length,r5=ms.filter(m=>m>25&&m<=50).length,
+          r2=ms.filter(m=>m>0&&m<=25).length;
+    const pts=[];if(w4)pts.push(`${w4}×4`);if(w2)pts.push(`${w2}×2`);
+    if(r5)pts.push(`${r5}×0.5`);if(r2)pts.push(`${r2}×0.25`);if(im)pts.push(`${im} immune`);
+    td.title = pts.join(", ")||"neutral";
+    if(sc===0){td.style.color="#6b7280";td.textContent="0";}
+    else if(sc<=-3){td.style.cssText+=";background:rgba(34,197,94,0.3);color:#4ade80";td.textContent=sc;}
+    else if(sc<0)  {td.style.cssText+=";background:rgba(34,197,94,0.1);color:#86efac";td.textContent=sc;}
+    else if(sc>=3) {td.style.cssText+=";background:rgba(239,68,68,0.45);color:#fca5a5";td.textContent=sc;}
+    else if(sc===2){td.style.cssText+=";background:rgba(239,68,68,0.25);color:#f87171";td.textContent=sc;}
+    else           {td.style.cssText+=";background:rgba(251,146,60,0.2);color:#fb923c";td.textContent=sc;}
+    totRow.appendChild(td);
+  });
+  tbody.appendChild(totRow);
+
+  // Types footer row
+  const typesRow = document.createElement("tr");
+  const tfl = document.createElement("td");
+  tfl.style.cssText = "font-size:0.5rem;color:#6b7280;text-align:left;padding:2px 4px;border:1px solid rgba(55,65,81,0.2)";
+  tfl.textContent = "Types"; typesRow.appendChild(tfl);
+  TYPES.forEach(t => {
+    const col = TYPE_COLORS[t]||"#4b5563";
+    const td = document.createElement("td");
+    td.style.cssText = `background:${col}33;color:${col};font-size:0.45rem;font-weight:700;text-align:center;border:1px solid rgba(55,65,81,0.2);padding:1px 0`;
+    td.textContent = t; typesRow.appendChild(td);
+  });
+  tbody.appendChild(typesRow);
+  tableEl.appendChild(tbody);
+}
+
+// ── Stats ──
+function renderStats() {
+  const key = document.getElementById("stat-sort-key").value;
+  buildStatTable("my-stats-table",  myTeam,  key);
+  buildStatTable("opp-stats-table", oppTeam, key);
+}
+
+function buildStatTable(tableId, team, sortKey) {
+  const el = document.getElementById(tableId);
+  el.innerHTML = "";
+  const COLS   = ["hp","atk","defense","spa","spd","spe","bst"];
+  const LABELS = ["HP","Atk","Def","SpA","SpD","Spe","BST"];
+
+  const thead = document.createElement("thead");
+  const hRow  = document.createElement("tr");
+  const th0   = document.createElement("th");
+  th0.textContent="Pkm"; th0.style.width="26px"; hRow.appendChild(th0);
+  COLS.forEach((k,i) => {
+    const th = document.createElement("th"); th.textContent=LABELS[i];
+    if(k===sortKey) th.style.color="#facc15";
+    hRow.appendChild(th);
+  });
+  thead.appendChild(hRow); el.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  if (!team.length) {
+    const tr=document.createElement("tr"); const td=document.createElement("td");
+    td.colSpan=8; td.style.cssText="color:#4b5563;font-size:0.7rem;padding:6px;text-align:center";
+    td.textContent="No pokemon selected"; tr.appendChild(td); tbody.appendChild(tr);
+    el.appendChild(tbody); return;
+  }
+
+  let sorted = [...team];
+  if (sortKey) sorted.sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0));
+  const avgs = {};
+  COLS.forEach(k => { avgs[k]=Math.round(sorted.reduce((s,p)=>s+(p[k]||0),0)/sorted.length); });
+
+  sorted.forEach(p => {
+    const tr = document.createElement("tr");
+    const sp = document.createElement("td");
+    sp.style.cssText="padding:1px;border:1px solid rgba(55,65,81,0.2)";
+    sp.innerHTML=`<img src="${p.sprite}" title="${p.name}" style="width:22px;height:22px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">`;
+    tr.appendChild(sp);
+    COLS.forEach(k => {
+      const td=document.createElement("td");
+      td.style.cssText=statColor(p[k]||0,k)+";font-size:0.62rem;border:1px solid rgba(55,65,81,0.15);padding:2px 3px";
+      td.textContent=p[k]||0; tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  const ave = document.createElement("tr"); ave.className="ave-row";
+  const al  = document.createElement("td");
+  al.style.cssText="font-size:0.55rem;color:#6b7280;padding:2px 4px;border:1px solid rgba(55,65,81,0.2);text-align:center";
+  al.textContent="Ave"; ave.appendChild(al);
+  COLS.forEach(k => {
+    const td=document.createElement("td");
+    td.style.cssText="font-size:0.62rem;padding:2px 3px;border:1px solid rgba(55,65,81,0.2)";
+    td.textContent=avgs[k]; ave.appendChild(td);
+  });
+  tbody.appendChild(ave);
+  el.appendChild(tbody);
+}
+
+// ── Speed Chart ──
+// Level 100 formula: floor((2*base + iv + floor(ev/4) + 5) * nature)
+function calcSpe(base, iv, ev, nat) {
+  return Math.floor((2*base + iv + Math.floor(ev/4) + 5) * nat);
+}
+
+function minEvsToOutspeed(userBase, userIv, userNat, targetSpe) {
+  for (let ev=0; ev<=252; ev+=4) {
+    const s = calcSpe(userBase, userIv, ev, userNat);
+    if (s === targetSpe) return "TIE";
+    if (s > targetSpe)   return ev;
+  }
+  return null; // N/A
+}
+
+function gs(obj, name, key, def) {
+  if (!obj[name]) obj[name]={iv:31,ev:0,nature:1.0};
+  return obj[name][key]!==undefined ? obj[name][key] : def;
+}
+
+function renderSpeedChart() {
+  const cont = document.getElementById("bp-speed-chart");
+  if (!myTeam.length && !oppTeam.length) {
+    cont.innerHTML=`<div class="text-gray-600 text-xs">Select teams to see speed comparison.</div>`; return;
+  }
+
+  const table = document.createElement("table");
+  table.className = "spd-table";
+
+  // Opponent column headers
+  const thead = document.createElement("thead");
+  const hRow  = document.createElement("tr");
+  const corn  = document.createElement("th");
+  corn.style.cssText="min-width:100px;text-align:center;padding:4px;background:#0f172a;vertical-align:bottom";
+  corn.innerHTML=`<div style="font-size:0.55rem;color:#6b7280">My Team ↓ / Opp →</div>`;
+  hRow.appendChild(corn);
+
+  oppTeam.forEach(p => {
+    const iv  = gs(oppSpeedSettings,p.name,"iv",31);
+    const ev  = gs(oppSpeedSettings,p.name,"ev",0);
+    const nat = gs(oppSpeedSettings,p.name,"nature",1.0);
+    const speStat = calcSpe(p.spe||0, iv, ev, nat);
+    const th = document.createElement("th");
+    th.style.cssText="text-align:center;padding:4px 2px;min-width:70px;background:#0f172a";
+    th.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+      <img src="${p.sprite}" style="width:28px;height:28px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+      <div style="font-size:0.5rem;color:#d1d5db;font-weight:700;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
+      <div style="font-size:0.45rem;color:#6b7280">${p.spe||0} base</div>
+      <select class="spd-select" onchange="setOS('${p.name}','nature',parseFloat(this.value));renderSpeedChart()">
+        <option value="1.1" ${nat===1.1?"selected":""}>+ nature</option>
+        <option value="1.0" ${nat===1.0?"selected":""}>• neutral</option>
+        <option value="0.9" ${nat===0.9?"selected":""}>− nature</option>
+      </select>
+      <div style="display:flex;gap:2px;align-items:center">
+        <span style="font-size:0.42rem;color:#6b7280">EV</span>
+        <input class="spd-input" type="number" min="0" max="252" step="4" value="${ev}"
+          onchange="setOS('${p.name}','ev',Math.min(252,Math.max(0,parseInt(this.value)||0)));renderSpeedChart()">
+        <span style="font-size:0.42rem;color:#6b7280">IV</span>
+        <input class="spd-input" type="number" min="0" max="31" value="${iv}"
+          onchange="setOS('${p.name}','iv',Math.min(31,Math.max(0,parseInt(this.value)||0)));renderSpeedChart()">
+      </div>
+      <div style="font-size:0.55rem;color:#facc15;font-weight:700">Spe: ${speStat}</div>
+    </div>`;
+    hRow.appendChild(th);
+  });
+  thead.appendChild(hRow);
+  table.appendChild(thead);
+
+  // Body: one row per user pokemon
+  const tbody = document.createElement("tbody");
+  myTeam.forEach(p => {
+    const uIv  = gs(mySpeedSettings,p.name,"iv",31);
+    const uEv  = gs(mySpeedSettings,p.name,"ev",0);
+    const uNat = gs(mySpeedSettings,p.name,"nature",1.0);
+    const speAtEv = calcSpe(p.spe||0, uIv, uEv, uNat);
+
+    const tr = document.createElement("tr");
+    const rhdr = document.createElement("td");
+    rhdr.style.cssText="background:#0f172a;padding:3px 4px;text-align:center;vertical-align:middle";
+    rhdr.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+      <img src="${p.sprite}" style="width:26px;height:26px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+      <div style="font-size:0.5rem;color:#d1d5db;font-weight:700;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
+      <div style="font-size:0.45rem;color:#6b7280">${p.spe||0} base</div>
+      <select class="spd-select" onchange="setMS('${p.name}','nature',parseFloat(this.value));renderSpeedChart()">
+        <option value="1.1" ${uNat===1.1?"selected":""}>+ nature</option>
+        <option value="1.0" ${uNat===1.0?"selected":""}>• neutral</option>
+        <option value="0.9" ${uNat===0.9?"selected":""}>− nature</option>
+      </select>
+      <div style="display:flex;gap:2px;align-items:center">
+        <span style="font-size:0.42rem;color:#6b7280">EV</span>
+        <input class="spd-input" type="number" min="0" max="252" step="4" value="${uEv}"
+          onchange="setMS('${p.name}','ev',Math.min(252,Math.max(0,parseInt(this.value)||0)));renderSpeedChart()">
+        <span style="font-size:0.42rem;color:#6b7280">IV</span>
+        <input class="spd-input" type="number" min="0" max="31" value="${uIv}"
+          onchange="setMS('${p.name}','iv',Math.min(31,Math.max(0,parseInt(this.value)||0)));renderSpeedChart()">
+      </div>
+      <div style="font-size:0.55rem;color:#facc15;font-weight:700">Spe: ${speAtEv}</div>
+    </div>`;
+    tr.appendChild(rhdr);
+
+    oppTeam.forEach(opp => {
+      const oppSpe = calcSpe(opp.spe||0,
+        gs(oppSpeedSettings,opp.name,"iv",31),
+        gs(oppSpeedSettings,opp.name,"ev",0),
+        gs(oppSpeedSettings,opp.name,"nature",1.0));
+      const td = document.createElement("td");
+      td.style.cssText="padding:4px;text-align:center;font-size:0.65rem;font-weight:700";
+
+      if (speAtEv > oppSpe) {
+        // Already outspeeds at configured EVs
+        td.style.color="#4ade80"; td.style.background="rgba(34,197,94,0.1)"; td.textContent="✓";
+        td.title=`${speAtEv} > ${oppSpe}`;
+      } else if (speAtEv === oppSpe) {
+        td.style.color="#9ca3af"; td.textContent="TIE";
+        td.title=`Both ${speAtEv}`;
+      } else {
+        // Find minimum EVs from current setting upward
+        let minEv = null;
+        for (let ev = uEv; ev <= 252; ev += 4) {
+          const s = calcSpe(p.spe||0, uIv, ev, uNat);
+          if (s > oppSpe) { minEv = ev; break; }
+        }
+        if (minEv === null) {
+          td.style.color="#f87171"; td.style.background="rgba(239,68,68,0.1)"; td.textContent="N/A";
+          td.title=`Can't outspeed ${oppSpe} even at 252 EVs`;
+        } else {
+          const needed = minEv - uEv;
+          td.title=`Need ${minEv} total EVs (+${needed} more) to outspeed ${oppSpe}`;
+          if (needed<=60)  { td.style.color="#86efac"; td.textContent=`+${needed}`; }
+          else if(needed<=140){ td.style.color="#facc15"; td.textContent=`+${needed}`; }
+          else             { td.style.color="#fb923c"; td.textContent=`+${needed}`; }
+        }
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  if (!myTeam.length) {
+    const tr=document.createElement("tr"); const td=document.createElement("td");
+    td.colSpan=oppTeam.length+1; td.style.cssText="color:#4b5563;font-size:0.75rem;padding:8px;text-align:center";
+    td.textContent="Select your team to see speed comparison"; tr.appendChild(td); tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  cont.innerHTML=""; cont.appendChild(table);
+}
+
+function setMS(n,k,v){if(!mySpeedSettings[n])mySpeedSettings[n]={iv:31,ev:0,nature:1.0};mySpeedSettings[n][k]=v;}
+function setOS(n,k,v){if(!oppSpeedSettings[n])oppSpeedSettings[n]={iv:31,ev:0,nature:1.0};oppSpeedSettings[n][k]=v;}
+
+// ── Move Coverage ──
+function normMove(m){ return m.toLowerCase().replace(/[^a-z0-9]/g,""); }
+
+function buildMoveMap(team) {
+  const map={};
+  team.forEach(p => {
+    p.moves.forEach(m => {
+      const n=normMove(m);
+      if(!map[n])map[n]=[];
+      if(!map[n].find(x=>x.name===p.name)) map[n].push(p);
+    });
+  });
+  return map;
+}
+
+function renderMoveCoverage() {
+  const cont = document.getElementById("bp-move-coverage");
+  cont.innerHTML = "";
+  const myMap  = buildMoveMap(myTeam);
+  const oppMap = buildMoveMap(oppTeam);
+  let anyShown = false;
+  const filterVal = document.getElementById("mc-category-filter").value;
+
+  BP_MOVE_CATS.forEach(cat => {
+    if (filterVal && cat.label !== filterVal) return;
+    const catDiv = document.createElement("div");
+    catDiv.style.cssText = "margin-bottom:10px;width:100%;max-width:560px;border-radius:6px;overflow:hidden;border:1px solid rgba(55,65,81,0.2)";
+
+    const hdr = document.createElement("div");
+    hdr.className = "mc-cat-header";
+    hdr.style.background = cat.color;
+    hdr.textContent = cat.label;
+    catDiv.appendChild(hdr);
+
+    cat.moves.forEach(mv => {
+      const norm   = normMove(mv.name);
+      const myPkm  = myMap[norm]  || [];
+      const oppPkm = oppMap[norm] || [];
+      const hasCoverage = myPkm.length || oppPkm.length;
+      anyShown = true;
+
+      const row = document.createElement("div");
+      row.className = "mc-row";
+      if (!hasCoverage) row.style.opacity = "0.3";
+
+      // My team sprites (left, blue border)
+      const myS = document.createElement("div");
+      myS.className = "mc-sprites";
+      myS.style.justifyContent = "flex-end";
+      myPkm.forEach(p => {
+        const img=document.createElement("img");
+        img.src=p.sprite; img.title=p.name;
+        img.style.cssText="width:22px;height:22px;object-fit:contain;border:1px solid rgba(96,165,250,0.5);border-radius:3px";
+        img.onerror=function(){this.src="https://i.imgur.com/zt776Sk.jpeg";};
+        myS.appendChild(img);
+      });
+
+      // Move label
+      const lbl = document.createElement("div");
+      lbl.className = "mc-move-label";
+      lbl.style.background = mv.color;
+      lbl.textContent = mv.name;
+
+      // Opp team sprites (right, red border)
+      const oppS = document.createElement("div");
+      oppS.className = "mc-sprites";
+      oppPkm.forEach(p => {
+        const img=document.createElement("img");
+        img.src=p.sprite; img.title=p.name;
+        img.style.cssText="width:22px;height:22px;object-fit:contain;border:1px solid rgba(248,113,113,0.5);border-radius:3px";
+        img.onerror=function(){this.src="https://i.imgur.com/zt776Sk.jpeg";};
+        oppS.appendChild(img);
+      });
+
+      row.appendChild(myS);
+      row.appendChild(lbl);
+      row.appendChild(oppS);
+      catDiv.appendChild(row);
+    });
+
+    cont.appendChild(catDiv);
+  });
+}
+
+// ── Boot ──
+initSelects();
+renderAll();
+</script>
+{% endblock %}

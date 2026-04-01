@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Sign In – {{ league_name }}{% endblock %}
+{% block content %}
+
+<div class="min-h-[calc(100vh-12rem)] flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+
+    <!-- Logo / Branding -->
+    <div class="text-center mb-8">
+      <!-- Large Pokeball -->
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-5 border-4 relative"
+           style="background:linear-gradient(to bottom, #e3350d 50%, #f0f0f0 50%);border-color:#1c1c2e;box-shadow:0 0 40px rgba(227,53,13,0.25);">
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div style="position:absolute;top:calc(50% - 2px);left:0;width:100%;height:4px;background:#1c1c2e;"></div>
+          <div style="width:14px;height:14px;border-radius:50%;background:#f0f0f0;border:3px solid #1c1c2e;position:relative;z-index:1;"></div>
+        </div>
+      </div>
+
+      <h1 class="text-2xl font-black text-white tracking-tight">{{ league_name }}</h1>
+      <p class="text-sm text-gray-500 mt-1">Sign in to your account</p>
+    </div>
+
+    <!-- Card -->
+    <div class="rounded-2xl border border-gray-800 overflow-hidden" style="background-color:#0f1623;">
+
+      <!-- Top accent bar -->
+      <div class="h-1 w-full" style="background:linear-gradient(to right, #e3350d, #facc15);"></div>
+
+      <div class="p-8">
+        <form method="POST" class="space-y-5">
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Username</label>
+            <input type="text" name="username" required autofocus
+                   class="w-full rounded-xl border border-gray-700 px-4 py-3 text-white text-sm focus:border-yellow-500/60 focus:outline-none focus:ring-2 focus:ring-yellow-500/10 transition-all"
+                   style="background-color:#080c14;">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Password</label>
+            <input type="password" name="password" required
+                   class="w-full rounded-xl border border-gray-700 px-4 py-3 text-white text-sm focus:border-yellow-500/60 focus:outline-none focus:ring-2 focus:ring-yellow-500/10 transition-all"
+                   style="background-color:#080c14;">
+          </div>
+
+          <button type="submit"
+                  class="w-full py-3.5 rounded-xl font-black text-gray-900 text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.99] mt-2"
+                  style="background:linear-gradient(135deg, #facc15, #f59e0b);">
+            Sign In
+          </button>
+
+        </form>
+
+        <div class="mt-6 pt-6 border-t border-gray-800/60 text-center">
+          <p class="text-xs text-gray-700">
+            Don't have an account? Contact the league admin.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Back link -->
+    <div class="text-center mt-6">
+      <a href="/" class="text-xs text-gray-700 hover:text-gray-500 transition-colors">
+        &larr; Back to standings
+      </a>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
