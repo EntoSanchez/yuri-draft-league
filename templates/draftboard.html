@@ -111,7 +111,7 @@
                data-pool=""
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}">
-            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=null;this.style.opacity='0.15';"
+            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 opacity-40">
             <span class="text-red-500/60 line-through text-xs truncate flex-1">{{ t.name }}</span>
           </div>
@@ -261,7 +261,7 @@
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}">
 
-            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=null;this.style.opacity='0.15';"
+            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 {% if not is_drafted %}opacity-75{% endif %}">
 
             <span class="text-xs truncate flex-1 {% if is_drafted %}text-green-300{% else %}text-gray-300{% endif %} {% if t.is_tera_banned %}line-through opacity-60{% endif %}">
@@ -290,7 +290,7 @@
                style="background-color:{{ d_info.color or '#374151' }}; font-size:0.6rem; font-weight:800; max-width:52px; overflow:hidden;"
                title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
               {% if d_info.logo_url %}
-                <img src="{{ d_info.logo_url }}" class="w-3 h-3 object-contain rounded flex-shrink-0" onerror="this.onerror=null;this.style.opacity='0.15';">
+                <img src="{{ d_info.logo_url }}" class="w-3 h-3 object-contain rounded flex-shrink-0" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';">
               {% endif %}
               <span class="truncate">{{ d_info.team_name }}</span>
             </a>

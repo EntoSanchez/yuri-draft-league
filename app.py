@@ -138,18 +138,22 @@ def pokemon_sprite_url(name, shiny=False):
 app.jinja_env.globals["pokemon_sprite_url"] = pokemon_sprite_url
 
 
-def pokemon_static_sprite_url(name):
-    """Return static (non-animated) PNG sprite URL for a Pokemon name.
+SHOWDOWN_STATIC = "https://play.pokemonshowdown.com/sprites/gen5"
 
-    Alt-form IDs (>=10000) have no file in the PokeAPI sprites repo, so
-    fall back to slug-based URL (works for regional variants, etc.).
+
+def pokemon_static_sprite_url(name):
+    """Return static PNG sprite URL for a Pokemon name.
+
+    Priority:
+    1. PokeAPI numeric sprite (IDs 1–9999, reliable)
+    2. Showdown gen5 static sprite by slug (covers alt-forms)
     """
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
         if pid and pid < 10000:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{slugs[-1]}.png"
+    return f"{SHOWDOWN_STATIC}/{slugs[-1]}.png"
 
 
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
