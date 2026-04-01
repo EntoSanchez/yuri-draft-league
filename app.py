@@ -17,6 +17,7 @@ DB_PATH = os.environ.get(
 )
 
 SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown"
+SHOWDOWN_ANI = "https://play.pokemonshowdown.com/sprites/ani"
 SPRITE_FALLBACK = "https://img.pokemondb.net/sprites/scarlet-violet/icon"
 
 
@@ -121,18 +122,18 @@ def pokemon_sprite_url(name, shiny=False):
     """Return the animated GIF sprite URL for a Pokemon name.
 
     Priority:
-    1. PokeAPI showdown GIF via numeric ID — only for base-form IDs (< 10000);
-       alt-form IDs (>= 10000) use slugs because showdown names those files by slug.
-    2. PokeAPI showdown GIF via slug directly (handles forms not in our id map)
+    1. PokeAPI GitHub showdown GIF via numeric ID (IDs 1-9999, most reliable)
+    2. Showdown CDN slug-based URL (covers alt-forms and works without ID map)
     """
-    folder = f"{SPRITE_BASE}/shiny" if shiny else SPRITE_BASE
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
         if pid and pid < 10000:
+            folder = f"{SPRITE_BASE}/shiny" if shiny else SPRITE_BASE
             return f"{folder}/{pid}.gif"
-    # Alt forms (id >= 10000) or unknown: use slug-based URL
-    return f"{folder}/{slugs[-1]}.gif"
+    # Fallback: Showdown CDN uses slug filenames directly
+    ani_folder = f"{SHOWDOWN_ANI}-shiny" if shiny else SHOWDOWN_ANI
+    return f"{ani_folder}/{slugs[-1]}.gif"
 
 
 app.jinja_env.globals["pokemon_sprite_url"] = pokemon_sprite_url
