@@ -85,7 +85,7 @@
 {% endif %}
 {% set mega_on = settings.get('mechanic_mega', '0') == '1' %}
 {% set free_pick_type = settings.get('draft_free_pick_type', 'none') %}
-{% set free_pick_slots = 4 if free_pick_type == 'four_any' else 3 %}
+{% set free_pick_slots = 4 if free_pick_type == 'four_any' else (3 if free_pick_type == 'one_per_tier' else 0) %}
 {% set total_cap = 5 + (1 if mega_on else 0) + free_pick_slots + uber_slots %}{# tiers 1-5 + mega + free picks + uber slots #}
 
 {# ── Macro: full team card ── #}
