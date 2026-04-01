@@ -128,15 +128,15 @@ SLUG_OVERRIDES = {
     "ogerpon-hearthflame":     "ogerpon-hearthflame-mask",
     "ogerpon-wellspring":      "ogerpon-wellspring-mask",
     # Paldean Tauros
-    "paldean tauros":          "tauros-paldea-combat",
-    "paldean tauros aqua":     "tauros-paldea-aqua",
-    "paldean tauros blaze":    "tauros-paldea-blaze",
+    "paldean tauros":          "tauros-paldea-combat-breed",
+    "paldean tauros aqua":     "tauros-paldea-aqua-breed",
+    "paldean tauros blaze":    "tauros-paldea-blaze-breed",
     # Gendered / size forms with no separate PokeAPI entry
     "gourgeist":               "gourgeist-average",
     "jellicent":               "jellicent-male",
     "oinkologne":              "oinkologne-male",
     "pumpkaboo":               "pumpkaboo-average",
-    "pyroar":                  "pyroar",
+    "pyroar":                  "pyroar-male",
     "wormadam":                "wormadam-plant",
     # Pichu spiky-eared — no separate PokeAPI entry
     "pichu-spiky-eared":       "pichu",
