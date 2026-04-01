@@ -139,7 +139,7 @@
     {{ tier_section("Tier 4",     "Tier 4",    [], 0, s.tier4 + s.tier4f, 1) }}
     {{ tier_section("Tier 5",     "Tier 5",    [], 0, s.tier5 + s.tier5f, 1) }}
     {% if mega_on %}{{ tier_section("Mega", "Mega", [], 0, s.mega, 1) }}{% endif %}
-    {{ tier_section("Free Picks", "Free Pick", s.free, free_pick_slots, [], 0) }}
+    {{ tier_section("Point Picks", "Free Pick", s.free, free_pick_slots, [], 0) }}
   </div>
 
   {# ── Progress footer ── #}
@@ -215,7 +215,7 @@
     {% endif %}
     <span><span class="text-green-500">FREE</span> Tier 1–5: ×1 each</span>
     {% if mega_on %}<span><span class="text-green-500">FREE</span> Mega: ×1</span>{% endif %}
-    <span>Free Picks ×{{ free_pick_slots }} <span class="text-gray-600">(any tier, costs pts)</span></span>
+    <span>Point Picks ×{{ free_pick_slots }} <span class="text-gray-600">(any tier, costs pts)</span></span>
     <span class="text-gray-600">{{ total_cap }} total picks</span>
   </div>
 

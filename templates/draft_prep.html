@@ -248,18 +248,18 @@ const SLOT_TYPES = [
   "Tier 3 (Paid)","Tier 3 (Free)",
   "Tier 4 (Paid)","Tier 4 (Free)",
   "Tier 5 (Paid)","Tier 5 (Free)",
-  "Mega (Free)","Free Pick (Paid)","Free Pick (Free)",
+  "Mega (Free)","Point Pick (Paid)","Point Pick (Free)",
 ];
 
 // Which slot types cost FP budget?
 function slotCostsFP(slotType) {
-  return slotType.includes("Paid") && slotType.includes("Free Pick") === false
+  return slotType.includes("Paid") && slotType.includes("Point Pick") === false
     ? false
-    : slotType === "Free Pick (Paid)";
+    : slotType === "Point Pick (Paid)";
 }
 // Does slot count toward budget?
 function slotUsesBudget(slotType) {
-  return slotType === "Free Pick (Paid)";
+  return slotType === "Point Pick (Paid)";
 }
 </script>
 
@@ -375,7 +375,7 @@ function slotUsesBudget(slotType) {
 const NUM_SLOTS = 11;
 // slots[i] = { type: string, pokemon: object|null }
 const slots = Array.from({length: NUM_SLOTS}, (_, i) => ({
-  type: i === 0 ? "Uber 1" : i === 1 ? "Uber 2" : i < 7 ? `Tier ${i-1} (Paid)` : "Free Pick (Paid)",
+  type: i === 0 ? "Uber 1" : i === 1 ? "Uber 2" : i < 7 ? `Tier ${i-1} (Paid)` : "Point Pick (Paid)",
   pokemon: null,
   tera_captain: false,
   zmove_captain: false,
