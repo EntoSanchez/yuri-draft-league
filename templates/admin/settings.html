@@ -154,13 +154,13 @@
                 </div>
             </label>
             <label class="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg border transition-colors
-                          {% if settings.get('draft_free_pick_type') == 'one_mega' %}border-blue-500 bg-blue-500/10{% else %}border-gray-700 bg-gray-800{% endif %}">
-                <input type="radio" name="draft_free_pick_type" value="one_mega"
-                       {% if settings.get('draft_free_pick_type') == 'one_mega' %}checked{% endif %}
-                       class="accent-blue-500">
+                          {% if settings.get('draft_free_pick_type') == 'four_any' %}border-green-500 bg-green-500/10{% else %}border-gray-700 bg-gray-800{% endif %}">
+                <input type="radio" name="draft_free_pick_type" value="four_any"
+                       {% if settings.get('draft_free_pick_type') == 'four_any' %}checked{% endif %}
+                       class="accent-green-500">
                 <div>
-                    <span class="text-white font-semibold block">One free Mega pick</span>
-                    <span class="text-xs text-gray-500">Each player gets one Mega Evolution at no cost (e.g. Season 9).</span>
+                    <span class="text-white font-semibold block">Four free picks</span>
+                    <span class="text-xs text-gray-500">Each player gets 4 picks from any tier at no cost.</span>
                 </div>
             </label>
         </div>
