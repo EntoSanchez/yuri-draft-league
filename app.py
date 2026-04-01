@@ -83,6 +83,35 @@ def _name_to_slug(name):
     }
     alias = _FORM_ALIASES.get(base)
 
+    # Explicit Showdown CDN slug overrides (Showdown uses different naming than PokeAPI)
+    _SHOWDOWN_OVERRIDES = {
+        # Word order reversed
+        "eternamax eternatus":   "eternatus-eternamax",
+        # Compound words: Showdown removes hyphens within the compound
+        "necrozma-dusk-mane":    "necrozma-duskmane",
+        "necrozma-dawn-wings":   "necrozma-dawnwings",
+        "urshifu-rapid-strike":  "urshifu-rapidstrike",
+        "urshifu-single-strike": "urshifu",       # single-strike is base form
+        "pikachu-rock-star":     "pikachu-rockstar",
+        "pikachu-pop-star":      "pikachu-popstar",
+        # Paldean Tauros: regional slug gives wrong word order, Showdown fuses the suffix
+        "paldean tauros":        "tauros-paldeacombat",
+        "paldean tauros aqua":   "tauros-paldeaaqua",
+        "paldean tauros blaze":  "tauros-paldeablaze",
+        # Galarian Mr. Mime: Showdown omits hyphen in "mr-mime"
+        "galarian mr mime":      "mrmime-galar",
+        # Nidoran gender forms
+        "nidoran-female":        "nidoran-f",
+        "nidoran-male":          "nidoranm",
+        # Ogerpon masks: alias has -mask suffix, Showdown omits it
+        "ogerpon-wellspring":    "ogerpon-wellspring",
+        "ogerpon-hearthflame":   "ogerpon-hearthflame",
+        "ogerpon-cornerstone":   "ogerpon-cornerstone",
+        # Special forms with no Showdown sprite — fall back to base
+        "pichu-spiky-eared":     "pichu",
+    }
+    showdown_slug = _SHOWDOWN_OVERRIDES.get(base)
+
     # Try the naive slug first
     naive = base.replace(" ", "-").replace(":", "")
 
@@ -99,14 +128,14 @@ def _name_to_slug(name):
             regional_slug = base[len(prefix):].replace(" ", "-") + suffix
             break
 
-    # Mega forms: "Mega X" → "x-mega", "Mega X X" → "x-mega-x"
+    # Mega forms: "Mega X" → "x-mega", "Mega Charizard X" → "charizard-megax"
+    # Note: Showdown omits the hyphen before the variant letter (megax not mega-x)
     mega_slug = None
     if base.startswith("mega "):
         rest = base[5:]
-        # "Charizard X" → "charizard-mega-x"
         parts = rest.split()
         if len(parts) >= 2 and parts[-1].lower() in ("x", "y"):
-            mega_slug = "-".join(parts[:-1]) + "-mega-" + parts[-1]
+            mega_slug = "-".join(parts[:-1]) + "-mega" + parts[-1]
         else:
             mega_slug = rest.replace(" ", "-") + "-mega"
 
@@ -115,9 +144,8 @@ def _name_to_slug(name):
     if base.startswith("primal "):
         primal_slug = base[7:].replace(" ", "-") + "-primal"
 
-    # regional/mega/primal slugs match Showdown CDN naming; alias may include
-    # "-standard"/"-ordinary" suffixes that Showdown doesn't use; naive is last resort
-    return [s for s in [regional_slug, mega_slug, primal_slug, alias, naive] if s]
+    # showdown_slug first so slugs[0] is always the correct Showdown CDN slug
+    return [s for s in [showdown_slug, regional_slug, mega_slug, primal_slug, alias, naive] if s]
 
 
 def pokemon_sprite_url(name, shiny=False):
