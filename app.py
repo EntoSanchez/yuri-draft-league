@@ -799,10 +799,18 @@ def admin_settings():
     if request.method == "POST":
         with get_db() as db:
             for key, value in request.form.items():
+                if key == "uber_combination":
+                    continue  # handled separately below
                 db.execute(
                     "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                     (key, value)
                 )
+            # uber_combination is a multi-checkbox — collect all checked values
+            uber_combos = request.form.getlist("uber_combination")
+            db.execute(
+                "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
+                ("uber_combination", ",".join(uber_combos) if uber_combos else "")
+            )
             # Checkboxes not submitted when unchecked — force to '0' if missing
             for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber"):
                 if checkbox_key not in request.form:
@@ -1415,7 +1423,7 @@ def admin_seasons():
             keep_tiers = request.form.get("keep_tiers") == "1"
             keep_rules = request.form.get("keep_rules") == "1"
             uber_enabled = request.form.get("mechanic_uber") == "1"
-            uber_combination = request.form.get("uber_combination", "2_bronze") if uber_enabled else ""
+            uber_combination = (",".join(request.form.getlist("uber_combination")) or "2_bronze") if uber_enabled else ""
             with get_db() as db:
                 db.execute("DELETE FROM schedule")
                 db.execute("DELETE FROM match_stats")

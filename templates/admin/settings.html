@@ -93,17 +93,16 @@
 
     <!-- Uber Combination -->
     <div id="uber_combo_row" {% if settings.get('mechanic_uber','0') != '1' %}style="display:none"{% endif %}>
-        <label class="block text-sm font-semibold text-gray-300 mb-2">Uber Pick Combination</label>
-        <p class="text-xs text-gray-500 mb-3">Choose how many Uber slots each team gets and at what tier. Point values: Platinum 30 · Gold 29 · Silver 28 · Bronze 27.</p>
-        <select name="uber_combination"
-                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-red-500 focus:outline-none transition-colors">
-            {% set combo = settings.get('uber_combination', '2_bronze') %}
-            <option value="1_platinum"        {% if combo == '1_platinum' %}selected{% endif %}>1 Platinum (30 pts) — 1 slot</option>
-            <option value="1_gold_1_bronze"   {% if combo == '1_gold_1_bronze' %}selected{% endif %}>1 Gold (29 pts) + 1 Bronze (27 pts) — 2 slots</option>
-            <option value="1_silver_1_bronze" {% if combo == '1_silver_1_bronze' %}selected{% endif %}>1 Silver (28 pts) + 1 Bronze (27 pts) — 2 slots</option>
-            <option value="2_silver"          {% if combo == '2_silver' %}selected{% endif %}>2 Silver (28 pts each) — 2 slots</option>
-            <option value="2_bronze"          {% if combo == '2_bronze' %}selected{% endif %}>2 Bronze (27 pts each) — 2 slots</option>
-        </select>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">Allowed Uber Combinations</label>
+        <p class="text-xs text-gray-500 mb-3">Check all combinations coaches may use. Point values: Platinum 30 · Gold 29 · Silver 28 · Bronze 27.</p>
+        {% set combo_list = settings.get('uber_combination', '2_bronze').split(',') %}
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_platinum"        class="w-4 h-4 rounded border-gray-600 accent-red-500" {% if '1_platinum'        in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Platinum (30 pts) — 1 slot</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_gold_1_bronze"   class="w-4 h-4 rounded border-gray-600 accent-red-500" {% if '1_gold_1_bronze'   in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Gold (29 pts) + 1 Bronze (27 pts) — 2 slots</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_silver_1_bronze" class="w-4 h-4 rounded border-gray-600 accent-red-500" {% if '1_silver_1_bronze' in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Silver (28 pts) + 1 Bronze (27 pts) — 2 slots</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_silver"          class="w-4 h-4 rounded border-gray-600 accent-red-500" {% if '2_silver'          in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">2 Silver (28 pts each) — 2 slots</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_bronze"          class="w-4 h-4 rounded border-gray-600 accent-red-500" {% if '2_bronze'          in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">2 Bronze (27 pts each) — 2 slots</span></label>
+        </div>
     </div>
 
     <!-- Mega Tier Point Values -->

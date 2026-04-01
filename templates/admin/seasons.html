@@ -99,17 +99,15 @@
               <span class="text-xs text-gray-600">(adds 1–2 Uber draft slots per team)</span>
             </label>
             <div id="new_uber_combo" style="display:none">
-              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Uber Combination</label>
-              <select name="uber_combination"
-                      class="w-full rounded-xl border border-gray-700 px-4 py-2.5 text-white text-sm focus:border-red-500/60 focus:outline-none"
-                      style="background-color:#0f1623;">
-                <option value="1_platinum">1 Platinum (30 pts) — 1 slot</option>
-                <option value="1_gold_1_bronze">1 Gold (29 pts) + 1 Bronze (27 pts) — 2 slots</option>
-                <option value="1_silver_1_bronze">1 Silver (28 pts) + 1 Bronze (27 pts) — 2 slots</option>
-                <option value="2_silver">2 Silver (28 pts each) — 2 slots</option>
-                <option value="2_bronze" selected>2 Bronze (27 pts each) — 2 slots</option>
-              </select>
-              <p class="text-xs text-gray-600 mt-1.5">Platinum 30 · Gold 29 · Silver 28 · Bronze 27</p>
+              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Allowed Uber Combinations</label>
+              <p class="text-xs text-gray-600 mb-2">Check all combinations coaches may use. Platinum 30 · Gold 29 · Silver 28 · Bronze 27.</p>
+              <div class="flex flex-col gap-1.5">
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_platinum"        class="w-4 h-4 rounded border-gray-600 accent-red-500"><span class="text-sm text-gray-300">1 Platinum (30 pts) — 1 slot</span></label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_gold_1_bronze"   class="w-4 h-4 rounded border-gray-600 accent-red-500"><span class="text-sm text-gray-300">1 Gold (29 pts) + 1 Bronze (27 pts) — 2 slots</span></label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_silver_1_bronze" class="w-4 h-4 rounded border-gray-600 accent-red-500"><span class="text-sm text-gray-300">1 Silver (28 pts) + 1 Bronze (27 pts) — 2 slots</span></label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_silver"          class="w-4 h-4 rounded border-gray-600 accent-red-500"><span class="text-sm text-gray-300">2 Silver (28 pts each) — 2 slots</span></label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_bronze"          class="w-4 h-4 rounded border-gray-600 accent-red-500" checked><span class="text-sm text-gray-300">2 Bronze (27 pts each) — 2 slots</span></label>
+              </div>
             </div>
           </div>
 
