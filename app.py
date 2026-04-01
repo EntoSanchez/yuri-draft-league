@@ -141,18 +141,15 @@ app.jinja_env.globals["pokemon_sprite_url"] = pokemon_sprite_url
 def pokemon_static_sprite_url(name):
     """Return static (non-animated) PNG sprite URL for a Pokemon name.
 
-    Priority:
-    1. PokeAPI PNG via numeric ID
-    2. PokeAPI PNG via slug directly
-    3. pokemondb.net avif fallback
+    Alt-form IDs (>=10000) have no file in the PokeAPI sprites repo, so
+    fall back to slug-based URL (works for regional variants, etc.).
     """
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
-        if pid:
+        if pid and pid < 10000:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-    slug = slugs[-1]
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{slug}.png"
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{slugs[-1]}.png"
 
 
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
@@ -2787,7 +2784,10 @@ def damage_calc():
 
 @app.route("/damage-calc/static/<path:filename>")
 def damage_calc_static(filename):
-    return send_from_directory("damage-calc/dist", filename)
+    return send_from_directory(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
+        filename
+    )
 
 
 if __name__ == "__main__":
