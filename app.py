@@ -115,7 +115,9 @@ def _name_to_slug(name):
     if base.startswith("primal "):
         primal_slug = base[7:].replace(" ", "-") + "-primal"
 
-    return [s for s in [alias, primal_slug, regional_slug, mega_slug, naive] if s]
+    # regional/mega/primal slugs match Showdown CDN naming; alias may include
+    # "-standard"/"-ordinary" suffixes that Showdown doesn't use; naive is last resort
+    return [s for s in [regional_slug, mega_slug, primal_slug, alias, naive] if s]
 
 
 def pokemon_sprite_url(name, shiny=False):
@@ -133,7 +135,7 @@ def pokemon_sprite_url(name, shiny=False):
             return f"{folder}/{pid}.gif"
     # Fallback: Showdown CDN uses slug filenames directly
     ani_folder = f"{SHOWDOWN_ANI}-shiny" if shiny else SHOWDOWN_ANI
-    return f"{ani_folder}/{slugs[-1]}.gif"
+    return f"{ani_folder}/{slugs[0]}.gif"
 
 
 app.jinja_env.globals["pokemon_sprite_url"] = pokemon_sprite_url
@@ -154,7 +156,7 @@ def pokemon_static_sprite_url(name):
         pid = _pokemon_id_map.get(slug)
         if pid and pid < 10000:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-    return f"{SHOWDOWN_STATIC}/{slugs[-1]}.png"
+    return f"{SHOWDOWN_STATIC}/{slugs[0]}.png"
 
 
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
