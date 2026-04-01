@@ -7,9 +7,13 @@ Uses 20 parallel threads to complete in ~1-2 minutes instead of 20+ minutes.
 import sqlite3
 import urllib.request
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-DB_PATH = "D:/Yuri Draft League/league.db"
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "league.db")
+)
 
 
 def fetch_pokemon_data(entry):

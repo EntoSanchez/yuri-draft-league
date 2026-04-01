@@ -8,8 +8,12 @@ Sprite URL format after running:
 import sqlite3
 import urllib.request
 import json
+import os
 
-DB_PATH = "D:/Yuri Draft League/league.db"
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "league.db")
+)
 
 
 def fetch_pokemon_db():
