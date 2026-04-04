@@ -13,9 +13,9 @@
 
       <!-- Logo -->
       {% if coach.logo_url %}
-        <img src="{{ coach.logo_url }}" class="w-20 h-20 object-contain rounded-2xl border border-gray-700/50 flex-shrink-0" alt="{{ coach.team_name }}">
+        <img src="{{ coach.logo_url }}" class="w-32 h-32 object-contain rounded-2xl border border-gray-700/50 flex-shrink-0" alt="{{ coach.team_name }}">
       {% else %}
-        <div class="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 border border-gray-700/50"
+        <div class="w-32 h-32 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 border border-gray-700/50"
              style="background-color:{{ coach.color or '#374151' }};">
           {{ coach.team_name[:2].upper() }}
         </div>
