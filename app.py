@@ -167,6 +167,7 @@ def pokemon_sprite_url(name, shiny=False):
 
 
 app.jinja_env.globals["pokemon_sprite_url"] = pokemon_sprite_url
+app.jinja_env.globals["enumerate"] = enumerate
 
 
 SHOWDOWN_STATIC = "https://play.pokemonshowdown.com/sprites/gen5"
@@ -662,6 +663,104 @@ def schedule():
                            by_week=by_week,
                            weeks=[w["week"] for w in weeks],
                            league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+@app.route("/pickems")
+def pickems():
+    with get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS pickem_votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                voter_name TEXT NOT NULL,
+                week INTEGER NOT NULL,
+                match_id INTEGER NOT NULL,
+                picked_coach_id INTEGER NOT NULL,
+                UNIQUE(voter_name, week, match_id)
+            )
+        """)
+        # Determine current week: latest week without all scores finalized
+        weeks = [r[0] for r in db.execute("SELECT DISTINCT week FROM schedule ORDER BY week").fetchall()]
+        current_week = weeks[-1] if weeks else 1
+        for w in weeks:
+            unplayed = db.execute(
+                "SELECT COUNT(*) FROM schedule WHERE week=? AND score1=0 AND score2=0", (w,)
+            ).fetchone()[0]
+            if unplayed > 0:
+                current_week = w
+                break
+
+        selected_week = request.args.get("week", current_week, type=int)
+
+        matches = db.execute("""
+            SELECT s.*,
+                   c1.coach_name as c1_name, c1.team_name as c1_team, c1.color as c1_color, c1.logo_url as c1_logo,
+                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo
+            FROM schedule s
+            JOIN coaches c1 ON s.coach1_id = c1.id
+            JOIN coaches c2 ON s.coach2_id = c2.id
+            WHERE s.week = ?
+            ORDER BY s.pool, s.id
+        """, (selected_week,)).fetchall()
+        matches = [dict(m) for m in matches]
+
+        # Attach votes for each match
+        vote_rows = db.execute(
+            "SELECT * FROM pickem_votes WHERE week=?", (selected_week,)
+        ).fetchall()
+        # {match_id: {coach_id: [voter_names]}}
+        votes_by_match = {}
+        for v in vote_rows:
+            mid = v["match_id"]
+            cid = v["picked_coach_id"]
+            votes_by_match.setdefault(mid, {}).setdefault(cid, []).append(v["voter_name"])
+        for m in matches:
+            m["votes"] = votes_by_match.get(m["id"], {})
+            # determine winner (score1 > score2 → coach1, else coach2, 0-0 → None)
+            if m["score1"] > 0 or m["score2"] > 0:
+                m["winner_id"] = m["coach1_id"] if m["score1"] > m["score2"] else m["coach2_id"]
+            else:
+                m["winner_id"] = None
+
+        # Leaderboard: only count weeks that are fully played
+        lb_rows = db.execute("""
+            SELECT pv.voter_name,
+                   COUNT(*) as total_picks,
+                   SUM(CASE WHEN
+                       (s.score1 > s.score2 AND pv.picked_coach_id = s.coach1_id) OR
+                       (s.score2 > s.score1 AND pv.picked_coach_id = s.coach2_id)
+                   THEN 1 ELSE 0 END) as correct
+            FROM pickem_votes pv
+            JOIN schedule s ON pv.match_id = s.id
+            WHERE (s.score1 > 0 OR s.score2 > 0)
+            GROUP BY pv.voter_name
+            ORDER BY correct DESC, total_picks ASC
+        """).fetchall()
+        leaderboard = [dict(r) for r in lb_rows]
+
+    return render_template("pickems.html",
+                           matches=matches,
+                           weeks=weeks,
+                           selected_week=selected_week,
+                           current_week=current_week,
+                           leaderboard=leaderboard,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+@app.route("/pickems/vote", methods=["POST"])
+def pickems_vote():
+    voter_name = request.form.get("voter_name", "").strip()
+    week = request.form.get("week", type=int)
+    match_id = request.form.get("match_id", type=int)
+    picked_coach_id = request.form.get("picked_coach_id", type=int)
+    if not voter_name or not week or not match_id or not picked_coach_id:
+        return jsonify({"error": "Missing fields"}), 400
+    with get_db() as db:
+        db.execute("""
+            INSERT INTO pickem_votes (voter_name, week, match_id, picked_coach_id)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(voter_name, week, match_id) DO UPDATE SET picked_coach_id=excluded.picked_coach_id
+        """, (voter_name, week, match_id, picked_coach_id))
+    return jsonify({"ok": True})
 
 
 @app.route("/transactions")
