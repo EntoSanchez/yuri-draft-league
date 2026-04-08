@@ -2084,7 +2084,10 @@ def season_archive(season_id):
 def pokedex():
     with get_db() as db:
         rows = db.execute("""
-            SELECT p.*, COALESCE(dt.points, NULL) as draft_points
+            SELECT p.*, COALESCE(dt.points, NULL) as draft_points,
+                   COALESCE(dt.ability1, '') as ability1,
+                   COALESCE(dt.ability2, '') as ability2,
+                   COALESCE(dt.ability3, '') as ability3
             FROM pokedex p
             LEFT JOIN draft_tiers dt ON LOWER(dt.name) = p.pokeapi_name
             ORDER BY p.pokeapi_id
