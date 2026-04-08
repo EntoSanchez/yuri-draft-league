@@ -279,6 +279,21 @@ function slotUsesBudget(slotType) {
           <div id="budget-bar" style="width:0%"></div>
         </div>
       </div>
+      <!-- Plan controls -->
+      <div class="mt-2 flex gap-1.5">
+        <input id="plan-name-input" type="text" placeholder="Plan name…"
+          style="flex:1;min-width:0;font-size:0.72rem;height:26px;padding:2px 6px;background:#111827;border:1px solid rgba(55,65,81,0.5);color:#e5e7eb;border-radius:4px;outline:none">
+        <button onclick="saveCurrentPlan()"
+          style="font-size:0.68rem;height:26px;padding:0 8px;background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.3);color:#facc15;border-radius:4px;cursor:pointer;flex-shrink:0;font-weight:700">
+          Save
+        </button>
+        <button onclick="clearAllSlots()"
+          style="font-size:0.68rem;height:26px;padding:0 8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:4px;cursor:pointer;flex-shrink:0;font-weight:700">
+          Clear
+        </button>
+      </div>
+      <!-- Saved plans list -->
+      <div id="plans-list" class="mt-1.5 space-y-0.5"></div>
     </div>
 
     {% if mechanic_tera == '1' or mechanic_zmove == '1' %}
@@ -413,6 +428,7 @@ function buildSlotRows() {
       slots[i].type = typeSelect.value;
       updateBudget();
       updatePanels();
+      saveCurrentToStorage();
     });
 
     const search = document.createElement("input");
@@ -443,6 +459,7 @@ function buildSlotRows() {
       updateBudget();
       updateCaptainButtons();
       updatePanels();
+      saveCurrentToStorage();
     });
 
     row.appendChild(numEl);
@@ -539,6 +556,7 @@ function selectAC(idx) {
   updateBudget();
   updateCaptainButtons();
   updatePanels();
+  saveCurrentToStorage();
 }
 
 function closeAC() {
@@ -589,6 +607,7 @@ function toggleCaptain(slotIdx, type) {
   updateCaptainButtons();
   updateCaptainSummary();
   updatePanels();
+  saveCurrentToStorage();
 }
 
 function updateCaptainButtons() {
@@ -1181,12 +1200,113 @@ function updateMoveCoverage(picked) {
 
 
 // ══════════════════════════════════════════════
+//  Persistence & Plans
+// ══════════════════════════════════════════════
+const DP_CURRENT_KEY = 'dp_current';
+const DP_PLANS_KEY   = 'dp_plans';
+
+function serializeSlots() {
+  return slots.map(s => ({
+    type: s.type,
+    pname: s.pokemon ? s.pokemon.name : null,
+    tera: s.tera_captain,
+    zmove: s.zmove_captain,
+  }));
+}
+
+function applySlotData(data) {
+  data.forEach((d, i) => {
+    if (i >= slots.length) return;
+    if (d.type) slots[i].type = d.type;
+    slots[i].pokemon = d.pname ? (POKEMON_DB.find(p => p.name === d.pname) || null) : null;
+    slots[i].tera_captain  = !!d.tera;
+    slots[i].zmove_captain = !!d.zmove;
+  });
+}
+
+function saveCurrentToStorage() {
+  try { localStorage.setItem(DP_CURRENT_KEY, JSON.stringify(serializeSlots())); } catch(e) {}
+}
+
+function loadCurrentFromStorage() {
+  try {
+    const raw = localStorage.getItem(DP_CURRENT_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) applySlotData(data);
+  } catch(e) {}
+}
+
+function getPlans() {
+  try { return JSON.parse(localStorage.getItem(DP_PLANS_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function saveCurrentPlan() {
+  const name = document.getElementById('plan-name-input').value.trim();
+  if (!name) { alert('Enter a plan name first.'); return; }
+  const plans = getPlans();
+  const idx = plans.findIndex(p => p.name === name);
+  const entry = { name, slots: serializeSlots() };
+  if (idx >= 0) plans[idx] = entry;
+  else plans.push(entry);
+  localStorage.setItem(DP_PLANS_KEY, JSON.stringify(plans));
+  renderPlansList();
+}
+
+function loadPlan(name) {
+  const entry = getPlans().find(p => p.name === name);
+  if (!entry) return;
+  applySlotData(entry.slots);
+  buildSlotRows();
+  updateBudget();
+  updateCaptainButtons();
+  updatePanels();
+  saveCurrentToStorage();
+}
+
+function deletePlan(name) {
+  const plans = getPlans().filter(p => p.name !== name);
+  localStorage.setItem(DP_PLANS_KEY, JSON.stringify(plans));
+  renderPlansList();
+}
+
+function clearAllSlots() {
+  slots.forEach(s => { s.pokemon = null; s.tera_captain = false; s.zmove_captain = false; });
+  buildSlotRows();
+  updateBudget();
+  updateCaptainButtons();
+  updatePanels();
+  saveCurrentToStorage();
+}
+
+function renderPlansList() {
+  const el = document.getElementById('plans-list');
+  if (!el) return;
+  const plans = getPlans();
+  if (!plans.length) { el.innerHTML = ''; return; }
+  el.innerHTML = plans.map(p => `
+    <div style="display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.background='rgba(55,65,81,0.3)'" onmouseout="this.style.background=''">
+      <span style="flex:1;min-width:0;font-size:0.68rem;color:#d1d5db;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+      <button onclick="loadPlan(${JSON.stringify(p.name)})"
+        style="font-size:0.6rem;padding:1px 6px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:3px;cursor:pointer;flex-shrink:0">
+        Load
+      </button>
+      <button onclick="deletePlan(${JSON.stringify(p.name)})"
+        style="font-size:0.6rem;padding:1px 5px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;border-radius:3px;cursor:pointer;flex-shrink:0">
+        ✕
+      </button>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
 //  Boot
 // ══════════════════════════════════════════════
+loadCurrentFromStorage();
 buildSlotRows();
 updateBudget();
 updateCaptainButtons();
 updatePanels();
+renderPlansList();
 
 // Close AC on outside click
 document.addEventListener("click", (e) => {
