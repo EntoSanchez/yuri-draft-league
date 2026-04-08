@@ -2087,7 +2087,8 @@ def pokedex():
             SELECT p.*, COALESCE(dt.points, NULL) as draft_points,
                    COALESCE(dt.ability1, '') as ability1,
                    COALESCE(dt.ability2, '') as ability2,
-                   COALESCE(dt.ability3, '') as ability3
+                   COALESCE(dt.ability3, '') as ability3,
+                   COALESCE(dt.moves, '') as moves
             FROM pokedex p
             LEFT JOIN draft_tiers dt ON LOWER(dt.name) = p.pokeapi_name
             ORDER BY p.pokeapi_id

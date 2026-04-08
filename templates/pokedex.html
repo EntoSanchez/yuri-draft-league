@@ -37,6 +37,17 @@
       <div id="dex-ability-sug" class="hidden absolute z-50 top-full left-0 mt-1 rounded-xl border border-gray-700 shadow-xl overflow-y-auto max-h-48 w-52" style="background-color:#1a2233;"></div>
     </div>
 
+    <!-- Move filter -->
+    <div class="relative">
+      <input id="dex-move" type="text" placeholder="Filter by move..."
+             oninput="filterDex();showMoveSuggestions()"
+             onfocus="showMoveSuggestions()"
+             autocomplete="off"
+             class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none transition-colors w-44"
+             style="background-color:#0f1623;">
+      <div id="dex-move-sug" class="hidden absolute z-50 top-full left-0 mt-1 rounded-xl border border-gray-700 shadow-xl overflow-y-auto max-h-48 w-52" style="background-color:#1a2233;"></div>
+    </div>
+
     <!-- Type filter -->
     <select id="dex-type" onchange="filterDex()"
             class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none transition-colors"
@@ -134,7 +145,8 @@
               data-spe="{{ p.spe }}"
               data-bst="{{ bst }}"
               data-id="{{ p.pokeapi_id }}"
-              data-abilities="{{ [p.ability1, p.ability2, p.ability3] | join('|') | lower }}">
+              data-abilities="{{ [p.ability1, p.ability2, p.ability3] | join('|') | lower }}"
+              data-moves="{{ p.moves | lower }}">
             <td class="px-4 py-2 text-xs text-gray-600 font-mono">{{ p.pokeapi_id }}</td>
             <td class="px-4 py-2">
               <div class="flex items-center gap-2.5">
@@ -227,6 +239,7 @@ function filterDex() {
   const type    = document.getElementById('dex-type').value.toLowerCase();
   const pts     = document.getElementById('dex-pts').value;
   const ability = document.getElementById('dex-ability').value.toLowerCase().trim();
+  const move    = document.getElementById('dex-move').value.toLowerCase().trim();
 
   let visible = 0;
   document.querySelectorAll('.dex-row').forEach(row => {
@@ -235,12 +248,14 @@ function filterDex() {
     const type2  = row.dataset.type2 || '';
     const hasPts = row.dataset.pts !== '';
     const abilities = row.dataset.abilities || '';
+    const moves     = row.dataset.moves || '';
 
     const nameOk    = !search  || name.includes(search);
     const typeOk    = !type    || type1 === type || type2 === type;
     const ptsOk     = !pts     || (pts === 'in_tier' && hasPts) || (pts === 'not_in_tier' && !hasPts);
     const abilityOk = !ability || abilities.split('|').some(a => a && a.includes(ability));
-    const show = nameOk && typeOk && ptsOk && abilityOk;
+    const moveOk    = !move    || moves.split('|').some(m => m && m.includes(move));
+    const show = nameOk && typeOk && ptsOk && abilityOk && moveOk;
 
     row.style.display = show ? '' : 'none';
     if (show) visible++;
@@ -287,6 +302,7 @@ function clearDexFilters() {
   document.getElementById('dex-type').value = '';
   document.getElementById('dex-pts').value = '';
   document.getElementById('dex-ability').value = '';
+  document.getElementById('dex-move').value = '';
   filterDex();
 }
 
@@ -322,11 +338,47 @@ function selectAbility(a) {
   filterDex();
 }
 
+// ── Move autocomplete ──
+let _dexMoveList = null;
+function buildDexMoveList() {
+  const set = new Set();
+  document.querySelectorAll('.dex-row').forEach(row => {
+    (row.dataset.moves || '').split('|').forEach(m => { if (m) set.add(m); });
+  });
+  return Array.from(set).sort();
+}
+
+function showMoveSuggestions() {
+  if (!_dexMoveList) _dexMoveList = buildDexMoveList();
+  const val = document.getElementById('dex-move').value.toLowerCase().trim();
+  const box = document.getElementById('dex-move-sug');
+  const matches = val ? _dexMoveList.filter(m => m.includes(val)).slice(0, 12)
+                      : _dexMoveList.slice(0, 12);
+  if (!matches.length) { box.classList.add('hidden'); return; }
+  box.innerHTML = matches.map(m =>
+    `<div class="px-3 py-1.5 text-xs text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-300 cursor-pointer"
+          onmousedown="selectMove('${m.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+       ${m}
+     </div>`
+  ).join('');
+  box.classList.remove('hidden');
+}
+
+function selectMove(m) {
+  document.getElementById('dex-move').value = m;
+  document.getElementById('dex-move-sug').classList.add('hidden');
+  filterDex();
+}
+
 document.addEventListener('click', e => {
   const inp = document.getElementById('dex-ability');
   const box = document.getElementById('dex-ability-sug');
   if (inp && box && !inp.contains(e.target) && !box.contains(e.target))
     box.classList.add('hidden');
+  const minp = document.getElementById('dex-move');
+  const mbox = document.getElementById('dex-move-sug');
+  if (minp && mbox && !minp.contains(e.target) && !mbox.contains(e.target))
+    mbox.classList.add('hidden');
 });
 
 window.addEventListener('DOMContentLoaded', () => {
