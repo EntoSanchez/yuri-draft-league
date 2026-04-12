@@ -28,8 +28,16 @@
     ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #facc15; }
 
+    /* ── Nav shrink on scroll ── */
+    #main-nav { transition: height 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; }
+    #main-nav.scrolled { box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+    #nav-inner { transition: height 0.25s ease; height: 64px; }
+    #main-nav.scrolled #nav-inner { height: 52px; }
+    #nav-logo-img { transition: width 0.25s, height 0.25s; }
+    #main-nav.scrolled #nav-logo-img { width: 28px; height: 28px; }
+
     /* ── Nav underline ── */
-    .nav-link { position: relative; transition: color 0.18s; }
+    .nav-link { position: relative; transition: color 0.18s; white-space: nowrap; }
     .nav-link::after {
       content: '';
       position: absolute;
@@ -42,57 +50,143 @@
     .nav-link:hover::after, .nav-link.active::after { width: 100%; }
     .nav-link.active { color: #facc15; }
 
-    /* ── Teams dropdown ── */
-    .teams-dropdown { position: relative; }
-    .teams-dropdown-menu {
+    /* ── Generic nav dropdown ── */
+    .nav-dropdown { position: relative; }
+    .nav-dd-menu {
       display: none;
       position: absolute;
-      top: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      min-width: 220px;
-      background: #0f1623;
-      border: 1px solid rgba(55,65,81,0.8);
+      top: calc(100% + 6px);
+      left: 50%; transform: translateX(-50%);
+      background: #0c1220;
+      border: 1px solid rgba(55,65,81,0.7);
       border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      z-index: 100;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      z-index: 200;
       overflow: hidden;
-      animation: fadeDropdown 0.15s ease;
+      min-width: 180px;
+      animation: ddFadeIn 0.15s ease;
     }
-    @keyframes fadeDropdown {
-      from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
-      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @keyframes ddFadeIn {
+      from { opacity:0; transform:translateX(-50%) translateY(-6px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
     }
-    .teams-dropdown:hover .teams-dropdown-menu,
-    .teams-dropdown:focus-within .teams-dropdown-menu { display: block; }
-    .teams-dropdown-item {
+    .nav-dropdown:hover .nav-dd-menu,
+    .nav-dropdown:focus-within .nav-dd-menu { display: block; }
+    .nav-dd-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 8px 14px;
+      padding: 9px 14px;
       font-size: 0.8rem; color: #9ca3af;
       transition: background 0.12s, color 0.12s;
+      text-decoration: none; white-space: nowrap;
+    }
+    .nav-dd-item:hover { background: rgba(250,204,21,0.07); color: #facc15; }
+    .nav-dd-section {
+      padding: 5px 14px 4px;
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 0.12em;
+      color: rgba(250,204,21,0.35); text-transform: uppercase;
+      border-top: 1px solid rgba(55,65,81,0.4);
+    }
+    .nav-dd-section:first-child { border-top: none; }
+    .nav-dd-divider { height: 1px; background: rgba(55,65,81,0.4); }
+
+    /* ── Teams mega-menu ── */
+    .teams-megamenu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%; transform: translateX(-50%);
+      background: #0c1220;
+      border: 1px solid rgba(55,65,81,0.7);
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.65);
+      z-index: 200;
+      min-width: 500px;
+      animation: ddFadeIn 0.15s ease;
+      overflow: hidden;
+    }
+    .nav-dropdown:hover .teams-megamenu,
+    .nav-dropdown:focus-within .teams-megamenu { display: block; }
+    .mega-pool-label {
+      padding: 8px 14px 4px;
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 0.12em;
+      color: rgba(250,204,21,0.4); text-transform: uppercase;
+    }
+    .mega-pool-label + .mega-pool-label { border-top: 1px solid rgba(55,65,81,0.4); }
+    .mega-team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 4px 8px; }
+    .mega-team-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 8px; border-radius: 8px;
       text-decoration: none;
-    }
-    .teams-dropdown-item:hover { background: rgba(250,204,21,0.07); color: #facc15; }
-    .teams-dropdown-swatch {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    }
-    .teams-dropdown-pool-header {
-      padding: 6px 14px 4px;
-      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
-      color: rgba(250,204,21,0.4);
-      text-transform: uppercase;
-      border-top: 1px solid rgba(55,65,81,0.5);
-    }
-    .teams-dropdown-pool-header:first-child { border-top: none; }
-    .teams-dropdown-all {
-      display: block; text-align: center;
-      padding: 8px 14px;
-      font-size: 0.75rem; font-weight: 600; color: #facc15;
-      border-top: 1px solid rgba(55,65,81,0.5);
       transition: background 0.12s;
-      text-decoration: none;
     }
-    .teams-dropdown-all:hover { background: rgba(250,204,21,0.07); }
+    .mega-team-item:hover { background: rgba(250,204,21,0.07); }
+    .mega-team-logo {
+      width: 28px; height: 28px; border-radius: 6px;
+      object-fit: contain; flex-shrink: 0;
+    }
+    .mega-team-placeholder {
+      width: 28px; height: 28px; border-radius: 6px;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 0.6rem; font-weight: 900; color: #fff;
+    }
+    .mega-team-name { font-size: 0.78rem; font-weight: 700; color: #e5e7eb; line-height: 1.2; }
+    .mega-team-coach { font-size: 0.65rem; color: #6b7280; }
+    .mega-footer {
+      border-top: 1px solid rgba(55,65,81,0.4);
+      padding: 8px 14px; text-align: center;
+      font-size: 0.75rem; font-weight: 600; color: #facc15;
+      text-decoration: none; display: block;
+      transition: background 0.12s;
+    }
+    .mega-footer:hover { background: rgba(250,204,21,0.06); }
+
+    /* ── Mobile drawer ── */
+    #mobile-overlay {
+      position: fixed; inset: 0; z-index: 400;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #mobile-overlay.open { opacity: 1; pointer-events: all; }
+    #mobile-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(320px, 88vw); z-index: 500;
+      background: #080c14;
+      border-left: 1px solid rgba(55,65,81,0.5);
+      overflow-y: auto; overscroll-behavior: contain;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+      display: flex; flex-direction: column;
+    }
+    #mobile-drawer.open { transform: translateX(0); }
+    .drawer-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-radius: 8px;
+      font-size: 0.875rem; text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+      color: #d1d5db;
+    }
+    .drawer-link:hover, .drawer-link.active { background: rgba(250,204,21,0.08); color: #facc15; }
+    .drawer-link.active { font-weight: 700; }
+    .drawer-section-btn {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 600; color: #d1d5db;
+      background: none; border: none; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .drawer-section-btn:hover { background: rgba(250,204,21,0.08); color: #facc15; }
+    .drawer-sub { display: none; padding: 2px 0 4px 12px; }
+    .drawer-sub.open { display: block; }
+    .drawer-sub-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; border-radius: 7px;
+      font-size: 0.8rem; color: #9ca3af; text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .drawer-sub-link:hover { background: rgba(250,204,21,0.07); color: #facc15; }
+    .drawer-divider { height: 1px; background: rgba(55,65,81,0.4); margin: 6px 16px; }
 
     /* ── Flash ── */
     @keyframes slideDown {
@@ -217,83 +311,146 @@
 <body class="h-full flex flex-col text-gray-100 antialiased" style="background-color:#080c14;">
 
 <!-- ═══════════════════ NAVBAR ═══════════════════ -->
-<nav class="sticky top-0 z-50 border-b border-gray-800/80 backdrop-blur-sm" style="background-color:rgba(8,12,20,0.97);">
+<nav id="main-nav" class="sticky top-0 z-50 border-b border-gray-800/80 backdrop-blur-sm" style="background-color:rgba(8,12,20,0.97);">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center h-16 gap-8">
+    <div id="nav-inner" class="flex items-center gap-4">
 
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
-        <img src="/static/favicon.jpg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 10px rgba(250,204,21,0.25)">
+        <img id="nav-logo-img" src="/static/favicon.jpg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 10px rgba(250,204,21,0.25)">
         <span class="font-bold text-base tracking-wide text-yellow-400 hover:text-yellow-300 transition-colors hidden sm:block">{{ league_name }}</span>
       </a>
 
       <!-- Desktop links -->
-      <div class="hidden md:flex items-center gap-5 flex-1">
-        <a href="/"             class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/' %}active{% endif %}">Home</a>
-        <a href="/standings"    class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/standings' %}active{% endif %}">Standings</a>
+      <div class="hidden md:flex items-center gap-1 flex-1">
+        <a href="/" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/' %}active{% endif %}">Home</a>
+        <a href="/standings" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/standings' %}active{% endif %}">Standings</a>
+        <a href="/schedule" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
+        <a href="/pickems" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path.startswith('/pickems') %}active{% endif %}">Pick'ems</a>
 
-        <!-- Teams dropdown -->
-        <div class="teams-dropdown flex items-center h-16">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 flex items-center gap-1 focus:outline-none {% if request.path.startswith('/team') %}active{% endif %}">
+        <!-- Teams megamenu -->
+        <div class="nav-dropdown">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path.startswith('/team') %}active{% endif %}">
             Teams
-            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-            </svg>
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
-          <div class="teams-dropdown-menu">
+          <div class="teams-megamenu">
             {% set pool_a = nav_coaches | selectattr('pool', 'equalto', 'A') | list %}
             {% set pool_b = nav_coaches | selectattr('pool', 'equalto', 'B') | list %}
             {% if pool_a %}
-              <div class="teams-dropdown-pool-header">Pool A</div>
-              {% for c in pool_a %}
-              <a href="/team/{{ c.id }}" class="teams-dropdown-item">
-                <span class="teams-dropdown-swatch" style="background:{{ c.color or '#374151' }};"></span>
-                <span class="truncate">{{ c.team_name }}</span>
-                <span class="ml-auto text-gray-700 text-xs truncate">{{ c.coach_name }}</span>
-              </a>
-              {% endfor %}
+              <div class="mega-pool-label">Pool A</div>
+              <div class="mega-team-grid">
+                {% for c in pool_a %}
+                <a href="/team/{{ c.id }}" class="mega-team-item">
+                  {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="mega-team-logo">
+                  {% else %}<div class="mega-team-placeholder" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2]|upper }}</div>{% endif %}
+                  <div><div class="mega-team-name">{{ c.team_name }}</div><div class="mega-team-coach">{{ c.coach_name }}</div></div>
+                </a>
+                {% endfor %}
+              </div>
             {% endif %}
             {% if pool_b %}
-              <div class="teams-dropdown-pool-header">Pool B</div>
-              {% for c in pool_b %}
-              <a href="/team/{{ c.id }}" class="teams-dropdown-item">
-                <span class="teams-dropdown-swatch" style="background:{{ c.color or '#374151' }};"></span>
-                <span class="truncate">{{ c.team_name }}</span>
-                <span class="ml-auto text-gray-700 text-xs truncate">{{ c.coach_name }}</span>
-              </a>
-              {% endfor %}
+              <div class="mega-pool-label">Pool B</div>
+              <div class="mega-team-grid">
+                {% for c in pool_b %}
+                <a href="/team/{{ c.id }}" class="mega-team-item">
+                  {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="mega-team-logo">
+                  {% else %}<div class="mega-team-placeholder" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2]|upper }}</div>{% endif %}
+                  <div><div class="mega-team-name">{{ c.team_name }}</div><div class="mega-team-coach">{{ c.coach_name }}</div></div>
+                </a>
+                {% endfor %}
+              </div>
             {% endif %}
-            {% if not pool_a and not pool_b %}
-              <div class="teams-dropdown-pool-header">No teams yet</div>
-            {% endif %}
-            <a href="/teams" class="teams-dropdown-all">View all teams &rarr;</a>
+            {% if not pool_a and not pool_b %}<div class="mega-pool-label">No teams yet</div>{% endif %}
+            <a href="/teams" class="mega-footer">View all teams &rarr;</a>
           </div>
         </div>
 
-        <a href="/schedule"     class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
-        <a href="/pickems"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path.startswith('/pickems') %}active{% endif %}">Pick'ems</a>
-        <a href="/draft"        class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/draft' %}active{% endif %}">Draft</a>
-        <a href="/draftboard"   class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/draftboard' %}active{% endif %}">Draft Board</a>
-        <a href="/draft-prep"   class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/draft-prep' %}active{% endif %}">Draft Prep</a>
-        <a href="/battle-prep"  class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/battle-prep' %}active{% endif %}">Battle Prep</a>
-        <a href="/damage-calc"  class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/damage-calc' %}active{% endif %}">Damage Calc</a>
-        <a href="/replays"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/replays' %}active{% endif %}">Replays</a>
-        <a href="/transactions" class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/transactions' %}active{% endif %}">Transactions</a>
-        <a href="/mvp"          class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/mvp' %}active{% endif %}">MVP Race</a>
-        <a href="/pokedex"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/pokedex' %}active{% endif %}">Pokédex</a>
-        <a href="/rules"        class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/rules' %}active{% endif %}">Rules</a>
-        <a href="/playoffs"     class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/playoffs' %}active{% endif %}">Playoffs</a>
-        <a href="/seasons"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/seasons' %}active{% endif %}">Past Seasons</a>
+        <!-- Draft dropdown -->
+        <div class="nav-dropdown">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draftboard', '/draft-prep'] %}active{% endif %}">
+            Draft
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="nav-dd-menu">
+            <a href="/draft" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              Draft Live
+            </a>
+            <a href="/draftboard" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 3v18M14 3v18"/></svg>
+              Draft Board
+            </a>
+            <a href="/draft-prep" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              Draft Prep
+            </a>
+          </div>
+        </div>
+
+        <!-- Tools dropdown -->
+        <div class="nav-dropdown">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/battle-prep', '/damage-calc', '/replays'] %}active{% endif %}">
+            Tools
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="nav-dd-menu">
+            <a href="/battle-prep" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              Battle Prep
+            </a>
+            <a href="/damage-calc" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              Damage Calc
+            </a>
+            <a href="/replays" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Replays
+            </a>
+          </div>
+        </div>
+
+        <!-- More dropdown -->
+        <div class="nav-dropdown">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/pokedex', '/playoffs', '/transactions', '/mvp', '/rules', '/seasons'] %}active{% endif %}">
+            More
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="nav-dd-menu" style="left:auto;right:0;transform:none;">
+            <a href="/pokedex" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M2 12h20"/></svg>
+              Pokédex
+            </a>
+            <a href="/playoffs" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+              Playoffs
+            </a>
+            <a href="/transactions" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+              Transactions
+            </a>
+            <a href="/mvp" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              MVP Race
+            </a>
+            <a href="/rules" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Rules
+            </a>
+            <a href="/seasons" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Past Seasons
+            </a>
+          </div>
+        </div>
       </div>
 
-      <!-- Right auth -->
-      <div class="hidden md:flex items-center gap-2 ml-auto">
+      <!-- Right auth (desktop) -->
+      <div class="hidden md:flex items-center gap-2 ml-auto flex-shrink-0">
         {% if session.get('role') == 'admin' %}
           <a href="/admin" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-red-950/70 border border-red-800/60 text-red-400 hover:bg-red-900/60 hover:text-red-300 transition-all">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-            </svg>
-            Admin Panel
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            Admin
           </a>
         {% endif %}
         {% if session.get('user_id') %}
@@ -305,81 +462,144 @@
       </div>
 
       <!-- Mobile hamburger -->
-      <button id="mobile-btn" class="md:hidden ml-auto p-2 rounded-md text-gray-500 hover:text-yellow-400 hover:bg-gray-800/60 transition-all">
-        <svg id="ham-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
-        <svg id="x-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
+      <button id="mobile-btn" class="md:hidden ml-auto p-2 rounded-md text-gray-500 hover:text-yellow-400 hover:bg-gray-800/60 transition-all" aria-label="Open menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
       </button>
-    </div>
-  </div>
 
-  <!-- Mobile menu -->
-  <div id="mobile-menu" class="hidden md:hidden border-t border-gray-800/60" style="background-color:rgba(8,12,20,0.98);">
-    <div class="px-4 py-3 space-y-0.5">
-      <a href="/"             class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Home</a>
-      <a href="/standings"    class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/standings' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Standings</a>
-      <!-- Teams expandable -->
-      <div>
-        <button onclick="toggleMobileTeams()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all {% if request.path.startswith('/team') %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">
-          <span>Teams</span>
-          <svg id="mobile-teams-chevron" class="w-3.5 h-3.5 opacity-50 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </button>
-        <div id="mobile-teams-list" class="hidden pl-3 pb-1 space-y-0.5">
-          {% set pool_a = nav_coaches | selectattr('pool', 'equalto', 'A') | list %}
-          {% set pool_b = nav_coaches | selectattr('pool', 'equalto', 'B') | list %}
-          {% if pool_a %}
-            <div class="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-widest text-yellow-500/40">Pool A</div>
-            {% for c in pool_a %}
-            <a href="/team/{{ c.id }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">
-              <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>
-              {{ c.team_name }}
-            </a>
-            {% endfor %}
-          {% endif %}
-          {% if pool_b %}
-            <div class="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-widest text-yellow-500/40">Pool B</div>
-            {% for c in pool_b %}
-            <a href="/team/{{ c.id }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">
-              <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>
-              {{ c.team_name }}
-            </a>
-            {% endfor %}
-          {% endif %}
-          <a href="/teams" class="block px-3 py-1.5 text-xs font-semibold text-yellow-500 hover:text-yellow-400 transition-colors">All teams &rarr;</a>
-        </div>
-      </div>
-      <a href="/schedule"     class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/schedule' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Schedule</a>
-      <a href="/pickems"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path.startswith('/pickems') %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Pick'ems</a>
-      <a href="/draft"        class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/draft' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Draft</a>
-      <a href="/draftboard"   class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/draftboard' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Draft Board</a>
-      <a href="/draft-prep"   class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/draft-prep' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Draft Prep</a>
-      <a href="/damage-calc"  class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/damage-calc' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Damage Calc</a>
-      <a href="/replays"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/replays' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Replays</a>
-      <a href="/transactions" class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/transactions' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Transactions</a>
-      <a href="/mvp"          class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/mvp' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">MVP Race</a>
-      <a href="/rules"        class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/rules' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Rules</a>
-      <a href="/pokedex"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/pokedex' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Pokédex</a>
-      <a href="/playoffs"     class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/playoffs' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Playoffs</a>
-      <a href="/seasons"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/seasons' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Past Seasons</a>
-      <div class="pt-2 mt-2 border-t border-gray-800/60 space-y-1">
-        {% if session.get('role') == 'admin' %}
-          <a href="/admin" class="block px-3 py-2 rounded-lg text-sm text-red-400 bg-red-950/40 hover:bg-red-950/60">Admin Panel</a>
-        {% endif %}
-        {% if session.get('user_id') %}
-          <div class="px-3 py-1 text-xs text-gray-600">Signed in as <span class="text-gray-400">{{ session.get('username') }}</span></div>
-          <a href="/logout" class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Sign out</a>
-        {% else %}
-          <a href="/login" class="block px-3 py-2 rounded-lg text-sm text-center font-bold bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-colors">Sign in</a>
-        {% endif %}
-      </div>
     </div>
   </div>
 </nav>
+
+<!-- ═══════════════════ MOBILE OVERLAY + DRAWER ═══════════════════ -->
+<div id="mobile-overlay"></div>
+<div id="mobile-drawer">
+  <!-- Drawer header -->
+  <div class="flex items-center justify-between px-4 py-4 border-b border-gray-800/60 flex-shrink-0">
+    <div class="flex items-center gap-2">
+      <img src="/static/favicon.jpg" alt="" class="w-7 h-7 rounded-full object-cover">
+      <span class="text-sm font-bold text-yellow-400">{{ league_name }}</span>
+    </div>
+    <button id="drawer-close" class="p-1.5 rounded-md text-gray-500 hover:text-yellow-400 hover:bg-gray-800/60 transition-all" aria-label="Close menu">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <!-- Drawer body -->
+  <div class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+    <a href="/" class="drawer-link {% if request.path == '/' %}active{% endif %}">
+      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Home
+    </a>
+    <a href="/standings" class="drawer-link {% if request.path == '/standings' %}active{% endif %}">
+      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Standings
+    </a>
+    <a href="/schedule" class="drawer-link {% if request.path == '/schedule' %}active{% endif %}">
+      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      Schedule
+    </a>
+    <a href="/pickems" class="drawer-link {% if request.path.startswith('/pickems') %}active{% endif %}">
+      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Pick'ems
+    </a>
+
+    <div class="drawer-divider"></div>
+
+    <!-- Teams -->
+    <button class="drawer-section-btn" onclick="toggleDrawerSection('teams-sub', this)">
+      <span class="flex items-center gap-2">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Teams
+      </span>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path.startswith('/team') %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="teams-sub" class="drawer-sub {% if request.path.startswith('/team') %}open{% endif %}">
+      {% set pool_a = nav_coaches | selectattr('pool', 'equalto', 'A') | list %}
+      {% set pool_b = nav_coaches | selectattr('pool', 'equalto', 'B') | list %}
+      {% if pool_a %}
+        <div class="px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-widest" style="color:rgba(250,204,21,0.35)">Pool A</div>
+        {% for c in pool_a %}
+        <a href="/team/{{ c.id }}" class="drawer-sub-link">
+          {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="w-5 h-5 rounded object-contain flex-shrink-0">
+          {% else %}<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>{% endif %}
+          {{ c.team_name }}
+        </a>
+        {% endfor %}
+      {% endif %}
+      {% if pool_b %}
+        <div class="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-widest" style="color:rgba(250,204,21,0.35)">Pool B</div>
+        {% for c in pool_b %}
+        <a href="/team/{{ c.id }}" class="drawer-sub-link">
+          {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="w-5 h-5 rounded object-contain flex-shrink-0">
+          {% else %}<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>{% endif %}
+          {{ c.team_name }}
+        </a>
+        {% endfor %}
+      {% endif %}
+      <a href="/teams" class="drawer-sub-link font-semibold" style="color:#facc15;">All teams &rarr;</a>
+    </div>
+
+    <!-- Draft -->
+    <button class="drawer-section-btn" onclick="toggleDrawerSection('draft-sub', this)">
+      <span class="flex items-center gap-2">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Draft
+      </span>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/draft', '/draftboard', '/draft-prep'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="draft-sub" class="drawer-sub {% if request.path in ['/draft', '/draftboard', '/draft-prep'] %}open{% endif %}">
+      <a href="/draft" class="drawer-sub-link">Draft Live</a>
+      <a href="/draftboard" class="drawer-sub-link">Draft Board</a>
+      <a href="/draft-prep" class="drawer-sub-link">Draft Prep</a>
+    </div>
+
+    <!-- Tools -->
+    <button class="drawer-section-btn" onclick="toggleDrawerSection('tools-sub', this)">
+      <span class="flex items-center gap-2">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Tools
+      </span>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/battle-prep', '/damage-calc', '/replays'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="tools-sub" class="drawer-sub {% if request.path in ['/battle-prep', '/damage-calc', '/replays'] %}open{% endif %}">
+      <a href="/battle-prep" class="drawer-sub-link">Battle Prep</a>
+      <a href="/damage-calc" class="drawer-sub-link">Damage Calc</a>
+      <a href="/replays" class="drawer-sub-link">Replays</a>
+    </div>
+
+    <!-- More -->
+    <button class="drawer-section-btn" onclick="toggleDrawerSection('more-sub', this)">
+      <span class="flex items-center gap-2">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+        More
+      </span>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/pokedex', '/playoffs', '/transactions', '/mvp', '/rules', '/seasons'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="more-sub" class="drawer-sub {% if request.path in ['/pokedex', '/playoffs', '/transactions', '/mvp', '/rules', '/seasons'] %}open{% endif %}">
+      <a href="/pokedex" class="drawer-sub-link">Pokédex</a>
+      <a href="/playoffs" class="drawer-sub-link">Playoffs</a>
+      <a href="/transactions" class="drawer-sub-link">Transactions</a>
+      <a href="/mvp" class="drawer-sub-link">MVP Race</a>
+      <a href="/rules" class="drawer-sub-link">Rules</a>
+      <a href="/seasons" class="drawer-sub-link">Past Seasons</a>
+    </div>
+
+    <div class="drawer-divider mt-2"></div>
+
+    <!-- Auth -->
+    {% if session.get('role') == 'admin' %}
+      <a href="/admin" class="drawer-link" style="color:#f87171;">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        Admin Panel
+      </a>
+    {% endif %}
+    {% if session.get('user_id') %}
+      <div class="px-4 py-2 text-xs text-gray-600">Signed in as <span class="text-gray-400">{{ session.get('username') }}</span></div>
+      <a href="/logout" class="drawer-link">Sign out</a>
+    {% else %}
+      <a href="/login" class="mx-3 mt-2 block py-2.5 rounded-xl text-sm font-bold text-center bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-colors">Sign in</a>
+    {% endif %}
+  </div>
+</div>
 
 <!-- ═══════════════════ FLASH MESSAGES ═══════════════════ -->
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -429,40 +649,47 @@
 </footer>
 
 <script>
-  // Mobile menu
-  const mBtn = document.getElementById('mobile-btn');
-  const mMenu = document.getElementById('mobile-menu');
-  const hamIco = document.getElementById('ham-icon');
-  const xIco = document.getElementById('x-icon');
-  mBtn.addEventListener('click', () => {
-    const hidden = mMenu.classList.toggle('hidden');
-    hamIco.classList.toggle('hidden', !hidden);
-    xIco.classList.toggle('hidden', hidden);
+  // ── Nav scroll shrink ──
+  const mainNav = document.getElementById('main-nav');
+  if (mainNav) {
+    const onScroll = () => mainNav.classList.toggle('scrolled', window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  // ── Mobile drawer ──
+  const overlay = document.getElementById('mobile-overlay');
+  const drawer  = document.getElementById('mobile-drawer');
+  const mBtn    = document.getElementById('mobile-btn');
+  const dClose  = document.getElementById('drawer-close');
+
+  function openDrawer()  { overlay.classList.add('open'); drawer.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeDrawer() { overlay.classList.remove('open'); drawer.classList.remove('open'); document.body.style.overflow = ''; }
+
+  if (mBtn)   mBtn.addEventListener('click', openDrawer);
+  if (dClose) dClose.addEventListener('click', closeDrawer);
+  if (overlay) overlay.addEventListener('click', closeDrawer);
+
+  // Close drawer when navigating
+  if (drawer) drawer.querySelectorAll('a[href]').forEach(a => {
+    a.addEventListener('click', () => setTimeout(closeDrawer, 120));
   });
 
-  // Active nav highlight
+  // ── Drawer section toggles ──
+  function toggleDrawerSection(id, btn) {
+    const sub = document.getElementById(id);
+    if (!sub) return;
+    const isOpen = sub.classList.toggle('open');
+    const chevron = btn.querySelector('svg:last-child');
+    if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : '';
+  }
+
+  // ── Active nav-link highlight (JS fallback for buttons) ──
   const p = window.location.pathname;
-  document.querySelectorAll('.nav-link').forEach(a => {
-    const h = a.getAttribute('href');
-    if (h && (h === p || (h.length > 1 && p.startsWith(h)))) {
-      a.classList.add('active');
-    }
+  document.querySelectorAll('.nav-link').forEach(el => {
+    const h = el.getAttribute('href');
+    if (h && (h === p || (h.length > 1 && p.startsWith(h)))) el.classList.add('active');
   });
-
-  // Mobile teams toggle
-  function toggleMobileTeams() {
-    const list = document.getElementById('mobile-teams-list');
-    const chevron = document.getElementById('mobile-teams-chevron');
-    const hidden = list.classList.toggle('hidden');
-    chevron.style.transform = hidden ? '' : 'rotate(180deg)';
-  }
-
-  // Auto-open mobile teams if on a team page
-  if (p.startsWith('/team')) {
-    const list = document.getElementById('mobile-teams-list');
-    const chevron = document.getElementById('mobile-teams-chevron');
-    if (list) { list.classList.remove('hidden'); chevron.style.transform = 'rotate(180deg)'; }
-  }
 </script>
 <script>
 // ── Page transitions ──
