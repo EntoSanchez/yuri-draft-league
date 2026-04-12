@@ -996,8 +996,10 @@ def admin_teams():
         elif action == "edit":
             cid = request.form["coach_id"]
             uploaded = _save_logo_file(request.files.get("logo_file"))
-            logo_url = uploaded or request.form.get("logo_url", "")
             with get_db() as db:
+                existing = db.execute("SELECT logo_url FROM coaches WHERE id=?", (cid,)).fetchone()
+                existing_logo = existing["logo_url"] if existing else ""
+                logo_url = uploaded or request.form.get("logo_url", "") or existing_logo or ""
                 db.execute(
                     "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=? WHERE id=?",
                     (request.form["coach_name"], request.form["team_name"],
