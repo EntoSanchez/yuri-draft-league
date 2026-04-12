@@ -324,9 +324,44 @@
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-1 flex-1">
         <a href="/" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/' %}active{% endif %}">Home</a>
-        <a href="/standings" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/standings' %}active{% endif %}">Standings</a>
-        <a href="/schedule" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
+        <!-- Standings dropdown -->
+        <div class="nav-dropdown">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/standings', '/mvp'] %}active{% endif %}">
+            Standings
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="nav-dd-menu">
+            <a href="/standings" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              Standings
+            </a>
+            <a href="/mvp" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              MVP Race
+            </a>
+          </div>
+        </div>
+
+        <!-- Schedule dropdown -->
+        <div class="nav-dropdown">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/schedule', '/replays'] %}active{% endif %}">
+            Schedule
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="nav-dd-menu">
+            <a href="/schedule" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              Schedule
+            </a>
+            <a href="/replays" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Replays
+            </a>
+          </div>
+        </div>
+
         <a href="/pickems" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path.startswith('/pickems') %}active{% endif %}">Pick'ems</a>
+        <a href="/playoffs" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/playoffs' %}active{% endif %}">Playoffs</a>
 
         <!-- Teams megamenu -->
         <div class="nav-dropdown">
@@ -368,7 +403,7 @@
 
         <!-- Draft dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draftboard', '/draft-prep'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}active{% endif %}">
             Draft
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -385,12 +420,16 @@
               <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               Draft Prep
             </a>
+            <a href="/transactions" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+              Transactions
+            </a>
           </div>
         </div>
 
         <!-- Tools dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/battle-prep', '/damage-calc', '/replays'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/battle-prep', '/damage-calc', '/pokedex'] %}active{% endif %}">
             Tools
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -403,36 +442,20 @@
               <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
               Damage Calc
             </a>
-            <a href="/replays" class="nav-dd-item">
-              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              Replays
+            <a href="/pokedex" class="nav-dd-item">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M2 12h20"/></svg>
+              Pokédex
             </a>
           </div>
         </div>
 
         <!-- More dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/pokedex', '/playoffs', '/transactions', '/mvp', '/rules', '/seasons'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/rules', '/seasons'] %}active{% endif %}">
             More
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
           <div class="nav-dd-menu" style="left:auto;right:0;transform:none;">
-            <a href="/pokedex" class="nav-dd-item">
-              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M2 12h20"/></svg>
-              Pokédex
-            </a>
-            <a href="/playoffs" class="nav-dd-item">
-              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-              Playoffs
-            </a>
-            <a href="/transactions" class="nav-dd-item">
-              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-              Transactions
-            </a>
-            <a href="/mvp" class="nav-dd-item">
-              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
-              MVP Race
-            </a>
             <a href="/rules" class="nav-dd-item">
               <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Rules
@@ -489,17 +512,39 @@
       <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
       Home
     </a>
-    <a href="/standings" class="drawer-link {% if request.path == '/standings' %}active{% endif %}">
-      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-      Standings
-    </a>
-    <a href="/schedule" class="drawer-link {% if request.path == '/schedule' %}active{% endif %}">
-      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      Schedule
-    </a>
+    <!-- Standings -->
+    <button class="drawer-section-btn" onclick="toggleDrawerSection('standings-sub', this)">
+      <span class="flex items-center gap-2">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Standings
+      </span>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/standings', '/mvp'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="standings-sub" class="drawer-sub {% if request.path in ['/standings', '/mvp'] %}open{% endif %}">
+      <a href="/standings" class="drawer-sub-link">Standings</a>
+      <a href="/mvp" class="drawer-sub-link">MVP Race</a>
+    </div>
+
+    <!-- Schedule -->
+    <button class="drawer-section-btn" onclick="toggleDrawerSection('schedule-sub', this)">
+      <span class="flex items-center gap-2">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Schedule
+      </span>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/schedule', '/replays'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="schedule-sub" class="drawer-sub {% if request.path in ['/schedule', '/replays'] %}open{% endif %}">
+      <a href="/schedule" class="drawer-sub-link">Schedule</a>
+      <a href="/replays" class="drawer-sub-link">Replays</a>
+    </div>
+
     <a href="/pickems" class="drawer-link {% if request.path.startswith('/pickems') %}active{% endif %}">
       <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       Pick'ems
+    </a>
+    <a href="/playoffs" class="drawer-link {% if request.path == '/playoffs' %}active{% endif %}">
+      <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+      Playoffs
     </a>
 
     <div class="drawer-divider"></div>
@@ -544,12 +589,13 @@
         <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         Draft
       </span>
-      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/draft', '/draftboard', '/draft-prep'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
     </button>
-    <div id="draft-sub" class="drawer-sub {% if request.path in ['/draft', '/draftboard', '/draft-prep'] %}open{% endif %}">
+    <div id="draft-sub" class="drawer-sub {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}open{% endif %}">
       <a href="/draft" class="drawer-sub-link">Draft Live</a>
       <a href="/draftboard" class="drawer-sub-link">Draft Board</a>
       <a href="/draft-prep" class="drawer-sub-link">Draft Prep</a>
+      <a href="/transactions" class="drawer-sub-link">Transactions</a>
     </div>
 
     <!-- Tools -->
@@ -558,12 +604,12 @@
         <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         Tools
       </span>
-      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/battle-prep', '/damage-calc', '/replays'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/battle-prep', '/damage-calc', '/pokedex'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
     </button>
-    <div id="tools-sub" class="drawer-sub {% if request.path in ['/battle-prep', '/damage-calc', '/replays'] %}open{% endif %}">
+    <div id="tools-sub" class="drawer-sub {% if request.path in ['/battle-prep', '/damage-calc', '/pokedex'] %}open{% endif %}">
       <a href="/battle-prep" class="drawer-sub-link">Battle Prep</a>
       <a href="/damage-calc" class="drawer-sub-link">Damage Calc</a>
-      <a href="/replays" class="drawer-sub-link">Replays</a>
+      <a href="/pokedex" class="drawer-sub-link">Pokédex</a>
     </div>
 
     <!-- More -->
@@ -572,13 +618,9 @@
         <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
         More
       </span>
-      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/pokedex', '/playoffs', '/transactions', '/mvp', '/rules', '/seasons'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/rules', '/seasons'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
     </button>
-    <div id="more-sub" class="drawer-sub {% if request.path in ['/pokedex', '/playoffs', '/transactions', '/mvp', '/rules', '/seasons'] %}open{% endif %}">
-      <a href="/pokedex" class="drawer-sub-link">Pokédex</a>
-      <a href="/playoffs" class="drawer-sub-link">Playoffs</a>
-      <a href="/transactions" class="drawer-sub-link">Transactions</a>
-      <a href="/mvp" class="drawer-sub-link">MVP Race</a>
+    <div id="more-sub" class="drawer-sub {% if request.path in ['/rules', '/seasons'] %}open{% endif %}">
       <a href="/rules" class="drawer-sub-link">Rules</a>
       <a href="/seasons" class="drawer-sub-link">Past Seasons</a>
     </div>
