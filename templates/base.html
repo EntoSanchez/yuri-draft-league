@@ -229,7 +229,8 @@
 
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-5 flex-1">
-        <a href="/"             class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/' %}active{% endif %}">Standings</a>
+        <a href="/"             class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/' %}active{% endif %}">Home</a>
+        <a href="/standings"    class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/standings' %}active{% endif %}">Standings</a>
 
         <!-- Teams dropdown -->
         <div class="teams-dropdown flex items-center h-16">
@@ -318,10 +319,11 @@
   <!-- Mobile menu -->
   <div id="mobile-menu" class="hidden md:hidden border-t border-gray-800/60" style="background-color:rgba(8,12,20,0.98);">
     <div class="px-4 py-3 space-y-0.5">
-      <a href="/"             class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Standings</a>
+      <a href="/"             class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Home</a>
+      <a href="/standings"    class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/standings' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Standings</a>
       <!-- Teams expandable -->
       <div>
-        <button onclick="toggleMobileTeams()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">
+        <button onclick="toggleMobileTeams()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all {% if request.path.startswith('/team') %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">
           <span>Teams</span>
           <svg id="mobile-teams-chevron" class="w-3.5 h-3.5 opacity-50 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
@@ -351,19 +353,19 @@
           <a href="/teams" class="block px-3 py-1.5 text-xs font-semibold text-yellow-500 hover:text-yellow-400 transition-colors">All teams &rarr;</a>
         </div>
       </div>
-      <a href="/schedule"     class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Schedule</a>
-      <a href="/pickems"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Pick'ems</a>
-      <a href="/draft"        class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Draft</a>
-      <a href="/draftboard"   class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Draft Board</a>
-      <a href="/draft-prep"   class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Draft Prep</a>
-      <a href="/damage-calc"  class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Damage Calc</a>
-      <a href="/replays"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Replays</a>
-      <a href="/transactions" class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Transactions</a>
-      <a href="/mvp"          class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">MVP Race</a>
-      <a href="/rules"        class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Rules</a>
-      <a href="/pokedex"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Pokédex</a>
-      <a href="/playoffs"     class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Playoffs</a>
-      <a href="/seasons"      class="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400 transition-all">Past Seasons</a>
+      <a href="/schedule"     class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/schedule' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Schedule</a>
+      <a href="/pickems"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path.startswith('/pickems') %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Pick'ems</a>
+      <a href="/draft"        class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/draft' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Draft</a>
+      <a href="/draftboard"   class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/draftboard' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Draft Board</a>
+      <a href="/draft-prep"   class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/draft-prep' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Draft Prep</a>
+      <a href="/damage-calc"  class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/damage-calc' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Damage Calc</a>
+      <a href="/replays"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/replays' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Replays</a>
+      <a href="/transactions" class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/transactions' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Transactions</a>
+      <a href="/mvp"          class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/mvp' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">MVP Race</a>
+      <a href="/rules"        class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/rules' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Rules</a>
+      <a href="/pokedex"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/pokedex' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Pokédex</a>
+      <a href="/playoffs"     class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/playoffs' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Playoffs</a>
+      <a href="/seasons"      class="block px-3 py-2 rounded-lg text-sm transition-all {% if request.path == '/seasons' %}text-yellow-400 bg-yellow-400/8 font-semibold{% else %}text-gray-300 hover:bg-gray-800/60 hover:text-yellow-400{% endif %}">Past Seasons</a>
       <div class="pt-2 mt-2 border-t border-gray-800/60 space-y-1">
         {% if session.get('role') == 'admin' %}
           <a href="/admin" class="block px-3 py-2 rounded-lg text-sm text-red-400 bg-red-950/40 hover:bg-red-950/60">Admin Panel</a>
@@ -415,7 +417,8 @@
         <span class="text-sm font-bold text-gray-500">{{ league_name }}</span>
       </div>
       <div class="flex items-center gap-5">
-        <a href="/"             class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Standings</a>
+        <a href="/"             class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Home</a>
+        <a href="/standings"    class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Standings</a>
         <a href="/schedule"     class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Schedule</a>
         <a href="/draftboard"   class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Draft Board</a>
         <a href="/rules"        class="text-xs text-gray-700 hover:text-gray-500 transition-colors">Rules</a>
@@ -460,6 +463,33 @@
     const chevron = document.getElementById('mobile-teams-chevron');
     if (list) { list.classList.remove('hidden'); chevron.style.transform = 'rotate(180deg)'; }
   }
+</script>
+<script>
+// ── Page transitions ──
+(function() {
+  const main = document.querySelector('main');
+  if (!main) return;
+
+  // Fade in on load
+  main.style.opacity = '0';
+  main.style.transition = 'opacity 0.22s ease';
+  window.addEventListener('DOMContentLoaded', () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => { main.style.opacity = '1'; }));
+  });
+
+  // Fade out before navigating away
+  document.addEventListener('click', function(e) {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    // Skip external, hash-only, admin, or same-page links
+    if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto')
+        || a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    main.style.opacity = '0';
+    setTimeout(() => { window.location.href = href; }, 200);
+  });
+})();
 </script>
 <script>
 // ── Global page animations ──

@@ -166,6 +166,19 @@
         </div>
     </div>
 
+    <!-- Discord Integration -->
+    <div>
+        <label class="block text-sm font-semibold text-gray-300 mb-1">Discord Webhook URL</label>
+        <input type="url" name="discord_webhook_url"
+               value="{{ settings.get('discord_webhook_url', '') }}"
+               placeholder="https://discord.com/api/webhooks/..."
+               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-yellow-500 focus:outline-none transition-colors font-mono text-sm">
+        <p class="text-xs text-gray-500 mt-1">When set, match results will be automatically posted to this Discord channel. Create one in Discord channel settings → Integrations → Webhooks.</p>
+        {% if settings.get('discord_webhook_url') %}
+        <p class="text-xs text-green-500 mt-1">✓ Webhook configured — results will post to Discord</p>
+        {% endif %}
+    </div>
+
     <div class="pt-2">
         <button type="submit" class="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-lg transition-colors">
             💾 Save Settings

@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+{% block title %}{{ league_name }}{% endblock %}
+{% block content %}
+
+<style>
+  /* ── Material Dark palette ── */
+  :root {
+    --pm:  #BB86FC;   /* primary   */
+    --pmv: #3700B3;   /* primary variant */
+    --sc:  #03DAC6;   /* secondary / teal */
+    --er:  #CF6679;   /* error / rose */
+    --bg:  #121212;
+    --sf:  #1e1e1e;
+    --sf2: #2a2a2a;
+  }
+
+  /* ── Hero ── */
+  .home-hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* Multi-layer grid + radial glow backdrop */
+  .home-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(187,134,252,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(187,134,252,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .hero-glow-1 {
+    position: absolute;
+    width: 700px; height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(55,0,179,0.45) 0%, transparent 70%);
+    top: -200px; left: -150px;
+    pointer-events: none;
+    animation: driftA 14s ease-in-out infinite alternate;
+  }
+  .hero-glow-2 {
+    position: absolute;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(3,218,198,0.22) 0%, transparent 70%);
+    bottom: -100px; right: -80px;
+    pointer-events: none;
+    animation: driftB 18s ease-in-out infinite alternate;
+  }
+  .hero-glow-3 {
+    position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(187,134,252,0.18) 0%, transparent 70%);
+    top: 40%; right: 15%;
+    pointer-events: none;
+    animation: driftC 22s ease-in-out infinite alternate;
+  }
+  @keyframes driftA {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(60px,40px) scale(1.12); }
+  }
+  @keyframes driftB {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(-40px,-30px) scale(1.08); }
+  }
+  @keyframes driftC {
+    from { transform: translate(0,0); }
+    to   { transform: translate(30px,-50px); }
+  }
+
+  /* ── Hero content ── */
+  .hero-content {
+    position: relative; z-index: 2;
+    text-align: center;
+    padding: 0 1rem;
+    max-width: 860px;
+  }
+  .hero-season-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(3,218,198,0.4);
+    background: rgba(3,218,198,0.08);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sc);
+    margin-bottom: 1.2rem;
+  }
+  .hero-season-badge::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--sc);
+    box-shadow: 0 0 6px var(--sc);
+    animation: pulse-dot 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  .hero-title {
+    font-size: clamp(2.8rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #ffffff 0%, var(--pm) 50%, var(--sc) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.2rem;
+    text-shadow: none;
+  }
+  .hero-sub {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.45);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin-bottom: 2.5rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* CTA buttons */
+  .btn-primary-pm {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 28px;
+    border-radius: 10px;
+    font-size: 0.875rem; font-weight: 800; letter-spacing: 0.03em;
+    background: var(--pm);
+    color: #000;
+    border: none;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    text-decoration: none;
+    box-shadow: 0 0 24px rgba(187,134,252,0.35);
+  }
+  .btn-primary-pm:hover {
+    background: #d0a8ff;
+    transform: translateY(-2px);
+    box-shadow: 0 0 36px rgba(187,134,252,0.55);
+  }
+  .btn-outline-sc {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 26px;
+    border-radius: 10px;
+    font-size: 0.875rem; font-weight: 700;
+    background: transparent;
+    color: var(--sc);
+    border: 1.5px solid rgba(3,218,198,0.5);
+    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+    text-decoration: none;
+  }
+  .btn-outline-sc:hover {
+    background: rgba(3,218,198,0.1);
+    box-shadow: 0 0 20px rgba(3,218,198,0.25);
+    transform: translateY(-2px);
+  }
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 0.875rem; font-weight: 600;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.65);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: background 0.15s, transform 0.15s;
+    text-decoration: none;
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.11);
+    transform: translateY(-2px);
+  }
+
+  /* Scroll hint */
+  .scroll-hint {
+    position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(255,255,255,0.2);
+    z-index: 2;
+    animation: bounce-hint 2.4s ease-in-out infinite;
+  }
+  @keyframes bounce-hint {
+    0%,100% { transform: translateX(-50%) translateY(0); opacity: 0.3; }
+    50%      { transform: translateX(-50%) translateY(6px); opacity: 0.7; }
+  }
+
+  /* ── Stats strip ── */
+  .stats-strip {
+    background: var(--sf);
+    border-top: 1px solid rgba(187,134,252,0.12);
+    border-bottom: 1px solid rgba(187,134,252,0.12);
+  }
+  .stat-item {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    position: relative;
+  }
+  .stat-item + .stat-item::before {
+    content: '';
+    position: absolute; left: 0; top: 25%; bottom: 25%;
+    width: 1px;
+    background: rgba(187,134,252,0.1);
+  }
+  .stat-num {
+    font-size: 2.2rem;
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--pm), var(--sc));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-top: 4px;
+  }
+
+  /* ── Section headings ── */
+  .section-eyebrow {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--sc);
+    margin-bottom: 0.4rem;
+  }
+  .section-heading {
+    font-size: 1.8rem; font-weight: 900; color: #fff;
+    letter-spacing: -0.02em; line-height: 1.1;
+  }
+
+  /* ── Nav cards ── */
+  .nav-card {
+    position: relative;
+    border-radius: 14px;
+    border: 1px solid rgba(187,134,252,0.1);
+    background: var(--sf);
+    padding: 1.5rem;
+    transition: border-color 0.2s, transform 0.18s, box-shadow 0.2s;
+    text-decoration: none;
+    overflow: hidden;
+    display: block;
+  }
+  .nav-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(187,134,252,0.06) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .nav-card:hover::before { opacity: 1; }
+  .nav-card:hover {
+    border-color: rgba(187,134,252,0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(187,134,252,0.15);
+  }
+  .nav-card-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 0.9rem;
+  }
+  .nav-card-title { font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 0.3rem; }
+  .nav-card-desc  { font-size: 0.75rem; color: rgba(255,255,255,0.35); line-height: 1.4; }
+  .nav-card-arrow {
+    position: absolute; top: 1.4rem; right: 1.4rem;
+    font-size: 0.7rem; color: rgba(187,134,252,0.4);
+    transition: transform 0.15s, color 0.15s;
+  }
+  .nav-card:hover .nav-card-arrow { transform: translate(3px,-3px); color: var(--pm); }
+
+  /* ── Progress bar (season) ── */
+  .season-bar-track {
+    height: 4px; border-radius: 99px;
+    background: rgba(255,255,255,0.07);
+    overflow: hidden; position: relative;
+  }
+  .season-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--pmv), var(--pm), var(--sc));
+    border-radius: 99px;
+    box-shadow: 0 0 10px rgba(187,134,252,0.5);
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── Result cards ── */
+  .result-card {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--sf);
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .result-card:hover {
+    border-color: rgba(187,134,252,0.3);
+    box-shadow: 0 4px 24px rgba(187,134,252,0.1);
+  }
+
+  /* ── Top 3 podium ── */
+  .podium-card {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: var(--sf);
+    padding: 1.2rem 1rem;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.18s;
+  }
+  .podium-card:hover {
+    border-color: rgba(187,134,252,0.35);
+    transform: translateY(-2px);
+  }
+  .podium-1 { border-color: rgba(250,204,21,0.3); background: rgba(250,204,21,0.04); }
+  .podium-2 { border-color: rgba(192,192,192,0.2); }
+  .podium-3 { border-color: rgba(205,127,50,0.2); }
+
+  /* Main content background */
+  .home-sections { background: var(--bg); }
+</style>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="home-hero">
+  <div class="hero-glow-1"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-glow-3"></div>
+
+  <div class="hero-content">
+    <!-- League logo -->
+    <div class="flex justify-center mb-6">
+      <img src="/static/favicon.jpg" alt="{{ league_name }}"
+           class="rounded-2xl object-cover"
+           style="width:96px;height:96px;box-shadow:0 0 48px rgba(187,134,252,0.45),0 0 80px rgba(55,0,179,0.35);">
+    </div>
+
+    <!-- Season badge -->
+    {% if season %}
+    <div class="flex justify-center">
+      <span class="hero-season-badge">Season {{ season }} — Now Live</span>
+    </div>
+    {% endif %}
+
+    <!-- Title -->
+    <h1 class="hero-title">{{ league_name }}</h1>
+
+    <p class="hero-sub">
+      Pokémon Draft League &mdash; compete, draft, and climb the ranks.
+      {% if total_weeks > 0 %}
+        {% if completed_weeks >= total_weeks %}
+          Season complete.
+        {% else %}
+          Week {{ completed_weeks + 1 }} of {{ total_weeks }} in progress.
+        {% endif %}
+      {% endif %}
+    </p>
+
+    <!-- CTA row -->
+    <div class="flex flex-wrap items-center justify-center gap-3">
+      <a href="/standings"  class="btn-primary-pm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Standings
+      </a>
+      <a href="/schedule"   class="btn-outline-sc">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Schedule
+      </a>
+      <a href="/pickems"    class="btn-ghost">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Pick'ems
+      </a>
+    </div>
+  </div>
+
+  <!-- Scroll hint -->
+  <div class="scroll-hint">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+    Scroll
+  </div>
+</section>
+
+<!-- ═══════════════════ STATS STRIP ═══════════════════ -->
+<div class="home-sections">
+  <div class="stats-strip">
+    <div class="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4">
+      <div class="stat-item">
+        <div class="stat-num">{{ total_teams }}</div>
+        <div class="stat-label">Teams</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">{{ total_weeks }}</div>
+        <div class="stat-label">Weeks</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">{{ completed_matches }}</div>
+        <div class="stat-label">Matches Played</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">{{ completed_weeks }}/{{ total_weeks }}</div>
+        <div class="stat-label">Weeks Complete</div>
+      </div>
+    </div>
+    <!-- Season progress bar -->
+    {% if total_weeks > 0 %}
+    <div class="max-w-4xl mx-auto px-6 pb-5">
+      <div class="season-bar-track">
+        <div class="season-bar-fill" id="home-season-bar"
+             style="width:0%;"
+             data-target="{{ ((completed_weeks / total_weeks) * 100) | round(1) }}">
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════════ QUICK NAV ═══════════════════ -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="mb-10">
+      <p class="section-eyebrow">Explore the League</p>
+      <h2 class="section-heading">Everything in one place</h2>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+      <a href="/standings" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(187,134,252,0.15);">📊</div>
+        <div class="nav-card-title">Standings</div>
+        <div class="nav-card-desc">Pool rankings, win/loss records, and score differentials.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/schedule" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(3,218,198,0.12);">📅</div>
+        <div class="nav-card-title">Schedule</div>
+        <div class="nav-card-desc">Weekly matchups and results across all pools.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/pickems" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(207,102,121,0.15);">🎯</div>
+        <div class="nav-card-title">Pick'ems</div>
+        <div class="nav-card-desc">Predict match winners and compete on the leaderboard.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/playoffs" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(250,204,21,0.12);">🏆</div>
+        <div class="nav-card-title">Playoffs</div>
+        <div class="nav-card-desc">Tournament bracket and postseason results.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/draftboard" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(187,134,252,0.12);">🎮</div>
+        <div class="nav-card-title">Draft Board</div>
+        <div class="nav-card-desc">Full draft history and pick order by coach.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/draft-prep" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(3,218,198,0.1);">📋</div>
+        <div class="nav-card-title">Draft Prep</div>
+        <div class="nav-card-desc">Plan your draft roster before the picks start.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/pokedex" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(207,102,121,0.12);">📖</div>
+        <div class="nav-card-title">Pokédex</div>
+        <div class="nav-card-desc">Browse every eligible Pokémon with stats and costs.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+      <a href="/damage-calc" class="nav-card">
+        <div class="nav-card-icon" style="background:rgba(255,100,50,0.1);">⚔️</div>
+        <div class="nav-card-title">Damage Calc</div>
+        <div class="nav-card-desc">Calculate damage ranges for your matchups.</div>
+        <span class="nav-card-arrow">↗</span>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════ TOP 3 ═══════════════════ -->
+  {% if top3 %}
+  <div style="background:var(--sf);border-top:1px solid rgba(187,134,252,0.08);border-bottom:1px solid rgba(187,134,252,0.08);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      <div class="mb-8">
+        <p class="section-eyebrow">Current Standings</p>
+        <h2 class="section-heading">Top Teams</h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl">
+        {% for row in top3 %}
+        <a href="/team/{{ row.coach.id }}"
+           class="podium-card {% if loop.index == 1 %}podium-1{% elif loop.index == 2 %}podium-2{% else %}podium-3{% endif %}"
+           style="text-decoration:none;">
+          <!-- Medal -->
+          <div class="text-2xl mb-3">{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}</div>
+          <!-- Logo -->
+          {% if row.coach.logo_url %}
+            <img src="{{ row.coach.logo_url }}" class="w-16 h-16 object-contain rounded-xl mx-auto mb-3" alt="">
+          {% else %}
+            <div class="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-black text-white mx-auto mb-3"
+                 style="background:{{ row.coach.color or '#374151' }};">
+              {{ row.coach.team_name[:2].upper() }}
+            </div>
+          {% endif %}
+          <div class="font-black text-white text-sm mb-1">{{ row.coach.team_name }}</div>
+          <div class="text-xs mb-2" style="color:rgba(255,255,255,0.35);">{{ row.coach.coach_name }}</div>
+          <div class="flex items-center justify-center gap-2 text-xs font-bold">
+            <span style="color:#4ade80;">{{ row.W }}W</span>
+            <span style="color:rgba(255,255,255,0.2);">·</span>
+            <span style="color:#f87171;">{{ row.L }}L</span>
+            {% if row.T %}
+            <span style="color:rgba(255,255,255,0.2);">·</span>
+            <span style="color:#facc15;">{{ row.T }}T</span>
+            {% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      <div class="mt-6">
+        <a href="/standings" class="btn-outline-sc" style="font-size:0.8rem;padding:9px 20px;">
+          Full Standings →
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════ RECENT RESULTS ═══════════════════ -->
+  {% if recent_results %}
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <div class="mb-8 flex items-end justify-between">
+      <div>
+        <p class="section-eyebrow">Latest Action</p>
+        <h2 class="section-heading">Recent Results</h2>
+      </div>
+      <a href="/schedule" class="text-xs font-semibold transition-colors"
+         style="color:var(--sc);">View all →</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for m in recent_results %}
+      {% set s1 = m.score1 | int %}
+      {% set s2 = m.score2 | int %}
+      {% set c1_win = s1 > s2 %}
+      {% set is_tie = s1 == s2 %}
+      <div class="result-card">
+        <!-- Color bar -->
+        <div class="h-0.5 flex">
+          <div class="flex-1" style="background:{{ m.c1_color or '#374151' }};opacity:0.7;"></div>
+          <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.7;"></div>
+        </div>
+        <!-- Header -->
+        <div class="flex items-center justify-between px-4 py-2" style="background:rgba(0,0,0,0.25);">
+          <span class="text-xs font-bold uppercase tracking-widest" style="color:rgba(255,255,255,0.25);">Week {{ m.week }} · Pool {{ m.pool }}</span>
+          <span class="text-xs font-black px-2 py-0.5 rounded-full"
+                style="{% if is_tie %}color:var(--sc);background:rgba(3,218,198,0.1);{% else %}color:var(--pm);background:rgba(187,134,252,0.1);{% endif %}">
+            FINAL
+          </span>
+        </div>
+        <!-- Score -->
+        <div class="flex items-center px-4 py-4 gap-3">
+          <!-- Team 1 -->
+          <div class="flex-1 flex flex-col items-center gap-2 {% if not c1_win and not is_tie %}opacity-40{% endif %}">
+            {% if m.c1_logo %}
+              <img src="{{ m.c1_logo }}" class="w-12 h-12 object-contain rounded-lg" alt="">
+            {% else %}
+              <div class="w-12 h-12 rounded-lg flex items-center justify-center text-sm font-black text-white"
+                   style="background:{{ m.c1_color or '#374151' }};">{{ m.t1[:2].upper() }}</div>
+            {% endif %}
+            <a href="/team/{{ m.c1_id }}" class="text-xs font-bold text-center leading-tight hover:underline"
+               style="color:{% if c1_win %}#fff{% elif is_tie %}var(--sc){% else %}rgba(255,255,255,0.5){% endif %};">
+               {{ m.t1 }}</a>
+          </div>
+          <!-- Score center -->
+          <div class="flex flex-col items-center flex-shrink-0" style="min-width:60px;">
+            <span class="font-black text-2xl tabular-nums"
+                  style="color:{% if is_tie %}var(--sc){% else %}#fff{% endif %};">
+              {{ s1 }}
+            </span>
+            <span class="text-xs font-bold my-0.5" style="color:rgba(255,255,255,0.2);">:</span>
+            <span class="font-black text-2xl tabular-nums"
+                  style="color:{% if is_tie %}var(--sc){% else %}#fff{% endif %};">
+              {{ s2 }}
+            </span>
+          </div>
+          <!-- Team 2 -->
+          <div class="flex-1 flex flex-col items-center gap-2 {% if c1_win and not is_tie %}opacity-40{% endif %}">
+            {% if m.c2_logo %}
+              <img src="{{ m.c2_logo }}" class="w-12 h-12 object-contain rounded-lg" alt="">
+            {% else %}
+              <div class="w-12 h-12 rounded-lg flex items-center justify-center text-sm font-black text-white"
+                   style="background:{{ m.c2_color or '#374151' }};">{{ m.t2[:2].upper() }}</div>
+            {% endif %}
+            <a href="/team/{{ m.c2_id }}" class="text-xs font-bold text-center leading-tight hover:underline"
+               style="color:{% if not c1_win and not is_tie %}#fff{% elif is_tie %}var(--sc){% else %}rgba(255,255,255,0.5){% endif %};">
+               {{ m.t2 }}</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════ FOOTER CTA ═══════════════════ -->
+  <div style="background:var(--sf);border-top:1px solid rgba(187,134,252,0.08);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+      <p class="section-eyebrow mb-3">Ready to play?</p>
+      <h2 class="section-heading mb-6" style="font-size:2.2rem;">Dive into the action</h2>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="/draftboard"  class="btn-primary-pm">View Draft Board</a>
+        <a href="/battle-prep" class="btn-outline-sc">Battle Prep</a>
+        <a href="/rules"       class="btn-ghost">League Rules</a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .home-sections -->
+
+<script>
+// Animate the season progress bar on scroll-into-view
+window.addEventListener('DOMContentLoaded', () => {
+  const bar = document.getElementById('home-season-bar');
+  if (!bar) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    bar.style.width = (bar.dataset.target || '0') + '%';
+  }));
+});
+</script>
+
+{% endblock %}

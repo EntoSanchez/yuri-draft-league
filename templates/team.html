@@ -3,61 +3,70 @@
 {% block content %}
 
 <!-- ── Header ── -->
-<div class="relative overflow-hidden border-b border-gray-800/60"
+<div class="hero-pattern border-b border-gray-800/60"
      style="background:linear-gradient(135deg,#0f1623 0%,#080c14 60%);">
-  <div class="absolute inset-0 opacity-8 pointer-events-none"
-       style="background:radial-gradient(ellipse at 10% 50%,{{ coach.color or '#374151' }} 0%,transparent 60%);"></div>
+  <!-- Team color glow -->
+  <div class="absolute inset-0 opacity-10 pointer-events-none"
+       style="background:radial-gradient(ellipse at 15% 50%,{{ coach.color or '#374151' }} 0%,transparent 55%);z-index:0;"></div>
 
-  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" style="z-index:1;">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
 
       <!-- Logo -->
       {% if coach.logo_url %}
-        <img src="{{ coach.logo_url }}" class="object-contain rounded-2xl border border-gray-700/50 flex-shrink-0" style="width:256px;height:256px;" alt="{{ coach.team_name }}">
+        <img src="{{ coach.logo_url }}" class="object-contain rounded-2xl border border-gray-700/40 flex-shrink-0"
+             style="width:200px;height:200px;box-shadow:0 0 40px {{ coach.color or 'rgba(250,204,21,0.15)' }}40;"
+             alt="{{ coach.team_name }}">
       {% else %}
-        <div class="rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 border border-gray-700/50" style="width:256px;height:256px;"
-             style="background-color:{{ coach.color or '#374151' }};">
+        <div class="rounded-2xl flex items-center justify-center text-4xl font-black text-white flex-shrink-0 border border-gray-700/40"
+             style="width:200px;height:200px;background-color:{{ coach.color or '#374151' }};">
           {{ coach.team_name[:2].upper() }}
         </div>
       {% endif %}
 
       <!-- Info -->
       <div class="flex-1 min-w-0">
-        <p class="text-xs font-bold uppercase tracking-widest mb-0.5" style="color:{{ coach.color or '#6b7280' }};">Pool {{ coach.pool }}</p>
-        <h1 class="text-3xl font-black text-white leading-tight">{{ coach.team_name }}</h1>
-        <p class="text-sm text-gray-400 mt-0.5">Coach: <span class="text-gray-200 font-semibold">{{ coach.coach_name }}</span>
+        <p class="text-xs font-bold uppercase tracking-widest mb-1" style="color:{{ coach.color or '#6b7280' }};">Pool {{ coach.pool }}</p>
+        <h1 class="text-4xl font-black leading-tight gradient-heading">{{ coach.team_name }}</h1>
+        <p class="text-sm text-gray-400 mt-1.5">Coach: <span class="text-gray-200 font-semibold">{{ coach.coach_name }}</span>
           {% if coach.showdown_name %}
-          · <span class="text-xs text-indigo-400 font-mono">
-              <a href="https://pokemonshowdown.com/users/{{ coach.showdown_name }}" target="_blank" rel="noopener"
-                 class="hover:text-indigo-300 transition-colors" title="Pokemon Showdown profile">
-                PS: {{ coach.showdown_name }}
-              </a>
-            </span>
+          <span class="text-gray-700 mx-1">·</span>
+          <a href="https://pokemonshowdown.com/users/{{ coach.showdown_name }}" target="_blank" rel="noopener"
+             class="text-xs text-indigo-400 font-mono hover:text-indigo-300 transition-colors" title="Pokémon Showdown profile">
+            PS: {{ coach.showdown_name }}
+          </a>
           {% endif %}
         </p>
-      </div>
 
-      <!-- Record -->
-      {% if standing %}
-      <div class="flex-shrink-0 flex items-center gap-3">
-        <div class="text-center px-4 py-2 rounded-xl border border-gray-800" style="background:#0f1623;">
-          <div class="flex items-center gap-2 text-sm font-black">
-            <span class="text-green-400">{{ standing.W }}W</span>
+        <!-- Record inline -->
+        {% if standing %}
+        <div class="flex flex-wrap items-center gap-3 mt-3">
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700/50" style="background:rgba(0,0,0,0.3);">
+            <span class="text-green-400 font-black text-sm">{{ standing.W }}W</span>
             <span class="text-gray-700">·</span>
-            <span class="text-red-400">{{ standing.L }}L</span>
-            {% if standing.T %}<span class="text-gray-700">·</span><span class="text-yellow-400">{{ standing.T }}T</span>{% endif %}
+            <span class="text-red-400 font-black text-sm">{{ standing.L }}L</span>
+            {% if standing.T %}
+            <span class="text-gray-700">·</span>
+            <span class="text-yellow-400 font-black text-sm">{{ standing.T }}T</span>
+            {% endif %}
           </div>
-          <div class="text-xs text-gray-600 mt-0.5 font-medium">
-            {% if standing.diff > 0 %}+{% endif %}{{ "%.1f"|format(standing.diff) }} diff · Rank #{{ standing.rank }}
-          </div>
+          <span class="text-xs text-gray-500 font-medium">
+            {% if standing.diff > 0 %}+{% endif %}{{ "%.1f"|format(standing.diff) }} score diff
+          </span>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+                style="background:rgba(250,204,21,0.1);color:#facc15;border:1px solid rgba(250,204,21,0.2);">
+            Rank #{{ standing.rank }}
+          </span>
+          {% if session.get('role') == 'admin' %}
+          <a href="/admin/roster/{{ coach.id }}"
+             class="ml-auto px-3 py-1.5 rounded-lg border border-gray-700 text-xs font-semibold text-gray-400 hover:border-yellow-500/50 hover:text-yellow-400 transition-all"
+             style="background:rgba(0,0,0,0.3);">
+            Edit Roster
+          </a>
+          {% endif %}
         </div>
-        {% if session.get('role') == 'admin' %}
-        <a href="/admin/roster/{{ coach.id }}" class="px-3 py-2 rounded-xl border border-gray-700 text-xs font-semibold text-gray-400 hover:border-yellow-500/50 hover:text-yellow-400 transition-all" style="background:#0f1623;">
-          Edit Roster
-        </a>
         {% endif %}
       </div>
-      {% endif %}
 
     </div>
   </div>
@@ -86,16 +95,19 @@
       <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.3);">🆓 {% if settings.get('draft_free_pick_type') == 'four_any' %}4 Free Picks{% else %}1 Free/Tier{% endif %}</span>
       {% endif %}
     </div>
-    <div class="rounded-xl border border-gray-800 p-4 overflow-x-auto" style="background:#0f1623;">
-      <div class="flex gap-3 min-w-max">
+    <div class="rounded-xl border border-gray-800 p-5" style="background:#0f1623;">
+      <div class="flex flex-wrap gap-3">
         {% for p in roster %}
-        <div class="flex flex-col items-center gap-1 w-16 flex-shrink-0 group">
+        <div class="flex flex-col items-center gap-1.5 flex-shrink-0 group"
+             style="width:72px;">
           <div class="relative">
             <img src="{{ pokemon_sprite_url(p.name) }}"
                  onerror="this.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
-                 class="w-14 h-14 object-contain" alt="{{ p.name }}"
+                 class="w-16 h-16 object-contain transition-transform group-hover:scale-110"
+                 style="image-rendering:pixelated;"
+                 alt="{{ p.name }}"
                  title="{{ p.name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} ⭐ Tera Captain{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} ⚡ Z-Move Captain{% endif %}">
-            <div class="hidden w-14 h-14 items-center justify-center rounded-lg text-gray-700 text-xs font-bold border border-gray-800" style="background:#080c14;">?</div>
+            <div class="hidden w-16 h-16 items-center justify-center rounded-lg text-gray-700 text-xs font-bold border border-gray-800" style="background:#080c14;">?</div>
             {# Captain badges stacked top-right #}
             {% set badge_count = namespace(n=0) %}
             {% if p.is_tera_captain and settings.get('mechanic_tera','0') == '1' %}
@@ -112,7 +124,7 @@
           <div class="text-center">
             <span class="inline-block px-1.5 py-0.5 rounded text-xs font-black text-yellow-300" style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.2);">{% if p.is_free_pick and settings.get('draft_free_pick_type','none') != 'none' %}<span class="text-green-400 line-through opacity-60">{{ p.points }}</span>FREE{% else %}{{ p.points }}pt{% endif %}</span>
           </div>
-          <p class="text-center text-gray-400 leading-tight" style="font-size:0.6rem;word-break:break-word;max-width:4rem;">{{ p.name.split(' ')[-1] if ' ' in p.name else p.name }}</p>
+          <p class="text-center text-gray-500 leading-tight" style="font-size:0.6rem;word-break:break-word;max-width:4.5rem;">{{ p.name.split(' ')[-1] if ' ' in p.name else p.name }}</p>
         </div>
         {% endfor %}
       </div>

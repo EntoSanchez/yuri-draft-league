@@ -4,6 +4,7 @@ import os
 import json
 import math
 import uuid
+import urllib.request
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_from_directory
 from functools import wraps
@@ -282,6 +283,23 @@ def get_setting(key, default=""):
     return row["value"] if row else default
 
 
+def post_discord(webhook_url, content):
+    """Fire-and-forget POST to a Discord webhook. Silently ignores errors."""
+    if not webhook_url:
+        return
+    try:
+        payload = json.dumps({"content": content}).encode("utf-8")
+        req = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass  # Never let Discord errors break the app
+
+
 def get_standings(pool=None):
     with get_db() as db:
         coaches = db.execute(
@@ -380,20 +398,94 @@ def logout():
 
 @app.route("/")
 def index():
+    """Esports-style home / landing page."""
+    league_name = get_setting("league_name", "Pokemon Draft League")
+    season = get_setting("season", "")
+    with get_db() as db:
+        total_teams = db.execute("SELECT COUNT(*) FROM coaches").fetchone()[0]
+        weeks = db.execute("SELECT DISTINCT week FROM schedule ORDER BY week").fetchall()
+        total_matches = db.execute("SELECT COUNT(*) FROM schedule").fetchone()[0]
+        completed_matches = db.execute(
+            "SELECT COUNT(*) FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
+        ).fetchone()[0]
+        current_week_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
+        current_week = int(current_week_row["value"]) if current_week_row else (weeks[-1]["week"] if weeks else 1)
+        # Recent 6 results
+        recent_rows = db.execute("""
+            SELECT s.week, s.pool, s.score1, s.score2,
+                   c1.team_name as t1, c1.color as c1_color, c1.logo_url as c1_logo, c1.id as c1_id,
+                   c2.team_name as t2, c2.color as c2_color, c2.logo_url as c2_logo, c2.id as c2_id
+            FROM schedule s
+            JOIN coaches c1 ON s.coach1_id = c1.id
+            JOIN coaches c2 ON s.coach2_id = c2.id
+            WHERE s.score1 IS NOT NULL AND s.score2 IS NOT NULL
+            ORDER BY s.week DESC, s.id DESC
+            LIMIT 6
+        """).fetchall()
+    all_weeks = [w["week"] for w in weeks]
+    total_weeks = len(all_weeks)
+    completed_weeks = 0
+    with get_db() as db:
+        for w in all_weeks:
+            wk_total = db.execute("SELECT COUNT(*) FROM schedule WHERE week=?", (w,)).fetchone()[0]
+            wk_done = db.execute(
+                "SELECT COUNT(*) FROM schedule WHERE week=? AND score1 IS NOT NULL AND score2 IS NOT NULL", (w,)
+            ).fetchone()[0]
+            if wk_total > 0 and wk_total == wk_done:
+                completed_weeks += 1
+    # Top 3 overall for the leaderboard strip
+    standings_all = get_standings(None)
+    top3 = standings_all[:3]
+    recent_results = [dict(r) for r in recent_rows]
+    return render_template("home.html",
+                           league_name=league_name,
+                           season=season,
+                           total_teams=total_teams,
+                           total_weeks=total_weeks,
+                           completed_weeks=completed_weeks,
+                           current_week=current_week,
+                           total_matches=total_matches,
+                           completed_matches=completed_matches,
+                           recent_results=recent_results,
+                           top3=top3)
+
+
+@app.route("/standings")
+def standings():
     league_name = get_setting("league_name", "Pokemon Draft League")
     standings_a = get_standings("A")
     standings_b = get_standings("B")
     standings_all = get_standings(None)
-    # Get max weeks played
     with get_db() as db:
         weeks = db.execute("SELECT DISTINCT week FROM schedule ORDER BY week").fetchall()
+        total_matches = db.execute("SELECT COUNT(*) FROM schedule").fetchone()[0]
+        completed_matches = db.execute(
+            "SELECT COUNT(*) FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
+        ).fetchone()[0]
+        current_week_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
     all_weeks = [w["week"] for w in weeks]
+    total_weeks = len(all_weeks)
+    current_week = int(current_week_row["value"]) if current_week_row else (all_weeks[-1] if all_weeks else 1)
+    completed_weeks = 0
+    with get_db() as db:
+        for w in all_weeks:
+            wk_total = db.execute("SELECT COUNT(*) FROM schedule WHERE week=?", (w,)).fetchone()[0]
+            wk_done = db.execute(
+                "SELECT COUNT(*) FROM schedule WHERE week=? AND score1 IS NOT NULL AND score2 IS NOT NULL", (w,)
+            ).fetchone()[0]
+            if wk_total > 0 and wk_total == wk_done:
+                completed_weeks += 1
     return render_template("index.html",
                            league_name=league_name,
                            standings_a=standings_a,
                            standings_b=standings_b,
                            standings_all=standings_all,
-                           all_weeks=all_weeks)
+                           all_weeks=all_weeks,
+                           total_weeks=total_weeks,
+                           completed_weeks=completed_weeks,
+                           current_week=current_week,
+                           total_matches=total_matches,
+                           completed_matches=completed_matches)
 
 
 @app.route("/teams")
@@ -1109,7 +1201,30 @@ def admin_schedule():
                     "UPDATE schedule SET score1=?, score2=? WHERE id=?",
                     (s1, s2, mid)
                 )
+                # Fetch match info for Discord notification
+                match_row = db.execute("""
+                    SELECT s.week, s.pool, c1.team_name as t1, c2.team_name as t2
+                    FROM schedule s
+                    JOIN coaches c1 ON s.coach1_id = c1.id
+                    JOIN coaches c2 ON s.coach2_id = c2.id
+                    WHERE s.id=?
+                """, (mid,)).fetchone()
+                webhook = db.execute(
+                    "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
+                ).fetchone()
             flash("Result updated!", "success")
+            if s1 is not None and s2 is not None and match_row and webhook and webhook["value"]:
+                s1i, s2i = int(s1), int(s2)
+                t1, t2 = match_row["t1"], match_row["t2"]
+                winner = t1 if s1i > s2i else (t2 if s2i > s1i else None)
+                if winner:
+                    result_line = f"**{t1}** {s1i}–{s2i} **{t2}** → 🏆 **{winner}** wins!"
+                else:
+                    result_line = f"**{t1}** {s1i}–{s2i} **{t2}** → 🤝 Tie!"
+                league = get_setting("league_name", "Pokemon Draft League")
+                post_discord(webhook["value"],
+                    f"📣 **{league}** — Week {match_row['week']} Result (Pool {match_row['pool']})\n{result_line}"
+                )
         elif action == "delete_match":
             mid = request.form["match_id"]
             with get_db() as db:
@@ -1878,7 +1993,20 @@ def admin_playoffs():
                             "UPDATE playoff_matches SET coach2_id=?, seed2=? WHERE id=?",
                             (winner_id, winner_seed, m["next_match_id"])
                         )
+                # Fetch team names for Discord
+                c1_row = db.execute("SELECT team_name FROM coaches WHERE id=?", (m["coach1_id"],)).fetchone()
+                c2_row = db.execute("SELECT team_name FROM coaches WHERE id=?", (m["coach2_id"],)).fetchone()
+                webhook = db.execute("SELECT value FROM league_settings WHERE key='discord_webhook_url'").fetchone()
             flash("Result saved!", "success")
+            if c1_row and c2_row and webhook and webhook["value"]:
+                t1 = c1_row["team_name"]
+                t2 = c2_row["team_name"]
+                winner_name = t1 if score1 > score2 else t2
+                round_name = f"Round {m['round']}"
+                league = get_setting("league_name", "Pokemon Draft League")
+                post_discord(webhook["value"],
+                    f"🏆 **{league} Playoffs** — {round_name} Result\n**{t1}** {score1}–{score2} **{t2}** → 🥊 **{winner_name}** advances!"
+                )
 
         elif action == "clear_result":
             match_id = request.form.get("match_id", type=int)
