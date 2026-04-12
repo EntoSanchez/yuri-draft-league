@@ -3,433 +3,548 @@
 {% block content %}
 
 <style>
-  /* ── Material Dark palette ── */
   :root {
-    --pm:  #BB86FC;   /* primary   */
-    --pmv: #3700B3;   /* primary variant */
-    --sc:  #03DAC6;   /* secondary / teal */
-    --er:  #CF6679;   /* error / rose */
-    --bg:  #121212;
-    --sf:  #1e1e1e;
-    --sf2: #2a2a2a;
+    --pm:  #BB86FC;
+    --pmv: #3700B3;
+    --sc:  #03DAC6;
+    --er:  #CF6679;
+    --bg:  #0a0a0f;
+    --sf:  #111118;
+    --sf2: #18181f;
+    --border: rgba(187,134,252,0.12);
   }
 
-  /* ── Hero ── */
+  /* ═══ HERO ═══ */
   .home-hero {
     position: relative;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
     overflow: hidden;
     background: var(--bg);
   }
 
-  /* Multi-layer grid + radial glow backdrop */
-  .home-hero::before {
-    content: '';
+  /* Animated grid */
+  .hero-grid {
     position: absolute; inset: 0;
     background-image:
-      linear-gradient(rgba(187,134,252,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(187,134,252,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
+      linear-gradient(rgba(187,134,252,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(187,134,252,0.05) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
     pointer-events: none;
+    animation: gridShift 20s linear infinite;
   }
-  .hero-glow-1 {
+  @keyframes gridShift {
+    from { transform: translateY(0); }
+    to   { transform: translateY(44px); }
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: absolute; border-radius: 50%;
+    pointer-events: none; will-change: transform;
+  }
+  .orb-1 {
+    width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(55,0,179,0.5) 0%, transparent 65%);
+    top: -250px; left: -200px;
+    animation: orbFloat1 16s ease-in-out infinite alternate;
+  }
+  .orb-2 {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(3,218,198,0.25) 0%, transparent 65%);
+    bottom: -150px; right: -100px;
+    animation: orbFloat2 20s ease-in-out infinite alternate;
+  }
+  .orb-3 {
+    width: 350px; height: 350px;
+    background: radial-gradient(circle, rgba(187,134,252,0.2) 0%, transparent 65%);
+    top: 35%; right: 10%;
+    animation: orbFloat3 24s ease-in-out infinite alternate;
+  }
+  .orb-4 {
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(207,102,121,0.18) 0%, transparent 65%);
+    top: 15%; left: 20%;
+    animation: orbFloat4 18s ease-in-out infinite alternate;
+  }
+  @keyframes orbFloat1 { from{transform:translate(0,0) scale(1)} to{transform:translate(70px,50px) scale(1.15)} }
+  @keyframes orbFloat2 { from{transform:translate(0,0) scale(1)} to{transform:translate(-50px,-40px) scale(1.1)} }
+  @keyframes orbFloat3 { from{transform:translate(0,0)} to{transform:translate(40px,-60px)} }
+  @keyframes orbFloat4 { from{transform:translate(0,0)} to{transform:translate(-30px,40px)} }
+
+  /* Floating particles */
+  .particle {
     position: absolute;
-    width: 700px; height: 700px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(55,0,179,0.45) 0%, transparent 70%);
-    top: -200px; left: -150px;
     pointer-events: none;
-    animation: driftA 14s ease-in-out infinite alternate;
+    opacity: 0;
+    animation: particleFly var(--dur, 8s) ease-in-out var(--delay, 0s) infinite;
   }
-  .hero-glow-2 {
-    position: absolute;
-    width: 500px; height: 500px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(3,218,198,0.22) 0%, transparent 70%);
-    bottom: -100px; right: -80px;
-    pointer-events: none;
-    animation: driftB 18s ease-in-out infinite alternate;
-  }
-  .hero-glow-3 {
-    position: absolute;
-    width: 300px; height: 300px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(187,134,252,0.18) 0%, transparent 70%);
-    top: 40%; right: 15%;
-    pointer-events: none;
-    animation: driftC 22s ease-in-out infinite alternate;
-  }
-  @keyframes driftA {
-    from { transform: translate(0,0) scale(1); }
-    to   { transform: translate(60px,40px) scale(1.12); }
-  }
-  @keyframes driftB {
-    from { transform: translate(0,0) scale(1); }
-    to   { transform: translate(-40px,-30px) scale(1.08); }
-  }
-  @keyframes driftC {
-    from { transform: translate(0,0); }
-    to   { transform: translate(30px,-50px); }
+  @keyframes particleFly {
+    0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+    15%  { opacity: 0.6; }
+    85%  { opacity: 0.3; }
+    100% { opacity: 0; transform: translateY(-120px) scale(1.2); }
   }
 
   /* ── Hero content ── */
   .hero-content {
     position: relative; z-index: 2;
     text-align: center;
-    padding: 0 1rem;
-    max-width: 860px;
-  }
-  .hero-season-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(3,218,198,0.4);
-    background: rgba(3,218,198,0.08);
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--sc);
-    margin-bottom: 1.2rem;
-  }
-  .hero-season-badge::before {
-    content: '';
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--sc);
-    box-shadow: 0 0 6px var(--sc);
-    animation: pulse-dot 1.8s ease-in-out infinite;
-  }
-  @keyframes pulse-dot {
-    0%,100% { opacity: 1; transform: scale(1); }
-    50%      { opacity: 0.5; transform: scale(0.7); }
+    padding: 0 1.5rem;
+    max-width: 900px;
   }
 
-  .hero-title {
-    font-size: clamp(2.8rem, 8vw, 6rem);
-    font-weight: 900;
-    line-height: 1;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #ffffff 0%, var(--pm) 50%, var(--sc) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 1.2rem;
-    text-shadow: none;
+  /* Logo glow ring */
+  .logo-ring {
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative; margin-bottom: 1.8rem;
   }
+  .logo-ring::before {
+    content: '';
+    position: absolute;
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--pm), var(--sc), var(--pmv), var(--pm));
+    animation: spinRing 6s linear infinite;
+    opacity: 0.5;
+    filter: blur(8px);
+  }
+  @keyframes spinRing {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .logo-ring img {
+    position: relative; z-index: 1;
+    width: 96px; height: 96px;
+    border-radius: 22px;
+    object-fit: cover;
+    border: 1px solid rgba(187,134,252,0.3);
+    box-shadow: 0 0 40px rgba(187,134,252,0.4), 0 0 80px rgba(55,0,179,0.3);
+  }
+
+  /* Season badge */
+  .season-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(3,218,198,0.35);
+    background: rgba(3,218,198,0.07);
+    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--sc);
+    margin-bottom: 1.4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .season-badge::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(3,218,198,0.12) 50%, transparent 100%);
+    transform: translateX(-100%);
+    animation: badgeSweep 3s ease-in-out 1.5s infinite;
+  }
+  @keyframes badgeSweep {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(200%); }
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--sc);
+    box-shadow: 0 0 8px var(--sc);
+    animation: livePulse 1.6s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50%     { transform: scale(0.6); opacity: 0.4; }
+  }
+
+  /* Hero title */
+  .hero-title {
+    font-size: clamp(3rem, 9vw, 6.5rem);
+    font-weight: 900; line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-bottom: 0;
+    overflow: hidden;
+  }
+  .hero-title-word {
+    display: inline-block;
+    background: linear-gradient(135deg, #fff 0%, var(--pm) 45%, var(--sc) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease infinite;
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  @keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .hero-title-word.revealed {
+    animation: wordReveal 0.7s cubic-bezier(0.16,1,0.3,1) forwards,
+               gradientShift 6s ease infinite;
+  }
+  @keyframes wordReveal {
+    from { transform: translateY(60%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Scanline decoration */
+  .hero-scan {
+    position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+    );
+  }
+
+  /* Hero sub text */
   .hero-sub {
-    font-size: 1rem;
-    color: rgba(255,255,255,0.45);
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    margin-bottom: 2.5rem;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
+    font-size: 1rem; color: rgba(255,255,255,0.4);
+    font-weight: 400; margin: 1.2rem auto 2.2rem;
+    max-width: 480px; line-height: 1.6;
+    opacity: 0; transform: translateY(20px);
+  }
+  .hero-sub.revealed {
+    animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.8s forwards;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   /* CTA buttons */
-  .btn-primary-pm {
+  .hero-ctas {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+    opacity: 0; transform: translateY(20px);
+  }
+  .hero-ctas.revealed {
+    animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 1.1s forwards;
+  }
+
+  .btn-pm {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 13px 28px;
+    padding: 13px 26px;
     border-radius: 10px;
-    font-size: 0.875rem; font-weight: 800; letter-spacing: 0.03em;
-    background: var(--pm);
-    color: #000;
-    border: none;
+    font-size: 0.85rem; font-weight: 800; letter-spacing: 0.02em;
+    background: var(--pm); color: #000;
+    border: none; text-decoration: none;
+    position: relative; overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 0 28px rgba(187,134,252,0.4);
+  }
+  .btn-pm::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .btn-pm:hover::before { opacity: 1; }
+  .btn-pm:hover { transform: translateY(-3px); box-shadow: 0 0 44px rgba(187,134,252,0.6); }
+
+  .btn-sc {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px; border-radius: 10px;
+    font-size: 0.85rem; font-weight: 700;
+    background: transparent; color: var(--sc);
+    border: 1.5px solid rgba(3,218,198,0.45);
+    text-decoration: none;
     transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-    text-decoration: none;
-    box-shadow: 0 0 24px rgba(187,134,252,0.35);
   }
-  .btn-primary-pm:hover {
-    background: #d0a8ff;
-    transform: translateY(-2px);
-    box-shadow: 0 0 36px rgba(187,134,252,0.55);
-  }
-  .btn-outline-sc {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 26px;
-    border-radius: 10px;
-    font-size: 0.875rem; font-weight: 700;
-    background: transparent;
-    color: var(--sc);
-    border: 1.5px solid rgba(3,218,198,0.5);
-    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
-    text-decoration: none;
-  }
-  .btn-outline-sc:hover {
-    background: rgba(3,218,198,0.1);
-    box-shadow: 0 0 20px rgba(3,218,198,0.25);
-    transform: translateY(-2px);
-  }
+  .btn-sc:hover { background: rgba(3,218,198,0.1); transform: translateY(-3px); box-shadow: 0 0 24px rgba(3,218,198,0.25); }
+
   .btn-ghost {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 22px;
-    border-radius: 10px;
-    font-size: 0.875rem; font-weight: 600;
-    background: rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.65);
-    border: 1px solid rgba(255,255,255,0.1);
-    transition: background 0.15s, transform 0.15s;
+    padding: 12px 20px; border-radius: 10px;
+    font-size: 0.85rem; font-weight: 600;
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.09);
     text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
   }
-  .btn-ghost:hover {
-    background: rgba(255,255,255,0.11);
-    transform: translateY(-2px);
-  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); transform: translateY(-3px); }
 
-  /* Scroll hint */
-  .scroll-hint {
+  /* Scroll indicator */
+  .scroll-cue {
     position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em;
-    text-transform: uppercase; color: rgba(255,255,255,0.2);
-    z-index: 2;
-    animation: bounce-hint 2.4s ease-in-out infinite;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    z-index: 2; opacity: 0;
+    animation: fadeUp 0.6s ease 2s forwards;
   }
-  @keyframes bounce-hint {
-    0%,100% { transform: translateX(-50%) translateY(0); opacity: 0.3; }
-    50%      { transform: translateX(-50%) translateY(6px); opacity: 0.7; }
+  .scroll-mouse {
+    width: 22px; height: 34px;
+    border: 2px solid rgba(187,134,252,0.3);
+    border-radius: 11px;
+    position: relative;
+  }
+  .scroll-mouse::after {
+    content: '';
+    position: absolute;
+    width: 3px; height: 7px;
+    background: var(--pm);
+    border-radius: 2px;
+    top: 5px; left: 50%; transform: translateX(-50%);
+    animation: scrollBob 1.8s ease-in-out infinite;
+  }
+  @keyframes scrollBob {
+    0%,100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+    60%     { transform: translateX(-50%) translateY(10px); opacity: 0; }
+  }
+  .scroll-cue span {
+    font-size: 0.58rem; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; color: rgba(255,255,255,0.2);
   }
 
-  /* ── Stats strip ── */
+  /* ═══ STATS STRIP ═══ */
   .stats-strip {
     background: var(--sf);
-    border-top: 1px solid rgba(187,134,252,0.12);
-    border-bottom: 1px solid rgba(187,134,252,0.12);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .stats-strip::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(55,0,179,0.08), transparent, rgba(3,218,198,0.06));
+    pointer-events: none;
   }
   .stat-item {
-    text-align: center;
-    padding: 1.5rem 1rem;
+    text-align: center; padding: 1.8rem 1rem;
     position: relative;
   }
   .stat-item + .stat-item::before {
     content: '';
     position: absolute; left: 0; top: 25%; bottom: 25%;
-    width: 1px;
-    background: rgba(187,134,252,0.1);
+    width: 1px; background: var(--border);
   }
   .stat-num {
-    font-size: 2.2rem;
-    font-weight: 900;
-    line-height: 1;
+    font-size: 2.6rem; font-weight: 900; line-height: 1;
     background: linear-gradient(135deg, var(--pm), var(--sc));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
+    font-variant-numeric: tabular-nums;
   }
   .stat-label {
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
-    margin-top: 4px;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: rgba(255,255,255,0.25);
+    margin-top: 5px;
+  }
+  .season-track {
+    height: 3px; background: rgba(255,255,255,0.06);
+    border-radius: 99px; overflow: hidden;
+  }
+  .season-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--pmv), var(--pm) 60%, var(--sc));
+    box-shadow: 0 0 12px rgba(187,134,252,0.6);
+    width: 0; transition: width 1.4s cubic-bezier(0.4,0,0.2,1);
   }
 
-  /* ── Section headings ── */
-  .section-eyebrow {
-    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--sc);
-    margin-bottom: 0.4rem;
+  /* ═══ SECTIONS ═══ */
+  .home-bg { background: var(--bg); }
+  .home-sf { background: var(--sf); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+  .section-eye {
+    font-size: 0.63rem; font-weight: 800; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--sc); margin-bottom: 0.4rem;
   }
-  .section-heading {
-    font-size: 1.8rem; font-weight: 900; color: #fff;
-    letter-spacing: -0.02em; line-height: 1.1;
+  .section-h {
+    font-size: 2rem; font-weight: 900; color: #fff;
+    letter-spacing: -0.03em; line-height: 1.1;
   }
 
-  /* ── Nav cards ── */
+  /* reveal-on-scroll */
+  .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* staggered children */
+  .stagger > * { opacity: 0; transform: translateY(28px); transition: opacity 0.5s ease, transform 0.5s ease; }
+  .stagger.visible > *:nth-child(1) { transition-delay: 0.05s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(2) { transition-delay: 0.12s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(3) { transition-delay: 0.19s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(4) { transition-delay: 0.26s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(5) { transition-delay: 0.33s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(6) { transition-delay: 0.40s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(7) { transition-delay: 0.47s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(8) { transition-delay: 0.54s; opacity: 1; transform: translateY(0); }
+  .stagger.visible > *:nth-child(n+9) { transition-delay: 0.60s; opacity: 1; transform: translateY(0); }
+
+  /* ═══ NAV CARDS ═══ */
   .nav-card {
-    position: relative;
-    border-radius: 14px;
+    display: block; text-decoration: none;
+    border-radius: 14px; padding: 1.4rem;
     border: 1px solid rgba(187,134,252,0.1);
-    background: var(--sf);
-    padding: 1.5rem;
-    transition: border-color 0.2s, transform 0.18s, box-shadow 0.2s;
-    text-decoration: none;
-    overflow: hidden;
-    display: block;
+    background: var(--sf2);
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   }
-  .nav-card::before {
+  .nav-card::after {
     content: '';
     position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(187,134,252,0.06) 0%, transparent 60%);
-    opacity: 0;
-    transition: opacity 0.2s;
+    background: linear-gradient(135deg, rgba(187,134,252,0.07) 0%, transparent 55%);
+    opacity: 0; transition: opacity 0.2s;
   }
-  .nav-card:hover::before { opacity: 1; }
-  .nav-card:hover {
-    border-color: rgba(187,134,252,0.4);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 32px rgba(187,134,252,0.15);
-  }
+  .nav-card:hover { border-color: rgba(187,134,252,0.4); transform: translateY(-4px); box-shadow: 0 12px 36px rgba(187,134,252,0.14); }
+  .nav-card:hover::after { opacity: 1; }
   .nav-card-icon {
-    width: 44px; height: 44px;
-    border-radius: 10px;
+    width: 42px; height: 42px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem;
-    margin-bottom: 0.9rem;
+    font-size: 1.2rem; margin-bottom: 0.85rem; position: relative; z-index: 1;
   }
-  .nav-card-title { font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 0.3rem; }
-  .nav-card-desc  { font-size: 0.75rem; color: rgba(255,255,255,0.35); line-height: 1.4; }
-  .nav-card-arrow {
-    position: absolute; top: 1.4rem; right: 1.4rem;
-    font-size: 0.7rem; color: rgba(187,134,252,0.4);
-    transition: transform 0.15s, color 0.15s;
-  }
+  .nav-card-title { font-size: 0.9rem; font-weight: 800; color: #fff; margin-bottom: 0.25rem; position: relative; z-index: 1; }
+  .nav-card-desc  { font-size: 0.72rem; color: rgba(255,255,255,0.3); line-height: 1.45; position: relative; z-index: 1; }
+  .nav-card-arrow { position: absolute; top: 1.2rem; right: 1.2rem; font-size: 0.75rem; color: rgba(187,134,252,0.35); transition: transform 0.18s, color 0.18s; }
   .nav-card:hover .nav-card-arrow { transform: translate(3px,-3px); color: var(--pm); }
 
-  /* ── Progress bar (season) ── */
-  .season-bar-track {
-    height: 4px; border-radius: 99px;
-    background: rgba(255,255,255,0.07);
-    overflow: hidden; position: relative;
+  /* ═══ PODIUM ═══ */
+  .podium-card {
+    display: block; text-decoration: none;
+    border-radius: 14px; padding: 1.4rem 1rem;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: var(--sf2);
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   }
-  .season-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--pmv), var(--pm), var(--sc));
-    border-radius: 99px;
-    box-shadow: 0 0 10px rgba(187,134,252,0.5);
-    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+  .podium-card:hover { transform: translateY(-4px); }
+  .podium-1 {
+    border-color: rgba(250,204,21,0.35);
+    background: linear-gradient(135deg, rgba(250,204,21,0.06) 0%, var(--sf2) 60%);
+    box-shadow: 0 0 24px rgba(250,204,21,0.08);
   }
+  .podium-1:hover { box-shadow: 0 8px 36px rgba(250,204,21,0.2); }
+  .podium-2 { border-color: rgba(192,192,192,0.2); }
+  .podium-2:hover { box-shadow: 0 8px 36px rgba(192,192,192,0.12); }
+  .podium-3 { border-color: rgba(205,127,50,0.2); }
+  .podium-3:hover { box-shadow: 0 8px 36px rgba(205,127,50,0.12); }
 
-  /* ── Result cards ── */
+  /* ═══ RESULT CARDS ═══ */
   .result-card {
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: var(--sf);
-    overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    border-radius: 14px; border: 1px solid rgba(255,255,255,0.06);
+    background: var(--sf2); overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   }
   .result-card:hover {
     border-color: rgba(187,134,252,0.3);
-    box-shadow: 0 4px 24px rgba(187,134,252,0.1);
-  }
-
-  /* ── Top 3 podium ── */
-  .podium-card {
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.07);
-    background: var(--sf);
-    padding: 1.2rem 1rem;
-    text-align: center;
-    transition: border-color 0.2s, transform 0.18s;
-  }
-  .podium-card:hover {
-    border-color: rgba(187,134,252,0.35);
+    box-shadow: 0 6px 28px rgba(187,134,252,0.1);
     transform: translateY(-2px);
   }
-  .podium-1 { border-color: rgba(250,204,21,0.3); background: rgba(250,204,21,0.04); }
-  .podium-2 { border-color: rgba(192,192,192,0.2); }
-  .podium-3 { border-color: rgba(205,127,50,0.2); }
 
-  /* Main content background */
-  .home-sections { background: var(--bg); }
+  /* ═══ FOOTER CTA ═══ */
+  .footer-cta {
+    position: relative; overflow: hidden;
+    background: var(--sf);
+    border-top: 1px solid var(--border);
+  }
+  .footer-cta::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 70% at 50% 50%, rgba(55,0,179,0.2), transparent);
+    pointer-events: none;
+  }
 </style>
 
 <!-- ═══════════════════ HERO ═══════════════════ -->
-<section class="home-hero">
-  <div class="hero-glow-1"></div>
-  <div class="hero-glow-2"></div>
-  <div class="hero-glow-3"></div>
+<section class="home-hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-scan"></div>
+  <div class="orb orb-1" id="orb1"></div>
+  <div class="orb orb-2" id="orb2"></div>
+  <div class="orb orb-3" id="orb3"></div>
+  <div class="orb orb-4" id="orb4"></div>
+
+  <!-- Particles container -->
+  <div id="particles" style="position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden;"></div>
 
   <div class="hero-content">
-    <!-- League logo -->
-    <div class="flex justify-center mb-6">
-      <img src="/static/favicon.jpg" alt="{{ league_name }}"
-           class="rounded-2xl object-cover"
-           style="width:96px;height:96px;box-shadow:0 0 48px rgba(187,134,252,0.45),0 0 80px rgba(55,0,179,0.35);">
+    <!-- Logo -->
+    <div class="logo-ring" style="opacity:0;animation:fadeUp 0.6s ease 0.2s forwards;">
+      <img src="/static/favicon.jpg" alt="{{ league_name }}">
     </div>
 
     <!-- Season badge -->
     {% if season %}
-    <div class="flex justify-center">
-      <span class="hero-season-badge">Season {{ season }} — Now Live</span>
+    <div style="opacity:0;animation:fadeUp 0.5s ease 0.4s forwards;">
+      <span class="season-badge">
+        <span class="live-dot"></span>
+        Season {{ season }} — Live Now
+      </span>
     </div>
     {% endif %}
 
-    <!-- Title -->
-    <h1 class="hero-title">{{ league_name }}</h1>
+    <!-- Title - words split for stagger -->
+    <h1 class="hero-title" aria-label="{{ league_name }}">
+      {% for word in league_name.split(' ') %}
+        <span class="hero-title-word" style="animation-delay:{{ 0.5 + loop.index0 * 0.12 }}s;">{{ word }}</span>
+        {% if not loop.last %}&nbsp;{% endif %}
+      {% endfor %}
+    </h1>
 
-    <p class="hero-sub">
+    <p class="hero-sub revealed">
       Pokémon Draft League &mdash; compete, draft, and climb the ranks.
       {% if total_weeks > 0 %}
-        {% if completed_weeks >= total_weeks %}
-          Season complete.
-        {% else %}
-          Week {{ completed_weeks + 1 }} of {{ total_weeks }} in progress.
-        {% endif %}
+        {% if completed_weeks >= total_weeks %}Season complete.
+        {% else %}Week {{ completed_weeks + 1 }} of {{ total_weeks }} in progress.{% endif %}
       {% endif %}
     </p>
 
-    <!-- CTA row -->
-    <div class="flex flex-wrap items-center justify-center gap-3">
-      <a href="/standings"  class="btn-primary-pm">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
+    <div class="hero-ctas revealed">
+      <a href="/standings" class="btn-pm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         Standings
       </a>
-      <a href="/schedule"   class="btn-outline-sc">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
+      <a href="/schedule" class="btn-sc">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         Schedule
       </a>
-      <a href="/pickems"    class="btn-ghost">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
+      <a href="/pickems" class="btn-ghost">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Pick'ems
       </a>
     </div>
   </div>
 
-  <!-- Scroll hint -->
-  <div class="scroll-hint">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-    </svg>
-    Scroll
+  <!-- Scroll cue -->
+  <div class="scroll-cue">
+    <div class="scroll-mouse"></div>
+    <span>Scroll</span>
   </div>
 </section>
 
-<!-- ═══════════════════ STATS STRIP ═══════════════════ -->
-<div class="home-sections">
+<div class="home-bg">
+
+  <!-- ═══════════════════ STATS STRIP ═══════════════════ -->
   <div class="stats-strip">
     <div class="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4">
       <div class="stat-item">
-        <div class="stat-num">{{ total_teams }}</div>
+        <div class="stat-num" data-count="{{ total_teams }}">0</div>
         <div class="stat-label">Teams</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">{{ total_weeks }}</div>
+        <div class="stat-num" data-count="{{ total_weeks }}">0</div>
         <div class="stat-label">Weeks</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">{{ completed_matches }}</div>
+        <div class="stat-num" data-count="{{ completed_matches }}">0</div>
         <div class="stat-label">Matches Played</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">{{ completed_weeks }}/{{ total_weeks }}</div>
-        <div class="stat-label">Weeks Complete</div>
+        <div class="stat-num">{{ completed_weeks }}<span style="font-size:1.4rem;opacity:0.4;">/{{ total_weeks }}</span></div>
+        <div class="stat-label">Weeks Done</div>
       </div>
     </div>
-    <!-- Season progress bar -->
     {% if total_weeks > 0 %}
-    <div class="max-w-4xl mx-auto px-6 pb-5">
-      <div class="season-bar-track">
-        <div class="season-bar-fill" id="home-season-bar"
-             style="width:0%;"
-             data-target="{{ ((completed_weeks / total_weeks) * 100) | round(1) }}">
-        </div>
+    <div class="max-w-4xl mx-auto px-6 pb-5 reveal">
+      <div class="flex justify-between text-xs mb-1.5" style="color:rgba(255,255,255,0.2);font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">
+        <span>Season Progress</span>
+        <span>{{ ((completed_weeks / total_weeks) * 100) | round(0) | int }}%</span>
+      </div>
+      <div class="season-track">
+        <div class="season-fill" id="season-fill"
+             data-target="{{ ((completed_weeks / total_weeks) * 100) | round(1) }}"></div>
       </div>
     </div>
     {% endif %}
@@ -437,114 +552,94 @@
 
   <!-- ═══════════════════ QUICK NAV ═══════════════════ -->
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="mb-10">
-      <p class="section-eyebrow">Explore the League</p>
-      <h2 class="section-heading">Everything in one place</h2>
+    <div class="mb-10 reveal">
+      <p class="section-eye">Explore the League</p>
+      <h2 class="section-h">Everything in one place</h2>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 stagger">
       <a href="/standings" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(187,134,252,0.15);">📊</div>
+        <div class="nav-card-icon" style="background:rgba(187,134,252,0.14);">📊</div>
         <div class="nav-card-title">Standings</div>
-        <div class="nav-card-desc">Pool rankings, win/loss records, and score differentials.</div>
+        <div class="nav-card-desc">Pool rankings, records, and score differentials.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/schedule" class="nav-card">
         <div class="nav-card-icon" style="background:rgba(3,218,198,0.12);">📅</div>
         <div class="nav-card-title">Schedule</div>
         <div class="nav-card-desc">Weekly matchups and results across all pools.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/pickems" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(207,102,121,0.15);">🎯</div>
+        <div class="nav-card-icon" style="background:rgba(207,102,121,0.14);">🎯</div>
         <div class="nav-card-title">Pick'ems</div>
-        <div class="nav-card-desc">Predict match winners and compete on the leaderboard.</div>
+        <div class="nav-card-desc">Predict winners and compete on the leaderboard.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/playoffs" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(250,204,21,0.12);">🏆</div>
+        <div class="nav-card-icon" style="background:rgba(250,204,21,0.1);">🏆</div>
         <div class="nav-card-title">Playoffs</div>
         <div class="nav-card-desc">Tournament bracket and postseason results.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/draftboard" class="nav-card">
         <div class="nav-card-icon" style="background:rgba(187,134,252,0.12);">🎮</div>
         <div class="nav-card-title">Draft Board</div>
         <div class="nav-card-desc">Full draft history and pick order by coach.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/draft-prep" class="nav-card">
         <div class="nav-card-icon" style="background:rgba(3,218,198,0.1);">📋</div>
         <div class="nav-card-title">Draft Prep</div>
-        <div class="nav-card-desc">Plan your draft roster before the picks start.</div>
+        <div class="nav-card-desc">Plan your roster before the picks start.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/pokedex" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(207,102,121,0.12);">📖</div>
+        <div class="nav-card-icon" style="background:rgba(207,102,121,0.1);">📖</div>
         <div class="nav-card-title">Pokédex</div>
-        <div class="nav-card-desc">Browse every eligible Pokémon with stats and costs.</div>
+        <div class="nav-card-desc">Browse eligible Pokémon with stats and costs.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
       <a href="/damage-calc" class="nav-card">
         <div class="nav-card-icon" style="background:rgba(255,100,50,0.1);">⚔️</div>
         <div class="nav-card-title">Damage Calc</div>
         <div class="nav-card-desc">Calculate damage ranges for your matchups.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
-
     </div>
   </div>
 
   <!-- ═══════════════════ TOP 3 ═══════════════════ -->
   {% if top3 %}
-  <div style="background:var(--sf);border-top:1px solid rgba(187,134,252,0.08);border-bottom:1px solid rgba(187,134,252,0.08);">
+  <div class="home-sf">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-      <div class="mb-8">
-        <p class="section-eyebrow">Current Standings</p>
-        <h2 class="section-heading">Top Teams</h2>
+      <div class="mb-8 reveal">
+        <p class="section-eye">Current Standings</p>
+        <h2 class="section-h">Top Teams</h2>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl stagger">
         {% for row in top3 %}
-        <a href="/team/{{ row.coach.id }}"
-           class="podium-card {% if loop.index == 1 %}podium-1{% elif loop.index == 2 %}podium-2{% else %}podium-3{% endif %}"
-           style="text-decoration:none;">
-          <!-- Medal -->
-          <div class="text-2xl mb-3">{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}</div>
-          <!-- Logo -->
+        <a href="/team/{{ row.coach.id }}" class="podium-card {% if loop.index==1 %}podium-1{% elif loop.index==2 %}podium-2{% else %}podium-3{% endif %}">
+          <div class="text-3xl mb-3">{% if loop.index==1 %}🥇{% elif loop.index==2 %}🥈{% else %}🥉{% endif %}</div>
           {% if row.coach.logo_url %}
             <img src="{{ row.coach.logo_url }}" class="w-16 h-16 object-contain rounded-xl mx-auto mb-3" alt="">
           {% else %}
             <div class="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-black text-white mx-auto mb-3"
-                 style="background:{{ row.coach.color or '#374151' }};">
-              {{ row.coach.team_name[:2].upper() }}
-            </div>
+                 style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
           {% endif %}
           <div class="font-black text-white text-sm mb-1">{{ row.coach.team_name }}</div>
-          <div class="text-xs mb-2" style="color:rgba(255,255,255,0.35);">{{ row.coach.coach_name }}</div>
+          <div class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">{{ row.coach.coach_name }}</div>
           <div class="flex items-center justify-center gap-2 text-xs font-bold">
             <span style="color:#4ade80;">{{ row.W }}W</span>
-            <span style="color:rgba(255,255,255,0.2);">·</span>
+            <span style="color:rgba(255,255,255,0.18);">·</span>
             <span style="color:#f87171;">{{ row.L }}L</span>
-            {% if row.T %}
-            <span style="color:rgba(255,255,255,0.2);">·</span>
-            <span style="color:#facc15;">{{ row.T }}T</span>
-            {% endif %}
+            {% if row.T %}<span style="color:rgba(255,255,255,0.18);">·</span><span style="color:#facc15;">{{ row.T }}T</span>{% endif %}
           </div>
         </a>
         {% endfor %}
       </div>
-      <div class="mt-6">
-        <a href="/standings" class="btn-outline-sc" style="font-size:0.8rem;padding:9px 20px;">
-          Full Standings →
-        </a>
+      <div class="mt-7 reveal">
+        <a href="/standings" class="btn-sc" style="font-size:0.8rem;padding:9px 20px;">Full Standings →</a>
       </div>
     </div>
   </div>
@@ -553,72 +648,47 @@
   <!-- ═══════════════════ RECENT RESULTS ═══════════════════ -->
   {% if recent_results %}
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-    <div class="mb-8 flex items-end justify-between">
+    <div class="mb-8 flex items-end justify-between reveal">
       <div>
-        <p class="section-eyebrow">Latest Action</p>
-        <h2 class="section-heading">Recent Results</h2>
+        <p class="section-eye">Latest Action</p>
+        <h2 class="section-h">Recent Results</h2>
       </div>
-      <a href="/schedule" class="text-xs font-semibold transition-colors"
-         style="color:var(--sc);">View all →</a>
+      <a href="/schedule" class="text-xs font-semibold transition-colors" style="color:var(--sc);">View all →</a>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
       {% for m in recent_results %}
       {% set s1 = m.score1 | int %}
       {% set s2 = m.score2 | int %}
       {% set c1_win = s1 > s2 %}
       {% set is_tie = s1 == s2 %}
       <div class="result-card">
-        <!-- Color bar -->
         <div class="h-0.5 flex">
-          <div class="flex-1" style="background:{{ m.c1_color or '#374151' }};opacity:0.7;"></div>
-          <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.7;"></div>
+          <div class="flex-1" style="background:{{ m.c1_color or '#374151' }};opacity:0.75;"></div>
+          <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.75;"></div>
         </div>
-        <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-2" style="background:rgba(0,0,0,0.25);">
-          <span class="text-xs font-bold uppercase tracking-widest" style="color:rgba(255,255,255,0.25);">Week {{ m.week }} · Pool {{ m.pool }}</span>
+        <div class="flex items-center justify-between px-4 py-2" style="background:rgba(0,0,0,0.3);">
+          <span class="text-xs font-bold uppercase tracking-widest" style="color:rgba(255,255,255,0.2);">Wk {{ m.week }} · Pool {{ m.pool }}</span>
           <span class="text-xs font-black px-2 py-0.5 rounded-full"
-                style="{% if is_tie %}color:var(--sc);background:rgba(3,218,198,0.1);{% else %}color:var(--pm);background:rgba(187,134,252,0.1);{% endif %}">
-            FINAL
-          </span>
+                style="{% if is_tie %}color:var(--sc);background:rgba(3,218,198,0.1);{% else %}color:var(--pm);background:rgba(187,134,252,0.1);{% endif %}">FINAL</span>
         </div>
-        <!-- Score -->
         <div class="flex items-center px-4 py-4 gap-3">
-          <!-- Team 1 -->
-          <div class="flex-1 flex flex-col items-center gap-2 {% if not c1_win and not is_tie %}opacity-40{% endif %}">
-            {% if m.c1_logo %}
-              <img src="{{ m.c1_logo }}" class="w-12 h-12 object-contain rounded-lg" alt="">
-            {% else %}
-              <div class="w-12 h-12 rounded-lg flex items-center justify-center text-sm font-black text-white"
-                   style="background:{{ m.c1_color or '#374151' }};">{{ m.t1[:2].upper() }}</div>
-            {% endif %}
-            <a href="/team/{{ m.c1_id }}" class="text-xs font-bold text-center leading-tight hover:underline"
-               style="color:{% if c1_win %}#fff{% elif is_tie %}var(--sc){% else %}rgba(255,255,255,0.5){% endif %};">
-               {{ m.t1 }}</a>
+          <div class="flex-1 flex flex-col items-center gap-2 transition-opacity {% if not c1_win and not is_tie %}opacity-35{% endif %}">
+            {% if m.c1_logo %}<img src="{{ m.c1_logo }}" class="w-12 h-12 object-contain rounded-lg" alt="">
+            {% else %}<div class="w-12 h-12 rounded-lg flex items-center justify-center text-sm font-black text-white" style="background:{{ m.c1_color or '#374151' }};">{{ m.t1[:2].upper() }}</div>{% endif %}
+            <a href="/team/{{ m.c1_id }}" class="text-xs font-bold text-center leading-tight"
+               style="color:{% if c1_win %}#fff{% elif is_tie %}var(--sc){% else %}rgba(255,255,255,0.4){% endif %};">{{ m.t1 }}</a>
           </div>
-          <!-- Score center -->
-          <div class="flex flex-col items-center flex-shrink-0" style="min-width:60px;">
-            <span class="font-black text-2xl tabular-nums"
-                  style="color:{% if is_tie %}var(--sc){% else %}#fff{% endif %};">
-              {{ s1 }}
-            </span>
-            <span class="text-xs font-bold my-0.5" style="color:rgba(255,255,255,0.2);">:</span>
-            <span class="font-black text-2xl tabular-nums"
-                  style="color:{% if is_tie %}var(--sc){% else %}#fff{% endif %};">
-              {{ s2 }}
-            </span>
+          <div class="flex flex-col items-center flex-shrink-0" style="min-width:56px;">
+            <span class="font-black text-2xl tabular-nums" style="color:{% if is_tie %}var(--sc){% else %}#fff{% endif %};">{{ s1 }}</span>
+            <span class="text-xs font-bold my-0.5" style="color:rgba(255,255,255,0.15);">:</span>
+            <span class="font-black text-2xl tabular-nums" style="color:{% if is_tie %}var(--sc){% else %}#fff{% endif %};">{{ s2 }}</span>
           </div>
-          <!-- Team 2 -->
-          <div class="flex-1 flex flex-col items-center gap-2 {% if c1_win and not is_tie %}opacity-40{% endif %}">
-            {% if m.c2_logo %}
-              <img src="{{ m.c2_logo }}" class="w-12 h-12 object-contain rounded-lg" alt="">
-            {% else %}
-              <div class="w-12 h-12 rounded-lg flex items-center justify-center text-sm font-black text-white"
-                   style="background:{{ m.c2_color or '#374151' }};">{{ m.t2[:2].upper() }}</div>
-            {% endif %}
-            <a href="/team/{{ m.c2_id }}" class="text-xs font-bold text-center leading-tight hover:underline"
-               style="color:{% if not c1_win and not is_tie %}#fff{% elif is_tie %}var(--sc){% else %}rgba(255,255,255,0.5){% endif %};">
-               {{ m.t2 }}</a>
+          <div class="flex-1 flex flex-col items-center gap-2 transition-opacity {% if c1_win and not is_tie %}opacity-35{% endif %}">
+            {% if m.c2_logo %}<img src="{{ m.c2_logo }}" class="w-12 h-12 object-contain rounded-lg" alt="">
+            {% else %}<div class="w-12 h-12 rounded-lg flex items-center justify-center text-sm font-black text-white" style="background:{{ m.c2_color or '#374151' }};">{{ m.t2[:2].upper() }}</div>{% endif %}
+            <a href="/team/{{ m.c2_id }}" class="text-xs font-bold text-center leading-tight"
+               style="color:{% if not c1_win and not is_tie %}#fff{% elif is_tie %}var(--sc){% else %}rgba(255,255,255,0.4){% endif %};">{{ m.t2 }}</a>
           </div>
         </div>
       </div>
@@ -628,29 +698,127 @@
   {% endif %}
 
   <!-- ═══════════════════ FOOTER CTA ═══════════════════ -->
-  <div style="background:var(--sf);border-top:1px solid rgba(187,134,252,0.08);">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-      <p class="section-eyebrow mb-3">Ready to play?</p>
-      <h2 class="section-heading mb-6" style="font-size:2.2rem;">Dive into the action</h2>
+  <div class="footer-cta">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center reveal">
+      <p class="section-eye mb-3">Ready to play?</p>
+      <h2 class="section-h mb-2" style="font-size:2.4rem;">Dive into the action</h2>
+      <p class="text-sm mb-8" style="color:rgba(255,255,255,0.35);">Everything you need to prep, compete, and win.</p>
       <div class="flex flex-wrap items-center justify-center gap-3">
-        <a href="/draftboard"  class="btn-primary-pm">View Draft Board</a>
-        <a href="/battle-prep" class="btn-outline-sc">Battle Prep</a>
+        <a href="/draftboard"  class="btn-pm">View Draft Board</a>
+        <a href="/battle-prep" class="btn-sc">Battle Prep</a>
         <a href="/rules"       class="btn-ghost">League Rules</a>
       </div>
     </div>
   </div>
 
-</div><!-- .home-sections -->
+</div><!-- .home-bg -->
 
 <script>
-// Animate the season progress bar on scroll-into-view
-window.addEventListener('DOMContentLoaded', () => {
-  const bar = document.getElementById('home-season-bar');
-  if (!bar) return;
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    bar.style.width = (bar.dataset.target || '0') + '%';
-  }));
-});
+(function() {
+
+  // ── 1. Hero word reveal ──
+  document.querySelectorAll('.hero-title-word').forEach((el, i) => {
+    el.style.animationDelay = (0.5 + i * 0.12) + 's';
+    el.classList.add('revealed');
+  });
+
+  // ── 2. Mouse parallax on orbs ──
+  const hero = document.getElementById('hero');
+  const orbs = [
+    { el: document.getElementById('orb1'), sx: 0.018, sy: 0.012 },
+    { el: document.getElementById('orb2'), sx: -0.014, sy: -0.01 },
+    { el: document.getElementById('orb3'), sx: 0.022, sy: -0.016 },
+    { el: document.getElementById('orb4'), sx: -0.019, sy: 0.014 },
+  ];
+  let mx = 0, my = 0, tx = [0,0,0,0], ty = [0,0,0,0];
+  window.addEventListener('mousemove', e => { mx = e.clientX - window.innerWidth/2; my = e.clientY - window.innerHeight/2; });
+  function animOrbs() {
+    orbs.forEach((o, i) => {
+      tx[i] += (mx * o.sx - tx[i]) * 0.06;
+      ty[i] += (my * o.sy - ty[i]) * 0.06;
+      o.el.style.transform = `translate(${tx[i]}px, ${ty[i]}px)`;
+    });
+    requestAnimationFrame(animOrbs);
+  }
+  animOrbs();
+
+  // ── 3. Floating particles ──
+  const pc = document.getElementById('particles');
+  const colors = ['#BB86FC','#03DAC6','#3700B3','#CF6679'];
+  function spawnParticle() {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 2 + Math.random() * 4;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const dur = 6 + Math.random() * 8;
+    const delay = Math.random() * 4;
+    Object.assign(p.style, {
+      width: size + 'px', height: size + 'px',
+      background: color,
+      boxShadow: `0 0 ${size * 2}px ${color}`,
+      left: left + '%', bottom: '-10px',
+      '--dur': dur + 's', '--delay': delay + 's',
+    });
+    pc.appendChild(p);
+    setTimeout(() => p.remove(), (dur + delay) * 1000 + 500);
+  }
+  // Spawn particles periodically
+  for (let i = 0; i < 12; i++) setTimeout(spawnParticle, i * 400);
+  setInterval(spawnParticle, 700);
+
+  // ── 4. Count-up animation ──
+  function countUp(el, target, duration) {
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      el.textContent = Math.round(ease * target);
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ── 5. Intersection Observer for scroll reveals ──
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      el.classList.add('visible');
+
+      // Trigger count-up on stat nums
+      el.querySelectorAll('[data-count]').forEach(num => {
+        countUp(num, parseInt(num.dataset.count), 1200);
+      });
+
+      // Trigger season bar
+      const bar = el.querySelector('#season-fill') || (el.id === 'season-fill' ? el : null);
+      if (bar) bar.style.width = (bar.dataset.target || '0') + '%';
+
+      io.unobserve(el);
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.reveal, .stagger').forEach(el => io.observe(el));
+
+  // Also observe the stats strip for count-up
+  const statsStrip = document.querySelector('.stats-strip');
+  if (statsStrip) {
+    const statsIO = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        statsStrip.querySelectorAll('[data-count]').forEach(num => {
+          countUp(num, parseInt(num.dataset.count), 1400);
+        });
+        const bar = document.getElementById('season-fill');
+        if (bar) bar.style.width = (bar.dataset.target || '0') + '%';
+        statsIO.disconnect();
+      }
+    }, { threshold: 0.3 });
+    statsIO.observe(statsStrip);
+  }
+
+})();
 </script>
 
 {% endblock %}
