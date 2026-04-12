@@ -2,10 +2,10 @@
 {% block title %}Pick'ems — {{ league_name }}{% endblock %}
 {% block content %}
 
-<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+<div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">{{ league_name }}</p>
-    <h1 class="text-3xl font-black text-white">Pick'ems</h1>
+    <h1 class="text-3xl font-black gradient-heading">Pick'ems</h1>
     <p class="text-sm text-gray-500 mt-1">Predict each week's match winners. Compete on the leaderboard!</p>
   </div>
 </div>
@@ -86,7 +86,7 @@
               <span>{{ c2_pct }}%</span>
             </div>
             <div class="h-2 rounded-full overflow-hidden flex" style="background:#1f2937">
-              <div class="h-full rounded-l-full transition-all" style="width:{{ c1_pct }}%;background:{{ m.c1_color or '#6b7280' }}"></div>
+              <div class="vote-bar-fill h-full rounded-l-full" style="width:0%;background:{{ m.c1_color or '#6b7280' }};transition:width 0.8s cubic-bezier(0.4,0,0.2,1);" data-target="{{ c1_pct }}"></div>
               <div class="h-full rounded-r-full transition-all" style="width:{{ c2_pct }}%;background:{{ m.c2_color or '#6b7280' }}"></div>
             </div>
           </div>
@@ -226,6 +226,15 @@ async function vote(matchId, coachId, week) {
   document.getElementById('name-status').style.color = '#4ade80';
   setTimeout(() => { document.getElementById('name-status').textContent = ''; }, 1500);
 }
+
+// Animate vote bars in on load
+window.addEventListener('DOMContentLoaded', () => {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.vote-bar-fill').forEach(bar => {
+      bar.style.width = (bar.dataset.target || '0') + '%';
+    });
+  }));
+});
 </script>
 
 {% endblock %}

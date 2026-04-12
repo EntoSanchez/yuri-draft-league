@@ -127,6 +127,91 @@
 
     /* ── Table alternating rows ── */
     .alt-row:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+    /* ══════════════════════════════════════
+       DESIGN SYSTEM ADDITIONS
+    ══════════════════════════════════════ */
+
+    /* ── Gradient headings ── */
+    .gradient-heading {
+      background: linear-gradient(135deg, #facc15 0%, #f97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Hero dot pattern overlay ── */
+    .hero-pattern {
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-pattern::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(250,204,21,0.07) 1px, transparent 1px);
+      background-size: 22px 22px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero-pattern > * { position: relative; z-index: 1; }
+
+    /* ── Glassmorphism cards ── */
+    .glass-card {
+      background: rgba(15, 22, 35, 0.65) !important;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-color: rgba(255, 255, 255, 0.07) !important;
+    }
+    .glass-card:hover {
+      background: rgba(15, 22, 35, 0.8) !important;
+      border-color: rgba(250, 204, 21, 0.35) !important;
+    }
+
+    /* ── Page load animations ── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .page-fade { animation: fadeIn 0.4s ease both; }
+
+    /* ── Pokéball empty state ── */
+    .pokeball-empty {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      border: 3px solid #374151;
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pokeball-empty::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50%;
+      background: rgba(239,68,68,0.25);
+    }
+    .pokeball-empty::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0; right: 0;
+      height: 2px;
+      background: #374151;
+    }
+    .pokeball-empty-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #1f2937;
+      border: 2px solid #374151;
+      position: relative;
+      z-index: 1;
+    }
   </style>
 </head>
 <body class="h-full flex flex-col text-gray-100 antialiased" style="background-color:#080c14;">
@@ -138,17 +223,17 @@
 
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
-        <img src="https://i.imgur.com/zt776Sk.jpeg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 8px rgba(227,53,13,0.3)">
+        <img src="/static/favicon.jpg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 10px rgba(250,204,21,0.25)">
         <span class="font-bold text-base tracking-wide text-yellow-400 hover:text-yellow-300 transition-colors hidden sm:block">{{ league_name }}</span>
       </a>
 
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-5 flex-1">
-        <a href="/"             class="nav-link text-sm text-gray-400 hover:text-yellow-400">Standings</a>
+        <a href="/"             class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/' %}active{% endif %}">Standings</a>
 
         <!-- Teams dropdown -->
         <div class="teams-dropdown flex items-center h-16">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 flex items-center gap-1 focus:outline-none">
+          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 flex items-center gap-1 focus:outline-none {% if request.path.startswith('/team') %}active{% endif %}">
             Teams
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
@@ -184,20 +269,20 @@
           </div>
         </div>
 
-        <a href="/schedule"     class="nav-link text-sm text-gray-400 hover:text-yellow-400">Schedule</a>
-        <a href="/pickems"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Pick'ems</a>
-        <a href="/draft"        class="nav-link text-sm text-gray-400 hover:text-yellow-400">Draft</a>
-        <a href="/draftboard"   class="nav-link text-sm text-gray-400 hover:text-yellow-400">Draft Board</a>
-        <a href="/draft-prep"   class="nav-link text-sm text-gray-400 hover:text-yellow-400">Draft Prep</a>
-        <a href="/battle-prep"  class="nav-link text-sm text-gray-400 hover:text-yellow-400">Battle Prep</a>
-        <a href="/damage-calc"  class="nav-link text-sm text-gray-400 hover:text-yellow-400">Damage Calc</a>
-        <a href="/replays"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Replays</a>
-        <a href="/transactions" class="nav-link text-sm text-gray-400 hover:text-yellow-400">Transactions</a>
-        <a href="/mvp"          class="nav-link text-sm text-gray-400 hover:text-yellow-400">MVP Race</a>
-        <a href="/pokedex"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Pokédex</a>
-        <a href="/rules"        class="nav-link text-sm text-gray-400 hover:text-yellow-400">Rules</a>
-        <a href="/playoffs"     class="nav-link text-sm text-gray-400 hover:text-yellow-400">Playoffs</a>
-        <a href="/seasons"      class="nav-link text-sm text-gray-400 hover:text-yellow-400">Past Seasons</a>
+        <a href="/schedule"     class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
+        <a href="/pickems"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path.startswith('/pickems') %}active{% endif %}">Pick'ems</a>
+        <a href="/draft"        class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/draft' %}active{% endif %}">Draft</a>
+        <a href="/draftboard"   class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/draftboard' %}active{% endif %}">Draft Board</a>
+        <a href="/draft-prep"   class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/draft-prep' %}active{% endif %}">Draft Prep</a>
+        <a href="/battle-prep"  class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/battle-prep' %}active{% endif %}">Battle Prep</a>
+        <a href="/damage-calc"  class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/damage-calc' %}active{% endif %}">Damage Calc</a>
+        <a href="/replays"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/replays' %}active{% endif %}">Replays</a>
+        <a href="/transactions" class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/transactions' %}active{% endif %}">Transactions</a>
+        <a href="/mvp"          class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/mvp' %}active{% endif %}">MVP Race</a>
+        <a href="/pokedex"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/pokedex' %}active{% endif %}">Pokédex</a>
+        <a href="/rules"        class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/rules' %}active{% endif %}">Rules</a>
+        <a href="/playoffs"     class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/playoffs' %}active{% endif %}">Playoffs</a>
+        <a href="/seasons"      class="nav-link text-sm text-gray-400 hover:text-yellow-400 {% if request.path == '/seasons' %}active{% endif %}">Past Seasons</a>
       </div>
 
       <!-- Right auth -->
@@ -375,6 +460,28 @@
     const chevron = document.getElementById('mobile-teams-chevron');
     if (list) { list.classList.remove('hidden'); chevron.style.transform = 'rotate(180deg)'; }
   }
+</script>
+<script>
+// ── Global page animations ──
+document.addEventListener('DOMContentLoaded', () => {
+  // Stagger-animate all cards on page load
+  const targets = document.querySelectorAll('.card-hover');
+  targets.forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(14px)';
+    el.style.transition = `opacity 0.38s ease ${Math.min(i * 0.05, 0.6)}s, transform 0.38s ease ${Math.min(i * 0.05, 0.6)}s`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }));
+  });
+  // Animate page headers
+  document.querySelectorAll('.hero-pattern, .page-fade').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.4s ease';
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.opacity = '1'; }));
+  });
+});
 </script>
 </body>
 </html>
