@@ -133,6 +133,51 @@
   /* ── Scrollbar in panels ── */
   #dp-left::-webkit-scrollbar, #dp-right::-webkit-scrollbar { width: 4px; }
   #dp-left::-webkit-scrollbar-thumb, #dp-right::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 2px; }
+
+  /* ── Mobile panel toggle ── */
+  #mobile-panel-tabs { display: none; }
+
+  @media (max-width: 767px) {
+    #dp-root { flex-direction: column; }
+
+    #mobile-panel-tabs {
+      display: flex; flex-shrink: 0;
+      border-bottom: 1px solid rgba(55,65,81,0.5);
+      background: #070B12;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .mobile-ptab {
+      flex: 1; text-align: center;
+      padding: 10px 0; font-size: 0.78rem; font-weight: 700;
+      color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .mobile-ptab.active { color: #facc15; border-bottom-color: #facc15; }
+
+    #dp-left {
+      width: 100%; min-width: 0;
+      border-right: none; border-bottom: 1px solid rgba(55,65,81,0.3);
+      flex-shrink: 0;
+      max-height: none;
+      height: auto;
+    }
+    #dp-left.mobile-hidden { display: none; }
+
+    #dp-right {
+      flex: 1;
+      padding: 12px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    #dp-right.mobile-hidden { display: none; }
+
+    /* Autocomplete: cap width on mobile so it doesn't overflow */
+    .ac-dropdown { max-width: calc(100vw - 24px); left: 12px !important; }
+
+    /* Slot row: tighten up on narrow screens */
+    .slot-type-select { flex: 0 0 100px; font-size: 0.63rem; }
+    .slot-search { font-size: 0.68rem; }
+  }
 </style>
 
 <!-- Type colors JS constant -->
@@ -264,6 +309,12 @@ function slotUsesBudget(slotType) {
 </script>
 
 <div id="dp-root">
+  <!-- Mobile panel toggle (hidden on desktop via CSS) -->
+  <div id="mobile-panel-tabs">
+    <div class="mobile-ptab active" id="mptab-picks" onclick="switchMobilePanel('picks')">⚔ Picks</div>
+    <div class="mobile-ptab" id="mptab-analysis" onclick="switchMobilePanel('analysis')">📊 Analysis</div>
+  </div>
+
   <!-- ═══════ LEFT PANEL: pick slots ═══════ -->
   <div id="dp-left">
     <div class="px-3 py-3 border-b border-gray-800/60">
@@ -557,6 +608,8 @@ function selectAC(idx) {
   updateCaptainButtons();
   updatePanels();
   saveCurrentToStorage();
+  // On mobile, switch to analysis after picking so user can see the updated info
+  if (window.innerWidth < 768) switchMobilePanel('analysis');
 }
 
 function closeAC() {
@@ -668,6 +721,25 @@ function switchTab(name) {
     document.getElementById(`panel-${t}`).classList.toggle("hidden", t !== name);
     document.getElementById(`tab-${t}`).classList.toggle("active", t === name);
   });
+}
+
+// ── Mobile panel toggle ──
+function switchMobilePanel(panel) {
+  const left  = document.getElementById('dp-left');
+  const right = document.getElementById('dp-right');
+  const tPicks    = document.getElementById('mptab-picks');
+  const tAnalysis = document.getElementById('mptab-analysis');
+  if (panel === 'picks') {
+    left.classList.remove('mobile-hidden');
+    right.classList.add('mobile-hidden');
+    tPicks.classList.add('active');
+    tAnalysis.classList.remove('active');
+  } else {
+    right.classList.remove('mobile-hidden');
+    left.classList.add('mobile-hidden');
+    tAnalysis.classList.add('active');
+    tPicks.classList.remove('active');
+  }
 }
 
 // ══════════════════════════════════════════════
