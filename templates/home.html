@@ -466,31 +466,34 @@
   #bg-logos { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
   .bg-logo {
     position: absolute;
-    width: 72px; height: 72px;
-    object-fit: contain; border-radius: 14px;
+    width: var(--sz, 180px); height: var(--sz, 180px);
+    object-fit: contain; border-radius: 22px;
     opacity: 0;
-    filter: saturate(0.25) blur(0.4px);
+    filter: saturate(0.2) blur(0.5px);
     animation:
-      bgLogoIn 3s ease var(--delay, 0s) forwards,
-      bgLogoFloat var(--dur, 22s) ease-in-out var(--delay, 0s) infinite alternate;
+      bgLogoIn 4s ease var(--delay, 0s) forwards,
+      bgLogoFloat var(--dur, 28s) ease-in-out var(--delay, 0s) infinite alternate;
   }
   .bg-logo-swatch {
     position: absolute;
-    width: 64px; height: 64px;
-    border-radius: 14px;
+    width: var(--sz, 160px); height: var(--sz, 160px);
+    border-radius: 22px;
     opacity: 0;
     animation:
-      bgLogoIn 3s ease var(--delay, 0s) forwards,
-      bgLogoFloat var(--dur, 22s) ease-in-out var(--delay, 0s) infinite alternate;
-    filter: blur(1px);
+      bgLogoIn 4s ease var(--delay, 0s) forwards,
+      bgLogoFloat var(--dur, 28s) ease-in-out var(--delay, 0s) infinite alternate;
+    filter: blur(2px);
   }
   @keyframes bgLogoIn {
-    from { opacity: 0; }
-    to   { opacity: 0.09; }
+    from { opacity: 0; transform: translate(0,0) rotate(var(--r1, 0deg)) scale(0.85); }
+    to   { opacity: 0.11; transform: translate(0,0) rotate(var(--r1, 0deg)) scale(1); }
   }
   @keyframes bgLogoFloat {
-    from { transform: translate(0, 0) rotate(var(--r1, -4deg)); }
-    to   { transform: translate(var(--tx, 18px), var(--ty, -28px)) rotate(var(--r2, 4deg)); }
+    0%   { transform: translate(0, 0) rotate(var(--r1, -6deg)) scale(1); }
+    25%  { transform: translate(var(--tx2, 40px), var(--ty2, -30px)) rotate(calc(var(--r1, -6deg) + 4deg)) scale(1.04); }
+    50%  { transform: translate(var(--tx, 60px), var(--ty, -60px)) rotate(var(--r2, 6deg)) scale(1); }
+    75%  { transform: translate(calc(var(--tx2, 40px) * -0.6), calc(var(--ty2, -30px) * 0.8)) rotate(calc(var(--r2, 6deg) - 3deg)) scale(0.97); }
+    100% { transform: translate(0, 0) rotate(var(--r1, -6deg)) scale(1); }
   }
 
   /* ═══ CURSOR GLOW ═══ */
@@ -533,12 +536,21 @@
   <!-- Background team logos -->
   <div id="bg-logos">
     {% for c in nav_coaches %}{% set i = loop.index0 %}
+    {% set sz = 140 + (i * 37) % 100 %}
+    {% set dur = 22 + (i * 11) % 18 %}
+    {% set delay = (i * 1.7)|round(1) %}
+    {% set tx = 40 + (i * 19) % 80 %}
+    {% set tx2 = -(30 + (i * 13) % 60) %}
+    {% set ty = -(35 + (i * 17) % 70) %}
+    {% set ty2 = 25 + (i * 7) % 55 %}
+    {% set r1 = -10 + (i * 7) % 18 %}
+    {% set r2 = 5 + (i * 11) % 14 %}
     {% if c.logo_url %}
     <img src="{{ c.logo_url }}" class="bg-logo" alt=""
-      style="left:{{ (i*67+7)%88 }}%;top:{{ (i*41+13)%82 }}%;--dur:{{ 18+(i*7)%13 }}s;--delay:{{ (i*1.3)|round(1) }}s;--tx:{{ 12+(i*11)%28 }}px;--ty:{{ -(16+(i*9)%32) }}px;--r1:{{ -7+(i*3)%12 }}deg;--r2:{{ 3+(i*5)%9 }}deg;">
+      style="left:{{ (i*67+7)%86 }}%;top:{{ (i*41+13)%80 }}%;--sz:{{ sz }}px;--dur:{{ dur }}s;--delay:{{ delay }}s;--tx:{{ tx }}px;--ty:{{ ty }}px;--tx2:{{ tx2 }}px;--ty2:{{ ty2 }}px;--r1:{{ r1 }}deg;--r2:{{ r2 }}deg;">
     {% else %}
     <div class="bg-logo-swatch"
-      style="left:{{ (i*67+7)%88 }}%;top:{{ (i*41+13)%82 }}%;background:{{ c.color or '#374151' }};--dur:{{ 18+(i*7)%13 }}s;--delay:{{ (i*1.3)|round(1) }}s;--tx:{{ 12+(i*11)%28 }}px;--ty:{{ -(16+(i*9)%32) }}px;--r1:{{ -7+(i*3)%12 }}deg;--r2:{{ 3+(i*5)%9 }}deg;"></div>
+      style="left:{{ (i*67+7)%86 }}%;top:{{ (i*41+13)%80 }}%;background:{{ c.color or '#374151' }};--sz:{{ sz }}px;--dur:{{ dur }}s;--delay:{{ delay }}s;--tx:{{ tx }}px;--ty:{{ ty }}px;--tx2:{{ tx2 }}px;--ty2:{{ ty2 }}px;--r1:{{ r1 }}deg;--r2:{{ r2 }}deg;"></div>
     {% endif %}
     {% endfor %}
   </div>
