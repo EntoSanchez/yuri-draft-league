@@ -121,7 +121,6 @@
     width: 96px; height: 96px;
     border-radius: 22px;
     object-fit: cover;
-    border: 1px solid rgba(187,134,252,0.3);
     box-shadow: 0 0 40px rgba(187,134,252,0.4), 0 0 80px rgba(55,0,179,0.3);
   }
 
@@ -163,13 +162,13 @@
   /* Hero title */
   .hero-title {
     font-size: clamp(3rem, 9vw, 6.5rem);
-    font-weight: 900; line-height: 0.95;
+    font-weight: 900; line-height: 1;
     letter-spacing: -0.04em;
     margin-bottom: 0;
-    overflow: hidden;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.22em;
   }
   .hero-title-word {
-    display: inline-block;
+    display: block;
     background: linear-gradient(135deg, #fff 0%, var(--pm) 45%, var(--sc) 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -433,6 +432,50 @@
     transform: translateY(-2px);
   }
 
+  /* ═══ TICKER ═══ */
+  .result-ticker {
+    background: rgba(3,218,198,0.04);
+    border-top: 1px solid rgba(3,218,198,0.08);
+    border-bottom: 1px solid rgba(3,218,198,0.08);
+    overflow: hidden; padding: 9px 0; position: relative;
+  }
+  .result-ticker::before, .result-ticker::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2; pointer-events: none;
+  }
+  .result-ticker::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+  .result-ticker::after  { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+  .ticker-track { overflow: hidden; white-space: nowrap; }
+  .ticker-inner {
+    display: inline-flex; align-items: center; gap: 1.8rem;
+    animation: tickerScroll 48s linear infinite;
+  }
+  .ticker-inner:hover { animation-play-state: paused; cursor: default; }
+  @keyframes tickerScroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .ticker-match { display: inline-flex; align-items: center; gap: 0.55rem; font-size: 0.76rem; }
+  .ticker-team { white-space: nowrap; font-weight: 700; }
+  .ticker-score {
+    font-size: 0.82rem; font-weight: 900; color: #fff;
+    background: rgba(255,255,255,0.07); padding: 2px 9px; border-radius: 5px;
+  }
+  .ticker-sep { color: rgba(3,218,198,0.25); font-size: 0.55rem; }
+
+  /* ═══ CURSOR GLOW ═══ */
+  #cursor-glow {
+    position: fixed; pointer-events: none; z-index: 9998;
+    width: 360px; height: 360px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(187,134,252,0.07) 0%, transparent 65%);
+    transform: translate(-50%, -50%);
+    transition: opacity 0.4s ease;
+    mix-blend-mode: screen;
+    will-change: left, top;
+  }
+
+  /* ═══ NAV CARD SVG ICONS ═══ */
+  .nav-card-icon svg { width: 22px; height: 22px; }
+
   /* ═══ FOOTER CTA ═══ */
   .footer-cta {
     position: relative; overflow: hidden;
@@ -470,7 +513,7 @@
     <div style="opacity:0;animation:fadeUp 0.5s ease 0.4s forwards;">
       <span class="season-badge">
         <span class="live-dot"></span>
-        Season {{ season }} — Live Now
+        Now Live
       </span>
     </div>
     {% endif %}
@@ -479,7 +522,6 @@
     <h1 class="hero-title" aria-label="{{ league_name }}">
       {% for word in league_name.split(' ') %}
         <span class="hero-title-word" style="animation-delay:{{ 0.5 + loop.index0 * 0.12 }}s;">{{ word }}</span>
-        {% if not loop.last %}&nbsp;{% endif %}
       {% endfor %}
     </h1>
 
@@ -513,6 +555,27 @@
     <span>Scroll</span>
   </div>
 </section>
+
+<!-- cursor glow (outside home-bg so it's fixed/global) -->
+<div id="cursor-glow"></div>
+
+{% if recent_results %}
+<!-- ═══════════════════ RESULTS TICKER ═══════════════════ -->
+<div class="result-ticker">
+  <div class="ticker-track">
+    <div class="ticker-inner">
+      {% for _ in range(2) %}{% for m in recent_results %}
+      <span class="ticker-match">
+        <span class="ticker-team" style="color:{{ m.c1_color or '#BB86FC' }}">{{ m.t1 }}</span>
+        <span class="ticker-score">{{ m.score1 | int }}–{{ m.score2 | int }}</span>
+        <span class="ticker-team" style="color:{{ m.c2_color or '#03DAC6' }}">{{ m.t2 }}</span>
+      </span>
+      <span class="ticker-sep">✦</span>
+      {% endfor %}{% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="home-bg">
 
@@ -559,49 +622,65 @@
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 stagger">
       <a href="/standings" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(187,134,252,0.14);">📊</div>
+        <div class="nav-card-icon" style="background:rgba(187,134,252,0.14);color:#BB86FC;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
         <div class="nav-card-title">Standings</div>
         <div class="nav-card-desc">Pool rankings, records, and score differentials.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/schedule" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(3,218,198,0.12);">📅</div>
+        <div class="nav-card-icon" style="background:rgba(3,218,198,0.12);color:#03DAC6;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
         <div class="nav-card-title">Schedule</div>
         <div class="nav-card-desc">Weekly matchups and results across all pools.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/pickems" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(207,102,121,0.14);">🎯</div>
+        <div class="nav-card-icon" style="background:rgba(207,102,121,0.14);color:#CF6679;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><line x1="12" y1="3" x2="12" y2="6" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="21" stroke-linecap="round"/><line x1="3" y1="12" x2="6" y2="12" stroke-linecap="round"/><line x1="18" y1="12" x2="21" y2="12" stroke-linecap="round"/></svg>
+        </div>
         <div class="nav-card-title">Pick'ems</div>
         <div class="nav-card-desc">Predict winners and compete on the leaderboard.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/playoffs" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(250,204,21,0.1);">🏆</div>
+        <div class="nav-card-icon" style="background:rgba(250,204,21,0.1);color:#facc15;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9H4a1 1 0 01-1-1V5a1 1 0 011-1h4m10 5h2a1 1 0 001-1V5a1 1 0 00-1-1h-4m-6-1v5a5 5 0 0010 0V4M8 4v5a5 5 0 0010 0"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14v4m-3 2h6"/></svg>
+        </div>
         <div class="nav-card-title">Playoffs</div>
         <div class="nav-card-desc">Tournament bracket and postseason results.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/draftboard" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(187,134,252,0.12);">🎮</div>
+        <div class="nav-card-icon" style="background:rgba(187,134,252,0.12);color:#BB86FC;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
+        </div>
         <div class="nav-card-title">Draft Board</div>
         <div class="nav-card-desc">Full draft history and pick order by coach.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/draft-prep" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(3,218,198,0.1);">📋</div>
+        <div class="nav-card-icon" style="background:rgba(3,218,198,0.1);color:#03DAC6;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        </div>
         <div class="nav-card-title">Draft Prep</div>
         <div class="nav-card-desc">Plan your roster before the picks start.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/pokedex" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(207,102,121,0.1);">📖</div>
+        <div class="nav-card-icon" style="background:rgba(207,102,121,0.1);color:#CF6679;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 010 18"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor"/></svg>
+        </div>
         <div class="nav-card-title">Pokédex</div>
         <div class="nav-card-desc">Browse eligible Pokémon with stats and costs.</div>
         <span class="nav-card-arrow">↗</span>
       </a>
       <a href="/damage-calc" class="nav-card">
-        <div class="nav-card-icon" style="background:rgba(255,100,50,0.1);">⚔️</div>
+        <div class="nav-card-icon" style="background:rgba(255,100,50,0.1);color:#f97316;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
         <div class="nav-card-title">Damage Calc</div>
         <div class="nav-card-desc">Calculate damage ranges for your matchups.</div>
         <span class="nav-card-arrow">↗</span>
@@ -780,7 +859,30 @@
     requestAnimationFrame(step);
   }
 
-  // ── 5. Intersection Observer for scroll reveals ──
+  // ── 5. Cursor glow ──
+  const cursorGlow = document.getElementById('cursor-glow');
+  if (cursorGlow) {
+    let cgx = -999, cgy = -999;
+    document.addEventListener('mousemove', e => { cgx = e.clientX; cgy = e.clientY; });
+    (function moveCG() {
+      cursorGlow.style.left = cgx + 'px';
+      cursorGlow.style.top  = cgy + 'px';
+      requestAnimationFrame(moveCG);
+    })();
+  }
+
+  // ── 6. Nav card 3-D tilt ──
+  document.querySelectorAll('.nav-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left - r.width  / 2) / (r.width  / 2);
+      const y = (e.clientY - r.top  - r.height / 2) / (r.height / 2);
+      card.style.transform = `perspective(700px) rotateY(${x * 5}deg) rotateX(${-y * 5}deg) translateY(-4px)`;
+    });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+  });
+
+  // ── 7. Intersection Observer for scroll reveals ──
   const io = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
@@ -802,7 +904,7 @@
 
   document.querySelectorAll('.reveal, .stagger').forEach(el => io.observe(el));
 
-  // Also observe the stats strip for count-up
+  // ── 8. Also observe the stats strip for count-up
   const statsStrip = document.querySelector('.stats-strip');
   if (statsStrip) {
     const statsIO = new IntersectionObserver(entries => {
