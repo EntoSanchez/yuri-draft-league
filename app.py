@@ -214,7 +214,7 @@ def inject_nav_coaches():
     try:
         with get_db() as db:
             coaches = db.execute(
-                "SELECT id, team_name, coach_name, color, pool FROM coaches ORDER BY pool, team_name"
+                "SELECT id, team_name, coach_name, color, pool, logo_url FROM coaches ORDER BY pool, team_name"
             ).fetchall()
         return {"nav_coaches": [dict(c) for c in coaches]}
     except Exception:
@@ -437,6 +437,52 @@ def index():
     standings_all = get_standings(None)
     top3 = standings_all[:3]
     recent_results = [dict(r) for r in recent_rows]
+
+    # Hot team — longest current win streak
+    hot_team = None
+    max_streak = 0
+    with get_db() as db:
+        for row in standings_all:
+            cid = row["coach"]["id"]
+            results = db.execute("""
+                SELECT score1, score2, coach1_id FROM schedule
+                WHERE (coach1_id=? OR coach2_id=?) AND score1 IS NOT NULL AND score2 IS NOT NULL
+                ORDER BY week DESC
+            """, (cid, cid)).fetchall()
+            streak = 0
+            for r in results:
+                my_s  = r["score1"] if r["coach1_id"] == cid else r["score2"]
+                opp_s = r["score2"] if r["coach1_id"] == cid else r["score1"]
+                if my_s > opp_s:
+                    streak += 1
+                else:
+                    break
+            if streak > max_streak:
+                max_streak = streak
+                hot_team = {"coach": row["coach"], "streak": streak,
+                            "W": row["W"], "L": row["L"], "T": row["T"]}
+
+    # Pick'em top 3 leaders (all-time)
+    with get_db() as db:
+        try:
+            pickems_rows = db.execute("""
+                SELECT pv.voter_name,
+                       SUM(CASE WHEN (s.score1 > s.score2 AND pv.picked_coach_id = s.coach1_id)
+                                  OR (s.score2 > s.score1 AND pv.picked_coach_id = s.coach2_id)
+                                THEN 1 ELSE 0 END) as correct,
+                       COUNT(*) as total_picks
+                FROM pickem_votes pv
+                JOIN schedule s ON pv.match_id = s.id
+                WHERE s.score1 IS NOT NULL AND s.score2 IS NOT NULL AND s.score1 != s.score2
+                GROUP BY pv.voter_name
+                HAVING total_picks > 0
+                ORDER BY correct DESC, total_picks ASC
+                LIMIT 3
+            """).fetchall()
+            pickems_top3 = [dict(r) for r in pickems_rows]
+        except Exception:
+            pickems_top3 = []
+
     return render_template("home.html",
                            league_name=league_name,
                            season=season,
@@ -447,7 +493,9 @@ def index():
                            total_matches=total_matches,
                            completed_matches=completed_matches,
                            recent_results=recent_results,
-                           top3=top3)
+                           top3=top3,
+                           hot_team=hot_team,
+                           pickems_top3=pickems_top3)
 
 
 @app.route("/standings")
