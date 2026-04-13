@@ -462,6 +462,37 @@
   }
   .ticker-sep { color: rgba(3,218,198,0.25); font-size: 0.55rem; }
 
+  /* ═══ BACKGROUND LOGOS ═══ */
+  #bg-logos { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .bg-logo {
+    position: absolute;
+    width: 72px; height: 72px;
+    object-fit: contain; border-radius: 14px;
+    opacity: 0;
+    filter: saturate(0.25) blur(0.4px);
+    animation:
+      bgLogoIn 3s ease var(--delay, 0s) forwards,
+      bgLogoFloat var(--dur, 22s) ease-in-out var(--delay, 0s) infinite alternate;
+  }
+  .bg-logo-swatch {
+    position: absolute;
+    width: 64px; height: 64px;
+    border-radius: 14px;
+    opacity: 0;
+    animation:
+      bgLogoIn 3s ease var(--delay, 0s) forwards,
+      bgLogoFloat var(--dur, 22s) ease-in-out var(--delay, 0s) infinite alternate;
+    filter: blur(1px);
+  }
+  @keyframes bgLogoIn {
+    from { opacity: 0; }
+    to   { opacity: 0.09; }
+  }
+  @keyframes bgLogoFloat {
+    from { transform: translate(0, 0) rotate(var(--r1, -4deg)); }
+    to   { transform: translate(var(--tx, 18px), var(--ty, -28px)) rotate(var(--r2, 4deg)); }
+  }
+
   /* ═══ CURSOR GLOW ═══ */
   #cursor-glow {
     position: fixed; pointer-events: none; z-index: 9998;
@@ -498,6 +529,19 @@
   <div class="orb orb-2" id="orb2"></div>
   <div class="orb orb-3" id="orb3"></div>
   <div class="orb orb-4" id="orb4"></div>
+
+  <!-- Background team logos -->
+  <div id="bg-logos">
+    {% for c in nav_coaches %}{% set i = loop.index0 %}
+    {% if c.logo_url %}
+    <img src="{{ c.logo_url }}" class="bg-logo" alt=""
+      style="left:{{ (i*67+7)%88 }}%;top:{{ (i*41+13)%82 }}%;--dur:{{ 18+(i*7)%13 }}s;--delay:{{ (i*1.3)|round(1) }}s;--tx:{{ 12+(i*11)%28 }}px;--ty:{{ -(16+(i*9)%32) }}px;--r1:{{ -7+(i*3)%12 }}deg;--r2:{{ 3+(i*5)%9 }}deg;">
+    {% else %}
+    <div class="bg-logo-swatch"
+      style="left:{{ (i*67+7)%88 }}%;top:{{ (i*41+13)%82 }}%;background:{{ c.color or '#374151' }};--dur:{{ 18+(i*7)%13 }}s;--delay:{{ (i*1.3)|round(1) }}s;--tx:{{ 12+(i*11)%28 }}px;--ty:{{ -(16+(i*9)%32) }}px;--r1:{{ -7+(i*3)%12 }}deg;--r2:{{ 3+(i*5)%9 }}deg;"></div>
+    {% endif %}
+    {% endfor %}
+  </div>
 
   <!-- Particles container -->
   <div id="particles" style="position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden;"></div>
