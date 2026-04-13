@@ -479,17 +479,6 @@
     100% { transform: translate(0, 0) rotate(var(--r1, -6deg)) scale(1); }
   }
 
-  /* ═══ CURSOR GLOW ═══ */
-  #cursor-glow {
-    position: fixed; pointer-events: none; z-index: 9998;
-    width: 360px; height: 360px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,245,255,0.07) 0%, transparent 65%);
-    transform: translate(-50%, -50%);
-    transition: opacity 0.4s ease;
-    mix-blend-mode: screen;
-    will-change: left, top;
-  }
-
   /* ═══ NAV CARD SVG ICONS ═══ */
   .nav-card-icon svg { width: 22px; height: 22px; }
 
@@ -594,8 +583,6 @@
   </div>
 </section>
 
-<!-- cursor glow (outside home-bg so it's fixed/global) -->
-<div id="cursor-glow"></div>
 
 {% if recent_results %}
 <!-- ═══════════════════ RESULTS TICKER ═══════════════════ -->
@@ -897,17 +884,6 @@
     requestAnimationFrame(step);
   }
 
-  // ── 5. Cursor glow ──
-  const cursorGlow = document.getElementById('cursor-glow');
-  if (cursorGlow) {
-    let cgx = -999, cgy = -999;
-    document.addEventListener('mousemove', e => { cgx = e.clientX; cgy = e.clientY; });
-    (function moveCG() {
-      cursorGlow.style.left = cgx + 'px';
-      cursorGlow.style.top  = cgy + 'px';
-      requestAnimationFrame(moveCG);
-    })();
-  }
 
   // ── 6. Nav card 3-D tilt ──
   document.querySelectorAll('.nav-card').forEach(card => {
