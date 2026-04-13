@@ -724,7 +724,15 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl stagger">
         {% for row in top3 %}
         <a href="/team/{{ row.coach.id }}" class="podium-card {% if loop.index==1 %}podium-1{% elif loop.index==2 %}podium-2{% else %}podium-3{% endif %}">
-          <div class="text-3xl mb-3">{% if loop.index==1 %}🥇{% elif loop.index==2 %}🥈{% else %}🥉{% endif %}</div>
+          <div class="flex items-center justify-center mb-3">
+            {% if loop.index==1 %}
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:#FFD700;color:#1a1a00;box-shadow:0 0 12px rgba(255,215,0,0.5);">1</span>
+            {% elif loop.index==2 %}
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:#C0C0C0;color:#111;box-shadow:0 0 8px rgba(192,192,192,0.4);">2</span>
+            {% else %}
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:#CD7F32;color:#1a0900;box-shadow:0 0 8px rgba(205,127,50,0.4);">3</span>
+            {% endif %}
+          </div>
           {% if row.coach.logo_url %}
             <img src="{{ row.coach.logo_url }}" class="w-16 h-16 object-contain rounded-xl mx-auto mb-3" alt="">
           {% else %}

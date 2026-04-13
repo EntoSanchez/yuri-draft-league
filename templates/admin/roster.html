@@ -4,7 +4,7 @@
 
 <div class="flex items-center gap-3 mb-2">
     <a href="/admin/teams" class="text-gray-400 hover:text-white">← Teams</a>
-    <h1 class="text-2xl font-bold text-yellow-400">📋 {{ coach.team_name }} — Roster</h1>
+    <h1 class="text-2xl font-bold text-yellow-400 flex items-center gap-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> {{ coach.team_name }} — Roster</h1>
 </div>
 <p class="text-gray-400 mb-6">Coach: {{ coach.coach_name }} · Pool {{ coach.pool }}</p>
 
@@ -38,7 +38,7 @@
             {% if settings.get('mechanic_zmove','0') == '1' %}
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_zmove_captain" class="w-4 h-4 accent-yellow-500">
-                <span class="text-sm text-gray-300">Z-Move Captain ⚡</span>
+                <span class="text-sm text-gray-300">Z-Move Captain <svg class="inline w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
             </label>
             {% endif %}
             {% if settings.get('draft_free_pick_type','none') != 'none' %}
@@ -66,7 +66,7 @@
                 <th class="px-3 py-3 text-center">Pts</th>
                 <th class="px-3 py-3 text-center">Tier</th>
                 {% if settings.get('mechanic_tera','0') == '1' %}<th class="px-3 py-3 text-center">Tera ⭐</th>{% endif %}
-                {% if settings.get('mechanic_zmove','0') == '1' %}<th class="px-3 py-3 text-center">Z-Move ⚡</th>{% endif %}
+                {% if settings.get('mechanic_zmove','0') == '1' %}<th class="px-3 py-3 text-center">Z-Move <svg class="inline w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></th>{% endif %}
                 {% if settings.get('draft_free_pick_type','none') != 'none' %}<th class="px-3 py-3 text-center">Free 🆓</th>{% endif %}
                 <th class="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -80,7 +80,7 @@
                              onerror="this.style.display='none'" class="w-7 h-7" alt="">
                         <span id="name-{{ p.id }}">{{ p.pokemon_name }}</span>
                         {% if p.is_tera_captain and settings.get('mechanic_tera','0') == '1' %}<span class="text-purple-400 text-xs">⭐</span>{% endif %}
-                        {% if p.is_zmove_captain and settings.get('mechanic_zmove','0') == '1' %}<span class="text-yellow-400 text-xs">⚡</span>{% endif %}
+                        {% if p.is_zmove_captain and settings.get('mechanic_zmove','0') == '1' %}<span class="text-yellow-400 text-xs"><svg class="inline w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>{% endif %}
                         {% if p.is_free_pick and settings.get('draft_free_pick_type','none') != 'none' %}<span class="text-green-400 text-xs">🆓</span>{% endif %}
                     </div>
                 </td>
@@ -89,7 +89,7 @@
                 </td>
                 <td class="px-3 py-3 text-center text-gray-400 text-xs">{{ p.tier or '—' }}</td>
                 {% if settings.get('mechanic_tera','0') == '1' %}<td class="px-3 py-3 text-center">{% if p.is_tera_captain %}⭐{% else %}—{% endif %}</td>{% endif %}
-                {% if settings.get('mechanic_zmove','0') == '1' %}<td class="px-3 py-3 text-center">{% if p.is_zmove_captain %}⚡{% else %}—{% endif %}</td>{% endif %}
+                {% if settings.get('mechanic_zmove','0') == '1' %}<td class="px-3 py-3 text-center">{% if p.is_zmove_captain %}<svg class="inline w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>{% else %}—{% endif %}</td>{% endif %}
                 {% if settings.get('draft_free_pick_type','none') != 'none' %}<td class="px-3 py-3 text-center">{% if p.is_free_pick %}🆓{% else %}—{% endif %}</td>{% endif %}
                 <td class="px-4 py-3 text-right flex justify-end gap-2">
                     <button onclick="toggleEditRow({{ p.id }})" class="px-2.5 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Edit</button>
@@ -130,7 +130,7 @@
                         {% if settings.get('mechanic_zmove','0') == '1' %}
                         <label class="flex items-center gap-1 cursor-pointer text-sm">
                             <input type="checkbox" name="is_zmove_captain" {% if p.is_zmove_captain %}checked{% endif %} class="accent-yellow-500">
-                            Z-Move ⚡
+                            Z-Move <svg class="inline w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         </label>
                         {% endif %}
                         {% if settings.get('draft_free_pick_type','none') != 'none' %}
