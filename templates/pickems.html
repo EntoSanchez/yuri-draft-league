@@ -40,7 +40,7 @@
     {% set result_known = m.winner_id is not none %}
     <div class="rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;" data-match-id="{{ m.id }}">
       <div class="px-4 py-2 border-b border-gray-800/60 flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-widest text-gray-600">Pool {{ m.pool }} · Week {{ selected_week }}</span>
+        <span class="text-xs font-bold uppercase tracking-widest text-gray-600">Week {{ selected_week }}</span>
         {% if result_known %}
           <span class="text-xs font-bold text-green-400">Final: {{ m.score1 }}–{{ m.score2 }}</span>
         {% else %}
@@ -150,7 +150,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-800/40">
-        {% for i, row in leaderboard | enumerate %}
+        {% for i, row in enumerate(leaderboard) %}
         <tr class="hover:bg-gray-800/20 transition-colors {% if i == 0 %}bg-yellow-500/5{% endif %}">
           <td class="px-5 py-2.5 text-xs text-gray-600 font-mono">
             {% if i == 0 %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black" style="background:#FFD700;color:#1a1a00;">1</span>
