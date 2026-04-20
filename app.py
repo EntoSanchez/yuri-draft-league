@@ -1069,6 +1069,19 @@ def admin_index():
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
+@app.route("/admin/set_week", methods=["POST"])
+@admin_required
+def admin_set_week():
+    week = request.form.get("current_week", "").strip()
+    if week.isdigit():
+        with get_db() as db:
+            db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('current_week', ?)", (week,))
+        flash(f"Current week set to {week}.", "success")
+    else:
+        flash("Invalid week number.", "warning")
+    return redirect(url_for("admin_index"))
+
+
 @app.route("/admin/settings", methods=["GET", "POST"])
 @admin_required
 def admin_settings():
