@@ -57,7 +57,7 @@
             <span class="font-semibold">{{ m.c1_name }}</span>
             <span class="text-gray-500">vs</span>
             <span class="font-semibold">{{ m.c2_name }}</span>
-            {% if m.score1 is not none %}
+            {% if m.score1 is not none and (m.score1 > 0 or m.score2 > 0) %}
             <span class="font-mono text-yellow-400 font-bold">{{ m.score1 | int }} – {{ m.score2 | int }}</span>
             {% else %}
             <span class="text-gray-500 text-sm">no result</span>
