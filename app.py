@@ -823,7 +823,7 @@ def pickems():
         current_week = weeks[-1] if weeks else 1
         for w in weeks:
             unplayed = db.execute(
-                "SELECT COUNT(*) FROM schedule WHERE week=? AND score1=0 AND score2=0", (w,)
+                "SELECT COUNT(*) FROM schedule WHERE week=? AND (score1 IS NULL OR score1=0) AND (score2 IS NULL OR score2=0)", (w,)
             ).fetchone()[0]
             if unplayed > 0:
                 current_week = w
@@ -856,8 +856,10 @@ def pickems():
         for m in matches:
             m["votes"] = votes_by_match.get(m["id"], {})
             # determine winner (score1 > score2 → coach1, else coach2, 0-0 → None)
-            if m["score1"] > 0 or m["score2"] > 0:
-                m["winner_id"] = m["coach1_id"] if m["score1"] > m["score2"] else m["coach2_id"]
+            s1 = m["score1"] or 0
+            s2 = m["score2"] or 0
+            if s1 > 0 or s2 > 0:
+                m["winner_id"] = m["coach1_id"] if s1 > s2 else m["coach2_id"]
             else:
                 m["winner_id"] = None
 
@@ -1253,7 +1255,7 @@ def admin_schedule():
                     "INSERT INTO schedule (week, coach1_id, coach2_id, score1, score2) VALUES (?,?,?,?,?)",
                     (request.form["week"],
                      request.form["coach1_id"], request.form["coach2_id"],
-                     None, None)
+                     0, 0)
                 )
             flash("Match added!", "success")
         elif action == "update_result":
