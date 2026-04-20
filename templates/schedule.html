@@ -46,7 +46,7 @@
           {% for m in matches %}
             {% set s1 = m.score1 %}
             {% set s2 = m.score2 %}
-            {% set has_result = s1 is not none and s2 is not none %}
+            {% set has_result = s1 is not none and s2 is not none and (s1 > 0 or s2 > 0) %}
             {% if has_result %}
               {% set c1_win = s1 > s2 %}
               {% set is_tie = s1 == s2 %}
