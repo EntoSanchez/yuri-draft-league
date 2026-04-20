@@ -433,7 +433,7 @@
                 style="{% if m.week == current_week %}border-left-color:{{ coach.color or '#facc15' }};{% endif %}">
               <td class="px-3 py-2 text-gray-600 font-bold">{{ m.week }}</td>
               <td class="px-3 py-2">
-                <a href="/team/{{ opp_id }}" class="text-gray-300 hover:text-yellow-400 transition-colors font-medium truncate block max-w-[100px]">{{ opp_team }}</a>
+                <a href="/team/{{ opp_id }}" class="text-gray-300 hover:text-yellow-400 transition-colors font-medium">{{ opp_team }}</a>
               </td>
               <td class="px-3 py-2 text-center">
                 {% if has_result %}
