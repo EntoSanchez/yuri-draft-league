@@ -1237,8 +1237,8 @@ def admin_schedule():
         if action == "add_match":
             with get_db() as db:
                 db.execute(
-                    "INSERT INTO schedule (week, pool, coach1_id, coach2_id, score1, score2) VALUES (?,?,?,?,?,?)",
-                    (request.form["week"], request.form["pool"],
+                    "INSERT INTO schedule (week, coach1_id, coach2_id, score1, score2) VALUES (?,?,?,?,?)",
+                    (request.form["week"],
                      request.form["coach1_id"], request.form["coach2_id"],
                      None, None)
                 )
