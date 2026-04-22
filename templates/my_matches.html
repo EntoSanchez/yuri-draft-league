@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}My Matches — {{ league_name }}{% endblock %}
+{% block content %}
+
+<div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">{{ league_name }}</p>
+    <h1 class="text-3xl font-black gradient-heading">My Matches</h1>
+    <p class="text-sm text-gray-500 mt-1">Submit results and replay links for your matches.</p>
+  </div>
+</div>
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+  {% if not matches %}
+  <div class="text-center py-20 text-gray-600">
+    <svg class="w-12 h-12 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+    </svg>
+    <p class="text-sm">No matches scheduled yet.</p>
+  </div>
+  {% endif %}
+
+  {% for m in matches %}
+  {% set pending = not m.has_result %}
+  <div class="rounded-xl border overflow-hidden {% if pending %}border-yellow-500/20{% else %}border-gray-800/60{% endif %}"
+       style="background:#0f1623;">
+
+    <!-- Match header -->
+    <div class="px-5 py-3 border-b border-gray-800/60 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-bold uppercase tracking-widest text-gray-600">Week {{ m.week }}</span>
+        {% if pending %}
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pending</span>
+        {% else %}
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+            Final: {{ m.score1 | int }}–{{ m.score2 | int }}
+          </span>
+        {% endif %}
+      </div>
+      <a href="/admin/match_stats/{{ m.id }}" class="text-xs text-gray-600 hover:text-yellow-400 transition-colors">
+        Full stats &rarr;
+      </a>
+    </div>
+
+    <!-- Teams row -->
+    <div class="flex items-center justify-center gap-6 px-5 py-4 border-b border-gray-800/40">
+      <span class="font-bold text-white text-sm text-right flex-1">{{ m.c1_team }}</span>
+      <span class="text-xs text-gray-600 flex-shrink-0 font-black">VS</span>
+      <span class="font-bold text-white text-sm text-left flex-1">{{ m.c2_team }}</span>
+    </div>
+
+    <div class="px-5 py-4 space-y-5">
+
+      <!-- Score entry -->
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Result</div>
+        <form method="POST" action="/my-matches" class="flex items-center gap-2 flex-wrap">
+          <input type="hidden" name="action" value="submit_result">
+          <input type="hidden" name="match_id" value="{{ m.id }}">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400 w-28 text-right truncate">{{ m.c1_team }}</span>
+            <input type="number" name="score1" min="0" max="99" step="0.5"
+                   value="{{ m.score1 | int if m.score1 is not none and m.has_result else '' }}"
+                   placeholder="0"
+                   class="w-14 bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:border-yellow-500 focus:outline-none">
+            <span class="text-gray-700 font-bold">–</span>
+            <input type="number" name="score2" min="0" max="99" step="0.5"
+                   value="{{ m.score2 | int if m.score2 is not none and m.has_result else '' }}"
+                   placeholder="0"
+                   class="w-14 bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:border-yellow-500 focus:outline-none">
+            <span class="text-xs text-gray-400 w-28 truncate">{{ m.c2_team }}</span>
+          </div>
+          <button type="submit"
+                  class="px-4 py-1.5 rounded text-xs font-bold transition-colors
+                         {% if pending %}bg-yellow-500 hover:bg-yellow-400 text-gray-900{% else %}bg-gray-700 hover:bg-gray-600 text-gray-300{% endif %}">
+            {% if pending %}Submit{% else %}Update{% endif %}
+          </button>
+        </form>
+      </div>
+
+      <!-- Replay links -->
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+          Replay{% if match_format == 'BO3' %}s{% endif %}
+        </div>
+        <div class="space-y-2">
+          {% for gnum in range(1, max_games + 1) %}
+          {% set game = m.games | selectattr('game_number', 'equalto', gnum) | first | default(none) %}
+          <form method="POST" action="/my-matches" class="flex items-center gap-2 flex-wrap">
+            <input type="hidden" name="action" value="save_replay">
+            <input type="hidden" name="match_id" value="{{ m.id }}">
+            <input type="hidden" name="game_number" value="{{ gnum }}">
+            {% if match_format == 'BO3' %}
+              <span class="text-xs text-gray-600 w-12 flex-shrink-0">Game {{ gnum }}</span>
+            {% endif %}
+            <input type="url" name="replay_url"
+                   value="{{ game.replay_url if game else '' }}"
+                   placeholder="https://replay.pokemonshowdown.com/…"
+                   class="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none"
+                   style="min-width:200px;">
+            {% if match_format == 'BO3' %}
+              <select name="winner_coach_id"
+                      class="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
+                <option value="">Winner…</option>
+                <option value="{{ m.c1_id }}" {% if game and game.winner_coach_id == m.c1_id %}selected{% endif %}>
+                  {{ m.c1_team }}
+                </option>
+                <option value="{{ m.c2_id }}" {% if game and game.winner_coach_id == m.c2_id %}selected{% endif %}>
+                  {{ m.c2_team }}
+                </option>
+              </select>
+            {% endif %}
+            <button type="submit"
+                    class="px-3 py-1.5 rounded text-xs font-bold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors flex-shrink-0">
+              Save
+            </button>
+            {% if game and game.replay_url %}
+              <a href="{{ game.replay_url }}" target="_blank" rel="noopener"
+                 class="text-xs text-cyan-500 hover:text-cyan-400 flex-shrink-0 transition-colors">View</a>
+            {% endif %}
+          </form>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

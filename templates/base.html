@@ -556,6 +556,13 @@
         {% endif %}
         {% if session.get('user_id') %}
           <span class="text-xs text-gray-500 font-medium px-1">{{ session.get('username') }}</span>
+          {% if session.get('role') != 'admin' %}
+          <a href="/my-matches" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold border border-cyan-800/50 text-cyan-400 hover:border-cyan-500/60 hover:text-cyan-300 transition-all"
+             style="background:rgba(0,245,255,0.05);">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            My Matches
+          </a>
+          {% endif %}
           <a href="/logout" class="px-3 py-1.5 rounded-md text-xs font-semibold border border-gray-700 text-gray-400 hover:border-yellow-500/60 hover:text-yellow-400 transition-all">Sign out</a>
         {% else %}
           <a href="/login" class="px-4 py-1.5 rounded-md text-xs font-bold bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-colors">Sign in</a>
@@ -714,6 +721,12 @@
     {% endif %}
     {% if session.get('user_id') %}
       <div class="px-4 py-2 text-xs text-gray-600">Signed in as <span class="text-gray-400">{{ session.get('username') }}</span></div>
+      {% if session.get('role') != 'admin' %}
+      <a href="/my-matches" class="drawer-link {% if request.path == '/my-matches' %}active{% endif %}" style="color:rgba(0,245,255,0.7);">
+        <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        My Matches
+      </a>
+      {% endif %}
       <a href="/logout" class="drawer-link">Sign out</a>
     {% else %}
       <a href="/login" class="mx-3 mt-2 block py-2.5 rounded-xl text-sm font-bold text-center bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-colors">Sign in</a>

@@ -380,6 +380,7 @@ def login():
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["role"] = user["role"]
+            session["coach_id"] = user["coach_id"]
             flash(f"Welcome back, {user['username']}!", "success")
             return redirect(request.args.get("next") or url_for("index"))
         flash("Invalid username or password.", "warning")
@@ -392,6 +393,142 @@ def logout():
     session.clear()
     flash("Logged out.", "success")
     return redirect(url_for("index"))
+
+
+# ─── Coach: My Matches ────────────────────────────────────────────────────────
+
+@app.route("/my-matches", methods=["GET", "POST"])
+@login_required
+def my_matches():
+    coach_id = session.get("coach_id")
+    is_admin = session.get("role") == "admin"
+    match_format = get_setting("match_format", "BO1")
+    max_games = 3 if match_format == "BO3" else 1
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        match_id = request.form.get("match_id", type=int)
+
+        # Verify the requesting user is in this match (or is admin)
+        with get_db() as db:
+            row = db.execute(
+                "SELECT coach1_id, coach2_id FROM schedule WHERE id=?", (match_id,)
+            ).fetchone()
+        if not row:
+            flash("Match not found.", "warning")
+            return redirect(url_for("my_matches"))
+        if not is_admin and coach_id not in (row["coach1_id"], row["coach2_id"]):
+            flash("You are not in that match.", "warning")
+            return redirect(url_for("my_matches"))
+
+        if action == "submit_result":
+            s1 = request.form.get("score1") or None
+            s2 = request.form.get("score2") or None
+            if s1 is not None:
+                s1 = float(s1)
+            if s2 is not None:
+                s2 = float(s2)
+            with get_db() as db:
+                db.execute(
+                    "UPDATE schedule SET score1=?, score2=? WHERE id=?",
+                    (s1, s2, match_id)
+                )
+                match_row = db.execute("""
+                    SELECT s.week, c1.team_name as t1, c2.team_name as t2
+                    FROM schedule s
+                    JOIN coaches c1 ON s.coach1_id = c1.id
+                    JOIN coaches c2 ON s.coach2_id = c2.id
+                    WHERE s.id=?
+                """, (match_id,)).fetchone()
+                webhook = db.execute(
+                    "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
+                ).fetchone()
+            flash("Result submitted!", "success")
+            if s1 is not None and s2 is not None and match_row and webhook and webhook["value"]:
+                s1i, s2i = int(s1), int(s2)
+                t1, t2 = match_row["t1"], match_row["t2"]
+                winner = t1 if s1i > s2i else (t2 if s2i > s1i else None)
+                result_line = (f"**{t1}** {s1i}–{s2i} **{t2}** → 🏆 **{winner}** wins!"
+                               if winner else f"**{t1}** {s1i}–{s2i} **{t2}** → 🤝 Tie!")
+                league = get_setting("league_name", "Pokemon Draft League")
+                post_discord(webhook["value"],
+                    f"📣 **{league}** — Week {match_row['week']} Result\n{result_line}")
+
+        elif action == "save_replay":
+            game_number = request.form.get("game_number", type=int, default=1)
+            replay_url = request.form.get("replay_url", "").strip()
+            winner_coach_id = request.form.get("winner_coach_id") or None
+            with get_db() as db:
+                existing = db.execute(
+                    "SELECT id FROM match_games WHERE schedule_id=? AND game_number=?",
+                    (match_id, game_number)
+                ).fetchone()
+                if existing:
+                    db.execute(
+                        "UPDATE match_games SET replay_url=?, winner_coach_id=? WHERE id=?",
+                        (replay_url, winner_coach_id, existing["id"])
+                    )
+                else:
+                    db.execute(
+                        "INSERT INTO match_games (schedule_id, game_number, replay_url, winner_coach_id) VALUES (?,?,?,?)",
+                        (match_id, game_number, replay_url, winner_coach_id)
+                    )
+            flash(f"Game {game_number} replay saved!", "success")
+
+        return redirect(url_for("my_matches"))
+
+    # GET — fetch this coach's matches (admin sees all)
+    with get_db() as db:
+        if is_admin:
+            matches = db.execute("""
+                SELECT s.*, c1.coach_name as c1_name, c1.team_name as c1_team, c1.id as c1_id,
+                       c2.coach_name as c2_name, c2.team_name as c2_team, c2.id as c2_id
+                FROM schedule s
+                JOIN coaches c1 ON s.coach1_id = c1.id
+                JOIN coaches c2 ON s.coach2_id = c2.id
+                ORDER BY s.week DESC, s.id
+            """).fetchall()
+        else:
+            matches = db.execute("""
+                SELECT s.*, c1.coach_name as c1_name, c1.team_name as c1_team, c1.id as c1_id,
+                       c2.coach_name as c2_name, c2.team_name as c2_team, c2.id as c2_id
+                FROM schedule s
+                JOIN coaches c1 ON s.coach1_id = c1.id
+                JOIN coaches c2 ON s.coach2_id = c2.id
+                WHERE s.coach1_id=? OR s.coach2_id=?
+                ORDER BY s.week DESC, s.id
+            """, (coach_id, coach_id)).fetchall()
+        matches = [dict(m) for m in matches]
+
+        # Fetch games/replays for each match
+        match_ids = [m["id"] for m in matches]
+        games_by_match = {}
+        if match_ids:
+            placeholders = ",".join("?" * len(match_ids))
+            all_games = db.execute(
+                f"SELECT * FROM match_games WHERE schedule_id IN ({placeholders}) ORDER BY game_number",
+                match_ids
+            ).fetchall()
+            for g in all_games:
+                games_by_match.setdefault(g["schedule_id"], []).append(dict(g))
+
+        # Attach coach info for winner dropdowns
+        coaches_map = {c["id"]: dict(c) for c in db.execute("SELECT * FROM coaches").fetchall()}
+
+    for m in matches:
+        m["games"] = games_by_match.get(m["id"], [])
+        m["c1_coach"] = coaches_map.get(m["c1_id"], {})
+        m["c2_coach"] = coaches_map.get(m["c2_id"], {})
+        has_result = m["score1"] is not None and m["score2"] is not None and (m["score1"] > 0 or m["score2"] > 0)
+        m["has_result"] = has_result
+
+    return render_template("my_matches.html",
+                           matches=matches,
+                           max_games=max_games,
+                           match_format=match_format,
+                           coach_id=coach_id,
+                           is_admin=is_admin,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
 
 
 # ─── Public Routes ────────────────────────────────────────────────────────────
