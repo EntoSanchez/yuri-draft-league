@@ -136,7 +136,8 @@
                data-pool=""
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}"
-               data-types="{{ t.type1 or '' }}|{{ t.type2 or '' }}">
+               data-type1="{{ (t.type1 or '').lower() }}"
+               data-type2="{{ (t.type2 or '').lower() }}">
             <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 opacity-40">
             <span class="text-red-500/60 line-through text-xs truncate flex-1">{{ t.name }}</span>
@@ -286,7 +287,8 @@
                data-pool="{{ coach_pool }}"
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}"
-               data-types="{{ t.type1 or '' }}|{{ t.type2 or '' }}">
+               data-type1="{{ (t.type1 or '').lower() }}"
+               data-type2="{{ (t.type2 or '').lower() }}">
 
             <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 {% if not is_drafted %}opacity-75{% endif %}">
@@ -486,7 +488,7 @@ function filterBoard() {
   currentStatus  = document.getElementById('db-status').value;
   currentMove    = document.getElementById('db-move').value;
   currentAbility = document.getElementById('db-ability').value.toLowerCase().trim();
-  currentType    = document.getElementById('db-type').value;
+  currentType    = document.getElementById('db-type').value.toLowerCase();
 
   let visible = 0;
   const colVisible = {};
@@ -497,7 +499,8 @@ function filterBoard() {
     const pool     = poke.dataset.pool     || '';
     const abilities = poke.dataset.abilities || '';
     const moves    = poke.dataset.moves    || '';
-    const types    = poke.dataset.types    || '';
+    const type1    = poke.dataset.type1    || '';
+    const type2    = poke.dataset.type2    || '';
     const col    = poke.closest('.board-col');
     const colKey = col ? col.dataset.col : '';
 
@@ -505,7 +508,7 @@ function filterBoard() {
     const statusOk  = !currentStatus  || status === currentStatus;
     const moveOk    = !currentMove    || moves.split('|').includes(currentMove);
     const abilityOk = !currentAbility || abilities.split('|').some(a => a && a.includes(currentAbility));
-    const typeOk    = !currentType    || types.split('|').filter(Boolean).includes(currentType);
+    const typeOk    = !currentType    || type1 === currentType || type2 === currentType;
 
     let poolDim = false;
     if (currentPool && status === 'drafted') {
