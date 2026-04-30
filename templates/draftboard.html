@@ -136,7 +136,7 @@
                data-pool=""
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}"
-               data-types="{{ [t.type1 or '', t.type2 or ''] | select | join('|') }}">
+               data-types="{{ t.type1 or '' }}|{{ t.type2 or '' }}">
             <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 opacity-40">
             <span class="text-red-500/60 line-through text-xs truncate flex-1">{{ t.name }}</span>
@@ -286,7 +286,7 @@
                data-pool="{{ coach_pool }}"
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}"
-               data-types="{{ [t.type1 or '', t.type2 or ''] | select | join('|') }}">
+               data-types="{{ t.type1 or '' }}|{{ t.type2 or '' }}">
 
             <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 {% if not is_drafted %}opacity-75{% endif %}">
@@ -505,7 +505,7 @@ function filterBoard() {
     const statusOk  = !currentStatus  || status === currentStatus;
     const moveOk    = !currentMove    || moves.split('|').includes(currentMove);
     const abilityOk = !currentAbility || abilities.split('|').some(a => a && a.includes(currentAbility));
-    const typeOk    = !currentType    || types.split('|').includes(currentType);
+    const typeOk    = !currentType    || types.split('|').filter(Boolean).includes(currentType);
 
     let poolDim = false;
     if (currentPool && status === 'drafted') {
