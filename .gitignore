@@ -1,3 +1,6 @@
+# Database (each server keeps its own — never overwrite with git pull)
+league.db
+
 # Python
 .venv/
 __pycache__/
