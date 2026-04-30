@@ -1092,11 +1092,12 @@ def admin_tiers_quick_pts():
     except ValueError:
         return ("Invalid points", 400)
     with get_db() as db:
-        # If the new point value is outside uber range (≤26), clear any uber tier_label
-        # so the Pokemon is grouped into the correct regular tier instead of its own group
+        # Always clear uber tier_label when changing points — the draftboard grouper
+        # will reassign the correct uber label based on the new point value.
+        # Keeping a stale label creates a unique (pts, label) group key.
         row = db.execute("SELECT tier_label FROM draft_tiers WHERE id=?", (tier_id,)).fetchone()
         current_label = (row["tier_label"] or "") if row else ""
-        if "uber" in current_label.lower() and pts <= 26:
+        if "uber" in current_label.lower():
             db.execute("UPDATE draft_tiers SET points=?, tier_label='' WHERE id=?", (pts, tier_id))
         else:
             db.execute("UPDATE draft_tiers SET points=? WHERE id=?", (pts, tier_id))
