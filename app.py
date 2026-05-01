@@ -135,7 +135,7 @@ def _name_to_slug(name):
     if base.startswith("mega "):
         rest = base[5:]
         parts = rest.split()
-        if len(parts) >= 2 and parts[-1].lower() in ("x", "y"):
+        if len(parts) >= 2 and parts[-1].lower() in ("x", "y", "z"):
             mega_slug = "-".join(parts[:-1]) + "-mega" + parts[-1]
         else:
             mega_slug = rest.replace(" ", "-") + "-mega"
@@ -184,7 +184,7 @@ def pokemon_static_sprite_url(name):
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
-        if pid and pid < 10000:
+        if pid:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
     return f"{SHOWDOWN_STATIC}/{slugs[0]}.png"
 

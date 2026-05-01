@@ -179,6 +179,15 @@ def main():
                  pdata["spa"], pdata["spd"], pdata["spe"], pdata["bst"], display),
             )
 
+        # pokemon_db — sprite lookup uses Showdown slug format (megax not mega-x)
+        # Z-variants: absol-megaz | X/Y: raichu-megax | regular: clefable-mega
+        m = re.match(r"^(.+)-mega-([xyz])$", slug)
+        sprite_slug = (m.group(1) + "-mega" + m.group(2)) if m else slug
+        conn.execute(
+            "INSERT OR REPLACE INTO pokemon_db (name, pokeapi_id) VALUES (?,?)",
+            (sprite_slug, pokeapi_id),
+        )
+
         conn.commit()
         time.sleep(0.5)
 
