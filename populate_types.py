@@ -209,6 +209,7 @@ HARDCODED_TYPES = {
     "Mime Jr.":               ("Psychic", "Fairy"),
     "Nidoran-Female":         ("Poison", ""),
     "Nidoran-Male":           ("Poison", ""),
+    "Baxcalibur":             ("Dragon", "Ice"),
 }
 
 # Slug overrides: normalised slug → PokeAPI slug
