@@ -17,56 +17,58 @@ import urllib.request
 
 DB_PATH = sys.argv[1] if len(sys.argv) > 1 else "league.db"
 
-# (pokeapi_id, pokeapi_slug) — IDs 10278–10325 from PokeAPI
+# (pokeapi_id, pokeapi_slug, species_id) — IDs 10278–10325 from PokeAPI
+# species_id is the base Pokémon's national dex number, used for sprite lookup
+# (PokeAPI sprite repo doesn't have images for form IDs 10278+ yet)
 NEW_MEGAS = [
-    (10278, "clefable-mega"),
-    (10279, "victreebel-mega"),
-    (10280, "starmie-mega"),
-    (10281, "dragonite-mega"),
-    (10282, "meganium-mega"),
-    (10283, "feraligatr-mega"),
-    (10284, "skarmory-mega"),
-    (10285, "froslass-mega"),
-    (10286, "emboar-mega"),
-    (10287, "excadrill-mega"),
-    (10288, "scolipede-mega"),
-    (10289, "scrafty-mega"),
-    (10290, "eelektross-mega"),
-    (10291, "chandelure-mega"),
-    (10292, "chesnaught-mega"),
-    (10293, "delphox-mega"),
-    (10294, "greninja-mega"),
-    (10295, "pyroar-mega"),
-    (10296, "floette-mega"),
-    (10297, "malamar-mega"),
-    (10298, "barbaracle-mega"),
-    (10299, "dragalge-mega"),
-    (10300, "hawlucha-mega"),
-    (10301, "zygarde-mega"),
-    (10302, "drampa-mega"),
-    (10303, "falinks-mega"),
-    (10304, "raichu-mega-x"),
-    (10305, "raichu-mega-y"),
-    (10306, "chimecho-mega"),
-    (10307, "absol-mega-z"),
-    (10308, "staraptor-mega"),
-    (10309, "garchomp-mega-z"),
-    (10310, "lucario-mega-z"),
-    (10311, "heatran-mega"),
-    (10312, "darkrai-mega"),
-    (10313, "golurk-mega"),
-    (10314, "meowstic-mega"),
-    (10315, "crabominable-mega"),
-    (10316, "golisopod-mega"),
-    (10317, "magearna-mega"),
-    (10318, "magearna-original-mega"),
-    (10319, "zeraora-mega"),
-    (10320, "scovillain-mega"),
-    (10321, "glimmora-mega"),
-    (10322, "tatsugiri-curly-mega"),
-    (10323, "tatsugiri-droopy-mega"),
-    (10324, "tatsugiri-stretchy-mega"),
-    (10325, "baxcalibur-mega"),
+    (10278, "clefable-mega",            36),
+    (10279, "victreebel-mega",          71),
+    (10280, "starmie-mega",            121),
+    (10281, "dragonite-mega",          149),
+    (10282, "meganium-mega",           154),
+    (10283, "feraligatr-mega",         160),
+    (10284, "skarmory-mega",           227),
+    (10285, "froslass-mega",           478),
+    (10286, "emboar-mega",             500),
+    (10287, "excadrill-mega",          530),
+    (10288, "scolipede-mega",          545),
+    (10289, "scrafty-mega",            560),
+    (10290, "eelektross-mega",         604),
+    (10291, "chandelure-mega",         609),
+    (10292, "chesnaught-mega",         652),
+    (10293, "delphox-mega",            655),
+    (10294, "greninja-mega",           658),
+    (10295, "pyroar-mega",             668),
+    (10296, "floette-mega",            670),
+    (10297, "malamar-mega",            687),
+    (10298, "barbaracle-mega",         689),
+    (10299, "dragalge-mega",           691),
+    (10300, "hawlucha-mega",           701),
+    (10301, "zygarde-mega",            718),
+    (10302, "drampa-mega",             780),
+    (10303, "falinks-mega",            870),
+    (10304, "raichu-mega-x",            26),
+    (10305, "raichu-mega-y",            26),
+    (10306, "chimecho-mega",           358),
+    (10307, "absol-mega-z",            359),
+    (10308, "staraptor-mega",          398),
+    (10309, "garchomp-mega-z",         445),
+    (10310, "lucario-mega-z",          448),
+    (10311, "heatran-mega",            485),
+    (10312, "darkrai-mega",            491),
+    (10313, "golurk-mega",             623),
+    (10314, "meowstic-mega",           678),
+    (10315, "crabominable-mega",       740),
+    (10316, "golisopod-mega",          768),
+    (10317, "magearna-mega",           801),
+    (10318, "magearna-original-mega",  801),
+    (10319, "zeraora-mega",            807),
+    (10320, "scovillain-mega",         952),
+    (10321, "glimmora-mega",           970),
+    (10322, "tatsugiri-curly-mega",    978),
+    (10323, "tatsugiri-droopy-mega",   978),
+    (10324, "tatsugiri-stretchy-mega", 978),
+    (10325, "baxcalibur-mega",         998),
 ]
 
 
@@ -126,7 +128,7 @@ def main():
     new_dt = new_pd = 0
     failed = []
 
-    for pokeapi_id, slug in NEW_MEGAS:
+    for pokeapi_id, slug, species_id in NEW_MEGAS:
         display = slug_to_display(slug)
         print(f"{slug:<35} → {display:<30}", end=" ", flush=True)
 
@@ -181,11 +183,12 @@ def main():
 
         # pokemon_db — sprite lookup uses Showdown slug format (megax not mega-x)
         # Z-variants: absol-megaz | X/Y: raichu-megax | regular: clefable-mega
+        # Use species_id (base dex number) not pokeapi_id: sprite repo lacks 10278+ images
         m = re.match(r"^(.+)-mega-([xyz])$", slug)
         sprite_slug = (m.group(1) + "-mega" + m.group(2)) if m else slug
         conn.execute(
             "INSERT OR REPLACE INTO pokemon_db (name, pokeapi_id) VALUES (?,?)",
-            (sprite_slug, pokeapi_id),
+            (sprite_slug, species_id),
         )
 
         conn.commit()
