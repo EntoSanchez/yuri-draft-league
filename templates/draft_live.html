@@ -117,6 +117,14 @@
                 {% endif %}
                 <div class="font-bold {% if coach.id == current_coach_id %}text-yellow-400{% else %}text-white{% endif %} text-xs leading-tight">{{ coach.team_name }}</div>
                 {% if coach.id == current_coach_id %}<div class="text-yellow-500 text-xs leading-tight" style="font-size:9px;">PICKING</div>{% endif %}
+                {% set cds = coaches_draft_states.get(coach.id, {}) %}
+                {% if cds %}
+                <div style="font-size:8px; padding:1px 4px; border-radius:3px; margin-top:1px;
+                  {% if cds.mode == 'tier_tickets' %}background:rgba(124,58,237,0.25);color:#a78bfa;border:1px solid #7c3aed;
+                  {% else %}background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid #3b82f6;{% endif %}">
+                  {% if cds.mode == 'tier_tickets' %}Tickets{% else %}{{ cds.remaining }}pt left{% endif %}
+                </div>
+                {% endif %}
               </div>
             </th>
             {% endfor %}
@@ -198,6 +206,84 @@
       </div>
       {% endif %}
 
+      <!-- Draft mode status panel -->
+      {% if current_draft_state %}
+      <div class="mb-4 rounded-lg border p-3
+        {% if current_draft_state.mode == 'tier_tickets' %}border-purple-700/50{% else %}border-blue-700/50{% endif %}"
+        style="background:#0a0f1a;">
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Mode badge -->
+          <span class="px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0
+            {% if current_draft_state.mode == 'tier_tickets' %}text-purple-300 border border-purple-600{% else %}text-blue-300 border border-blue-600{% endif %}"
+            style="background:rgba(0,0,0,0.3);">
+            {% if current_draft_state.mode == 'tier_tickets' %}Tier Tickets{% else %}Points{% endif %}
+          </span>
+
+          {% if current_draft_state.mode == 'points' %}
+            <!-- Points budget -->
+            <div class="flex items-center gap-2 flex-1">
+              <div class="flex-1 h-2 rounded-full overflow-hidden" style="background:#1f2937; min-width:80px;">
+                {% set pct = [(current_draft_state.spent / current_draft_state.budget * 100)|int, 100]|min %}
+                <div class="h-full rounded-full transition-all"
+                     style="width:{{ pct }}%; background:{% if pct > 90 %}#ef4444{% elif pct > 70 %}#f59e0b{% else %}#3b82f6{% endif %};"></div>
+              </div>
+              <span class="text-xs font-bold text-white flex-shrink-0">
+                {{ current_draft_state.remaining }}pt left
+                <span class="text-gray-500 font-normal">({{ current_draft_state.spent }}/{{ current_draft_state.budget }})</span>
+              </span>
+            </div>
+          {% else %}
+            <!-- Ticket chips -->
+            <div class="flex flex-wrap gap-1.5">
+              {% for ticket, total in ticket_alloc.items() %}
+              {% set rem = current_draft_state.remaining_tickets.get(ticket, 0) %}
+              <span class="px-2 py-0.5 rounded text-xs font-bold flex-shrink-0
+                {% if rem > 0 %}text-white{% else %}text-gray-600 line-through{% endif %}"
+                style="background:{% if rem > 0 %}rgba(139,92,246,0.25); border:1px solid #7c3aed;{% else %}rgba(55,65,81,0.3); border:1px solid #374151;{% endif %}">
+                {{ ticket }}: {{ rem }}/{{ total }}
+              </span>
+              {% endfor %}
+            </div>
+            <!-- Ticket override for downgrade -->
+            <div class="flex items-center gap-2 ml-auto flex-shrink-0">
+              <label class="text-xs text-gray-500">Use ticket:</label>
+              <select id="ticket-override"
+                      class="px-2 py-0.5 rounded text-xs text-white border border-gray-600 focus:border-purple-500 focus:outline-none"
+                      style="background:#080c14;">
+                <option value="">Auto</option>
+                {% for ticket, total in ticket_alloc.items() %}
+                {% set rem = current_draft_state.remaining_tickets.get(ticket, 0) %}
+                <option value="{{ ticket }}" {% if rem == 0 %}disabled{% endif %}>
+                  {{ ticket }} ({{ rem }} left)
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
+
+          <!-- Uber status -->
+          <div class="flex items-center gap-1.5 flex-shrink-0 border-l border-gray-700 pl-3 ml-auto">
+            <span class="text-xs text-gray-500">Uber:</span>
+            {% set uber_slots = current_draft_state.uber_slots_used %}
+            {% for i in range(2) %}
+            <div class="w-4 h-4 rounded-full border flex items-center justify-center"
+                 style="{% if i < uber_slots %}background:#dc2626; border-color:#991b1b;{% else %}background:transparent; border-color:#374151;{% endif %}">
+              {% if i < uber_slots %}
+              <span class="text-white" style="font-size:8px;">✓</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+            {% if current_draft_state.uber_named %}
+            <span class="text-xs text-gray-400">({{ current_draft_state.uber_named | join(', ') }})</span>
+            {% endif %}
+            {% if current_draft_state.valid_next_uber and uber_slots < 2 %}
+            <span class="text-xs text-gray-600">→ {{ current_draft_state.valid_next_uber | join('/') }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Search -->
       <div class="mb-3">
         <input type="text" id="poke-search" placeholder="Search Pokémon name…"
@@ -238,6 +324,23 @@
       var name = btn ? btn.dataset.name : '';
       card.style.display = (!q || name.includes(q)) ? '' : 'none';
     });
+  }
+
+  // Sync ticket-override dropdown into every poke-card form before submit
+  var ticketSel = document.getElementById('ticket-override');
+  if (ticketSel) {
+    document.getElementById('poke-grid').addEventListener('submit', function(e) {
+      var form = e.target.closest('form');
+      if (!form) return;
+      var hidden = form.querySelector('input[name="ticket_used"]');
+      if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'ticket_used';
+        form.appendChild(hidden);
+      }
+      hidden.value = ticketSel.value;
+    }, true);
   }
   </script>
 

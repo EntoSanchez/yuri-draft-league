@@ -36,6 +36,23 @@ def _load_pokemon_id_map():
 _pokemon_id_map = _load_pokemon_id_map()
 
 
+def _migrate_db():
+    """Safe additive migrations for Plan Griffin columns."""
+    with get_db() as db:
+        for stmt in [
+            "ALTER TABLE coaches ADD COLUMN draft_mode TEXT DEFAULT 'points'",
+            "ALTER TABLE draft_picks ADD COLUMN ticket_used TEXT",
+        ]:
+            try:
+                db.execute(stmt)
+            except Exception:
+                pass
+        db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('points_budget_griffin', '70')")
+
+
+_migrate_db()
+
+
 def _name_to_slug(name):
     """Convert a display name to one or more candidate PokeAPI slugs."""
     base = name.lower().replace("'", "").replace(".", "").strip()
@@ -1285,12 +1302,13 @@ def admin_teams():
             logo_url = uploaded or request.form.get("logo_url", "")
             with get_db() as db:
                 db.execute(
-                    "INSERT INTO coaches (coach_name, team_name, pool, color, logo_url, showdown_name, battle_music_url) VALUES (?,?,?,?,?,?,?)",
+                    "INSERT INTO coaches (coach_name, team_name, pool, color, logo_url, showdown_name, battle_music_url, draft_mode) VALUES (?,?,?,?,?,?,?,?)",
                     (request.form["coach_name"], request.form["team_name"],
                      request.form["pool"], request.form.get("color", "#3b82f6"),
                      logo_url,
                      request.form.get("showdown_name", ""),
-                     request.form.get("battle_music_url", ""))
+                     request.form.get("battle_music_url", ""),
+                     request.form.get("draft_mode", "points"))
                 )
             flash("Team added!", "success")
         elif action == "edit":
@@ -1301,12 +1319,13 @@ def admin_teams():
                 existing_logo = existing["logo_url"] if existing else ""
                 logo_url = uploaded or request.form.get("logo_url", "") or existing_logo or ""
                 db.execute(
-                    "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=? WHERE id=?",
+                    "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=?, draft_mode=? WHERE id=?",
                     (request.form["coach_name"], request.form["team_name"],
                      request.form["pool"], request.form.get("color", "#3b82f6"),
                      logo_url,
                      request.form.get("showdown_name", ""),
-                     request.form.get("battle_music_url", ""), cid)
+                     request.form.get("battle_music_url", ""),
+                     request.form.get("draft_mode", "points"), cid)
                 )
             flash("Team updated!", "success")
         elif action == "delete":
@@ -2560,6 +2579,12 @@ def api_pokemon_search():
 
 TIER_ORDER = ["Uber 1", "Uber 2", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5", "Free Pick"]
 
+# Plan Griffin draft system
+UBER_NAMED_TIERS = {"Platinum", "Gold", "Silver", "Bronze"}
+TICKET_ALLOC   = {"T1": 1, "T2": 1, "T3": 2, "T4": 2, "T5": 2}
+TICKET_RANK    = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "T5": 5}
+TIER_TO_TICKET = {"Tier 1": "T1", "Tier 2": "T2", "Tier 3": "T3", "Tier 4": "T4", "Tier 5": "T5"}
+
 DEFAULT_ROUND_STRUCTURE = [
     {"name": "Uber 1",    "tier_filter": "uber",    "picks_per_coach": 2},
     {"name": "Uber 2",    "tier_filter": "uber",    "picks_per_coach": 2},
@@ -2635,6 +2660,95 @@ def _build_draft_grid(coaches_pool, roster_rows, tier_order=None):
         if max_picks[t] == 0:
             max_picks[t] = 1
     return grid, max_picks
+
+
+# ─── Plan Griffin helpers ──────────────────────────────────────────────────────
+
+def _can_add_uber(existing_named, new_named):
+    """True if new_named is a valid next uber pick given existing uber named tiers."""
+    if new_named not in UBER_NAMED_TIERS:
+        return False
+    slots_used = sum(2 if t == "Platinum" else 1 for t in existing_named)
+    if slots_used >= 2:
+        return False
+    if slots_used == 0:
+        return True
+    first = existing_named[0]
+    valid_seconds = {
+        "Platinum": set(),
+        "Gold":     {"Bronze"},
+        "Silver":   {"Silver", "Bronze"},
+        "Bronze":   {"Silver", "Bronze"},
+    }
+    return new_named in valid_seconds.get(first, set())
+
+
+def _valid_uber_second_choices(existing_named):
+    """Returns set of valid named tiers for the next uber pick."""
+    slots_used = sum(2 if t == "Platinum" else 1 for t in existing_named)
+    if slots_used >= 2:
+        return set()
+    if slots_used == 0:
+        return set(UBER_NAMED_TIERS)
+    first = existing_named[0]
+    return {
+        "Platinum": set(),
+        "Gold":     {"Bronze"},
+        "Silver":   {"Silver", "Bronze"},
+        "Bronze":   {"Silver", "Bronze"},
+    }.get(first, set())
+
+
+def _get_coach_uber_named_tiers(db, coach_id, session_id):
+    """Named tier labels for a coach's uber picks in a session (e.g. ['Gold'])."""
+    rows = db.execute("""
+        SELECT dt.tier_label
+        FROM draft_picks dp
+        JOIN draft_tiers dt ON dp.pokemon_name = dt.name
+        WHERE dp.session_id=? AND dp.coach_id=? AND dp.slot_name IN ('Uber 1','Uber 2')
+    """, (session_id, coach_id)).fetchall()
+    return [r["tier_label"] for r in rows if r["tier_label"] in UBER_NAMED_TIERS]
+
+
+def _get_coach_draft_state(db, coach_id, session_id):
+    """Returns remaining budget or tickets for a coach, plus uber pick status."""
+    coach = db.execute("SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)).fetchone()
+    mode = (coach["draft_mode"] or "points") if coach else "points"
+
+    picks = db.execute(
+        "SELECT points, ticket_used, slot_name FROM draft_picks WHERE session_id=? AND coach_id=?",
+        (session_id, coach_id)
+    ).fetchall()
+
+    regular_picks = [p for p in picks if p["slot_name"] not in ("Uber 1", "Uber 2")]
+    existing_uber_named = _get_coach_uber_named_tiers(db, coach_id, session_id)
+    uber_count = len(existing_uber_named)
+    slots_used = sum(2 if t == "Platinum" else 1 for t in existing_uber_named)
+    valid_next_uber = _valid_uber_second_choices(existing_uber_named)
+
+    base = {
+        "mode": mode,
+        "uber_count": uber_count,
+        "uber_slots_used": slots_used,
+        "uber_named": existing_uber_named,
+        "valid_next_uber": sorted(valid_next_uber),
+    }
+
+    if mode == "points":
+        setting = db.execute(
+            "SELECT value FROM league_settings WHERE key='points_budget_griffin'"
+        ).fetchone()
+        budget = int(setting["value"]) if setting else 70
+        spent = sum(p["points"] or 0 for p in regular_picks)
+        return {**base, "budget": budget, "spent": spent, "remaining": budget - spent}
+    else:
+        used = {}
+        for p in regular_picks:
+            t = p["ticket_used"]
+            if t and t != "uber":
+                used[t] = used.get(t, 0) + 1
+        remaining_tickets = {t: TICKET_ALLOC[t] - used.get(t, 0) for t in TICKET_ALLOC}
+        return {**base, "remaining_tickets": remaining_tickets}
 
 
 @app.route("/draft")
@@ -2779,6 +2893,12 @@ def draft_live():
         coaches_map = {c["id"]: dict(c) for c in coaches}
         current_coach_id = current_slot[3] if current_slot else None
 
+        # Per-coach draft state (mode, remaining budget/tickets, uber status)
+        coaches_draft_states = {
+            c["id"]: _get_coach_draft_state(db, c["id"], session_row["id"])
+            for c in coaches
+        }
+
     is_admin = session.get("role") == "admin"
     my_coach_id = session.get("coach_id")
     can_pick = is_admin or (my_coach_id == current_coach_id)
@@ -2796,6 +2916,8 @@ def draft_live():
                     "is_tera_captain": int(capt["is_tera_captain"]) if capt else 0,
                     "is_zmove_captain": int(capt["is_zmove_captain"]) if capt else 0,
                 })
+
+    current_draft_state = coaches_draft_states.get(current_coach_id, {}) if current_coach_id else {}
 
     return render_template(
         "draft_live.html",
@@ -2818,6 +2940,10 @@ def draft_live():
         seq=seq,
         my_coach_id=my_coach_id,
         my_picks=my_picks,
+        coaches_draft_states=coaches_draft_states,
+        current_draft_state=current_draft_state,
+        ticket_alloc=TICKET_ALLOC,
+        tier_to_ticket=TIER_TO_TICKET,
         mechanic_tera=settings.get("mechanic_tera", "0"),
         mechanic_zmove=settings.get("mechanic_zmove", "0"),
         league_name=settings.get("league_name", "Pokemon Draft League"),
@@ -2883,6 +3009,9 @@ def draft_live_pick():
             return redirect(url_for("draft_live"))
 
         points = poke_row["points"] or 0
+        poke_tier_label = poke_row["tier_label"] or ""
+        is_uber = poke_tier_label in UBER_NAMED_TIERS
+
         mega_names_set = {r["name"] for r in db.execute(
             "SELECT name FROM draft_tiers WHERE is_mega=1"
         ).fetchall()}
@@ -2893,23 +3022,92 @@ def draft_live_pick():
             flash("The first pick must be a regular-tier Pokemon (not Mega).", "warning")
             return redirect(url_for("draft_live"))
 
-        # Enforce max 11 picks per team
+        # Enforce max 10 picks per team (8 regular + 2 uber)
         team_pick_count = db.execute(
             "SELECT COUNT(*) FROM pokemon_roster WHERE coach_id=?", (coach_id,)
         ).fetchone()[0]
-        if team_pick_count >= 11:
-            flash(f"This team already has {team_pick_count} picks (max 11).", "warning")
+        if team_pick_count >= 10:
+            flash(f"This team already has {team_pick_count} picks (max 10).", "warning")
             return redirect(url_for("draft_live"))
+
+        # ── Plan Griffin validation ──────────────────────────────────────────
+        coach_mode_row = db.execute(
+            "SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)
+        ).fetchone()
+        coach_mode = (coach_mode_row["draft_mode"] or "points") if coach_mode_row else "points"
+        ticket_used_val = None
+
+        if is_uber:
+            existing_uber = _get_coach_uber_named_tiers(db, coach_id, session_row["id"])
+            if not _can_add_uber(existing_uber, poke_tier_label):
+                valid_next = _valid_uber_second_choices(existing_uber)
+                if not valid_next:
+                    flash("You have already used both uber picks.", "warning")
+                else:
+                    flash(f"Invalid uber combo. Your next uber must be: {', '.join(sorted(valid_next))}.", "warning")
+                return redirect(url_for("draft_live"))
+            ticket_used_val = "uber"
+
+        elif coach_mode == "points":
+            budget_row = db.execute(
+                "SELECT value FROM league_settings WHERE key='points_budget_griffin'"
+            ).fetchone()
+            budget = int(budget_row["value"]) if budget_row else 70
+            spent = db.execute(
+                "SELECT COALESCE(SUM(points),0) FROM draft_picks "
+                "WHERE session_id=? AND coach_id=? AND slot_name NOT IN ('Uber 1','Uber 2')",
+                (session_row["id"], coach_id)
+            ).fetchone()[0] or 0
+            if spent + points > budget:
+                flash(
+                    f"Not enough points. {budget - spent} remaining, {pokemon_name} costs {points}pts.",
+                    "warning",
+                )
+                return redirect(url_for("draft_live"))
+
+        else:  # tier_tickets mode
+            poke_tier = _regular_tier_label(points)
+            poke_ticket = TIER_TO_TICKET.get(poke_tier)
+            if not poke_ticket:
+                flash("Cannot determine ticket tier for this Pokémon.", "warning")
+                return redirect(url_for("draft_live"))
+            chosen_ticket = request.form.get("ticket_used") or poke_ticket
+            chosen_rank = TICKET_RANK.get(chosen_ticket, 999)
+            poke_rank = TICKET_RANK[poke_ticket]
+            if chosen_rank > poke_rank:
+                flash("You cannot use a lower-tier ticket on a higher-tier Pokémon.", "warning")
+                return redirect(url_for("draft_live"))
+            used_rows = db.execute(
+                "SELECT ticket_used, COUNT(*) as cnt FROM draft_picks "
+                "WHERE session_id=? AND coach_id=? AND ticket_used IS NOT NULL AND ticket_used != 'uber' "
+                "GROUP BY ticket_used",
+                (session_row["id"], coach_id),
+            ).fetchall()
+            used_map = {r["ticket_used"]: r["cnt"] for r in used_rows}
+            avail = TICKET_ALLOC.get(chosen_ticket, 0) - used_map.get(chosen_ticket, 0)
+            if avail <= 0:
+                flash(f"No {chosen_ticket} tickets remaining.", "warning")
+                return redirect(url_for("draft_live"))
+            ticket_used_val = chosen_ticket
+        # ────────────────────────────────────────────────────────────────────
 
         # Auto-assign to the correct roster slot based on actual pokemon tier
         coach_roster = db.execute(
             "SELECT tier, is_free_pick FROM pokemon_roster WHERE coach_id=?", (coach_id,)
         ).fetchall()
-        actual_slot, is_free = _auto_slot(pokemon_name, points, mega_names_set, coach_roster)
+
+        if is_uber:
+            existing_uber_count = sum(1 for r in coach_roster if r["tier"] in ("Uber 1", "Uber 2"))
+            actual_slot = "Uber 2" if existing_uber_count >= 1 else "Uber 1"
+            is_free = False
+        else:
+            actual_slot, is_free = _auto_slot(pokemon_name, points, mega_names_set, coach_roster)
 
         db.execute(
-            "INSERT INTO draft_picks (session_id, pick_number, round_number, slot_name, coach_id, pokemon_name, points) VALUES (?,?,?,?,?,?,?)",
-            (session_row["id"], pick_num, round_idx + 1, actual_slot, coach_id, pokemon_name, points)
+            "INSERT INTO draft_picks "
+            "(session_id, pick_number, round_number, slot_name, coach_id, pokemon_name, points, ticket_used) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (session_row["id"], pick_num, round_idx + 1, actual_slot, coach_id, pokemon_name, points, ticket_used_val)
         )
         db.execute(
             "INSERT OR IGNORE INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (?,?,?,?,0,0,?)",
