@@ -56,6 +56,15 @@ def _migrate_db():
             db.execute("INSERT INTO league_settings (key, value) VALUES ('_migration_draft_mode_reset_v1', '1')")
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('points_budget_griffin', '70')")
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('draft_format', '')")
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS match_preview_lineups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                schedule_id INTEGER NOT NULL,
+                coach_id INTEGER NOT NULL,
+                pokemon_name TEXT NOT NULL,
+                UNIQUE(schedule_id, coach_id, pokemon_name)
+            )
+        """)
 
 
 def _effective_draft_mode(coach, draft_format):
@@ -503,7 +512,88 @@ def my_matches():
                         "INSERT INTO match_games (schedule_id, game_number, replay_url, winner_coach_id) VALUES (?,?,?,?)",
                         (match_id, game_number, replay_url, winner_coach_id)
                     )
-            flash(f"Game {game_number} replay saved!", "success")
+            flash(f"Game {game_number} saved!", "success")
+
+        elif action == "add_preview":
+            pokemon_name = request.form.get("pokemon_name", "").strip()
+            target_coach = request.form.get("coach_id", type=int) or coach_id
+            if (is_admin or target_coach == coach_id) and pokemon_name:
+                with get_db() as db:
+                    count = db.execute(
+                        "SELECT COUNT(*) FROM match_preview_lineups WHERE schedule_id=? AND coach_id=?",
+                        (match_id, target_coach)
+                    ).fetchone()[0]
+                    if count < 6:
+                        db.execute(
+                            "INSERT OR IGNORE INTO match_preview_lineups (schedule_id, coach_id, pokemon_name) VALUES (?,?,?)",
+                            (match_id, target_coach, pokemon_name)
+                        )
+
+        elif action == "remove_preview":
+            preview_id = request.form.get("preview_id", type=int)
+            with get_db() as db:
+                row = db.execute(
+                    "SELECT schedule_id, coach_id FROM match_preview_lineups WHERE id=?", (preview_id,)
+                ).fetchone()
+                if row and row["schedule_id"] == match_id and (is_admin or row["coach_id"] == coach_id):
+                    db.execute("DELETE FROM match_preview_lineups WHERE id=?", (preview_id,))
+
+        elif action == "add_lineup":
+            game_id = request.form.get("game_id", type=int)
+            target_coach = request.form.get("coach_id", type=int) or coach_id
+            pokemon_name = request.form.get("pokemon_name", "").strip()
+            if (is_admin or target_coach == coach_id) and pokemon_name and game_id:
+                with get_db() as db:
+                    game_row = db.execute("SELECT schedule_id FROM match_games WHERE id=?", (game_id,)).fetchone()
+                    if game_row and game_row["schedule_id"] == match_id:
+                        count = db.execute(
+                            "SELECT COUNT(*) FROM match_lineups WHERE game_id=? AND coach_id=?",
+                            (game_id, target_coach)
+                        ).fetchone()[0]
+                        if count < 4:
+                            db.execute(
+                                "INSERT OR IGNORE INTO match_lineups (game_id, coach_id, pokemon_name) VALUES (?,?,?)",
+                                (game_id, target_coach, pokemon_name)
+                            )
+
+        elif action == "remove_lineup":
+            lineup_id = request.form.get("lineup_id", type=int)
+            with get_db() as db:
+                row = db.execute(
+                    "SELECT ml.coach_id, mg.schedule_id FROM match_lineups ml JOIN match_games mg ON ml.game_id=mg.id WHERE ml.id=?",
+                    (lineup_id,)
+                ).fetchone()
+                if row and row["schedule_id"] == match_id and (is_admin or row["coach_id"] == coach_id):
+                    db.execute("DELETE FROM match_lineups WHERE id=?", (lineup_id,))
+
+        elif action == "save_game_stats":
+            game_id = request.form.get("game_id", type=int)
+            with get_db() as db:
+                game_row = db.execute("SELECT schedule_id FROM match_games WHERE id=?", (game_id,)).fetchone()
+                if game_row and game_row["schedule_id"] == match_id:
+                    i = 0
+                    while True:
+                        pname = request.form.get(f"stat_pokemon_{i}")
+                        if pname is None:
+                            break
+                        c_id = request.form.get(f"stat_coach_{i}", type=int)
+                        kills = float(request.form.get(f"stat_kills_{i}") or 0)
+                        deaths = float(request.form.get(f"stat_deaths_{i}") or 0)
+                        if is_admin or c_id == coach_id:
+                            existing = db.execute(
+                                "SELECT id FROM match_stats WHERE schedule_id=? AND game_id=? AND coach_id=? AND pokemon_name=?",
+                                (match_id, game_id, c_id, pname)
+                            ).fetchone()
+                            if existing:
+                                db.execute("UPDATE match_stats SET kills=?, deaths=? WHERE id=?",
+                                           (kills, deaths, existing["id"]))
+                            else:
+                                db.execute(
+                                    "INSERT INTO match_stats (schedule_id, game_id, coach_id, pokemon_name, kills, deaths) VALUES (?,?,?,?,?,?)",
+                                    (match_id, game_id, c_id, pname, kills, deaths)
+                                )
+                        i += 1
+            flash("Stats saved!", "success")
 
         return redirect(url_for("my_matches"))
 
@@ -530,8 +620,9 @@ def my_matches():
             """, (coach_id, coach_id)).fetchall()
         matches = [dict(m) for m in matches]
 
-        # Fetch games/replays for each match
         match_ids = [m["id"] for m in matches]
+
+        # Fetch games/replays for each match
         games_by_match = {}
         if match_ids:
             placeholders = ",".join("?" * len(match_ids))
@@ -542,13 +633,55 @@ def my_matches():
             for g in all_games:
                 games_by_match.setdefault(g["schedule_id"], []).append(dict(g))
 
-        # Attach coach info for winner dropdowns
+        # Fetch team preview lineups (6 per coach per match)
+        preview_by_match = {}
+        if match_ids:
+            ph = ",".join("?" * len(match_ids))
+            for ln in db.execute(
+                f"SELECT * FROM match_preview_lineups WHERE schedule_id IN ({ph})", match_ids
+            ).fetchall():
+                preview_by_match.setdefault(ln["schedule_id"], {}).setdefault(ln["coach_id"], []).append(dict(ln))
+
+        # Fetch per-game lineups and stats
+        all_game_ids = [g["id"] for glist in games_by_match.values() for g in glist]
+        lineups_by_game = {}
+        stats_by_game = {}
+        if all_game_ids:
+            ph = ",".join("?" * len(all_game_ids))
+            for ln in db.execute(
+                f"SELECT * FROM match_lineups WHERE game_id IN ({ph})", all_game_ids
+            ).fetchall():
+                lineups_by_game.setdefault(ln["game_id"], {}).setdefault(ln["coach_id"], []).append(dict(ln))
+            for s in db.execute(
+                f"SELECT * FROM match_stats WHERE game_id IN ({ph})", all_game_ids
+            ).fetchall():
+                stats_by_game.setdefault(s["game_id"], {}).setdefault(s["coach_id"], []).append(dict(s))
+
+        # Fetch rosters for all coaches in these matches
+        all_coach_ids = list({cid for m in matches for cid in (m["c1_id"], m["c2_id"])})
+        rosters_by_coach = {}
+        if all_coach_ids:
+            ph = ",".join("?" * len(all_coach_ids))
+            for r in db.execute(
+                f"SELECT coach_id, pokemon_name FROM pokemon_roster WHERE coach_id IN ({ph}) ORDER BY pokemon_name",
+                all_coach_ids
+            ).fetchall():
+                rosters_by_coach.setdefault(r["coach_id"], []).append(r["pokemon_name"])
+
         coaches_map = {c["id"]: dict(c) for c in db.execute("SELECT * FROM coaches").fetchall()}
 
     for m in matches:
-        m["games"] = games_by_match.get(m["id"], [])
-        m["c1_coach"] = coaches_map.get(m["c1_id"], {})
-        m["c2_coach"] = coaches_map.get(m["c2_id"], {})
+        games = games_by_match.get(m["id"], [])
+        preview = preview_by_match.get(m["id"], {})
+        for g in games:
+            g["lineups"] = lineups_by_game.get(g["id"], {})
+            g["stats"] = stats_by_game.get(g["id"], {})
+        m["games"] = games
+        m["preview"] = preview
+        m["c1_roster"] = rosters_by_coach.get(m["c1_id"], [])
+        m["c2_roster"] = rosters_by_coach.get(m["c2_id"], [])
+        m["c1_preview"] = preview.get(m["c1_id"], [])
+        m["c2_preview"] = preview.get(m["c2_id"], [])
         has_result = m["score1"] is not None and m["score2"] is not None and (m["score1"] > 0 or m["score2"] > 0)
         m["has_result"] = has_result
 
