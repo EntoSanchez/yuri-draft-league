@@ -57,7 +57,6 @@ def _migrate_db():
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('points_budget_griffin', '70')")
 
 
-_migrate_db()
 
 
 def _name_to_slug(name):
@@ -298,6 +297,8 @@ def get_db():
     finally:
         conn.close()
 
+
+_migrate_db()
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
