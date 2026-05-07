@@ -24,6 +24,32 @@
         </div>
       {% endif %}
 
+      <!-- Sprite Carousel -->
+      {% if roster %}
+      <div class="relative flex-shrink-0 flex flex-col items-center justify-center gap-2" style="width:96px;">
+        <div class="relative" style="width:88px;height:88px;">
+          <!-- Glow ring -->
+          <div class="absolute inset-0 rounded-full opacity-25 blur-sm"
+               style="background:radial-gradient(circle,{{ coach.color or '#facc15' }},transparent 70%);"></div>
+          <!-- Sprite frames (cycled by JS) -->
+          {% for p in roster %}
+          <img src="{{ pokemon_sprite_url(p.name) }}"
+               onerror="this.onerror=function(){};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
+               class="roster-sprite absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+               style="image-rendering:pixelated;opacity:{{ '1' if loop.first else '0' }};"
+               data-name="{{ p.name }}"
+               alt="{{ p.name }}">
+          {% endfor %}
+        </div>
+        <!-- Name label -->
+        <div id="carousel-name"
+             class="text-center font-bold text-white leading-tight truncate w-full"
+             style="font-size:0.6rem;letter-spacing:0.02em;">
+          {{ roster[0].name.split(' ')[-1] if roster and ' ' in roster[0].name else (roster[0].name if roster else '') }}
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Info -->
       <div class="flex-1 min-w-0">
         <p class="text-xs font-bold uppercase tracking-widest mb-1" style="color:{{ coach.color or '#6b7280' }};">Pool {{ coach.pool }}</p>
@@ -604,6 +630,24 @@ function toggleMatch(id) {
   el.classList.toggle('hidden');
   if (chevron) chevron.classList.toggle('rotate-180');
 }
+
+// ── Roster sprite carousel ────────────────────────────────────────────────────
+(function() {
+  const frames = Array.from(document.querySelectorAll('.roster-sprite'));
+  const nameEl = document.getElementById('carousel-name');
+  if (frames.length <= 1) return;
+
+  let cur = 0;
+  setInterval(() => {
+    frames[cur].style.opacity = '0';
+    cur = (cur + 1) % frames.length;
+    frames[cur].style.opacity = '1';
+    if (nameEl) {
+      const full = frames[cur].dataset.name || '';
+      nameEl.textContent = full.includes(' ') ? full.split(' ').pop() : full;
+    }
+  }, 2200);
+})();
 </script>
 
 {% if youtube_id %}

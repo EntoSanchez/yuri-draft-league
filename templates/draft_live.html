@@ -118,7 +118,7 @@
                 <div class="font-bold {% if coach.id == current_coach_id %}text-yellow-400{% else %}text-white{% endif %} text-xs leading-tight">{{ coach.team_name }}</div>
                 {% if coach.id == current_coach_id %}<div class="text-yellow-500 text-xs leading-tight" style="font-size:9px;">PICKING</div>{% endif %}
                 {% set cds = coaches_draft_states.get(coach.id, {}) %}
-                {% if cds %}
+                {% if cds and cds.mode != 'legacy' %}
                 <div style="font-size:8px; padding:1px 4px; border-radius:3px; margin-top:1px;
                   {% if cds.mode == 'tier_tickets' %}background:rgba(124,58,237,0.25);color:#a78bfa;border:1px solid #7c3aed;
                   {% else %}background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid #3b82f6;{% endif %}">
@@ -207,7 +207,7 @@
       {% endif %}
 
       <!-- Draft mode status panel -->
-      {% if current_draft_state %}
+      {% if current_draft_state and current_draft_state.mode != 'legacy' %}
       <div class="mb-4 rounded-lg border p-3
         {% if current_draft_state.mode == 'tier_tickets' %}border-purple-700/50{% else %}border-blue-700/50{% endif %}"
         style="background:#0a0f1a;">
@@ -415,10 +415,22 @@
 {% endif %}
 </div>
 
-<!-- Auto-refresh every 30 seconds when active -->
-{% if session and session.status == 'active' %}
+{% if session and session.status in ('active', 'paused') %}
 <script>
-  setTimeout(function() { window.location.reload(); }, 30000);
+  const _pollBase = {
+    pick: {{ session.current_pick if session.current_pick is not none else 0 }},
+    status: '{{ session.status }}'
+  };
+  function _pollDraft() {
+    fetch('/draft/live/status')
+      .then(r => r.json())
+      .then(d => {
+        if (d.current_pick !== _pollBase.pick || d.status !== _pollBase.status)
+          window.location.reload();
+      })
+      .catch(() => {});
+  }
+  setInterval(_pollDraft, 8000);
 </script>
 {% endif %}
 

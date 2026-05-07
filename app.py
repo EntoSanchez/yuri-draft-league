@@ -40,13 +40,20 @@ def _migrate_db():
     """Safe additive migrations for Plan Griffin columns."""
     with get_db() as db:
         for stmt in [
-            "ALTER TABLE coaches ADD COLUMN draft_mode TEXT DEFAULT 'points'",
+            "ALTER TABLE coaches ADD COLUMN draft_mode TEXT",
             "ALTER TABLE draft_picks ADD COLUMN ticket_used TEXT",
         ]:
             try:
                 db.execute(stmt)
             except Exception:
                 pass
+        # One-time reset: coaches got 'points' auto-assigned by the old DEFAULT clause.
+        # NULL means "legacy" (no budget cap). Admins can re-opt coaches into Plan Griffin modes.
+        if not db.execute(
+            "SELECT 1 FROM league_settings WHERE key='_migration_draft_mode_reset_v1'"
+        ).fetchone():
+            db.execute("UPDATE coaches SET draft_mode = NULL WHERE draft_mode = 'points'")
+            db.execute("INSERT INTO league_settings (key, value) VALUES ('_migration_draft_mode_reset_v1', '1')")
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('points_budget_griffin', '70')")
 
 
@@ -1308,7 +1315,7 @@ def admin_teams():
                      logo_url,
                      request.form.get("showdown_name", ""),
                      request.form.get("battle_music_url", ""),
-                     request.form.get("draft_mode", "points"))
+                     request.form.get("draft_mode") or None)
                 )
             flash("Team added!", "success")
         elif action == "edit":
@@ -1325,7 +1332,7 @@ def admin_teams():
                      logo_url,
                      request.form.get("showdown_name", ""),
                      request.form.get("battle_music_url", ""),
-                     request.form.get("draft_mode", "points"), cid)
+                     request.form.get("draft_mode") or None, cid)
                 )
             flash("Team updated!", "success")
         elif action == "delete":
@@ -2713,7 +2720,7 @@ def _get_coach_uber_named_tiers(db, coach_id, session_id):
 def _get_coach_draft_state(db, coach_id, session_id):
     """Returns remaining budget or tickets for a coach, plus uber pick status."""
     coach = db.execute("SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)).fetchone()
-    mode = (coach["draft_mode"] or "points") if coach else "points"
+    mode = (coach["draft_mode"] or "legacy") if coach else "legacy"
 
     picks = db.execute(
         "SELECT points, ticket_used, slot_name FROM draft_picks WHERE session_id=? AND coach_id=?",
@@ -2734,7 +2741,9 @@ def _get_coach_draft_state(db, coach_id, session_id):
         "valid_next_uber": sorted(valid_next_uber),
     }
 
-    if mode == "points":
+    if mode == "legacy":
+        return base
+    elif mode == "points":
         setting = db.execute(
             "SELECT value FROM league_settings WHERE key='points_budget_griffin'"
         ).fetchone()
@@ -3034,7 +3043,7 @@ def draft_live_pick():
         coach_mode_row = db.execute(
             "SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)
         ).fetchone()
-        coach_mode = (coach_mode_row["draft_mode"] or "points") if coach_mode_row else "points"
+        coach_mode = (coach_mode_row["draft_mode"] or "legacy") if coach_mode_row else "legacy"
         ticket_used_val = None
 
         if is_uber:
@@ -3065,7 +3074,7 @@ def draft_live_pick():
                 )
                 return redirect(url_for("draft_live"))
 
-        else:  # tier_tickets mode
+        elif coach_mode == "tier_tickets":
             poke_tier = _regular_tier_label(points)
             poke_ticket = TIER_TO_TICKET.get(poke_tier)
             if not poke_ticket:
@@ -3120,6 +3129,18 @@ def draft_live_pick():
 
     flash(f"Picked {pokemon_name}!", "success")
     return redirect(url_for("draft_live"))
+
+
+@app.route("/draft/live/status")
+def draft_live_status():
+    with get_db() as db:
+        row = db.execute(
+            "SELECT id, current_pick, status FROM draft_sessions "
+            "WHERE status IN ('active','paused') ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    if not row:
+        return {"status": "none", "current_pick": 0, "session_id": None}
+    return {"status": row["status"], "current_pick": row["current_pick"], "session_id": row["id"]}
 
 
 @app.route("/draft/live/set_captain", methods=["POST"])

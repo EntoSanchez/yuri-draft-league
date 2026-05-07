@@ -96,6 +96,19 @@
             class="px-4 py-2 rounded-xl border border-gray-700 text-sm text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all"
             style="background-color:#0f1623;">Clear</button>
 
+    <!-- View toggle -->
+    <button id="view-toggle" onclick="toggleBoardView()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all flex items-center gap-1.5 text-xs font-bold"
+            style="background-color:#0f1623;" title="Toggle list view">
+      <svg id="vt-icon-col" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+      </svg>
+      <svg id="vt-icon-list" class="w-3.5 h-3.5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+      </svg>
+      <span id="vt-label">List</span>
+    </button>
+
     <!-- Legend -->
     <div class="ml-auto flex flex-wrap items-center gap-4">
       <span class="flex items-center gap-1.5 text-xs text-gray-500">
@@ -335,10 +348,16 @@
     </div>
   </div>
 
+  <!-- List view (populated by JS) -->
+  <div id="boardListView" class="hidden rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;"></div>
+
   <!-- No results -->
   <div id="db-empty" class="hidden text-center py-16">
+    <svg class="w-10 h-10 text-gray-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
     <p class="text-gray-600 text-sm">No Pokémon match your filters.</p>
-    <button onclick="clearFilters()" class="mt-3 text-xs text-yellow-500 hover:text-yellow-400">Clear filters</button>
+    <button onclick="clearFilters()" class="mt-3 px-4 py-1.5 rounded-lg border border-gray-700 text-xs text-yellow-500 hover:text-yellow-400 hover:border-yellow-500/40 transition-all" style="background:#0f1623;">Clear filters</button>
   </div>
 
   {% else %}
@@ -534,8 +553,13 @@ function filterBoard() {
     col.style.display = hasVisible ? '' : 'none';
   });
 
+  const anyColShown = !!document.querySelector('.board-col:not([style*="display: none"])');
   const emptyEl = document.getElementById('db-empty');
-  if (emptyEl) emptyEl.classList.toggle('hidden', visible > 0 || !!currentPool);
+  const scrollArea = document.getElementById('boardScrollArea');
+  if (!_listMode && scrollArea) scrollArea.style.display = anyColShown ? '' : 'none';
+  if (emptyEl) emptyEl.classList.toggle('hidden', anyColShown || _listMode);
+
+  if (_listMode) buildListView();
 }
 
 // ── Ability autocomplete ──────────────────────────────────────────────────────
@@ -572,7 +596,92 @@ function selectAbility(a) {
   filterBoard();
 }
 
+let _listMode = false;
+
+function toggleBoardView() {
+  _listMode = !_listMode;
+  document.getElementById('boardScrollArea').classList.toggle('hidden', _listMode);
+  document.getElementById('boardListView').classList.toggle('hidden', !_listMode);
+  document.getElementById('vt-icon-col').classList.toggle('hidden', _listMode);
+  document.getElementById('vt-icon-list').classList.toggle('hidden', !_listMode);
+  document.getElementById('vt-label').textContent = _listMode ? 'Columns' : 'List';
+  if (_listMode) buildListView();
+}
+
+function buildListView() {
+  const lv = document.getElementById('boardListView');
+  if (!lv) return;
+  // Collect visible pokemon from columns in order
+  const groups = [];
+  document.querySelectorAll('.board-col:not([style*="display: none"])').forEach(col => {
+    const pts = col.dataset.pts || '';
+    const label = col.querySelector('.board-col-header .text-xs.font-bold')?.textContent?.trim()
+                || col.querySelector('.board-col-header .font-black')?.textContent?.trim()
+                || col.dataset.col || '';
+    const pokes = [];
+    col.querySelectorAll('.board-poke:not([style*="display: none"])').forEach(poke => {
+      const img = poke.querySelector('img');
+      const nameEl = poke.querySelector('span.truncate');
+      const badge = poke.querySelector('.board-badge');
+      const isTera = !!poke.querySelector('svg.text-purple-400');
+      const isDrafted = poke.classList.contains('drafted-poke');
+      const isBanned = poke.classList.contains('banned-poke');
+      const type1 = poke.dataset.type1 || '';
+      const type2 = poke.dataset.type2 || '';
+      pokes.push({ img: img?.src || '', name: nameEl?.textContent?.trim() || '', isDrafted, isBanned, isTera, badge: badge?.outerHTML || '', type1, type2 });
+    });
+    if (pokes.length) groups.push({ pts, label, pokes });
+  });
+
+  if (!groups.length) {
+    lv.innerHTML = '';
+    const emptyEl = document.getElementById('db-empty');
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  const emptyEl = document.getElementById('db-empty');
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const typeColors = {
+    normal:'#9ca3af',fire:'#f97316',water:'#3b82f6',electric:'#eab308',grass:'#22c55e',
+    ice:'#67e8f9',fighting:'#dc2626',poison:'#a855f7',ground:'#d97706',flying:'#818cf8',
+    psychic:'#ec4899',bug:'#84cc16',rock:'#92400e',ghost:'#6d28d9',dragon:'#1d4ed8',
+    dark:'#374151',steel:'#6b7280',fairy:'#f9a8d4'
+  };
+
+  lv.innerHTML = groups.map(g => `
+    <div class="border-b border-gray-800/60 last:border-0">
+      <div class="px-3 py-1.5 text-xs font-black uppercase tracking-wider text-gray-500" style="background:#080c14;">
+        ${g.pts ? `<span class="text-yellow-400">${g.pts}pts</span>` : ''} ${g.label}
+      </div>
+      <div>
+        ${g.pokes.map(p => `
+          <div class="flex items-center gap-2.5 px-3 py-2 border-b border-gray-800/30 last:border-0
+               ${p.isDrafted ? 'bg-green-900/10' : p.isBanned ? 'bg-red-900/10' : ''}"
+               style="transition:background 0.1s;">
+            <img src="${p.img}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;${p.isDrafted ? '' : 'opacity:0.75;'}${p.isBanned ? 'opacity:0.3;' : ''}">
+            <span class="text-sm flex-1 min-w-0 truncate
+                  ${p.isDrafted ? 'text-green-300' : p.isBanned ? 'text-red-500/60 line-through' : 'text-gray-200'}">
+              ${p.name}
+            </span>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              ${p.type1 ? `<span style="font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;background:${typeColors[p.type1]||'#374151'}22;border:1px solid ${typeColors[p.type1]||'#374151'}55;color:${typeColors[p.type1]||'#9ca3af'};">${p.type1}</span>` : ''}
+              ${p.type2 ? `<span style="font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;background:${typeColors[p.type2]||'#374151'}22;border:1px solid ${typeColors[p.type2]||'#374151'}55;color:${typeColors[p.type2]||'#9ca3af'};">${p.type2}</span>` : ''}
+              ${p.isTera ? '<svg style="width:10px;height:10px;color:#a78bfa;flex-shrink:0;" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>' : ''}
+              ${p.badge}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Pre-fill search from ?q= URL param (used by Pokédex "view on board" link)
+  const urlQ = new URLSearchParams(window.location.search).get('q');
+  if (urlQ) {
+    const searchEl = document.getElementById('db-search');
+    if (searchEl) searchEl.value = urlQ;
+  }
   setPool('');
   const inp = document.getElementById('db-ability');
   inp.addEventListener('input', () => showSuggestions(inp.value));
@@ -607,16 +716,38 @@ function editPts(e, tierId, currentPts) {
 
 function savePts() {
   if (!_editTierId) return;
-  const pts = document.getElementById('pts-input').value;
+  const pts = parseInt(document.getElementById('pts-input').value, 10);
+  const tierId = _editTierId;
+  closePtsPopover();
   fetch('/admin/tiers/quick_pts', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `tier_id=${_editTierId}&points=${pts}`
+    body: `tier_id=${tierId}&points=${pts}`
   }).then(r => {
-    if (r.ok) location.reload();
-    else alert('Error saving points.');
+    if (!r.ok) { alert('Error saving points.'); return; }
+    // Find the card and try to move it to the target column
+    const btn = document.querySelector(`.board-poke button[onclick^="editPts(event,${tierId},"]`);
+    const card = btn ? btn.closest('.board-poke') : null;
+    const targetCol = document.querySelector(`.board-col[data-pts="${pts}"]`);
+    if (card && targetCol) {
+      const targetBody = targetCol.querySelector('.board-col-body');
+      if (targetBody) {
+        targetBody.appendChild(card);
+        btn.setAttribute('onclick', `editPts(event,${tierId},${pts})`);
+        // Update column header counts
+        document.querySelectorAll('.board-col').forEach(col => {
+          const body = col.querySelector('.board-col-body');
+          const cnt = body ? body.querySelectorAll('.board-poke').length : 0;
+          const countEl = col.querySelector('.board-col-header .opacity-50');
+          if (countEl) countEl.textContent = cnt;
+          col.style.display = cnt > 0 ? '' : 'none';
+        });
+        filterBoard();
+      }
+    } else {
+      location.reload();
+    }
   });
-  closePtsPopover();
 }
 
 function closePtsPopover() {
