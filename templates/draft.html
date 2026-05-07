@@ -162,7 +162,7 @@
 
     {% elif cm == 'tier_tickets' %}
     {# Tier Tickets mode: Uber (if any) + T1×1, T2×1, T3×2, T4×2, T5×2 #}
-    {% if uber_on and s.uber %}
+    {% if s.uber %}
     {% set cfg = tcfg['Uber 1'] %}
     <div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
       <div class="flex items-center justify-between px-2 py-0.5" style="background:{{ cfg.bg }};">
