@@ -2774,7 +2774,7 @@ def draft_sheet():
         ).fetchone()
         mega_names = {r["name"] for r in db.execute("SELECT name FROM draft_tiers WHERE is_mega=1").fetchall()}
 
-    budget = int(settings.get("points_budget", 45))
+    budget = int(settings.get("points_budget_griffin", "70"))
     coaches_a = [c for c in coaches if c["pool"] == "A"]
     coaches_b = [c for c in coaches if c["pool"] == "B"]
     roster_a = [r for r in roster if r["pool"] == "A"]

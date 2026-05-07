@@ -155,14 +155,14 @@
                 {% if coach.id == current_coach_id %}<div class="text-yellow-500 text-xs leading-tight" style="font-size:9px;">PICKING</div>{% endif %}
                 {% set cm = coach.draft_mode or 'legacy' %}
                 {% set cds = coaches_draft_states.get(coach.id, {}) %}
-                <div style="font-size:8px; padding:1px 4px; border-radius:3px; margin-top:1px;
-                  {% if cm == 'tier_tickets' %}background:rgba(124,58,237,0.25);color:#a78bfa;border:1px solid #7c3aed;
-                  {% elif cm == 'points' %}background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid #3b82f6;
-                  {% else %}background:rgba(55,65,81,0.15);color:#6b7280;border:1px solid #374151;{% endif %}">
+                <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-top:2px; display:inline-block;
+                  {% if cm == 'tier_tickets' %}background:rgba(124,58,237,0.3);color:#c4b5fd;border:1px solid #7c3aed;
+                  {% elif cm == 'points' %}background:rgba(59,130,246,0.25);color:#93c5fd;border:1px solid #3b82f6;
+                  {% else %}background:rgba(55,65,81,0.2);color:#9ca3af;border:1px solid #4b5563;{% endif %}">
                   {% if cm == 'tier_tickets' %}Tickets
-                  {% elif cm == 'points' %}Points{% if cds %} — {{ cds.remaining }}pt{% endif %}
+                  {% elif cm == 'points' %}Points{% if cds %} · {{ cds.remaining }}pt{% endif %}
                   {% else %}Legacy{% endif %}
-                </div>
+                </span>
               </div>
             </th>
             {% endfor %}
