@@ -56,6 +56,65 @@
 </div>
 {% endif %}
 
+<!-- ── Top 3 Podium ── -->
+{% if standings_all and standings_all | length >= 1 %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
+  <p class="text-xs font-bold uppercase tracking-widest font-mono mb-6" style="color:rgba(250,204,21,0.4);">// LEAGUE.STANDINGS</p>
+  {% set top3 = standings_all[:3] %}
+  <div class="flex items-end justify-center gap-3 mb-10">
+    {# 2nd place (left) #}
+    {% if top3 | length >= 2 %}
+    {% set row = top3[1] %}
+    <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center text-decoration-none group" style="text-decoration:none;">
+      <div class="mb-2 w-12 h-12 flex-shrink-0">
+        {% if row.coach.logo_url %}
+          <img src="{{ row.coach.logo_url }}" class="w-12 h-12 object-contain rounded-xl" alt="">
+        {% else %}
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
+        {% endif %}
+      </div>
+      <div class="text-xs font-bold text-white truncate" style="max-width:90px;">{{ row.coach.team_name }}</div>
+      <div class="text-xs font-mono mb-2" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L</div>
+      <div class="rounded-t-lg flex items-center justify-center font-black text-lg" style="width:80px;height:56px;background:rgba(192,192,192,0.15);border:1px solid rgba(192,192,192,0.25);color:#C0C0C0;">2</div>
+    </a>
+    {% endif %}
+    {# 1st place (center, taller) #}
+    {% if top3 | length >= 1 %}
+    {% set row = top3[0] %}
+    <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center group" style="text-decoration:none;">
+      <div class="mb-1 text-xs font-bold font-mono" style="color:rgba(250,204,21,0.6);">// LEADER</div>
+      <div class="mb-2 w-16 h-16 flex-shrink-0" style="filter:drop-shadow(0 0 16px rgba(250,204,21,0.3));">
+        {% if row.coach.logo_url %}
+          <img src="{{ row.coach.logo_url }}" class="w-16 h-16 object-contain rounded-xl" alt="">
+        {% else %}
+          <div class="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
+        {% endif %}
+      </div>
+      <div class="text-sm font-black text-white truncate" style="max-width:110px;">{{ row.coach.team_name }}</div>
+      <div class="text-xs font-mono mb-2" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L · +{{ row.diff | abs | int }}</div>
+      <div class="rounded-t-lg flex items-center justify-center font-black text-xl" style="width:96px;height:72px;background:rgba(250,204,21,0.12);border:1px solid rgba(250,204,21,0.35);color:#facc15;box-shadow:0 0 24px rgba(250,204,21,0.1);">1</div>
+    </a>
+    {% endif %}
+    {# 3rd place (right) #}
+    {% if top3 | length >= 3 %}
+    {% set row = top3[2] %}
+    <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center group" style="text-decoration:none;">
+      <div class="mb-2 w-12 h-12 flex-shrink-0">
+        {% if row.coach.logo_url %}
+          <img src="{{ row.coach.logo_url }}" class="w-12 h-12 object-contain rounded-xl" alt="">
+        {% else %}
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
+        {% endif %}
+      </div>
+      <div class="text-xs font-bold text-white truncate" style="max-width:90px;">{{ row.coach.team_name }}</div>
+      <div class="text-xs font-mono mb-2" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L</div>
+      <div class="rounded-t-lg flex items-center justify-center font-black text-lg" style="width:80px;height:44px;background:rgba(205,127,50,0.12);border:1px solid rgba(205,127,50,0.25);color:#CD7F32;">3</div>
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 <!-- ── Standings Tables ── -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 

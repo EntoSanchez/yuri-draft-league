@@ -536,14 +536,26 @@
          style="opacity:0;animation:fadeUp 0.8s ease 0.2s forwards;">
 
     <!-- Season badge -->
-    {% if season %}
-    <div style="opacity:0;animation:fadeUp 0.5s ease 0.4s forwards;">
+    <div style="opacity:0;animation:fadeUp 0.5s ease 0.3s forwards;">
+      <div class="flex items-center justify-center gap-3 mb-2">
+        <span class="text-xs font-bold font-mono px-3 py-1 rounded-full flex items-center gap-2"
+              style="background:rgba(255,45,120,0.1);border:1px solid rgba(255,45,120,0.3);color:#FF2D78;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#FF2D78;box-shadow:0 0 8px #FF2D78;animation:livePulse 1.6s ease-in-out infinite;display:inline-block;"></span>
+          ON AIR
+        </span>
+        {% if total_weeks > 0 %}
+        <span class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.25);">
+          WK {{ completed_weeks + 1 if completed_weeks < total_weeks else total_weeks }} / {{ total_weeks }}
+        </span>
+        {% endif %}
+      </div>
+      {% if season %}
       <span class="season-badge">
         <span class="live-dot"></span>
         Now Live
       </span>
+      {% endif %}
     </div>
-    {% endif %}
 
     <!-- Title - words split for stagger -->
     <h1 class="hero-title glitch" aria-label="{{ league_name }}">
@@ -641,7 +653,7 @@
   <!-- ═══════════════════ QUICK NAV ═══════════════════ -->
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="mb-10 reveal">
-      <p class="section-eye">Explore the League</p>
+      <p class="text-xs font-bold font-mono mb-1" style="color:rgba(0,245,255,0.4);">// LEAGUE_HUB</p>
       <h2 class="section-h">Everything in one place</h2>
     </div>
 
@@ -718,8 +730,8 @@
   <div class="home-sf">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
       <div class="mb-8 reveal">
-        <p class="section-eye">Current Standings</p>
-        <h2 class="section-h">Top Teams</h2>
+        <p class="text-xs font-bold font-mono mb-1" style="color:rgba(250,204,21,0.4);">// CURRENT.STANDINGS</p>
+        <h2 class="section-h">Top of the Board</h2>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl stagger">
         {% for row in top3 %}
@@ -762,7 +774,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
     <div class="mb-8 flex items-end justify-between reveal">
       <div>
-        <p class="section-eye">Latest Action</p>
+        <p class="text-xs font-bold font-mono mb-1" style="color:rgba(255,45,120,0.4);">// LATEST.ACTION</p>
         <h2 class="section-h">Recent Results</h2>
       </div>
       <a href="/schedule" class="text-xs font-semibold transition-colors" style="color:var(--sc);">View all →</a>

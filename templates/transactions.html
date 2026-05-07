@@ -5,7 +5,7 @@
 <!-- ── Page Header ── -->
 <div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Roster Activity</p>
+    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// ROSTER.MOVES</p>
     <h1 class="text-3xl font-black gradient-heading">Moves &amp; Transactions</h1>
     <p class="text-sm text-gray-500 mt-1">Free agent pickups, drops, and trades.</p>
   </div>
@@ -28,8 +28,7 @@
 
         <div class="mb-8">
           <div class="flex items-center gap-3 mb-4">
-            <div class="w-1 h-6 rounded-full" style="background: linear-gradient(to bottom, #facc15, #e3350d);"></div>
-            <h2 class="text-base font-bold text-white">Week {{ t.week }}</h2>
+            <p class="text-xs font-bold uppercase tracking-widest font-mono" style="color:rgba(0,245,255,0.4);">// WEEK_{{ '%02d' % t.week }}</p>
             <div class="flex-1 section-line ml-2"></div>
           </div>
           <div class="space-y-3">

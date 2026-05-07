@@ -11,18 +11,27 @@
 </div>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+{% set current_week = current_week if current_week is defined else (weeks[0] if weeks else 1) %}
 
   {% if by_week %}
 
-    <!-- Week quick-jump tabs -->
+    <!-- Week tab bar -->
     {% if weeks | length > 1 %}
-    <div class="flex flex-wrap gap-2 mb-8">
+    <div class="flex flex-wrap gap-2 mb-8" id="week-tabs">
       {% for week in weeks %}
-        <a href="#week-{{ week }}"
-           class="px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-800 text-gray-400 hover:border-yellow-500/50 hover:text-yellow-400 transition-all"
-           style="background-color:#0f1623;">
-          Week {{ week }}
-        </a>
+        {% set matches = by_week.get(week, []) %}
+        {% set has_result = matches | selectattr('score1', 'defined') | selectattr('score1', 'ne', none) | list | length %}
+        {% set is_complete = has_result == matches | length and matches | length > 0 %}
+        {% set is_current = week == current_week %}
+        <button onclick="switchWeek({{ week }})"
+                id="tab-{{ week }}"
+                class="week-tab px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5"
+                style="{% if loop.first %}background:rgba(0,245,255,0.08);border-color:rgba(0,245,255,0.35);color:#00F5FF;{% else %}background-color:#0f1623;border-color:rgba(55,65,81,0.5);color:#6b7280;{% endif %}">
+          WK {{ '%02d'|format(week) }}
+          {% if is_current and not is_complete %}
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" style="box-shadow:0 0 6px #4ade80;"></span>
+          {% endif %}
+        </button>
       {% endfor %}
     </div>
     {% endif %}
@@ -31,12 +40,11 @@
     {% for week in weeks %}
       {% set matches = by_week.get(week, []) %}
       {% if matches %}
-      <div id="week-{{ week }}" class="mb-12">
+      <div id="week-section-{{ week }}" class="week-section mb-12" {% if not loop.first %}style="display:none"{% endif %}>
 
         <!-- Week Header -->
         <div class="flex items-center gap-3 mb-5">
-          <div class="w-1 h-7 rounded-full" style="background: linear-gradient(to bottom, #facc15, #e3350d);"></div>
-          <h2 class="text-xl font-bold text-white">Week {{ week }}</h2>
+          <p class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.4);">// WEEK_{{ '%02d'|format(week) }}</p>
           <div class="flex-1 section-line ml-2"></div>
           <span class="text-xs text-gray-700 font-medium">{{ matches | length }} match{% if matches | length != 1 %}es{% endif %}</span>
         </div>
@@ -63,19 +71,17 @@
 
               {# Header row #}
               <div class="flex items-center justify-between px-4 py-2" style="background:rgba(0,0,0,0.3);">
+                <span class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.2);">WK {{ '%02d'|format(week) }} · {{ m.pool }}</span>
                 {% if has_result %}
-                  <span class="text-xs font-black px-2 py-0.5 rounded-full
-                    {% if is_tie %}text-yellow-400 bg-yellow-400/10{% else %}text-green-400 bg-green-400/10{% endif %}">
-                    FINAL
-                  </span>
-                  <a href="/admin/match_stats/{{ m.id }}" class="text-xs text-yellow-500/60 hover:text-yellow-400 font-semibold transition-colors">Stats &rarr;</a>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-black px-2 py-0.5 rounded-full
+                      {% if is_tie %}text-yellow-400 bg-yellow-400/10{% else %}text-green-400 bg-green-400/10{% endif %}">
+                      FINAL
+                    </span>
+                    <a href="/admin/match_stats/{{ m.id }}" class="text-xs text-yellow-500/60 hover:text-yellow-400 font-semibold transition-colors">Stats &rarr;</a>
+                  </div>
                 {% else %}
-                  <span class="text-xs font-bold text-blue-400/60 bg-blue-400/10 px-2 py-0.5 rounded-full">UPCOMING</span>
-                  {% if session.get('role') == 'admin' %}
-                    <a href="/admin/schedule" class="text-xs text-gray-600 hover:text-gray-400 transition-colors">Enter result</a>
-                  {% else %}
-                    <span class="w-1"></span>
-                  {% endif %}
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="color:rgba(0,245,255,0.6);background:rgba(0,245,255,0.08);">UPCOMING</span>
                 {% endif %}
               </div>
 
@@ -164,6 +170,48 @@
       </div>
       {% endif %}
     {% endfor %}
+
+<script>
+const CURRENT_WEEK = {{ current_week if current_week else 1 }};
+function switchWeek(week) {
+  // Hide all sections
+  document.querySelectorAll('.week-section').forEach(s => s.style.display = 'none');
+  // Deactivate all tabs
+  document.querySelectorAll('.week-tab').forEach(t => {
+    t.style.background = '#0f1623';
+    t.style.borderColor = 'rgba(55,65,81,0.5)';
+    t.style.color = '#6b7280';
+  });
+  // Show selected section
+  const section = document.getElementById('week-section-' + week);
+  if (section) section.style.display = '';
+  // Activate tab
+  const tab = document.getElementById('tab-' + week);
+  if (tab) {
+    tab.style.background = 'rgba(0,245,255,0.08)';
+    tab.style.borderColor = 'rgba(0,245,255,0.35)';
+    tab.style.color = '#00F5FF';
+  }
+}
+// Auto-select current week on load
+document.addEventListener('DOMContentLoaded', () => {
+  const tabs = document.querySelectorAll('.week-tab');
+  if (tabs.length > 0) {
+    // Try to select current week tab, otherwise first
+    const targetTab = document.getElementById('tab-' + CURRENT_WEEK);
+    if (targetTab) {
+      // Find which week number to switch to
+      switchWeek(CURRENT_WEEK);
+    }
+    // Animate vote bars if any
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.querySelectorAll('.vote-bar-fill').forEach(bar => {
+        bar.style.width = (bar.dataset.target || '0') + '%';
+      });
+    }));
+  }
+});
+</script>
 
   {% else %}
     <div class="text-center py-24">

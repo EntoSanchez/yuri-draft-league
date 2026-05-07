@@ -180,21 +180,25 @@
 <!-- Header -->
 <div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg,#0f1623,#080c14);">
   <div class="max-w-full px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Postseason</p>
-    <h1 class="text-3xl font-black gradient-heading">{{ league_name }} Playoffs</h1>
-    <p class="text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-2">
-      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-700/60 text-xs font-semibold text-gray-400" style="background:rgba(0,0,0,0.3);">
-        {% if settings.get('playoff_format','single') == 'double' %}Double{% else %}Single{% endif %} Elim
+    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// POSTSEASON_{{ league_name.upper().replace(' ','_') }}</p>
+    <h1 class="text-3xl font-black gradient-heading">Playoff Bracket</h1>
+    <p class="text-sm mt-2 flex flex-wrap items-center gap-2" style="color:rgba(255,255,255,0.35);">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
+            style="border-color:rgba(0,245,255,0.2);background:rgba(0,245,255,0.05);color:rgba(0,245,255,0.7);">
+        {% if settings.get('playoff_format','single') == 'double' %}DOUBLE{% else %}SINGLE{% endif %}-ELIM
       </span>
-      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-700/60 text-xs font-semibold text-gray-400" style="background:rgba(0,0,0,0.3);">
-        {{ settings.get('playoff_players','?') }} players
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
+            style="border-color:rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);">
+        {{ settings.get('playoff_players','?') }} TEAMS
       </span>
-      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-700/60 text-xs font-semibold text-gray-400" style="background:rgba(0,0,0,0.3);">
-        {{ settings.get('playoff_match_format','BO1') }}
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
+            style="border-color:rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);">
+        FORMAT · {{ settings.get('playoff_match_format','BO5') }}
       </span>
       {% if settings.get('playoff_byes','0')|int > 0 %}
-      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-yellow-500/30 text-xs font-semibold text-yellow-400/70" style="background:rgba(250,204,21,0.06);">
-        Top {{ settings.get('playoff_byes') }} get byes
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
+            style="border-color:rgba(250,204,21,0.25);background:rgba(250,204,21,0.06);color:rgba(250,204,21,0.7);">
+        TOP {{ settings.get('playoff_byes') }} · BYE
       </span>
       {% endif %}
     </p>

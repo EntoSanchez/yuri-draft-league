@@ -5,8 +5,8 @@
 <!-- ── Page Header ── -->
 <div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
   <div class="max-w-full px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Season Roster</p>
-    <h1 class="text-3xl font-black text-white">Draft Board</h1>
+    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// DRAFT.BOARD</p>
+    <h1 class="text-3xl font-black gradient-heading">Draft Board</h1>
     <p class="text-sm text-gray-500 mt-1">
       {% set total_drafted = drafted | length %}
       {% set total_tiers = tiers | rejectattr('is_banned') | list | length %}

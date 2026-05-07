@@ -2,11 +2,14 @@
 {% block title %}Pick'ems — {{ league_name }}{% endblock %}
 {% block content %}
 
-<div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
+<div class="border-b border-gray-800/60" style="background:linear-gradient(135deg,#0f1623 0%,#080c14 100%);">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">{{ league_name }}</p>
-    <h1 class="text-3xl font-black gradient-heading">Pick'ems</h1>
-    <p class="text-sm text-gray-500 mt-1">Predict each week's match winners. Compete on the leaderboard!</p>
+    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(255,45,120,0.5);">// PUBLIC_VOTE</p>
+    <h1 class="text-3xl font-black gradient-heading">Who Ya Got?</h1>
+    <div class="flex flex-wrap items-center gap-4 mt-2">
+      <span class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.3);">{{ matches|length }} MATCH{% if matches|length != 1 %}ES{% endif %} THIS WEEK</span>
+      <span id="picked-counter" class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.5);">PICKED 0 / {{ matches|length }}</span>
+    </div>
   </div>
 </div>
 
@@ -76,28 +79,32 @@
         </button>
 
         <!-- Middle: vote bar + VS -->
-        <div class="flex flex-col items-center justify-center px-4 gap-2 flex-shrink-0" style="min-width:120px">
-          <span class="text-gray-700 font-black text-lg">VS</span>
+        <div class="flex flex-col items-center justify-center px-3 gap-2 flex-shrink-0" style="min-width:110px">
+          <!-- Percentages -->
+          <div class="flex items-center gap-2 text-sm font-black font-mono">
+            <span style="color:{{ m.c1_color or '#6b7280' }}">{{ c1_pct }}%</span>
+            <span style="color:rgba(255,255,255,0.2)">·</span>
+            <span style="color:{{ m.c2_color or '#6b7280' }}">{{ c2_pct }}%</span>
+          </div>
           <!-- Vote bar -->
           <div class="w-full">
-            <div class="flex justify-between text-xs text-gray-600 mb-1">
-              <span>{{ c1_pct }}%</span>
-              <span>{{ total_votes }} vote{{ 's' if total_votes != 1 else '' }}</span>
-              <span>{{ c2_pct }}%</span>
-            </div>
-            <div class="h-2 rounded-full overflow-hidden flex" style="background:#1f2937">
-              <div class="vote-bar-fill h-full rounded-l-full" style="width:0%;background:{{ m.c1_color or '#6b7280' }};transition:width 0.8s cubic-bezier(0.4,0,0.2,1);" data-target="{{ c1_pct }}"></div>
-              <div class="h-full rounded-r-full transition-all" style="width:{{ c2_pct }}%;background:{{ m.c2_color or '#6b7280' }}"></div>
+            <div class="h-1.5 rounded-full overflow-hidden flex" style="background:#1f2937">
+              <div class="vote-bar-fill h-full" style="width:0%;background:{{ m.c1_color or '#6b7280' }};transition:width 0.8s cubic-bezier(0.4,0,0.2,1);" data-target="{{ c1_pct }}"></div>
+              <div class="h-full" style="width:{{ c2_pct }}%;background:{{ m.c2_color or '#6b7280' }}"></div>
             </div>
           </div>
-          <!-- Who voted for who -->
+          <!-- Vote count -->
+          <div class="text-xs font-mono" style="color:rgba(255,255,255,0.2)">{{ total_votes }} VOTE{% if total_votes != 1 %}S{% endif %}</div>
+          <!-- Status -->
+          <div class="text-xs font-bold font-mono" id="pick-status-{{ m.id }}" style="color:rgba(255,255,255,0.25)">CLICK A SIDE TO PICK</div>
+          <!-- Voter names -->
           <div class="w-full text-center" id="vote-names-{{ m.id }}">
             {% if c1_votes or c2_votes %}
-            <div class="flex justify-between text-xs gap-2">
-              <div class="text-left" style="max-width:80px;word-break:break-word;color:{{ m.c1_color or '#9ca3af' }}">
+            <div class="flex justify-between text-xs gap-1">
+              <div class="text-left" style="max-width:70px;word-break:break-word;color:{{ m.c1_color or '#9ca3af' }};font-size:0.6rem;">
                 {% for v in c1_votes %}<div>{{ v }}</div>{% endfor %}
               </div>
-              <div class="text-right" style="max-width:80px;word-break:break-word;color:{{ m.c2_color or '#9ca3af' }}">
+              <div class="text-right" style="max-width:70px;word-break:break-word;color:{{ m.c2_color or '#9ca3af' }};font-size:0.6rem;">
                 {% for v in c2_votes %}<div>{{ v }}</div>{% endfor %}
               </div>
             </div>
@@ -190,6 +197,14 @@ function saveName() {
 Object.entries(MY_VOTES).forEach(([matchId, coachId]) => {
   highlightPick(parseInt(matchId), parseInt(coachId));
 });
+updatePickedCounter();
+
+function updatePickedCounter() {
+  const total = {{ matches|length }};
+  const picked = Object.keys(MY_VOTES).length;
+  const el = document.getElementById('picked-counter');
+  if (el) el.textContent = 'PICKED ' + picked + ' / ' + total;
+}
 
 function highlightPick(matchId, coachId) {
   const card = document.querySelector(`[data-match-id="${matchId}"]`);
@@ -200,6 +215,11 @@ function highlightPick(matchId, coachId) {
     btn.style.outline = isChosen ? '2px solid rgba(250,204,21,0.4)' : 'none';
     btn.style.outlineOffset = '-2px';
   });
+  const statusEl = document.getElementById('pick-status-' + matchId);
+  if (statusEl) {
+    statusEl.textContent = '✓ LOCKED';
+    statusEl.style.color = 'rgba(57,255,20,0.7)';
+  }
 }
 
 async function vote(matchId, coachId, week) {
@@ -224,6 +244,7 @@ async function vote(matchId, coachId, week) {
   MY_VOTES[matchId] = coachId;
   localStorage.setItem('pickem_votes_w' + WEEK, JSON.stringify(MY_VOTES));
   highlightPick(matchId, coachId);
+  updatePickedCounter();
 
   document.getElementById('name-status').textContent = '✓ Vote saved!';
   document.getElementById('name-status').style.color = '#4ade80';
