@@ -2923,14 +2923,28 @@ def draft_live():
 
         # Build grid from pokemon_roster (full roster) + ticket_used from current session
         pick_info_map = {(p["coach_id"], p["pokemon_name"]): p for p in picks}
-        roster_rows = db.execute("SELECT * FROM pokemon_roster").fetchall()
+        roster_rows = db.execute("""
+            SELECT pr.*, COALESCE(dt.tier_label,'') as poke_tier_label
+            FROM pokemon_roster pr
+            LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
+        """).fetchall()
         captain_map = {(r["coach_id"], r["pokemon_name"]): r for r in roster_rows}
+        # Track uber slot assignment per coach so misnamed entries land in the right row
+        uber_counts = {}
         roster_from_picks = []
         for r in roster_rows:
             pick_info = pick_info_map.get((r["coach_id"], r["pokemon_name"]))
+            tier = r["tier"]
+            # Normalize tier: if stored value is missing/wrong but pokemon is uber-level, fix it
+            if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
+                cid = r["coach_id"]
+                count = uber_counts.get(cid, 0)
+                tier = "Uber 2" if count >= 1 else "Uber 1"
+                uber_counts[cid] = count + 1
             roster_from_picks.append({
                 "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
-                "points": r["points"], "tier": r["tier"],
+                "points": r["points"], "tier": tier,
+                "poke_tier_label": r["poke_tier_label"],
                 "is_tera_captain": int(r["is_tera_captain"]) if r["is_tera_captain"] else 0,
                 "is_zmove_captain": int(r["is_zmove_captain"]) if r["is_zmove_captain"] else 0,
                 "is_free_pick": r["is_free_pick"] or 0,
