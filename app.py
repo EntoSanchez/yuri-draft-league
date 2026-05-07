@@ -2774,9 +2774,12 @@ def _get_coach_draft_state(db, coach_id, session_id):
 def draft_sheet():
     with get_db() as db:
         coaches = db.execute("SELECT * FROM coaches ORDER BY pool, id").fetchall()
-        roster = db.execute(
-            "SELECT pr.*, c.pool FROM pokemon_roster pr JOIN coaches c ON pr.coach_id = c.id"
-        ).fetchall()
+        roster = db.execute("""
+            SELECT pr.*, c.pool, COALESCE(dt.tier_label,'') as poke_tier_label
+            FROM pokemon_roster pr
+            JOIN coaches c ON pr.coach_id = c.id
+            LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
+        """).fetchall()
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
         active_session = db.execute(
             "SELECT * FROM draft_sessions WHERE status IN ('active','paused') ORDER BY id DESC LIMIT 1"
@@ -2799,10 +2802,14 @@ def draft_sheet():
 
         UBER_TIERS = {"Uber 1", "Uber 2"}
 
+        def _is_uber(p):
+            return (p.get("tier") in UBER_TIERS
+                    or p.get("poke_tier_label") in UBER_NAMED_TIERS)
+
         if draft_mode == "points":
             non_mega = [p for p in picks if p["pokemon_name"] not in mega_names]
-            uber = [p for p in non_mega if p.get("tier") in UBER_TIERS]
-            regular = sorted([p for p in non_mega if p.get("tier") not in UBER_TIERS],
+            uber = [p for p in non_mega if _is_uber(p)]
+            regular = sorted([p for p in non_mega if not _is_uber(p)],
                              key=lambda p: -(p.get("points") or 0))
             spent = sum(p.get("points") or 0 for p in regular)
             return {"mode": draft_mode, "coach": dict(coach), "spent": spent,
@@ -2812,7 +2819,7 @@ def draft_sheet():
         if draft_mode == "tier_tickets":
             ticket_tiers = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"]
             tier_slots = {t: [p for p in picks if p.get("tier") == t] for t in ticket_tiers}
-            uber = [p for p in picks if p.get("tier") in UBER_TIERS]
+            uber = [p for p in picks if _is_uber(p)]
             return {"mode": draft_mode, "coach": dict(coach), "spent": 0, "remaining": 0,
                     "slots": dict(_empty, tier_slots=tier_slots, uber=uber)}
 
