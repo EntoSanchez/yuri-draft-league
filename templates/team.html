@@ -158,6 +158,84 @@
   </section>
   {% endif %}
 
+  <!-- ── Team Shape ── -->
+  {%- set ns_stat = namespace(hp=0, atk=0, def_=0, spa=0, spd=0, spe=0, cnt=0) -%}
+  {%- for p in roster -%}{%- if p.hp -%}
+    {%- set ns_stat.hp   = ns_stat.hp   + p.hp -%}
+    {%- set ns_stat.atk  = ns_stat.atk  + p.atk -%}
+    {%- set ns_stat.def_ = ns_stat.def_ + (p.def_ or 0) -%}
+    {%- set ns_stat.spa  = ns_stat.spa  + (p.spa  or 0) -%}
+    {%- set ns_stat.spd  = ns_stat.spd  + (p.spd  or 0) -%}
+    {%- set ns_stat.spe  = ns_stat.spe  + (p.spe  or 0) -%}
+    {%- set ns_stat.cnt  = ns_stat.cnt  + 1 -%}
+  {%- endif -%}{%- endfor -%}
+  {% if ns_stat.cnt > 0 %}
+  {% set avg_hp  = ns_stat.hp  / ns_stat.cnt %}
+  {% set avg_atk = ns_stat.atk / ns_stat.cnt %}
+  {% set avg_def = ns_stat.def_/ ns_stat.cnt %}
+  {% set avg_spa = ns_stat.spa / ns_stat.cnt %}
+  {% set avg_spd = ns_stat.spd / ns_stat.cnt %}
+  {% set avg_spe = ns_stat.spe / ns_stat.cnt %}
+  {% set R = 72 %}
+  {% set r_hp  = [avg_hp  / 255 * R, R]|min %}
+  {% set r_atk = [avg_atk / 255 * R, R]|min %}
+  {% set r_def = [avg_def / 255 * R, R]|min %}
+  {% set r_spa = [avg_spa / 255 * R, R]|min %}
+  {% set r_spd = [avg_spd / 255 * R, R]|min %}
+  {% set r_spe = [avg_spe / 255 * R, R]|min %}
+  <section>
+    <div class="flex items-center gap-3 mb-4">
+      <p class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.4);">// TEAM_SHAPE</p>
+      <span class="text-xs text-gray-600">Aggregate base stats · {{ ns_stat.cnt }} Pokémon</span>
+    </div>
+    <div class="rounded-xl border border-gray-800 p-5" style="background:#0f1623;">
+      <div class="flex flex-col sm:flex-row items-center gap-8">
+        <svg viewBox="0 0 200 200" width="180" height="180" class="flex-shrink-0">
+          <polygon points="100,82 115.6,91 115.6,109 100,118 84.4,109 84.4,91" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <polygon points="100,64 131.2,82 131.2,118 100,136 68.8,118 68.8,82" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <polygon points="100,46 146.8,73 146.8,127 100,154 53.2,127 53.2,73" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <polygon points="100,28 162.4,64 162.4,136 100,172 37.6,136 37.6,64" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="100" y1="100" x2="100" y2="28" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="100" y1="100" x2="162.4" y2="64" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="100" y1="100" x2="162.4" y2="136" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="100" y1="100" x2="100" y2="172" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="100" y1="100" x2="37.6" y2="136" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <line x1="100" y1="100" x2="37.6" y2="64" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <polygon
+            points="100,{{ '%.1f' % (100 - r_hp) }} {{ '%.1f' % (100 + 0.866*r_atk) }},{{ '%.1f' % (100 - 0.5*r_atk) }} {{ '%.1f' % (100 + 0.866*r_def) }},{{ '%.1f' % (100 + 0.5*r_def) }} 100,{{ '%.1f' % (100 + r_spe) }} {{ '%.1f' % (100 - 0.866*r_spd) }},{{ '%.1f' % (100 + 0.5*r_spd) }} {{ '%.1f' % (100 - 0.866*r_spa) }},{{ '%.1f' % (100 - 0.5*r_spa) }}"
+            fill="rgba(0,245,255,0.12)" stroke="rgba(0,245,255,0.6)" stroke-width="1.5" stroke-linejoin="round"/>
+          <text x="100" y="22" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">HP</text>
+          <text x="169" y="67" text-anchor="start" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">ATK</text>
+          <text x="169" y="139" text-anchor="start" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">DEF</text>
+          <text x="100" y="187" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">SPE</text>
+          <text x="31" y="139" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">SP.D</text>
+          <text x="31" y="67" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">SP.A</text>
+        </svg>
+        <div class="flex-1 w-full grid grid-cols-2 gap-x-8 gap-y-3">
+          {% for stat_lbl, stat_val, stat_color in [
+            ('HP',   avg_hp,  '#ef4444'),
+            ('ATK',  avg_atk, '#f97316'),
+            ('DEF',  avg_def, '#3b82f6'),
+            ('SP.A', avg_spa, '#8b5cf6'),
+            ('SP.D', avg_spd, '#22c55e'),
+            ('SPE',  avg_spe, '#eab308'),
+          ] %}
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold font-mono text-gray-500">{{ stat_lbl }}</span>
+              <span class="text-xs font-black" style="color:{{ stat_color }};">{{ stat_val | round | int }}</span>
+            </div>
+            <div class="h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
+              <div class="h-full rounded-full" style="width:{{ [stat_val/255*100, 100]|min | round }}%;background:{{ stat_color }};opacity:0.7;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- ── Type Coverage Grid ── -->
   {% if roster %}
   <section>
@@ -190,12 +268,47 @@
   </section>
   {% endif %}
 
+  <!-- ── Coach Stats ── -->
+  {% if standing %}
+  <section>
+    <div class="flex items-center gap-3 mb-4">
+      <p class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.4);">// COACH.STATS</p>
+    </div>
+    <div class="rounded-xl border border-gray-800 p-5" style="background:#0f1623;">
+      {%- set sk = namespace(val=0, done=False) -%}
+      {%- for m in match_history|reverse -%}
+        {%- if not sk.done -%}
+          {%- if m.result == 'W' -%}{%- set sk.val = sk.val + 1 -%}{%- else -%}{%- set sk.done = True -%}{%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+        <div>
+          <div class="text-2xl font-black text-white font-mono">{{ standing.W }}-{{ standing.L }}{% if standing.T %}-{{ standing.T }}{% endif %}</div>
+          <div class="text-xs text-gray-600 font-mono mt-0.5">RECORD</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black font-mono" style="color:rgba(250,204,21,0.9);">#{{ standing.rank }}</div>
+          <div class="text-xs text-gray-600 font-mono mt-0.5">RANK</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black font-mono {% if standing.diff > 0 %}text-green-400{% elif standing.diff < 0 %}text-red-400{% else %}text-gray-500{% endif %}">{{ '%+.0f' % standing.diff }}</div>
+          <div class="text-xs text-gray-600 font-mono mt-0.5">DIFF</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black font-mono {% if sk.val > 0 %}text-green-400{% else %}text-gray-500{% endif %}">{{ sk.val }}</div>
+          <div class="text-xs text-gray-600 font-mono mt-0.5">WIN STREAK</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- ── Current Week Matchup ── -->
   {% if matchup %}
   <section>
     <div class="flex items-center gap-3 mb-4">
-      <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
-      <h2 class="text-sm font-bold text-white uppercase tracking-wider">Week {{ matchup.week }} Matchup</h2>
+      <p class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.4);">// THIS_WEEK</p>
+      <span class="text-xs text-gray-600 font-mono">WK {{ '%02d' % matchup.week }}</span>
       {% if matchup.my_score is not none and matchup.opp_score is not none %}
         {% if matchup.my_score > matchup.opp_score %}
           <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);">WIN</span>

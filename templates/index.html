@@ -8,13 +8,14 @@
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="flex flex-col sm:flex-row sm:items-end gap-3">
       <div>
-        <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/70 mb-1">Season Standings</p>
+        <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// LEAGUE.STANDINGS</p>
         <h1 class="text-4xl sm:text-5xl font-black gradient-heading tracking-tight">{{ league_name }}</h1>
       </div>
       <div class="sm:ml-auto flex items-center gap-4 text-xs text-gray-500 font-medium pb-1">
         <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-green-500/60"></span> Win</span>
         <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-red-500/60"></span> Loss</span>
         <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-yellow-500/60"></span> Tie</span>
+        {% if total_weeks > 0 %}<span class="w-px h-3 bg-gray-700 hidden sm:block"></span><span class="font-bold font-mono hidden sm:block" style="color:rgba(0,245,255,0.5);">WK {{ [completed_weeks + 1, total_weeks]|min }} / {{ total_weeks }}</span>{% endif %}
       </div>
     </div>
   </div>
@@ -217,6 +218,7 @@
   {% endmacro %}
 
   {% if standings_all %}
+  <p class="text-xs font-bold uppercase tracking-widest font-mono mb-6" style="color:rgba(0,245,255,0.4);">// THE REST · RANKS 04–{{ standings_all | length }}</p>
   {# ── Overall standings ── #}
   <div class="mb-10">
     <div class="flex items-center gap-3 mb-4">
