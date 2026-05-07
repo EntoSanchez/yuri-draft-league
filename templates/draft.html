@@ -136,23 +136,22 @@
   <div class="px-3 pt-2.5 pb-1 flex-1">
 
     {% if cm == 'points' %}
-    {# Points mode: uber section (if any) + flat list of regular picks #}
-    {% if s.uber %}
+    {# Points mode: uber section (always 2 slots) + flat list of regular picks #}
     {% set cfg = tcfg['Uber 1'] %}
     <div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
       <div class="flex items-center justify-between px-2 py-0.5" style="background:{{ cfg.bg }};">
         <span class="text-xs font-black" style="color:{{ cfg.text }};">Uber Picks</span>
-        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{{ cfg.text }};">{{ s.uber|length }}</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{{ cfg.text }};">{{ s.uber|length }}/2</span>
       </div>
       <div class="px-2 py-1 space-y-0.5" style="background:rgba(0,0,0,0.25);">
         {% for poke in s.uber %}{{ pick_row(poke, false) }}{% endfor %}
+        {% for _ in range([2 - s.uber|length, 0]|max) %}{{ empty_row(false) }}{% endfor %}
       </div>
     </div>
-    {% endif %}
     <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(59,130,246,0.3);">
       <div class="flex items-center justify-between px-2.5 py-1" style="background:rgba(59,130,246,0.15);">
         <span class="text-xs font-black text-blue-300">Point Picks</span>
-        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{% if s.all_picks|length == 8 %}#4ade80{% else %}#93c5fd{% endif %};">{{ s.all_picks|length }}/8</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{% if s.all_picks|length == 8 %}#4ade80{% else %}#93c5fd{% endif %};">{{ s.all_picks|length }}/8 reg</span>
       </div>
       <div class="px-2 py-1.5 space-y-0.5" style="background:rgba(0,0,0,0.25);">
         {% for poke in s.all_picks %}
@@ -173,19 +172,18 @@
     </div>
 
     {% elif cm == 'tier_tickets' %}
-    {# Tier Tickets mode: Uber (if any) + T1×1, T2×1, T3×2, T4×2, T5×2 #}
-    {% if s.uber %}
+    {# Tier Tickets mode: Uber (always 2 slots) + T1×1, T2×1, T3×2, T4×2, T5×2 #}
     {% set cfg = tcfg['Uber 1'] %}
     <div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
       <div class="flex items-center justify-between px-2 py-0.5" style="background:{{ cfg.bg }};">
         <span class="text-xs font-black" style="color:{{ cfg.text }};">Uber Picks</span>
-        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{{ cfg.text }};">{{ s.uber|length }}</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{{ cfg.text }};">{{ s.uber|length }}/2</span>
       </div>
       <div class="px-2 py-1 space-y-0.5" style="background:rgba(0,0,0,0.25);">
         {% for poke in s.uber %}{{ pick_row(poke, false) }}{% endfor %}
+        {% for _ in range([2 - s.uber|length, 0]|max) %}{{ empty_row(false) }}{% endfor %}
       </div>
     </div>
-    {% endif %}
     {% for tier_name, cap in [('Tier 1', 1), ('Tier 2', 1), ('Tier 3', 2), ('Tier 4', 2), ('Tier 5', 2)] %}
     {% set tier_picks = s.tier_slots.get(tier_name) or [] %}
     {% set cfg = tcfg[tier_name] %}
