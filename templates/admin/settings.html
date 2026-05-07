@@ -166,6 +166,16 @@
         </div>
     </div>
 
+    <!-- Plan Griffin -->
+    <div>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">Plan Griffin — Points Budget</label>
+        <p class="text-xs text-gray-500 mb-3">Point cap for coaches using "Points" draft mode. Per-coach mode is set in <a href="/admin/teams" class="text-yellow-400 hover:underline">Admin → Teams</a>.</p>
+        <input type="number" name="points_budget_griffin" min="1" max="999"
+               value="{{ settings.get('points_budget_griffin', '70') }}"
+               placeholder="70"
+               class="w-40 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-yellow-500 focus:outline-none transition-colors">
+    </div>
+
     <!-- Discord Integration -->
     <div>
         <label class="block text-sm font-semibold text-gray-300 mb-1">Discord Webhook URL</label>
