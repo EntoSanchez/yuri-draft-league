@@ -56,14 +56,15 @@
                    class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
             <p class="text-xs text-gray-600 mt-1">Shown as a floating music player on the team page.</p>
         </div>
+        {% if draft_format == 'griffin' %}
         <div>
-            <label class="block text-xs font-semibold text-gray-400 mb-1">Draft Mode</label>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">Draft Format</label>
             <select name="draft_mode" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
-                <option value="" selected>Legacy (no cap)</option>
+                <option value="tier_tickets" selected>Tier Tickets (1×T1, 1×T2, 2×T3, 2×T4, 2×T5)</option>
                 <option value="points">Points (~70pt budget)</option>
-                <option value="tier_tickets">Tier Tickets (1×T1, 1×T2, 2×T3, 2×T4, 2×T5)</option>
             </select>
         </div>
+        {% endif %}
         <div class="sm:col-span-2">
             <button type="submit" class="px-5 py-2 bg-green-700 hover:bg-green-600 rounded font-semibold transition-colors">
                 + Add Team
@@ -138,14 +139,15 @@
                            placeholder="https://www.youtube.com/watch?v=..."
                            class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-yellow-500 focus:outline-none">
                 </div>
+                {% if draft_format == 'griffin' %}
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Draft Mode</label>
+                    <label class="block text-xs text-gray-400 mb-1">Draft Format</label>
                     <select name="draft_mode" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-yellow-500 focus:outline-none">
-                        <option value="" {% if not c.draft_mode %}selected{% endif %}>Legacy (no cap)</option>
+                        <option value="tier_tickets" {% if not c.draft_mode or c.draft_mode == 'tier_tickets' %}selected{% endif %}>Tier Tickets (1×T1, 1×T2, 2×T3, 2×T4, 2×T5)</option>
                         <option value="points" {% if c.draft_mode == 'points' %}selected{% endif %}>Points (~70pt budget)</option>
-                        <option value="tier_tickets" {% if c.draft_mode == 'tier_tickets' %}selected{% endif %}>Tier Tickets (1×T1, 1×T2, 2×T3, 2×T4, 2×T5)</option>
                     </select>
                 </div>
+                {% endif %}
                 <div class="sm:col-span-2">
                     <label class="block text-xs text-gray-400 mb-1">Logo</label>
                     <div class="flex items-start gap-3">

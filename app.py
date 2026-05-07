@@ -55,8 +55,13 @@ def _migrate_db():
             db.execute("UPDATE coaches SET draft_mode = NULL WHERE draft_mode = 'points'")
             db.execute("INSERT INTO league_settings (key, value) VALUES ('_migration_draft_mode_reset_v1', '1')")
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('points_budget_griffin', '70')")
+        db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('draft_format', '')")
 
 
+def _effective_draft_mode(coach, draft_format):
+    if draft_format != "griffin":
+        return "legacy"
+    return (coach["draft_mode"] or "tier_tickets")
 
 
 def _name_to_slug(name):
@@ -1343,8 +1348,11 @@ def admin_teams():
                 db.execute("DELETE FROM pokemon_roster WHERE coach_id=?", (cid,))
             flash("Team deleted.", "warning")
         return redirect(url_for("admin_teams"))
+    with get_db() as db:
+        draft_format = (db.execute("SELECT value FROM league_settings WHERE key='draft_format'").fetchone() or {}).get("value", "")
     return render_template("admin/teams.html",
                            coaches=coaches,
+                           draft_format=draft_format,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 
@@ -2775,6 +2783,7 @@ def draft_sheet():
         mega_names = {r["name"] for r in db.execute("SELECT name FROM draft_tiers WHERE is_mega=1").fetchall()}
 
     budget = int(settings.get("points_budget_griffin", "70"))
+    draft_format = settings.get("draft_format", "")
     coaches_a = [c for c in coaches if c["pool"] == "A"]
     coaches_b = [c for c in coaches if c["pool"] == "B"]
     roster_a = [r for r in roster if r["pool"] == "A"]
@@ -2782,7 +2791,7 @@ def draft_sheet():
 
     def _build_team_card(coach, roster_picks):
         picks = [dict(r) for r in roster_picks if r["coach_id"] == coach["id"]]
-        draft_mode = coach["draft_mode"] or "legacy"
+        draft_mode = _effective_draft_mode(coach, draft_format)
         _empty = {"uber1": [], "uber2": [], "tier1": [], "tier1f": [], "tier2": [], "tier2f": [],
                   "tier3": [], "tier3f": [], "tier4": [], "tier4f": [], "tier5": [], "tier5f": [],
                   "mega": [], "free": [], "all_picks": [], "tier_slots": {}, "uber": []}

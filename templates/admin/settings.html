@@ -105,76 +105,73 @@
         </div>
     </div>
 
-    <!-- Mega Tier Point Values -->
+    <!-- Draft Format -->
     <div>
-        <label class="block text-sm font-semibold text-gray-300 mb-2">Mega Tier Point Values</label>
-        <p class="text-xs text-gray-500 mb-3">Set the point cost for each Mega tier. Leave at 0 if not yet determined. These are separate from the regular T1–T5 tiers.</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {% for key, label, color in [
-                ('mega_bronze_pts',   'Bronze',   'text-amber-600'),
-                ('mega_silver_pts',   'Silver',   'text-slate-400'),
-                ('mega_gold_pts',     'Gold',     'text-yellow-400'),
-                ('mega_platinum_pts', 'Platinum', 'text-slate-300'),
-            ] %}
-            <div>
-                <label class="block text-xs font-bold mb-1 {{ color }}">{{ label }}</label>
-                <input type="number" name="{{ key }}" min="0" max="99"
-                       value="{{ settings.get(key, '0') }}"
-                       placeholder="TBD"
-                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-yellow-500 focus:outline-none transition-colors text-sm">
-            </div>
-            {% endfor %}
-        </div>
-        <p class="text-xs text-gray-600 mt-2">Bronze → Silver → Gold → Platinum (weakest → strongest). On the draft board, Mega Pokémon are shown in a separate section when Mega Evolution is enabled.</p>
-    </div>
-
-    <!-- Draft Free Pick Rules -->
-    <div>
-        <label class="block text-sm font-semibold text-gray-300 mb-2">Draft Free Pick Rule</label>
-        <p class="text-xs text-gray-500 mb-3">Determines which picks don't count against the points budget. Mark specific roster slots as "free" on each team's roster page.</p>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">Draft Format</label>
+        <p class="text-xs text-gray-500 mb-3">Choose the draft system for this season.</p>
         <div class="flex flex-col gap-2">
-            <label class="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg border transition-colors
-                          {% if settings.get('draft_free_pick_type','none') == 'none' %}border-gray-500 bg-gray-700/50{% else %}border-gray-700 bg-gray-800{% endif %}">
-                <input type="radio" name="draft_free_pick_type" value="none"
-                       {% if settings.get('draft_free_pick_type','none') == 'none' %}checked{% endif %}
-                       class="accent-gray-400">
+            <label id="fmt-legacy-label" class="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg border transition-colors
+                          {% if settings.get('draft_format','') != 'griffin' %}border-gray-500 bg-gray-700/50{% else %}border-gray-700 bg-gray-800{% endif %}">
+                <input type="radio" name="draft_format" value=""
+                       {% if settings.get('draft_format','') != 'griffin' %}checked{% endif %}
+                       class="accent-gray-400" onchange="updateDraftFormat(this.value)">
                 <div>
-                    <span class="text-white font-semibold block">No free picks</span>
-                    <span class="text-xs text-gray-500">All picks come from the points budget.</span>
+                    <span class="text-white font-semibold block">Legacy</span>
+                    <span class="text-xs text-gray-500">Standard tiered draft with optional free pick rules.</span>
                 </div>
             </label>
-            <label class="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg border transition-colors
-                          {% if settings.get('draft_free_pick_type') == 'one_per_tier' %}border-green-500 bg-green-500/10{% else %}border-gray-700 bg-gray-800{% endif %}">
-                <input type="radio" name="draft_free_pick_type" value="one_per_tier"
-                       {% if settings.get('draft_free_pick_type') == 'one_per_tier' %}checked{% endif %}
-                       class="accent-green-500">
+            <label id="fmt-griffin-label" class="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg border transition-colors
+                          {% if settings.get('draft_format','') == 'griffin' %}border-yellow-500 bg-yellow-500/10{% else %}border-gray-700 bg-gray-800{% endif %}">
+                <input type="radio" name="draft_format" value="griffin"
+                       {% if settings.get('draft_format','') == 'griffin' %}checked{% endif %}
+                       class="accent-yellow-500" onchange="updateDraftFormat(this.value)">
                 <div>
-                    <span class="text-white font-semibold block">One free pick per tier</span>
-                    <span class="text-xs text-gray-500">Each player gets one pick per point-tier at no cost (e.g. Season 8).</span>
-                </div>
-            </label>
-            <label class="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg border transition-colors
-                          {% if settings.get('draft_free_pick_type') == 'four_any' %}border-green-500 bg-green-500/10{% else %}border-gray-700 bg-gray-800{% endif %}">
-                <input type="radio" name="draft_free_pick_type" value="four_any"
-                       {% if settings.get('draft_free_pick_type') == 'four_any' %}checked{% endif %}
-                       class="accent-green-500">
-                <div>
-                    <span class="text-white font-semibold block">Four free picks</span>
-                    <span class="text-xs text-gray-500">Each player gets 4 picks from any tier at no cost.</span>
+                    <span class="text-white font-semibold block">Plan Griffin</span>
+                    <span class="text-xs text-gray-500">Coaches draft using Tier Tickets or a Points budget. Set per-coach format in <a href="/admin/teams" class="text-yellow-400 hover:underline">Admin → Teams</a>.</span>
                 </div>
             </label>
         </div>
+        <!-- Legacy sub-options: free pick rule -->
+        <div id="legacy-options" class="mt-4 pl-2 {% if settings.get('draft_format','') == 'griffin' %}hidden{% endif %}">
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Free Pick Rule</label>
+            <div class="flex flex-col gap-2">
+                <label class="flex items-center gap-3 cursor-pointer px-4 py-2.5 rounded-lg border border-gray-700/60 bg-gray-800/60 transition-colors">
+                    <input type="radio" name="draft_free_pick_type" value="none"
+                           {% if settings.get('draft_free_pick_type','none') == 'none' %}checked{% endif %}
+                           class="accent-gray-400">
+                    <div><span class="text-white font-semibold block text-sm">No free picks</span><span class="text-xs text-gray-500">All picks come from the points budget.</span></div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer px-4 py-2.5 rounded-lg border border-gray-700/60 bg-gray-800/60 transition-colors">
+                    <input type="radio" name="draft_free_pick_type" value="one_per_tier"
+                           {% if settings.get('draft_free_pick_type') == 'one_per_tier' %}checked{% endif %}
+                           class="accent-green-500">
+                    <div><span class="text-white font-semibold block text-sm">One free pick per tier</span><span class="text-xs text-gray-500">Each player gets one pick per tier at no cost.</span></div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer px-4 py-2.5 rounded-lg border border-gray-700/60 bg-gray-800/60 transition-colors">
+                    <input type="radio" name="draft_free_pick_type" value="four_any"
+                           {% if settings.get('draft_free_pick_type') == 'four_any' %}checked{% endif %}
+                           class="accent-green-500">
+                    <div><span class="text-white font-semibold block text-sm">Four free picks</span><span class="text-xs text-gray-500">Each player gets 4 picks from any tier at no cost.</span></div>
+                </label>
+            </div>
+        </div>
+        <!-- Plan Griffin sub-options: points budget -->
+        <div id="griffin-options" class="mt-4 pl-2 {% if settings.get('draft_format','') != 'griffin' %}hidden{% endif %}">
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Points Budget (for "Points" format coaches)</label>
+            <input type="number" name="points_budget_griffin" min="1" max="999"
+                   value="{{ settings.get('points_budget_griffin', '70') }}"
+                   placeholder="70"
+                   class="w-40 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-yellow-500 focus:outline-none transition-colors">
+            <p class="text-xs text-gray-600 mt-1">Default coach format is Tier Tickets. Switch individual coaches to Points in Admin → Teams.</p>
+        </div>
     </div>
-
-    <!-- Plan Griffin -->
-    <div>
-        <label class="block text-sm font-semibold text-gray-300 mb-2">Plan Griffin — Points Budget</label>
-        <p class="text-xs text-gray-500 mb-3">Point cap for coaches using "Points" draft mode. Per-coach mode is set in <a href="/admin/teams" class="text-yellow-400 hover:underline">Admin → Teams</a>.</p>
-        <input type="number" name="points_budget_griffin" min="1" max="999"
-               value="{{ settings.get('points_budget_griffin', '70') }}"
-               placeholder="70"
-               class="w-40 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-yellow-500 focus:outline-none transition-colors">
-    </div>
+    <script>
+    function updateDraftFormat(val) {
+        const isGriffin = val === 'griffin';
+        document.getElementById('legacy-options').classList.toggle('hidden', isGriffin);
+        document.getElementById('griffin-options').classList.toggle('hidden', !isGriffin);
+    }
+    </script>
 
     <!-- Discord Integration -->
     <div>
