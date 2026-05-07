@@ -2782,32 +2782,45 @@ def draft_sheet():
 
     def _build_team_card(coach, roster_picks):
         picks = [dict(r) for r in roster_picks if r["coach_id"] == coach["id"]]
+        draft_mode = coach["draft_mode"] or "legacy"
+        _empty = {"uber1": [], "uber2": [], "tier1": [], "tier1f": [], "tier2": [], "tier2f": [],
+                  "tier3": [], "tier3f": [], "tier4": [], "tier4f": [], "tier5": [], "tier5f": [],
+                  "mega": [], "free": [], "all_picks": [], "tier_slots": {}, "uber": []}
 
+        if draft_mode == "points":
+            non_mega = sorted([p for p in picks if p["pokemon_name"] not in mega_names],
+                              key=lambda p: -(p.get("points") or 0))
+            spent = sum(p.get("points") or 0 for p in non_mega)
+            return {"coach": dict(coach), "spent": spent, "remaining": budget - spent,
+                    "slots": dict(_empty, all_picks=non_mega)}
+
+        if draft_mode == "tier_tickets":
+            ticket_tiers = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"]
+            tier_slots = {t: [p for p in picks if p.get("tier") == t] for t in ticket_tiers}
+            uber = [p for p in picks if p.get("tier") in ("Uber 1", "Uber 2")]
+            return {"coach": dict(coach), "spent": 0, "remaining": 0,
+                    "slots": dict(_empty, tier_slots=tier_slots, uber=uber)}
+
+        # Legacy mode
         def _tier(tier, free=False):
             return [p for p in picks if p.get("tier") == tier
                     and bool(p.get("is_free_pick")) == free
                     and p["pokemon_name"] not in mega_names]
-
-        mega  = [p for p in picks if p["pokemon_name"] in mega_names]
-        free  = [p for p in picks if p.get("tier") == "Free Pick"
-                 and p["pokemon_name"] not in mega_names]
-        spent = sum(p["points"] for p in picks if p.get("tier") == "Free Pick" and not p.get("is_free_pick"))
-
+        mega = [p for p in picks if p["pokemon_name"] in mega_names]
+        free = [p for p in picks if p.get("tier") == "Free Pick"
+                and p["pokemon_name"] not in mega_names]
+        spent = sum(p.get("points") or 0 for p in picks
+                    if p.get("tier") == "Free Pick" and not p.get("is_free_pick"))
         return {
-            "coach": dict(coach),
-            "spent": spent,
-            "remaining": budget - spent,
-            "slots": {
-                "uber1":  _tier("Uber 1"),
-                "uber2":  _tier("Uber 2"),
-                "tier1":  _tier("Tier 1"),  "tier1f": _tier("Tier 1", free=True),
-                "tier2":  _tier("Tier 2"),  "tier2f": _tier("Tier 2", free=True),
-                "tier3":  _tier("Tier 3"),  "tier3f": _tier("Tier 3", free=True),
-                "tier4":  _tier("Tier 4"),  "tier4f": _tier("Tier 4", free=True),
-                "tier5":  _tier("Tier 5"),  "tier5f": _tier("Tier 5", free=True),
-                "mega":   mega,
-                "free":   free,
-            },
+            "coach": dict(coach), "spent": spent, "remaining": budget - spent,
+            "slots": dict(_empty,
+                uber1=_tier("Uber 1"), uber2=_tier("Uber 2"),
+                tier1=_tier("Tier 1"), tier1f=_tier("Tier 1", True),
+                tier2=_tier("Tier 2"), tier2f=_tier("Tier 2", True),
+                tier3=_tier("Tier 3"), tier3f=_tier("Tier 3", True),
+                tier4=_tier("Tier 4"), tier4f=_tier("Tier 4", True),
+                tier5=_tier("Tier 5"), tier5f=_tier("Tier 5", True),
+                mega=mega, free=free),
         }
 
     teams_a = [_build_team_card(c, roster_a) for c in coaches_a]

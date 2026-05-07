@@ -93,15 +93,19 @@
 {% set c = team.coach %}
 {% set s = team.slots %}
 {% set rem = team.remaining %}
-{% set total_picks = s.uber1|length + s.uber2|length
-   + s.tier1|length + s.tier1f|length
-   + s.tier2|length + s.tier2f|length
-   + s.tier3|length + s.tier3f|length
-   + s.tier4|length + s.tier4f|length
-   + s.tier5|length + s.tier5f|length
-   + s.free|length %}
-{% if mega_on %}{% set total_picks = total_picks + s.mega|length %}{% endif %}
-{% if not uber_on %}{% set total_picks = total_picks - s.uber1|length - s.uber2|length %}{% endif %}
+{% set cm = c.draft_mode or 'legacy' %}
+{# ── Pick counts (mode-aware) ── #}
+{% if cm == 'points' %}
+  {% set total_picks = s.all_picks|length %}
+  {% set total_cap = 10 %}
+{% elif cm == 'tier_tickets' %}
+  {% set total_picks = (s.tier_slots.get('Tier 1') or [])|length + (s.tier_slots.get('Tier 2') or [])|length + (s.tier_slots.get('Tier 3') or [])|length + (s.tier_slots.get('Tier 4') or [])|length + (s.tier_slots.get('Tier 5') or [])|length %}
+  {% set total_cap = 8 %}
+{% else %}
+  {% set total_picks = s.uber1|length + s.uber2|length + s.tier1|length + s.tier1f|length + s.tier2|length + s.tier2f|length + s.tier3|length + s.tier3f|length + s.tier4|length + s.tier4f|length + s.tier5|length + s.tier5f|length + s.free|length %}
+  {% if mega_on %}{% set total_picks = total_picks + s.mega|length %}{% endif %}
+  {% if not uber_on %}{% set total_picks = total_picks - s.uber1|length - s.uber2|length %}{% endif %}
+{% endif %}
 <div class="rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col" style="background:#080c14;">
 
   {# ── Card header ── #}
@@ -116,13 +120,9 @@
       <div class="text-sm font-black text-white truncate leading-tight">{{ c.team_name }}</div>
       <div class="text-xs text-gray-500 truncate leading-tight">{{ c.coach_name }}</div>
     </div>
-    {% set cm = c.draft_mode or 'legacy' %}
     <div class="flex-shrink-0 text-right leading-none">
       {% if cm == 'points' %}
-      <div class="text-xl font-black
-        {% if rem >= 15 %}text-green-400{% elif rem >= 8 %}text-yellow-400{% elif rem >= 0 %}text-red-400{% else %}text-red-600{% endif %}">
-        {{ rem }}
-      </div>
+      <div class="text-xl font-black {% if rem >= 15 %}text-green-400{% elif rem >= 8 %}text-yellow-400{% elif rem >= 0 %}text-red-400{% else %}text-red-600{% endif %}">{{ rem }}</div>
       <div class="text-gray-600" style="font-size:9px;">pts left</div>
       {% elif cm == 'tier_tickets' %}
       <span class="px-2 py-0.5 rounded text-xs font-bold text-purple-300 border border-purple-600" style="background:rgba(124,58,237,0.2);">Tickets</span>
@@ -132,21 +132,68 @@
     </div>
   </div>
 
-  {# ── Tier sections ── #}
+  {# ── Card body: mode-specific ── #}
   <div class="px-3 pt-2.5 pb-1 flex-1">
+
+    {% if cm == 'points' %}
+    {# Points mode: flat list of all picks with tier label next to each #}
+    <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(59,130,246,0.3);">
+      <div class="flex items-center justify-between px-2.5 py-1" style="background:rgba(59,130,246,0.15);">
+        <span class="text-xs font-black text-blue-300">Point Picks</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{% if total_picks == 10 %}#4ade80{% else %}#93c5fd{% endif %};">{{ total_picks }}/10</span>
+      </div>
+      <div class="px-2 py-1.5 space-y-0.5" style="background:rgba(0,0,0,0.25);">
+        {% for poke in s.all_picks %}
+        <div class="flex items-center gap-1.5 py-0.5 px-1 rounded">
+          <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}" onerror="this.style.display='none'" class="w-6 h-6 object-contain flex-shrink-0 sprite" alt="">
+          <span class="text-xs text-gray-200 truncate flex-1 leading-tight">{{ poke.pokemon_name }}</span>
+          <span class="flex-shrink-0 text-gray-600 font-semibold" style="font-size:9px;">{{ poke.tier }}</span>
+          <span class="text-xs font-bold flex-shrink-0" style="color:#facc15;">{{ poke.points }}pt</span>
+        </div>
+        {% endfor %}
+        {% for _ in range([10 - s.all_picks|length, 0]|max) %}
+        <div class="flex items-center gap-1.5 py-0.5 px-1">
+          <div class="w-6 h-6 flex-shrink-0 rounded border border-dashed border-gray-700/50"></div>
+          <span class="text-xs text-gray-700 italic flex-1">—</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% elif cm == 'tier_tickets' %}
+    {# Tier Tickets mode: one section per tier with ticket cap (T1×1, T2×1, T3×2, T4×2, T5×2) #}
+    {% for tier_name, cap in [('Tier 1', 1), ('Tier 2', 1), ('Tier 3', 2), ('Tier 4', 2), ('Tier 5', 2)] %}
+    {% set tier_picks = s.tier_slots.get(tier_name) or [] %}
+    {% set cfg = tcfg[tier_name] %}
+    <div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
+      <div class="flex items-center justify-between px-2.5 py-1" style="background:{{ cfg.bg }};">
+        <span class="text-xs font-black" style="color:{{ cfg.text }};">{{ tier_name }} <span class="font-normal opacity-60">×{{ cap }}</span></span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{% if tier_picks|length == cap %}#4ade80{% else %}{{ cfg.text }}{% endif %};">{{ tier_picks|length }}/{{ cap }}</span>
+      </div>
+      <div class="px-2 py-1.5 space-y-0.5" style="background:rgba(0,0,0,0.25);">
+        {% for poke in tier_picks %}{{ pick_row(poke, false) }}{% endfor %}
+        {% for _ in range([cap - tier_picks|length, 0]|max) %}{{ empty_row(false) }}{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    {# Legacy mode: standard tier structure #}
     {% if uber_on %}
-    {{ tier_section("Uber 1",     "Uber 1",    [], 0, s.uber1,            1) }}
+    {{ tier_section("Uber 1", "Uber 1", [], 0, s.uber1, 1) }}
     {% if uber_slots == 2 %}
-    {{ tier_section("Uber 2",     "Uber 2",    [], 0, s.uber2,            1) }}
+    {{ tier_section("Uber 2", "Uber 2", [], 0, s.uber2, 1) }}
     {% endif %}
     {% endif %}
-    {{ tier_section("Tier 1",     "Tier 1",    [], 0, s.tier1 + s.tier1f, 1) }}
-    {{ tier_section("Tier 2",     "Tier 2",    [], 0, s.tier2 + s.tier2f, 1) }}
-    {{ tier_section("Tier 3",     "Tier 3",    [], 0, s.tier3 + s.tier3f, 1) }}
-    {{ tier_section("Tier 4",     "Tier 4",    [], 0, s.tier4 + s.tier4f, 1) }}
-    {{ tier_section("Tier 5",     "Tier 5",    [], 0, s.tier5 + s.tier5f, 1) }}
+    {{ tier_section("Tier 1", "Tier 1", [], 0, s.tier1 + s.tier1f, 1) }}
+    {{ tier_section("Tier 2", "Tier 2", [], 0, s.tier2 + s.tier2f, 1) }}
+    {{ tier_section("Tier 3", "Tier 3", [], 0, s.tier3 + s.tier3f, 1) }}
+    {{ tier_section("Tier 4", "Tier 4", [], 0, s.tier4 + s.tier4f, 1) }}
+    {{ tier_section("Tier 5", "Tier 5", [], 0, s.tier5 + s.tier5f, 1) }}
     {% if mega_on %}{{ tier_section("Mega", "Mega", [], 0, s.mega, 1) }}{% endif %}
     {{ tier_section("Point Picks", "Free Pick", s.free, free_pick_slots, [], 0) }}
+    {% endif %}
+
   </div>
 
   {# ── Progress footer ── #}
@@ -154,7 +201,7 @@
     <span class="text-xs text-gray-600">{{ total_picks }}/{{ total_cap }} picks</span>
     <div class="w-28 h-1.5 rounded-full bg-gray-800 overflow-hidden">
       <div class="h-full rounded-full"
-           style="width:{{ ((total_picks / total_cap) * 100)|round|int }}%;
+           style="width:{{ ((total_picks / total_cap) * 100)|round|int if total_cap > 0 else 0 }}%;
                   background:{% if total_picks == total_cap %}#22c55e{% elif total_picks >= (total_cap * 0.6)|int %}#facc15{% else %}#3b82f6{% endif %};"></div>
     </div>
   </div>
