@@ -2798,11 +2798,13 @@ def draft_sheet():
                   "mega": [], "free": [], "all_picks": [], "tier_slots": {}, "uber": []}
 
         if draft_mode == "points":
-            non_mega = sorted([p for p in picks if p["pokemon_name"] not in mega_names],
-                              key=lambda p: -(p.get("points") or 0))
-            spent = sum(p.get("points") or 0 for p in non_mega)
+            non_mega = [p for p in picks if p["pokemon_name"] not in mega_names]
+            uber = [p for p in non_mega if p.get("tier") in ("Uber 1", "Uber 2")]
+            regular = sorted([p for p in non_mega if p.get("tier") not in ("Uber 1", "Uber 2")],
+                             key=lambda p: -(p.get("points") or 0))
+            spent = sum(p.get("points") or 0 for p in regular)
             return {"coach": dict(coach), "spent": spent, "remaining": budget - spent,
-                    "slots": dict(_empty, all_picks=non_mega)}
+                    "slots": dict(_empty, all_picks=regular, uber=uber)}
 
         if draft_mode == "tier_tickets":
             ticket_tiers = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"]
@@ -2908,23 +2910,20 @@ def draft_live():
             computed_tier = _regular_tier_label(p["points"] or 0)
             avail_pokemon.append(dict(p, tier_label=computed_tier or p["tier_label"] or ""))
 
-        # Fetch captain status from pokemon_roster
-        captain_rows = db.execute(
-            "SELECT coach_id, pokemon_name, is_tera_captain, is_zmove_captain FROM pokemon_roster"
-        ).fetchall()
-        captain_map = {(r["coach_id"], r["pokemon_name"]): r for r in captain_rows}
-
-        # Build grid from draft_picks (with captain status)
+        # Build grid from pokemon_roster (full roster) + ticket_used from current session
+        pick_info_map = {(p["coach_id"], p["pokemon_name"]): p for p in picks}
+        roster_rows = db.execute("SELECT * FROM pokemon_roster").fetchall()
+        captain_map = {(r["coach_id"], r["pokemon_name"]): r for r in roster_rows}
         roster_from_picks = []
-        for p in picks:
-            capt = captain_map.get((p["coach_id"], p["pokemon_name"]))
+        for r in roster_rows:
+            pick_info = pick_info_map.get((r["coach_id"], r["pokemon_name"]))
             roster_from_picks.append({
-                "coach_id": p["coach_id"], "pokemon_name": p["pokemon_name"],
-                "points": p["points"], "tier": p["slot_name"],
-                "is_tera_captain": int(capt["is_tera_captain"]) if capt else 0,
-                "is_zmove_captain": int(capt["is_zmove_captain"]) if capt else 0,
-                "is_free_pick": (p["slot_name"] == "Free Pick"),
-                "ticket_used": p["ticket_used"] or "",
+                "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
+                "points": r["points"], "tier": r["tier"],
+                "is_tera_captain": int(r["is_tera_captain"]) if r["is_tera_captain"] else 0,
+                "is_zmove_captain": int(r["is_zmove_captain"]) if r["is_zmove_captain"] else 0,
+                "is_free_pick": r["is_free_pick"] or 0,
+                "ticket_used": (pick_info["ticket_used"] if pick_info else None) or "",
             })
         grid_a, max_a = _build_draft_grid([c for c in coaches if c["pool"] == "A"], roster_from_picks)
         grid_b, max_b = _build_draft_grid([c for c in coaches if c["pool"] == "B"], roster_from_picks)
@@ -2942,19 +2941,18 @@ def draft_live():
     my_coach_id = session.get("coach_id")
     can_pick = is_admin or (my_coach_id == current_coach_id)
 
-    # Build current user's picks with captain data for the captain panel
+    # Build current user's picks from pokemon_roster for the captain panel
     my_picks = []
     if my_coach_id:
-        for p in picks:
-            if p["coach_id"] == my_coach_id:
-                capt = captain_map.get((my_coach_id, p["pokemon_name"]))
+        for r in roster_from_picks:
+            if r["coach_id"] == my_coach_id:
                 my_picks.append({
-                    "pokemon_name": p["pokemon_name"],
-                    "points": p["points"],
-                    "tier": p["slot_name"],
+                    "pokemon_name": r["pokemon_name"],
+                    "points": r["points"],
+                    "tier": r["tier"],
                     "coach_id": my_coach_id,
-                    "is_tera_captain": int(capt["is_tera_captain"]) if capt else 0,
-                    "is_zmove_captain": int(capt["is_zmove_captain"]) if capt else 0,
+                    "is_tera_captain": r["is_tera_captain"],
+                    "is_zmove_captain": r["is_zmove_captain"],
                 })
 
     current_draft_state = coaches_draft_states.get(current_coach_id, {}) if current_coach_id else {}

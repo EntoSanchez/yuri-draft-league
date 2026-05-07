@@ -96,7 +96,7 @@
 {% set cm = c.draft_mode or 'legacy' %}
 {# ── Pick counts (mode-aware) ── #}
 {% if cm == 'points' %}
-  {% set total_picks = s.all_picks|length %}
+  {% set total_picks = s.all_picks|length + s.uber|length %}
   {% set total_cap = 10 %}
 {% elif cm == 'tier_tickets' %}
   {% set total_picks = (s.tier_slots.get('Tier 1') or [])|length + (s.tier_slots.get('Tier 2') or [])|length + (s.tier_slots.get('Tier 3') or [])|length + (s.tier_slots.get('Tier 4') or [])|length + (s.tier_slots.get('Tier 5') or [])|length + s.uber|length %}
@@ -136,11 +136,23 @@
   <div class="px-3 pt-2.5 pb-1 flex-1">
 
     {% if cm == 'points' %}
-    {# Points mode: flat list of all picks with tier label next to each #}
+    {# Points mode: uber section (if any) + flat list of regular picks #}
+    {% if s.uber %}
+    {% set cfg = tcfg['Uber 1'] %}
+    <div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
+      <div class="flex items-center justify-between px-2 py-0.5" style="background:{{ cfg.bg }};">
+        <span class="text-xs font-black" style="color:{{ cfg.text }};">Uber Picks</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{{ cfg.text }};">{{ s.uber|length }}</span>
+      </div>
+      <div class="px-2 py-1 space-y-0.5" style="background:rgba(0,0,0,0.25);">
+        {% for poke in s.uber %}{{ pick_row(poke, false) }}{% endfor %}
+      </div>
+    </div>
+    {% endif %}
     <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(59,130,246,0.3);">
       <div class="flex items-center justify-between px-2.5 py-1" style="background:rgba(59,130,246,0.15);">
         <span class="text-xs font-black text-blue-300">Point Picks</span>
-        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{% if total_picks == 10 %}#4ade80{% else %}#93c5fd{% endif %};">{{ total_picks }}/10</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{% if s.all_picks|length == 8 %}#4ade80{% else %}#93c5fd{% endif %};">{{ s.all_picks|length }}/8</span>
       </div>
       <div class="px-2 py-1.5 space-y-0.5" style="background:rgba(0,0,0,0.25);">
         {% for poke in s.all_picks %}
@@ -151,7 +163,7 @@
           <span class="text-xs font-bold flex-shrink-0" style="color:#facc15;">{{ poke.points }}pt</span>
         </div>
         {% endfor %}
-        {% for _ in range([10 - s.all_picks|length, 0]|max) %}
+        {% for _ in range([8 - s.all_picks|length, 0]|max) %}
         <div class="flex items-center gap-1.5 py-0.5 px-1">
           <div class="w-6 h-6 flex-shrink-0 rounded border border-dashed border-gray-700/50"></div>
           <span class="text-xs text-gray-700 italic flex-1">—</span>
