@@ -1349,7 +1349,8 @@ def admin_teams():
             flash("Team deleted.", "warning")
         return redirect(url_for("admin_teams"))
     with get_db() as db:
-        draft_format = (db.execute("SELECT value FROM league_settings WHERE key='draft_format'").fetchone() or {}).get("value", "")
+        _df_row = db.execute("SELECT value FROM league_settings WHERE key='draft_format'").fetchone()
+        draft_format = _df_row["value"] if _df_row else ""
     return render_template("admin/teams.html",
                            coaches=coaches,
                            draft_format=draft_format,
@@ -2950,6 +2951,7 @@ def draft_live():
                 my_picks.append({
                     "pokemon_name": p["pokemon_name"],
                     "points": p["points"],
+                    "tier": p["slot_name"],
                     "coach_id": my_coach_id,
                     "is_tera_captain": int(capt["is_tera_captain"]) if capt else 0,
                     "is_zmove_captain": int(capt["is_zmove_captain"]) if capt else 0,
