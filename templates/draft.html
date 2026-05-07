@@ -100,7 +100,7 @@
   {% set total_cap = 10 %}
 {% elif cm == 'tier_tickets' %}
   {% set total_picks = (s.tier_slots.get('Tier 1') or [])|length + (s.tier_slots.get('Tier 2') or [])|length + (s.tier_slots.get('Tier 3') or [])|length + (s.tier_slots.get('Tier 4') or [])|length + (s.tier_slots.get('Tier 5') or [])|length + s.uber|length %}
-  {% set total_cap = 8 + s.uber|length %}
+  {% set total_cap = 10 %}
 {% else %}
   {% set total_picks = s.uber1|length + s.uber2|length + s.tier1|length + s.tier1f|length + s.tier2|length + s.tier2f|length + s.tier3|length + s.tier3f|length + s.tier4|length + s.tier4f|length + s.tier5|length + s.tier5f|length + s.free|length %}
   {% if mega_on %}{% set total_picks = total_picks + s.mega|length %}{% endif %}
