@@ -93,7 +93,7 @@
 {% set c = team.coach %}
 {% set s = team.slots %}
 {% set rem = team.remaining %}
-{% set cm = c.draft_mode or 'legacy' %}
+{% set cm = team.mode %}
 {# ── Pick counts (mode-aware) ── #}
 {% if cm == 'points' %}
   {% set total_picks = s.all_picks|length + s.uber|length %}

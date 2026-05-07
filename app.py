@@ -2797,20 +2797,23 @@ def draft_sheet():
                   "tier3": [], "tier3f": [], "tier4": [], "tier4f": [], "tier5": [], "tier5f": [],
                   "mega": [], "free": [], "all_picks": [], "tier_slots": {}, "uber": []}
 
+        UBER_TIERS = {"Uber 1", "Uber 2"}
+
         if draft_mode == "points":
             non_mega = [p for p in picks if p["pokemon_name"] not in mega_names]
-            uber = [p for p in non_mega if p.get("tier") in ("Uber 1", "Uber 2")]
-            regular = sorted([p for p in non_mega if p.get("tier") not in ("Uber 1", "Uber 2")],
+            uber = [p for p in non_mega if p.get("tier") in UBER_TIERS]
+            regular = sorted([p for p in non_mega if p.get("tier") not in UBER_TIERS],
                              key=lambda p: -(p.get("points") or 0))
             spent = sum(p.get("points") or 0 for p in regular)
-            return {"coach": dict(coach), "spent": spent, "remaining": budget - spent,
+            return {"mode": draft_mode, "coach": dict(coach), "spent": spent,
+                    "remaining": budget - spent,
                     "slots": dict(_empty, all_picks=regular, uber=uber)}
 
         if draft_mode == "tier_tickets":
             ticket_tiers = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"]
             tier_slots = {t: [p for p in picks if p.get("tier") == t] for t in ticket_tiers}
-            uber = [p for p in picks if p.get("tier") in ("Uber 1", "Uber 2")]
-            return {"coach": dict(coach), "spent": 0, "remaining": 0,
+            uber = [p for p in picks if p.get("tier") in UBER_TIERS]
+            return {"mode": draft_mode, "coach": dict(coach), "spent": 0, "remaining": 0,
                     "slots": dict(_empty, tier_slots=tier_slots, uber=uber)}
 
         # Legacy mode
@@ -2824,7 +2827,8 @@ def draft_sheet():
         spent = sum(p.get("points") or 0 for p in picks
                     if p.get("tier") == "Free Pick" and not p.get("is_free_pick"))
         return {
-            "coach": dict(coach), "spent": spent, "remaining": budget - spent,
+            "mode": draft_mode, "coach": dict(coach), "spent": spent,
+            "remaining": budget - spent,
             "slots": dict(_empty,
                 uber1=_tier("Uber 1"), uber2=_tier("Uber 2"),
                 tier1=_tier("Tier 1"), tier1f=_tier("Tier 1", True),
