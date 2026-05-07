@@ -1356,18 +1356,21 @@ function renderPlansList() {
   if (!el) return;
   const plans = getPlans();
   if (!plans.length) { el.innerHTML = ''; return; }
-  el.innerHTML = plans.map(p => `
+  el.innerHTML = plans.map(p => {
+    const safe = JSON.stringify(p.name).replace(/"/g, '&quot;');
+    return `
     <div style="display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.background='rgba(55,65,81,0.3)'" onmouseout="this.style.background=''">
       <span style="flex:1;min-width:0;font-size:0.68rem;color:#d1d5db;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
-      <button onclick="loadPlan(${JSON.stringify(p.name)})"
+      <button onclick="loadPlan(${safe})"
         style="font-size:0.6rem;padding:1px 6px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:3px;cursor:pointer;flex-shrink:0">
         Load
       </button>
-      <button onclick="deletePlan(${JSON.stringify(p.name)})"
+      <button onclick="deletePlan(${safe})"
         style="font-size:0.6rem;padding:1px 5px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;border-radius:3px;cursor:pointer;flex-shrink:0">
         ✕
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════

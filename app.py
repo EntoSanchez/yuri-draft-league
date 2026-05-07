@@ -2833,9 +2833,14 @@ def draft_live():
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
 
         if session_row is None:
+            is_admin = session.get("role") == "admin"
             return render_template(
                 "draft_live.html",
-                session=None, coaches=coaches,
+                session=None,
+                coaches=coaches,
+                coaches_a=[c for c in coaches if c["pool"] == "A"],
+                coaches_b=[c for c in coaches if c["pool"] == "B"],
+                is_admin=is_admin,
                 league_name=settings.get("league_name", "Pokemon Draft League"),
             )
 
@@ -2896,6 +2901,7 @@ def draft_live():
                 "is_tera_captain": int(capt["is_tera_captain"]) if capt else 0,
                 "is_zmove_captain": int(capt["is_zmove_captain"]) if capt else 0,
                 "is_free_pick": (p["slot_name"] == "Free Pick"),
+                "ticket_used": p["ticket_used"] or "",
             })
         grid_a, max_a = _build_draft_grid([c for c in coaches if c["pool"] == "A"], roster_from_picks)
         grid_b, max_b = _build_draft_grid([c for c in coaches if c["pool"] == "B"], roster_from_picks)

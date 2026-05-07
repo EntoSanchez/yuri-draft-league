@@ -18,7 +18,7 @@
 
 {% if session is none %}
   <!-- No active session -->
-  <div class="max-w-lg mx-auto text-center py-20">
+  <div class="max-w-lg mx-auto text-center pt-12 pb-6">
     <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background:#0f1623; border:2px solid #374151;">
       <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -33,6 +33,42 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- Draft mode overview per coach -->
+  {% for pool_label, pool_coaches in [('A', coaches_a), ('B', coaches_b)] %}
+  {% if pool_coaches %}
+  <div class="max-w-4xl mx-auto mb-6">
+    <div class="flex items-center gap-2 mb-3 px-1">
+      <div class="w-1 h-4 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <h3 class="text-xs font-bold text-white uppercase tracking-wider">Pool {{ pool_label }} — Draft Modes</h3>
+    </div>
+    <div class="grid gap-2" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));">
+      {% for coach in pool_coaches %}
+      {% set cm = coach.draft_mode or 'legacy' %}
+      <div class="rounded-lg border p-3 flex items-center gap-3
+        {% if cm == 'tier_tickets' %}border-purple-700/40{% elif cm == 'points' %}border-blue-700/40{% else %}border-gray-700/40{% endif %}"
+        style="background:#0a0f1a;">
+        {% if coach.logo_url %}
+        <img src="{{ coach.logo_url }}" class="w-8 h-8 object-contain rounded flex-shrink-0" alt="">
+        {% else %}
+        <div class="w-8 h-8 rounded flex items-center justify-center text-xs font-black text-white flex-shrink-0"
+             style="background:{{ coach.color or '#374151' }};">{{ coach.team_name[:2].upper() }}</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-bold text-white truncate">{{ coach.team_name }}</div>
+          <div class="text-gray-500 truncate" style="font-size:10px;">{{ coach.coach_name }}</div>
+        </div>
+        <span class="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0
+          {% if cm == 'tier_tickets' %}text-purple-300 border border-purple-600{% elif cm == 'points' %}text-blue-300 border border-blue-600{% else %}text-gray-500 border border-gray-700{% endif %}"
+          style="background:rgba(0,0,0,0.3);font-size:9px;">
+          {% if cm == 'tier_tickets' %}Tickets{% elif cm == 'points' %}Points{% else %}Legacy{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
 
 {% else %}
 
@@ -117,14 +153,16 @@
                 {% endif %}
                 <div class="font-bold {% if coach.id == current_coach_id %}text-yellow-400{% else %}text-white{% endif %} text-xs leading-tight">{{ coach.team_name }}</div>
                 {% if coach.id == current_coach_id %}<div class="text-yellow-500 text-xs leading-tight" style="font-size:9px;">PICKING</div>{% endif %}
+                {% set cm = coach.draft_mode or 'legacy' %}
                 {% set cds = coaches_draft_states.get(coach.id, {}) %}
-                {% if cds and cds.mode != 'legacy' %}
                 <div style="font-size:8px; padding:1px 4px; border-radius:3px; margin-top:1px;
-                  {% if cds.mode == 'tier_tickets' %}background:rgba(124,58,237,0.25);color:#a78bfa;border:1px solid #7c3aed;
-                  {% else %}background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid #3b82f6;{% endif %}">
-                  {% if cds.mode == 'tier_tickets' %}Tickets{% else %}{{ cds.remaining }}pt left{% endif %}
+                  {% if cm == 'tier_tickets' %}background:rgba(124,58,237,0.25);color:#a78bfa;border:1px solid #7c3aed;
+                  {% elif cm == 'points' %}background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid #3b82f6;
+                  {% else %}background:rgba(55,65,81,0.15);color:#6b7280;border:1px solid #374151;{% endif %}">
+                  {% if cm == 'tier_tickets' %}Tickets
+                  {% elif cm == 'points' %}Points{% if cds %} — {{ cds.remaining }}pt{% endif %}
+                  {% else %}Legacy{% endif %}
                 </div>
-                {% endif %}
               </div>
             </th>
             {% endfor %}
@@ -148,9 +186,15 @@
                 style="border-left:1px solid #1f2937;">
               {% if row_idx < cell_pokemon|length %}
               {% set poke = cell_pokemon[row_idx] %}
+              {% set cm = coach.draft_mode or 'legacy' %}
               <div class="flex items-center gap-1 justify-center flex-wrap">
+                {% if cm == 'tier_tickets' and poke.ticket_used and poke.ticket_used != 'uber' %}
+                <span class="inline-flex items-center justify-center rounded font-bold"
+                      style="background:rgba(124,58,237,0.2);color:#a78bfa;border:1px solid #7c3aed;font-size:8px;padding:0 3px;min-width:20px;">{{ poke.ticket_used }}</span>
+                {% else %}
                 <span class="inline-flex items-center justify-center w-5 h-4 rounded text-xs font-bold"
                       style="background:rgba(250,204,21,0.12); color:#facc15; font-size:9px;">{{ poke.points }}</span>
+                {% endif %}
                 <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}"
                      onerror="this.style.display='none'"
                      class="w-6 h-6 object-contain sprite flex-shrink-0"
