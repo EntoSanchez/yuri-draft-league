@@ -14,9 +14,6 @@
 
   {% if not matches %}
   <div class="text-center py-20 text-gray-600">
-    <svg class="w-12 h-12 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-    </svg>
     <p class="text-sm">No matches scheduled yet.</p>
   </div>
   {% endif %}
@@ -31,58 +28,41 @@
        style="background:#0f1623;">
 
     {# ── Match Header ── #}
-    <div class="px-5 py-3 border-b border-gray-800/60 flex items-center justify-between gap-3"
-         style="background:#0a0f1a;">
+    <div class="px-5 py-3 border-b border-gray-800/60 flex items-center justify-between gap-3" style="background:#0a0f1a;">
       <div class="flex items-center gap-3">
         <span class="text-xs font-bold uppercase tracking-widest text-gray-500">Week {{ m.week }}</span>
-        {% if pending %}
-          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pending</span>
+        {% if not pending %}
+          {% set s1 = m.score1|int %}{% set s2 = m.score2|int %}
+          {% if s1 > s2 %}<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">{{ m.c1_team }} wins {{ s1 }}–{{ s2 }}</span>
+          {% elif s2 > s1 %}<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">{{ m.c2_team }} wins {{ s2 }}–{{ s1 }}</span>
+          {% else %}<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">Tie {{ s1 }}–{{ s2 }}</span>{% endif %}
         {% else %}
-          {% set s1 = m.score1|int %}
-          {% set s2 = m.score2|int %}
-          {% if s1 > s2 %}
-            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">{{ m.c1_team }} wins {{ s1 }}–{{ s2 }}</span>
-          {% elif s2 > s1 %}
-            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">{{ m.c2_team }} wins {{ s2 }}–{{ s1 }}</span>
-          {% else %}
-            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">Tie {{ s1 }}–{{ s2 }}</span>
-          {% endif %}
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pending</span>
         {% endif %}
       </div>
-      {% if is_admin %}
-      <a href="/admin/match_stats/{{ m.id }}" class="text-xs text-gray-600 hover:text-yellow-400 transition-colors">Admin stats →</a>
-      {% endif %}
+      {% if is_admin %}<a href="/admin/match_stats/{{ m.id }}" class="text-xs text-gray-600 hover:text-yellow-400">Admin stats →</a>{% endif %}
     </div>
 
-    {# ── Score banner ── #}
-    <div class="flex items-center justify-center gap-4 px-5 py-5 border-b border-gray-800/40"
-         style="background: linear-gradient(90deg, rgba({{ m.c1_id * 37 % 255 }},80,120,0.08) 0%, transparent 40%, transparent 60%, rgba(80,{{ m.c2_id * 41 % 255 }},180,0.08) 100%);">
-      <div class="flex-1 flex items-center gap-3 justify-end">
-        <div class="text-right">
-          <div class="font-black text-white text-base leading-tight">{{ m.c1_team }}</div>
-          <div class="text-xs text-gray-500">{{ m.c1_name }}</div>
-        </div>
-        {% if not pending %}
-          {% if m.score1|int > m.score2|int %}
-            <span class="text-2xl font-black text-green-400">{{ m.score1|int }}</span>
-          {% else %}
-            <span class="text-2xl font-black text-gray-600">{{ m.score1|int }}</span>
-          {% endif %}
-        {% endif %}
+    {# ── Teams + score ── #}
+    <div class="flex items-center justify-center gap-6 px-5 py-4 border-b border-gray-800/40">
+      <div class="flex-1 text-right">
+        <div class="font-black text-white">{{ m.c1_team }}</div>
+        <div class="text-xs text-gray-500">{{ m.c1_name }}</div>
       </div>
-      <span class="text-xs font-black text-gray-600 flex-shrink-0">VS</span>
-      <div class="flex-1 flex items-center gap-3 justify-start">
-        {% if not pending %}
-          {% if m.score2|int > m.score1|int %}
-            <span class="text-2xl font-black text-green-400">{{ m.score2|int }}</span>
-          {% else %}
-            <span class="text-2xl font-black text-gray-600">{{ m.score2|int }}</span>
-          {% endif %}
-        {% endif %}
-        <div>
-          <div class="font-black text-white text-base leading-tight">{{ m.c2_team }}</div>
-          <div class="text-xs text-gray-500">{{ m.c2_name }}</div>
+      {% if not pending %}
+        <div class="text-center flex-shrink-0">
+          <div class="text-2xl font-black {% if m.score1|int > m.score2|int %}text-green-400{% else %}text-gray-600{% endif %}">{{ m.score1|int }}</div>
         </div>
+        <span class="text-xs text-gray-700 font-black">–</span>
+        <div class="text-center flex-shrink-0">
+          <div class="text-2xl font-black {% if m.score2|int > m.score1|int %}text-green-400{% else %}text-gray-600{% endif %}">{{ m.score2|int }}</div>
+        </div>
+      {% else %}
+        <span class="text-sm text-gray-700 font-black flex-shrink-0">VS</span>
+      {% endif %}
+      <div class="flex-1">
+        <div class="font-black text-white">{{ m.c2_team }}</div>
+        <div class="text-xs text-gray-500">{{ m.c2_name }}</div>
       </div>
     </div>
 
@@ -91,31 +71,27 @@
       {# ── Set Result ── #}
       {% if i_am_in %}
       <div>
-        <div class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">Set Result (games won)</div>
+        <div class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">Set Result (games won each side)</div>
         <form method="POST" action="/my-matches" class="flex items-center gap-2 flex-wrap">
           <input type="hidden" name="action" value="submit_result">
           <input type="hidden" name="match_id" value="{{ m.id }}">
           <span class="text-xs text-gray-400 w-28 text-right truncate">{{ m.c1_team }}</span>
           <input type="number" name="score1" min="0" max="3" step="1"
-                 value="{{ m.score1|int if m.score1 is not none and m.has_result else '' }}"
-                 placeholder="0"
+                 value="{{ m.score1|int if m.score1 is not none and m.has_result else '' }}" placeholder="0"
                  class="w-12 bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:border-yellow-500 focus:outline-none">
           <span class="text-gray-700 font-bold">–</span>
           <input type="number" name="score2" min="0" max="3" step="1"
-                 value="{{ m.score2|int if m.score2 is not none and m.has_result else '' }}"
-                 placeholder="0"
+                 value="{{ m.score2|int if m.score2 is not none and m.has_result else '' }}" placeholder="0"
                  class="w-12 bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:border-yellow-500 focus:outline-none">
           <span class="text-xs text-gray-400 w-28 truncate">{{ m.c2_team }}</span>
-          <button type="submit"
-                  class="px-4 py-1.5 rounded text-xs font-bold transition-colors
-                         {% if pending %}bg-yellow-500 hover:bg-yellow-400 text-gray-900{% else %}bg-gray-700 hover:bg-gray-600 text-gray-300{% endif %}">
+          <button type="submit" class="px-4 py-1.5 rounded text-xs font-bold {% if pending %}bg-yellow-500 hover:bg-yellow-400 text-gray-900{% else %}bg-gray-700 hover:bg-gray-600 text-gray-300{% endif %}">
             {% if pending %}Submit{% else %}Update{% endif %}
           </button>
         </form>
       </div>
       {% endif %}
 
-      {# ── Team Preview (6 Pokémon) ── #}
+      {# ── Team Preview (6 shown) ── #}
       <div>
         <div class="text-xs font-black uppercase tracking-wider text-gray-500 mb-3">Team Preview — 6 Pokémon Revealed</div>
         <div class="grid grid-cols-2 gap-4">
@@ -125,7 +101,6 @@
           ] %}
           <div class="bg-gray-900/40 rounded-lg p-3">
             <div class="text-xs font-bold text-gray-400 mb-2 truncate">{{ cname }} <span class="text-gray-600">({{ preview_list|length }}/6)</span></div>
-            {# Pills #}
             <div class="flex flex-wrap gap-1 mb-2 min-h-[28px]">
               {% for pln in preview_list %}
               {% if i_am_in and (is_admin or cid == coach_id) %}
@@ -133,9 +108,7 @@
                 <input type="hidden" name="action" value="remove_preview">
                 <input type="hidden" name="match_id" value="{{ m.id }}">
                 <input type="hidden" name="preview_id" value="{{ pln.id }}">
-                <button type="submit"
-                        class="flex items-center gap-1 text-xs bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-700 text-gray-300 hover:text-red-300 px-1.5 py-0.5 rounded transition-colors"
-                        title="Remove">
+                <button type="submit" class="flex items-center gap-1 text-xs bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-700 text-gray-300 hover:text-red-300 px-1.5 py-0.5 rounded transition-colors">
                   <img src="{{ pokemon_sprite_url(pln.pokemon_name) }}" onerror="this.style.display='none'" class="w-4 h-4 object-contain">
                   {{ pln.pokemon_name }} ✕
                 </button>
@@ -147,58 +120,54 @@
               </span>
               {% endif %}
               {% endfor %}
-              {% if preview_list|length == 0 %}
-              <span class="text-xs text-gray-700 italic">None added yet</span>
-              {% endif %}
             </div>
-            {# Add to preview #}
             {% if i_am_in and (is_admin or cid == coach_id) and preview_list|length < 6 %}
-            <form method="POST" action="/my-matches" class="flex gap-2">
+            {% set already_preview = preview_list | map(attribute='pokemon_name') | list %}
+            <form method="POST" action="/my-matches" class="flex gap-1.5">
               <input type="hidden" name="action" value="add_preview">
               <input type="hidden" name="match_id" value="{{ m.id }}">
               <input type="hidden" name="coach_id" value="{{ cid }}">
-              {% set already_preview = preview_list | map(attribute='pokemon_name') | list %}
+              {% if roster|length > 0 %}
               <select name="pokemon_name" required
                       class="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
-                <option value="">— Add to preview —</option>
-                {% for pname in roster %}
-                {% if pname not in already_preview %}
-                <option value="{{ pname }}">{{ pname }}</option>
-                {% endif %}
-                {% endfor %}
+                <option value="">— Select —</option>
+                {% for pname in roster %}{% if pname not in already_preview %}<option value="{{ pname }}">{{ pname }}</option>{% endif %}{% endfor %}
               </select>
-              <button type="submit" class="px-2.5 py-1 bg-blue-700/70 hover:bg-blue-600 rounded text-xs font-bold transition-colors flex-shrink-0">+</button>
+              {% else %}
+              <input type="text" name="pokemon_name" required placeholder="Pokémon name"
+                     class="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
+              {% endif %}
+              <button type="submit" class="px-2.5 py-1 bg-blue-700/70 hover:bg-blue-600 rounded text-xs font-bold">+</button>
             </form>
             {% elif preview_list|length == 6 %}
-            <p class="text-xs text-green-500/70">Preview full (6/6)</p>
+            <p class="text-xs text-green-500/70">Preview full ✓</p>
             {% endif %}
           </div>
           {% endfor %}
         </div>
       </div>
 
-      {# ── Games (up to 3) ── #}
+      {# ── Battles ── #}
       <div>
-        <div class="text-xs font-black uppercase tracking-wider text-gray-500 mb-3">Battle Results (BO3)</div>
+        <div class="text-xs font-black uppercase tracking-wider text-gray-500 mb-3">Battles (Best of 3)</div>
         <div class="space-y-4">
           {% for game_num in range(1, max_games + 1) %}
           {% set game = m.games | selectattr('game_number', 'equalto', game_num) | first | default(none) %}
-
-          {# Only show game 2+ if game 1 is entered, game 3 if game 2 is entered #}
-          {% if game_num == 1 or (game_num == 2 and m.games|length >= 1) or (game_num == 3 and m.games|length >= 2) or game %}
+          {% set c1_lineup = game.lineups.get(m.c1_id, []) if game else [] %}
+          {% set c2_lineup = game.lineups.get(m.c2_id, []) if game else [] %}
+          {% set c1_stats = game.stats.get(m.c1_id, []) if game else [] %}
+          {% set c2_stats = game.stats.get(m.c2_id, []) if game else [] %}
 
           <div class="rounded-lg border border-gray-700/60 overflow-hidden" style="background:#0a0f1a;">
-
-            {# Game header #}
-            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-800"
-                 style="background:#111827;">
+            {# Battle header #}
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-800" style="background:#111827;">
               <span class="text-xs font-black text-yellow-400">Battle {{ game_num }}</span>
               {% if game and game.winner_coach_id %}
-              <span class="text-xs font-bold text-green-400">
-                ✓ {{ m.c1_team if game.winner_coach_id == m.c1_id else m.c2_team }} won
-              </span>
-              {% elif not game %}
-              <span class="text-xs text-gray-700 italic">Not yet played</span>
+              <span class="text-xs font-bold text-green-400">✓ {{ m.c1_team if game.winner_coach_id == m.c1_id else m.c2_team }} won</span>
+              {% endif %}
+              {% if game and game.replay_url %}
+              <a href="{{ game.replay_url }}" target="_blank" rel="noopener"
+                 class="ml-auto px-2.5 py-1 bg-indigo-700/40 hover:bg-indigo-600 text-indigo-300 rounded text-xs font-bold">▶ Replay</a>
               {% endif %}
             </div>
 
@@ -210,14 +179,13 @@
                 <input type="hidden" name="action" value="save_replay">
                 <input type="hidden" name="match_id" value="{{ m.id }}">
                 <input type="hidden" name="game_number" value="{{ game_num }}">
-                <div class="flex-1 min-w-0" style="min-width:200px;">
+                <div class="flex-1" style="min-width:200px;">
                   <label class="block text-xs text-gray-500 mb-1">Replay URL</label>
-                  <input type="url" name="replay_url"
-                         value="{{ game.replay_url if game else '' }}"
+                  <input type="url" name="replay_url" value="{{ game.replay_url if game else '' }}"
                          placeholder="https://replay.pokemonshowdown.com/…"
                          class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
                 </div>
-                <div class="flex-shrink-0">
+                <div>
                   <label class="block text-xs text-gray-500 mb-1">Winner</label>
                   <select name="winner_coach_id"
                           class="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-white focus:border-yellow-500 focus:outline-none">
@@ -226,38 +194,30 @@
                     <option value="{{ m.c2_id }}" {% if game and game.winner_coach_id == m.c2_id %}selected{% endif %}>{{ m.c2_team }}</option>
                   </select>
                 </div>
-                <button type="submit" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold flex-shrink-0 self-end">Save</button>
-                {% if game and game.replay_url %}
-                <a href="{{ game.replay_url }}" target="_blank" rel="noopener"
-                   class="px-3 py-1.5 bg-indigo-700/50 hover:bg-indigo-600 text-indigo-200 rounded text-xs font-bold flex-shrink-0 self-end">▶ Watch</a>
-                {% endif %}
+                <button type="submit" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold self-end">Save</button>
               </form>
-              {% elif game and game.replay_url %}
-              <a href="{{ game.replay_url }}" target="_blank" rel="noopener"
-                 class="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300">▶ Watch replay</a>
               {% endif %}
 
-              {% if game %}
-              {# ── Lineups (4 played) ── #}
+              {# ── Pokémon Played (4 from preview) ── #}
+              {% if i_am_in %}
               <div>
-                <div class="text-xs font-semibold text-gray-600 mb-2">Pokémon Played (4 from preview)</div>
+                <div class="text-xs font-semibold text-gray-600 mb-2">Pokémon Played — select 4 from preview (or type name)</div>
                 <div class="grid grid-cols-2 gap-3">
                   {% for side, cid, cname, preview_list, roster in [
                     (m.c1_team, m.c1_id, m.c1_name, m.c1_preview, m.c1_roster),
                     (m.c2_team, m.c2_id, m.c2_name, m.c2_preview, m.c2_roster)
                   ] %}
-                  {% set g_lineup = game.lineups.get(cid, []) %}
+                  {% set g_lineup = c1_lineup if cid == m.c1_id else c2_lineup %}
                   <div>
-                    <div class="text-xs text-gray-500 mb-1.5 truncate">{{ cname }} <span class="text-gray-700">({{ g_lineup|length }}/4)</span></div>
+                    <div class="text-xs text-gray-500 mb-1.5">{{ cname }} <span class="text-gray-700">({{ g_lineup|length }}/4)</span></div>
                     <div class="flex flex-wrap gap-1 mb-1.5 min-h-[24px]">
                       {% for ln in g_lineup %}
-                      {% if i_am_in and (is_admin or cid == coach_id) %}
+                      {% if is_admin or cid == coach_id %}
                       <form method="POST" action="/my-matches" class="inline">
                         <input type="hidden" name="action" value="remove_lineup">
                         <input type="hidden" name="match_id" value="{{ m.id }}">
                         <input type="hidden" name="lineup_id" value="{{ ln.id }}">
-                        <button type="submit"
-                                class="flex items-center gap-1 text-xs bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-700 text-gray-300 hover:text-red-300 px-1.5 py-0.5 rounded transition-colors">
+                        <button type="submit" class="flex items-center gap-1 text-xs bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-700 text-gray-300 hover:text-red-300 px-1.5 py-0.5 rounded transition-colors">
                           <img src="{{ pokemon_sprite_url(ln.pokemon_name) }}" onerror="this.style.display='none'" class="w-4 h-4 object-contain">
                           {{ ln.pokemon_name }} ✕
                         </button>
@@ -270,165 +230,128 @@
                       {% endif %}
                       {% endfor %}
                     </div>
-                    {% if i_am_in and (is_admin or cid == coach_id) and g_lineup|length < 4 %}
-                    {% set source = preview_list if preview_list|length > 0 else roster %}
+                    {% if (is_admin or cid == coach_id) and g_lineup|length < 4 %}
                     {% set already_in = g_lineup | map(attribute='pokemon_name') | list %}
+                    {% set source = preview_list if preview_list|length > 0 else roster %}
                     <form method="POST" action="/my-matches" class="flex gap-1.5">
                       <input type="hidden" name="action" value="add_lineup">
                       <input type="hidden" name="match_id" value="{{ m.id }}">
-                      <input type="hidden" name="game_id" value="{{ game.id }}">
+                      <input type="hidden" name="game_number" value="{{ game_num }}">
                       <input type="hidden" name="coach_id" value="{{ cid }}">
+                      {% if source|length > 0 %}
                       <select name="pokemon_name" required
                               class="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
-                        <option value="">— Add —</option>
+                        <option value="">— Select —</option>
                         {% for p in source %}
                         {% set pname = p.pokemon_name if p is mapping else p %}
-                        {% if pname not in already_in %}
-                        <option value="{{ pname }}">{{ pname }}</option>
-                        {% endif %}
+                        {% if pname not in already_in %}<option value="{{ pname }}">{{ pname }}</option>{% endif %}
                         {% endfor %}
                       </select>
+                      {% else %}
+                      <input type="text" name="pokemon_name" required placeholder="Pokémon name"
+                             class="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-yellow-500 focus:outline-none">
+                      {% endif %}
                       <button type="submit" class="px-2 py-1 bg-blue-700/70 hover:bg-blue-600 rounded text-xs font-bold">+</button>
                     </form>
                     {% elif g_lineup|length == 4 %}
-                    <p class="text-xs text-green-500/60">Lineup set (4/4)</p>
+                    <p class="text-xs text-green-500/60">Set ✓</p>
                     {% endif %}
                   </div>
                   {% endfor %}
                 </div>
               </div>
 
-              {# ── Stats Entry / Display ── #}
-              {% set c1_lineup = game.lineups.get(m.c1_id, []) %}
-              {% set c2_lineup = game.lineups.get(m.c2_id, []) %}
-              {% set c1_stats = game.stats.get(m.c1_id, []) %}
-              {% set c2_stats = game.stats.get(m.c2_id, []) %}
-              {% set c1_stats_map = {} %}
-              {% set c2_stats_map = {} %}
-              {% for s in c1_stats %}{% set _ = c1_stats_map.update({s.pokemon_name: s}) %}{% endfor %}
-              {% for s in c2_stats %}{% set _ = c2_stats_map.update({s.pokemon_name: s}) %}{% endfor %}
-
-              {% set c1_kills = c1_stats | sum(attribute='kills') | int %}
-              {% set c1_deaths = c1_stats | sum(attribute='deaths') | int %}
-              {% set c2_kills = c2_stats | sum(attribute='kills') | int %}
-              {% set c2_deaths = c2_stats | sum(attribute='deaths') | int %}
-
-              {% if c1_lineup|length > 0 or c2_lineup|length > 0 %}
+              {# ── Stats grid ── #}
+              {% set max_rows = [c1_lineup|length, c2_lineup|length]|max %}
+              {% if max_rows > 0 %}
               <div>
-                <div class="text-xs font-semibold text-gray-600 mb-2">Battle Stats (K = KOs, D = Fainted)</div>
+                <div class="text-xs font-semibold text-gray-600 mb-2">Battle Stats (K = KOs scored · D = Fainted 0 or 1)</div>
 
-                {# Score summary row #}
+                {# Totals summary #}
+                {% set c1_kills = c1_stats | sum(attribute='kills') | int %}
+                {% set c1_deaths = c1_stats | sum(attribute='deaths') | int %}
+                {% set c2_kills = c2_stats | sum(attribute='kills') | int %}
+                {% set c2_deaths = c2_stats | sum(attribute='deaths') | int %}
                 {% if c1_stats or c2_stats %}
-                <div class="flex items-center justify-between px-3 py-2 rounded-lg mb-2 text-sm font-black"
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg mb-2 text-xs font-black"
                      style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);">
-                  <div class="flex items-center gap-2">
-                    <span class="{% if c1_kills > c2_kills %}text-green-400{% else %}text-gray-500{% endif %}">{{ m.c1_team }}</span>
-                    <span class="text-xs font-normal text-gray-600">diff: <span class="{% if c1_kills - c1_deaths >= 0 %}text-green-400{% else %}text-red-400{% endif %}">{{ '+' if c1_kills - c1_deaths >= 0 else '' }}{{ c1_kills - c1_deaths }}</span></span>
+                  <div>
+                    <span class="{% if c1_kills >= c2_kills %}text-yellow-400{% else %}text-gray-500{% endif %}">{{ m.c1_team }}</span>
+                    <span class="text-gray-600 font-normal ml-2">diff: <span class="{% if c1_kills - c1_deaths >= 0 %}text-green-400{% else %}text-red-400{% endif %}">{{ '+' if c1_kills - c1_deaths >= 0 else '' }}{{ c1_kills - c1_deaths }}</span></span>
                   </div>
                   <div class="text-gray-400">
-                    <span class="text-green-400">{{ c1_kills }}</span>
-                    <span class="text-gray-700 mx-1 text-xs font-normal">KOs vs</span>
-                    <span class="text-green-400">{{ c2_kills }}</span>
+                    <span class="text-green-400 font-black">{{ c1_kills }}</span>
+                    <span class="text-gray-700 font-normal mx-1">KOs –</span>
+                    <span class="text-green-400 font-black">{{ c2_kills }}</span>
                   </div>
-                  <div class="flex items-center gap-2 flex-row-reverse">
-                    <span class="{% if c2_kills > c1_kills %}text-green-400{% else %}text-gray-500{% endif %}">{{ m.c2_team }}</span>
-                    <span class="text-xs font-normal text-gray-600">diff: <span class="{% if c2_kills - c2_deaths >= 0 %}text-green-400{% else %}text-red-400{% endif %}">{{ '+' if c2_kills - c2_deaths >= 0 else '' }}{{ c2_kills - c2_deaths }}</span></span>
+                  <div class="text-right">
+                    <span class="{% if c2_kills >= c1_kills %}text-yellow-400{% else %}text-gray-500{% endif %}">{{ m.c2_team }}</span>
+                    <span class="text-gray-600 font-normal ml-2">diff: <span class="{% if c2_kills - c2_deaths >= 0 %}text-green-400{% else %}text-red-400{% endif %}">{{ '+' if c2_kills - c2_deaths >= 0 else '' }}{{ c2_kills - c2_deaths }}</span></span>
                   </div>
                 </div>
                 {% endif %}
 
-                {# Stats table #}
-                {% if i_am_in %}
                 <form method="POST" action="/my-matches">
                   <input type="hidden" name="action" value="save_game_stats">
                   <input type="hidden" name="match_id" value="{{ m.id }}">
-                  <input type="hidden" name="game_id" value="{{ game.id }}">
+                  <input type="hidden" name="game_number" value="{{ game_num }}">
+
+                  {# Build stats lookup maps #}
+                  {% set c1s = {} %}{% set c2s = {} %}
+                  {% for s in c1_stats %}{% set _ = c1s.update({s.pokemon_name: s}) %}{% endfor %}
+                  {% for s in c2_stats %}{% set _ = c2s.update({s.pokemon_name: s}) %}{% endfor %}
 
                   <div class="rounded-lg overflow-hidden border border-gray-800">
-                    {# Header row #}
                     <div class="grid text-xs font-black text-gray-500 uppercase"
-                         style="grid-template-columns: 1fr 36px 36px 24px 36px 36px 1fr; background:#111827; border-bottom:1px solid rgba(255,255,255,0.06);">
+                         style="grid-template-columns:1fr 38px 38px 24px 38px 38px 1fr; background:#111827; border-bottom:1px solid rgba(255,255,255,0.06);">
                       <div class="px-3 py-2">{{ m.c1_name }}</div>
-                      <div class="py-2 text-center text-green-600">K</div>
-                      <div class="py-2 text-center text-red-600">D</div>
+                      <div class="py-2 text-center text-green-700">K</div>
+                      <div class="py-2 text-center text-red-700">D</div>
                       <div class="py-2 text-center text-gray-700">vs</div>
-                      <div class="py-2 text-center text-red-600">D</div>
-                      <div class="py-2 text-center text-green-600">K</div>
+                      <div class="py-2 text-center text-red-700">D</div>
+                      <div class="py-2 text-center text-green-700">K</div>
                       <div class="px-3 py-2 text-right">{{ m.c2_name }}</div>
                     </div>
 
-                    {# Rows — zip lineups by max length #}
-                    {% set max_rows = [c1_lineup|length, c2_lineup|length]|max %}
                     {% for idx in range(max_rows) %}
                     {% set p1 = c1_lineup[idx] if idx < c1_lineup|length else none %}
                     {% set p2 = c2_lineup[idx] if idx < c2_lineup|length else none %}
-                    {% set p1name = p1.pokemon_name if p1 else none %}
-                    {% set p2name = p2.pokemon_name if p2 else none %}
-                    {% set stat1 = c1_stats_map.get(p1name) if p1name else none %}
-                    {% set stat2 = c2_stats_map.get(p2name) if p2name else none %}
-                    {% set row_idx = loop.index0 %}
+                    {% set p1n = p1.pokemon_name if p1 else none %}
+                    {% set p2n = p2.pokemon_name if p2 else none %}
+                    {% set s1 = c1s.get(p1n) if p1n else none %}
+                    {% set s2 = c2s.get(p2n) if p2n else none %}
+                    {% set fi = idx * 2 %}
 
-                    {% if p1 %}
-                    <input type="hidden" name="stat_pokemon_{{ row_idx * 2 }}" value="{{ p1name }}">
-                    <input type="hidden" name="stat_coach_{{ row_idx * 2 }}" value="{{ m.c1_id }}">
-                    {% endif %}
-                    {% if p2 %}
-                    <input type="hidden" name="stat_pokemon_{{ row_idx * 2 + 1 }}" value="{{ p2name }}">
-                    <input type="hidden" name="stat_coach_{{ row_idx * 2 + 1 }}" value="{{ m.c2_id }}">
-                    {% endif %}
+                    {% if p1 %}<input type="hidden" name="stat_pokemon_{{ fi }}" value="{{ p1n }}"><input type="hidden" name="stat_coach_{{ fi }}" value="{{ m.c1_id }}">{% endif %}
+                    {% if p2 %}<input type="hidden" name="stat_pokemon_{{ fi+1 }}" value="{{ p2n }}"><input type="hidden" name="stat_coach_{{ fi+1 }}" value="{{ m.c2_id }}">{% endif %}
 
                     <div class="grid items-center border-b border-gray-800/40 hover:bg-gray-800/20"
-                         style="grid-template-columns: 1fr 36px 36px 24px 36px 36px 1fr;">
-                      {# C1 pokemon #}
+                         style="grid-template-columns:1fr 38px 38px 24px 38px 38px 1fr;">
                       <div class="px-3 py-2 flex items-center gap-1.5">
-                        {% if p1 %}
-                        <img src="{{ pokemon_sprite_url(p1name) }}" onerror="this.style.display='none'" class="w-6 h-6 object-contain flex-shrink-0">
-                        <span class="text-xs text-gray-200 truncate">{{ p1name }}</span>
-                        {% endif %}
+                        {% if p1 %}<img src="{{ pokemon_sprite_url(p1n) }}" onerror="this.style.display='none'" class="w-6 h-6 object-contain flex-shrink-0"><span class="text-xs text-gray-200 truncate">{{ p1n }}</span>{% endif %}
                       </div>
-                      <div class="py-1.5 flex justify-center">
-                        {% if p1 %}
-                        <input type="number" name="stat_kills_{{ row_idx * 2 }}" min="0" max="6" step="1"
-                               value="{{ stat1.kills|int if stat1 else 0 }}"
-                               class="w-8 bg-gray-900 border border-gray-700 rounded text-center text-xs text-green-400 font-bold focus:border-yellow-500 focus:outline-none py-1">
-                        {% endif %}
+                      <div class="flex justify-center py-1.5">
+                        {% if p1 %}<input type="number" name="stat_kills_{{ fi }}" min="0" max="6" value="{{ s1.kills|int if s1 else 0 }}" class="w-9 bg-gray-900 border border-gray-700 rounded text-center text-xs text-green-400 font-bold py-1 focus:border-yellow-500 focus:outline-none">{% endif %}
                       </div>
-                      <div class="py-1.5 flex justify-center">
-                        {% if p1 %}
-                        <input type="number" name="stat_deaths_{{ row_idx * 2 }}" min="0" max="1" step="1"
-                               value="{{ stat1.deaths|int if stat1 else 0 }}"
-                               class="w-8 bg-gray-900 border border-gray-700 rounded text-center text-xs text-red-400 font-bold focus:border-yellow-500 focus:outline-none py-1">
-                        {% endif %}
+                      <div class="flex justify-center py-1.5">
+                        {% if p1 %}<input type="number" name="stat_deaths_{{ fi }}" min="0" max="1" value="{{ s1.deaths|int if s1 else 0 }}" class="w-9 bg-gray-900 border border-gray-700 rounded text-center text-xs text-red-400 font-bold py-1 focus:border-yellow-500 focus:outline-none">{% endif %}
                       </div>
                       <div class="py-2 text-center text-xs text-gray-700">—</div>
-                      <div class="py-1.5 flex justify-center">
-                        {% if p2 %}
-                        <input type="number" name="stat_deaths_{{ row_idx * 2 + 1 }}" min="0" max="1" step="1"
-                               value="{{ stat2.deaths|int if stat2 else 0 }}"
-                               class="w-8 bg-gray-900 border border-gray-700 rounded text-center text-xs text-red-400 font-bold focus:border-yellow-500 focus:outline-none py-1">
-                        {% endif %}
+                      <div class="flex justify-center py-1.5">
+                        {% if p2 %}<input type="number" name="stat_deaths_{{ fi+1 }}" min="0" max="1" value="{{ s2.deaths|int if s2 else 0 }}" class="w-9 bg-gray-900 border border-gray-700 rounded text-center text-xs text-red-400 font-bold py-1 focus:border-yellow-500 focus:outline-none">{% endif %}
                       </div>
-                      <div class="py-1.5 flex justify-center">
-                        {% if p2 %}
-                        <input type="number" name="stat_kills_{{ row_idx * 2 + 1 }}" min="0" max="6" step="1"
-                               value="{{ stat2.kills|int if stat2 else 0 }}"
-                               class="w-8 bg-gray-900 border border-gray-700 rounded text-center text-xs text-green-400 font-bold focus:border-yellow-500 focus:outline-none py-1">
-                        {% endif %}
+                      <div class="flex justify-center py-1.5">
+                        {% if p2 %}<input type="number" name="stat_kills_{{ fi+1 }}" min="0" max="6" value="{{ s2.kills|int if s2 else 0 }}" class="w-9 bg-gray-900 border border-gray-700 rounded text-center text-xs text-green-400 font-bold py-1 focus:border-yellow-500 focus:outline-none">{% endif %}
                       </div>
-                      {# C2 pokemon #}
                       <div class="px-3 py-2 flex items-center justify-end gap-1.5">
-                        {% if p2 %}
-                        <span class="text-xs text-gray-200 truncate">{{ p2name }}</span>
-                        <img src="{{ pokemon_sprite_url(p2name) }}" onerror="this.style.display='none'" class="w-6 h-6 object-contain flex-shrink-0">
-                        {% endif %}
+                        {% if p2 %}<span class="text-xs text-gray-200 truncate">{{ p2n }}</span><img src="{{ pokemon_sprite_url(p2n) }}" onerror="this.style.display='none'" class="w-6 h-6 object-contain flex-shrink-0">{% endif %}
                       </div>
                     </div>
                     {% endfor %}
 
-                    {# Totals row #}
                     {% if c1_stats or c2_stats %}
                     <div class="grid text-xs font-black"
-                         style="grid-template-columns: 1fr 36px 36px 24px 36px 36px 1fr; background:rgba(255,255,255,0.03);">
+                         style="grid-template-columns:1fr 38px 38px 24px 38px 38px 1fr; background:rgba(255,255,255,0.03);">
                       <div class="px-3 py-2 text-gray-600">Total</div>
                       <div class="py-2 text-center text-green-500">{{ c1_kills }}</div>
                       <div class="py-2 text-center text-red-500">{{ c1_deaths }}</div>
@@ -440,60 +363,18 @@
                     {% endif %}
                   </div>
 
-                  <div class="mt-2 flex items-center gap-3">
-                    <button type="submit"
-                            class="px-4 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-xs font-bold transition-colors">
-                      Save Stats
-                    </button>
-                    <span class="text-xs text-gray-700">Enter 0 or 1 for D (fainted), any number for K (KOs scored)</span>
-                  </div>
+                  <button type="submit" class="mt-2 px-4 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-xs font-bold transition-colors">
+                    Save Stats
+                  </button>
                 </form>
-                {% else %}
-                {# Read-only display #}
-                {% if c1_stats or c2_stats %}
-                <div class="rounded-lg overflow-hidden border border-gray-800 text-xs">
-                  <div class="grid font-black text-gray-500 uppercase"
-                       style="grid-template-columns: 1fr 28px 28px 20px 28px 28px 1fr; background:#111827; border-bottom:1px solid rgba(255,255,255,0.06);">
-                    <div class="px-3 py-2">{{ m.c1_name }}</div>
-                    <div class="py-2 text-center text-green-600">K</div>
-                    <div class="py-2 text-center text-red-600">D</div>
-                    <div class="py-2"></div>
-                    <div class="py-2 text-center text-red-600">D</div>
-                    <div class="py-2 text-center text-green-600">K</div>
-                    <div class="px-3 py-2 text-right">{{ m.c2_name }}</div>
-                  </div>
-                  {% for idx in range([c1_lineup|length, c2_lineup|length]|max) %}
-                  {% set p1 = c1_lineup[idx] if idx < c1_lineup|length else none %}
-                  {% set p2 = c2_lineup[idx] if idx < c2_lineup|length else none %}
-                  {% set stat1 = c1_stats_map.get(p1.pokemon_name) if p1 else none %}
-                  {% set stat2 = c2_stats_map.get(p2.pokemon_name) if p2 else none %}
-                  <div class="grid items-center border-b border-gray-800/40"
-                       style="grid-template-columns: 1fr 28px 28px 20px 28px 28px 1fr;">
-                    <div class="px-3 py-1.5 flex items-center gap-1.5">
-                      {% if p1 %}<img src="{{ pokemon_sprite_url(p1.pokemon_name) }}" onerror="this.style.display='none'" class="w-5 h-5 object-contain">
-                      <span class="text-gray-200 truncate">{{ p1.pokemon_name }}</span>{% endif %}
-                    </div>
-                    <div class="py-1.5 text-center font-bold text-green-400">{% if stat1 %}{{ stat1.kills|int }}{% elif p1 %}0{% endif %}</div>
-                    <div class="py-1.5 text-center font-bold text-red-400">{% if stat1 %}{{ stat1.deaths|int }}{% elif p1 %}0{% endif %}</div>
-                    <div class="py-1.5 text-center text-gray-700">—</div>
-                    <div class="py-1.5 text-center font-bold text-red-400">{% if stat2 %}{{ stat2.deaths|int }}{% elif p2 %}0{% endif %}</div>
-                    <div class="py-1.5 text-center font-bold text-green-400">{% if stat2 %}{{ stat2.kills|int }}{% elif p2 %}0{% endif %}</div>
-                    <div class="px-3 py-1.5 flex items-center justify-end gap-1.5">
-                      {% if p2 %}<span class="text-gray-200 truncate">{{ p2.pokemon_name }}</span>
-                      <img src="{{ pokemon_sprite_url(p2.pokemon_name) }}" onerror="this.style.display='none'" class="w-5 h-5 object-contain">{% endif %}
-                    </div>
-                  </div>
-                  {% endfor %}
-                </div>
-                {% endif %}
-                {% endif %}
               </div>
-              {% endif %} {# lineups exist #}
+              {% else %}
+              <p class="text-xs text-gray-700 italic">Add pokémon to lineups above to enter stats.</p>
+              {% endif %}
 
-              {% endif %} {# game exists #}
+              {% endif %} {# i_am_in #}
             </div>
           </div>
-          {% endif %} {# show this game #}
           {% endfor %}
         </div>
       </div>

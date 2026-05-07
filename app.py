@@ -539,22 +539,32 @@ def my_matches():
                     db.execute("DELETE FROM match_preview_lineups WHERE id=?", (preview_id,))
 
         elif action == "add_lineup":
-            game_id = request.form.get("game_id", type=int)
+            game_number = request.form.get("game_number", type=int)
             target_coach = request.form.get("coach_id", type=int) or coach_id
             pokemon_name = request.form.get("pokemon_name", "").strip()
-            if (is_admin or target_coach == coach_id) and pokemon_name and game_id:
+            if (is_admin or target_coach == coach_id) and pokemon_name and game_number:
                 with get_db() as db:
-                    game_row = db.execute("SELECT schedule_id FROM match_games WHERE id=?", (game_id,)).fetchone()
-                    if game_row and game_row["schedule_id"] == match_id:
-                        count = db.execute(
-                            "SELECT COUNT(*) FROM match_lineups WHERE game_id=? AND coach_id=?",
-                            (game_id, target_coach)
-                        ).fetchone()[0]
-                        if count < 4:
-                            db.execute(
-                                "INSERT OR IGNORE INTO match_lineups (game_id, coach_id, pokemon_name) VALUES (?,?,?)",
-                                (game_id, target_coach, pokemon_name)
-                            )
+                    existing_game = db.execute(
+                        "SELECT id FROM match_games WHERE schedule_id=? AND game_number=?",
+                        (match_id, game_number)
+                    ).fetchone()
+                    if existing_game:
+                        game_id = existing_game["id"]
+                    else:
+                        cur = db.execute(
+                            "INSERT INTO match_games (schedule_id, game_number) VALUES (?,?)",
+                            (match_id, game_number)
+                        )
+                        game_id = cur.lastrowid
+                    count = db.execute(
+                        "SELECT COUNT(*) FROM match_lineups WHERE game_id=? AND coach_id=?",
+                        (game_id, target_coach)
+                    ).fetchone()[0]
+                    if count < 4:
+                        db.execute(
+                            "INSERT OR IGNORE INTO match_lineups (game_id, coach_id, pokemon_name) VALUES (?,?,?)",
+                            (game_id, target_coach, pokemon_name)
+                        )
 
         elif action == "remove_lineup":
             lineup_id = request.form.get("lineup_id", type=int)
@@ -567,10 +577,21 @@ def my_matches():
                     db.execute("DELETE FROM match_lineups WHERE id=?", (lineup_id,))
 
         elif action == "save_game_stats":
-            game_id = request.form.get("game_id", type=int)
+            game_number = request.form.get("game_number", type=int)
             with get_db() as db:
-                game_row = db.execute("SELECT schedule_id FROM match_games WHERE id=?", (game_id,)).fetchone()
-                if game_row and game_row["schedule_id"] == match_id:
+                existing_game = db.execute(
+                    "SELECT id FROM match_games WHERE schedule_id=? AND game_number=?",
+                    (match_id, game_number)
+                ).fetchone()
+                if existing_game:
+                    game_id = existing_game["id"]
+                else:
+                    cur = db.execute(
+                        "INSERT INTO match_games (schedule_id, game_number) VALUES (?,?)",
+                        (match_id, game_number)
+                    )
+                    game_id = cur.lastrowid
+                if True:
                     i = 0
                     while True:
                         pname = request.form.get(f"stat_pokemon_{i}")
