@@ -45,22 +45,22 @@
 {% set cfg = tcfg[tier_key] %}
 {% set total_filled = paid_picks|length + free_picks|length %}
 {% set total_cap    = paid_cap + free_cap %}
-<div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
+<div class="rounded-lg overflow-hidden mb-1" style="border:1px solid {{ cfg.border }}28;">
   {# Section header #}
-  <div class="flex items-center justify-between px-2.5 py-1" style="background:{{ cfg.bg }};">
+  <div class="flex items-center justify-between px-2 py-0.5" style="background:{{ cfg.bg }};">
     <span class="text-xs font-black" style="color:{{ cfg.text }};">{{ label }}</span>
-    <div class="flex items-center gap-1.5">
+    <div class="flex items-center gap-1">
       {% if free_cap > 0 %}
-      <span class="text-xs" style="color:{{ cfg.text }}; opacity:0.5;">{{ paid_cap }}+<span style="color:#4ade80;">{{ free_cap }}✦</span></span>
+      <span style="font-size:9px;color:{{ cfg.text }};opacity:0.5;">{{ paid_cap }}+<span style="color:#4ade80;">{{ free_cap }}✦</span></span>
       {% endif %}
-      <span class="text-xs font-bold px-1.5 py-0.5 rounded-full"
+      <span class="text-xs font-bold px-1 py-0.5 rounded-full"
             style="background:rgba(0,0,0,0.3); color:{% if total_filled == total_cap %}#4ade80{% else %}{{ cfg.text }}{% endif %};">
         {{ total_filled }}/{{ total_cap }}
       </span>
     </div>
   </div>
   {# Rows #}
-  <div class="px-2 py-1.5 space-y-0.5" style="background:rgba(0,0,0,0.25);">
+  <div class="px-1.5 py-1 space-y-0.5" style="background:rgba(0,0,0,0.25);">
     {# Paid slots first #}
     {% for poke in paid_picks %}{{ pick_row(poke, false) }}{% endfor %}
     {% for _ in range([paid_cap - paid_picks|length, 0]|max) %}{{ empty_row(false) }}{% endfor %}
@@ -99,26 +99,26 @@
   {% set total_picks = s.all_picks|length %}
   {% set total_cap = 10 %}
 {% elif cm == 'tier_tickets' %}
-  {% set total_picks = (s.tier_slots.get('Tier 1') or [])|length + (s.tier_slots.get('Tier 2') or [])|length + (s.tier_slots.get('Tier 3') or [])|length + (s.tier_slots.get('Tier 4') or [])|length + (s.tier_slots.get('Tier 5') or [])|length %}
-  {% set total_cap = 8 %}
+  {% set total_picks = (s.tier_slots.get('Tier 1') or [])|length + (s.tier_slots.get('Tier 2') or [])|length + (s.tier_slots.get('Tier 3') or [])|length + (s.tier_slots.get('Tier 4') or [])|length + (s.tier_slots.get('Tier 5') or [])|length + s.uber|length %}
+  {% set total_cap = 8 + s.uber|length %}
 {% else %}
   {% set total_picks = s.uber1|length + s.uber2|length + s.tier1|length + s.tier1f|length + s.tier2|length + s.tier2f|length + s.tier3|length + s.tier3f|length + s.tier4|length + s.tier4f|length + s.tier5|length + s.tier5f|length + s.free|length %}
   {% if mega_on %}{% set total_picks = total_picks + s.mega|length %}{% endif %}
   {% if not uber_on %}{% set total_picks = total_picks - s.uber1|length - s.uber2|length %}{% endif %}
 {% endif %}
-<div class="rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col" style="background:#080c14;">
+<div class="rounded-xl border border-gray-800/60 overflow-hidden flex flex-col" style="background:#080c14;">
 
   {# ── Card header ── #}
-  <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60" style="background:#0a0f1a;">
+  <div class="flex items-center gap-2 px-2.5 py-2 border-b border-gray-800/60" style="background:#0a0f1a;">
     {% if c.logo_url %}
-    <img src="{{ c.logo_url }}" class="w-9 h-9 object-contain rounded flex-shrink-0" alt="">
+    <img src="{{ c.logo_url }}" class="w-7 h-7 object-contain rounded flex-shrink-0" alt="">
     {% else %}
-    <div class="w-9 h-9 rounded flex items-center justify-center font-black text-white flex-shrink-0"
-         style="background:{{ c.color or '#374151' }};font-size:10px;">{{ c.team_name[:2].upper() }}</div>
+    <div class="w-7 h-7 rounded flex items-center justify-center font-black text-white flex-shrink-0"
+         style="background:{{ c.color or '#374151' }};font-size:9px;">{{ c.team_name[:2].upper() }}</div>
     {% endif %}
     <div class="flex-1 min-w-0">
-      <div class="text-sm font-black text-white truncate leading-tight">{{ c.team_name }}</div>
-      <div class="text-xs text-gray-500 truncate leading-tight">{{ c.coach_name }}</div>
+      <div class="text-xs font-black text-white truncate leading-tight">{{ c.team_name }}</div>
+      <div class="text-gray-500 truncate leading-tight" style="font-size:10px;">{{ c.coach_name }}</div>
     </div>
     <div class="flex-shrink-0 text-right leading-none">
       {% if cm == 'points' %}
@@ -161,7 +161,19 @@
     </div>
 
     {% elif cm == 'tier_tickets' %}
-    {# Tier Tickets mode: one section per tier with ticket cap (T1×1, T2×1, T3×2, T4×2, T5×2) #}
+    {# Tier Tickets mode: Uber (if any) + T1×1, T2×1, T3×2, T4×2, T5×2 #}
+    {% if uber_on and s.uber %}
+    {% set cfg = tcfg['Uber 1'] %}
+    <div class="rounded-lg overflow-hidden mb-1.5" style="border:1px solid {{ cfg.border }}28;">
+      <div class="flex items-center justify-between px-2 py-0.5" style="background:{{ cfg.bg }};">
+        <span class="text-xs font-black" style="color:{{ cfg.text }};">Uber Picks</span>
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.3);color:{{ cfg.text }};">{{ s.uber|length }}</span>
+      </div>
+      <div class="px-2 py-1 space-y-0.5" style="background:rgba(0,0,0,0.25);">
+        {% for poke in s.uber %}{{ pick_row(poke, false) }}{% endfor %}
+      </div>
+    </div>
+    {% endif %}
     {% for tier_name, cap in [('Tier 1', 1), ('Tier 2', 1), ('Tier 3', 2), ('Tier 4', 2), ('Tier 5', 2)] %}
     {% set tier_picks = s.tier_slots.get(tier_name) or [] %}
     {% set cfg = tcfg[tier_name] %}
@@ -197,9 +209,9 @@
   </div>
 
   {# ── Progress footer ── #}
-  <div class="px-4 py-2 border-t border-gray-800/40 flex items-center justify-between" style="background:#0a0f1a;">
-    <span class="text-xs text-gray-600">{{ total_picks }}/{{ total_cap }} picks</span>
-    <div class="w-28 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+  <div class="px-2.5 py-1.5 border-t border-gray-800/40 flex items-center justify-between" style="background:#0a0f1a;">
+    <span class="text-gray-600" style="font-size:10px;">{{ total_picks }}/{{ total_cap }} picks</span>
+    <div class="flex-1 h-1 rounded-full bg-gray-800 overflow-hidden ml-2">
       <div class="h-full rounded-full"
            style="width:{{ ((total_picks / total_cap) * 100)|round|int if total_cap > 0 else 0 }}%;
                   background:{% if total_picks == total_cap %}#22c55e{% elif total_picks >= (total_cap * 0.6)|int %}#facc15{% else %}#3b82f6{% endif %};"></div>
@@ -218,7 +230,7 @@
     <div class="h-px flex-1 bg-gray-800/60"></div>
     <span class="text-xs text-gray-600">{{ teams|length }} teams</span>
   </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
     {% for team in teams %}{{ team_card(team) }}{% endfor %}
   </div>
 </div>
