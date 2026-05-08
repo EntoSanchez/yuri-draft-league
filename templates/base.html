@@ -84,7 +84,7 @@
     #main-nav.scrolled #nav-logo-img { width: 28px; height: 28px; }
 
     /* ── Nav underline ── */
-    .nav-link { position: relative; transition: color 0.18s, text-shadow 0.18s; white-space: nowrap; }
+    .nav-link { position: relative; transition: color 0.18s, text-shadow 0.18s; white-space: nowrap; font-weight: 600; }
     .nav-link::after {
       content: '';
       position: absolute;
@@ -408,16 +408,19 @@
 
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
-        <img id="nav-logo-img" src="/static/favicon.jpg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 10px rgba(250,204,21,0.25)">
-        <span class="font-bold text-base tracking-wide text-yellow-400 hover:text-yellow-300 transition-colors hidden sm:block">{{ league_name }}</span>
+        <img id="nav-logo-img" src="/static/favicon.jpg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 10px rgba(0,245,255,0.2)">
+        <div class="hidden sm:block leading-none">
+          <div class="font-black text-sm tracking-wide text-white">{{ league_name }}</div>
+          {% if season %}<div class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.55);letter-spacing:0.08em;">// {{ season.name | upper }}</div>{% endif %}
+        </div>
       </a>
 
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-1 flex-1">
-        <a href="/" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/' %}active{% endif %}">Home</a>
+        <a href="/" class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 {% if request.path == '/' %}active{% endif %}">Home</a>
         <!-- Standings dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/standings', '/mvp'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/standings', '/mvp'] %}active{% endif %}">
             Standings
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -435,7 +438,7 @@
 
         <!-- Schedule dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/schedule', '/replays'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/schedule', '/replays'] %}active{% endif %}">
             Schedule
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -451,12 +454,12 @@
           </div>
         </div>
 
-        <a href="/pickems" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path.startswith('/pickems') %}active{% endif %}">Pick'ems</a>
-        <a href="/playoffs" class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 {% if request.path == '/playoffs' %}active{% endif %}">Playoffs</a>
+        <a href="/pickems" class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 {% if request.path.startswith('/pickems') %}active{% endif %}">Pick'ems</a>
+        <a href="/playoffs" class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 {% if request.path == '/playoffs' %}active{% endif %}">Playoffs</a>
 
         <!-- Teams megamenu -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path.startswith('/team') %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path.startswith('/team') %}active{% endif %}">
             Teams
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -494,7 +497,7 @@
 
         <!-- Draft dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}active{% endif %}">
             Draft
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -520,7 +523,7 @@
 
         <!-- Tools dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/battle-prep', '/damage-calc', '/pokedex'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/battle-prep', '/damage-calc', '/pokedex'] %}active{% endif %}">
             Tools
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -542,7 +545,7 @@
 
         <!-- More dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-400 hover:text-yellow-400 px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/rules', '/seasons'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/rules', '/seasons'] %}active{% endif %}">
             More
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -561,6 +564,13 @@
 
       <!-- Right auth (desktop) -->
       <div class="hidden md:flex items-center gap-2 ml-auto flex-shrink-0">
+        {% if total_weeks is defined and total_weeks > 0 %}
+        <span class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono flex-shrink-0"
+              style="background:rgba(255,45,120,0.12);color:#FF2D78;border:1px solid rgba(255,45,120,0.35);">
+          <span class="w-1.5 h-1.5 rounded-full" style="background:#FF2D78;box-shadow:0 0 5px #FF2D78;"></span>
+          WK {{ [completed_weeks + 1, total_weeks] | min }} LIVE
+        </span>
+        {% endif %}
         {% if session.get('role') == 'admin' %}
           <a href="/admin" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-red-950/70 border border-red-800/60 text-red-400 hover:bg-red-900/60 hover:text-red-300 transition-all">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
