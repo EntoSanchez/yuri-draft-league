@@ -113,8 +113,7 @@
                     </div>
                     {% if is_tie %}<div class="text-xs text-yellow-600 font-bold mt-0.5">TIE</div>{% endif %}
                   {% else %}
-                    <div class="font-black text-xl text-gray-700 tracking-widest">VS</div>
-                    <div class="text-xs text-gray-800 font-mono">TBD</div>
+                    <div class="font-black text-xl text-gray-700 tracking-widest text-center">VS</div>
                   {% endif %}
                   {# Pokemon sprites #}
                   {% if m.c1_pokemon or m.c2_pokemon %}
@@ -144,17 +143,15 @@
                   </div>
                 </a>
 
-                {# Status badge + stats link #}
+                {# Status badge + stats link (only shown when result exists) #}
+                {% if has_result %}
                 <div class="flex-shrink-0 text-right w-22 ml-1">
-                  {% if has_result %}
-                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
-                    {% if session.get('role') == 'admin' %}
-                    <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:rgba(250,204,21,0.45);">Stats →</a></div>
-                    {% endif %}
-                  {% else %}
-                    <span class="inline-block text-xs font-bold px-2 py-1 rounded-md" style="color:rgba(0,245,255,0.6);background:rgba(0,245,255,0.08);border:1px solid rgba(0,245,255,0.15);">UPCOMING</span>
+                  <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
+                  {% if session.get('role') == 'admin' %}
+                  <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:rgba(250,204,21,0.45);">Stats →</a></div>
                   {% endif %}
                 </div>
+                {% endif %}
 
               </div>
             </div>
