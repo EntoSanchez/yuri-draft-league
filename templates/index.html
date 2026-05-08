@@ -139,80 +139,71 @@
       <span class="text-sm text-gray-600 font-medium">{{ standings | length }} team{% if standings | length != 1 %}s{% endif %}</span>
     </div>
 
-    <div class="rounded-xl border border-gray-800 overflow-hidden" style="background-color:#0f1623;">
-      <div class="overflow-x-auto">
-        <table class="w-full text-base">
-          <thead>
-            <tr class="border-b border-gray-800" style="background-color:#111827;">
-              <th class="px-4 py-4 text-left w-14 text-xs font-bold uppercase tracking-wider text-gray-600">#</th>
-              <th class="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Team</th>
-              <th class="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 hidden sm:table-cell">Coach</th>
-              {% for w in all_weeks %}
-                <th class="px-2 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 w-11">W{{ w }}</th>
-              {% endfor %}
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">W</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">L</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">T</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">Diff</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 hidden lg:table-cell">Record</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in standings %}
-            <tr class="alt-row border-b border-gray-800/50 hover:bg-yellow-400/3 transition-colors group">
-              <td class="px-4 py-4">{{ rank_badge(row.rank) }}</td>
-              <td class="px-4 py-4">
-                <a href="/team/{{ row.coach.id }}" class="flex items-center gap-3 group-hover:text-yellow-400 transition-colors">
-                  {% if row.coach.logo_url %}
-                    <img src="{{ row.coach.logo_url }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="">
-                  {% else %}
-                    <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background-color:{{ row.coach.color or '#374151' }};">
-                      {{ row.coach.team_name[:2].upper() }}
-                    </div>
-                  {% endif %}
-                  <div>
-                    <div class="font-bold text-white group-hover:text-yellow-400 transition-colors leading-tight">{{ row.coach.team_name }}</div>
-                    <div class="text-xs text-gray-500 sm:hidden">{{ row.coach.coach_name }}</div>
-                  </div>
-                </a>
-              </td>
-              <td class="px-4 py-4 text-sm text-gray-400 hidden sm:table-cell">{{ row.coach.coach_name }}</td>
-              {% for w in all_weeks %}
-                {% set res = row.weeks.get(w, '') %}
-                <td class="px-2 py-4 text-center">
-                  {% if res %}
-                    <span class="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold wk-{{ res }}">{{ res }}</span>
-                  {% else %}
-                    <span class="text-gray-700 text-sm">–</span>
-                  {% endif %}
-                </td>
-              {% endfor %}
-              <td class="px-4 py-4 text-center font-bold text-green-400">{{ row.W }}</td>
-              <td class="px-4 py-4 text-center font-bold text-red-400">{{ row.L }}</td>
-              <td class="px-4 py-4 text-center text-gray-500">{{ row.T }}</td>
-              <td class="px-4 py-4 text-center font-bold
-                {% if row.diff > 0 %}text-green-400
-                {% elif row.diff < 0 %}text-red-400
-                {% else %}text-gray-500{% endif %}">
-                {{ '%+.1f' % row.diff if row.diff != 0 else '—' }}
-              </td>
-              <td class="px-4 py-4 text-center text-gray-400 font-mono text-sm hidden lg:table-cell">
-                {{ row.W }}-{{ row.L }}{% if row.T %}-{{ row.T }}{% endif %}
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="20" class="px-4 py-12 text-center">
-                <p class="text-gray-600 text-sm">No teams in Pool {{ pool_label }} yet.</p>
-                {% if session.get('role') == 'admin' %}
-                  <a href="/admin/teams" class="mt-2 inline-block text-xs text-yellow-500 hover:text-yellow-400">Add teams in Admin &rarr;</a>
-                {% endif %}
-              </td>
-            </tr>
+    <div class="space-y-2">
+      {% for row in standings %}
+      {% set total_games = row.W + row.L + row.T %}
+      {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
+      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-yellow-500/30 transition-all no-underline" style="text-decoration:none;">
+        {# Rank #}
+        <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
+
+        {# Logo #}
+        <div class="flex-shrink-0">
+          {% if row.coach.logo_url %}
+            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg" alt="">
+          {% else %}
+            <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
+          {% endif %}
+        </div>
+
+        {# Team + coach + weekly results #}
+        <div class="flex-1 min-w-0">
+          <div class="font-black text-white text-sm leading-tight truncate">{{ row.coach.team_name }}</div>
+          <div class="text-xs text-gray-500 mb-1">{{ row.coach.coach_name }}</div>
+          <div class="flex gap-0.5 flex-wrap">
+            {% for w in all_weeks %}
+              {% set res = row.weeks.get(w, '') %}
+              {% if res %}
+                <span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold wk-{{ res }}">{{ res[0] }}</span>
+              {% else %}
+                <span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] text-gray-700">–</span>
+              {% endif %}
             {% endfor %}
-          </tbody>
-        </table>
+          </div>
+        </div>
+
+        {# Record + win-rate bar #}
+        <div class="flex-shrink-0 text-right" style="min-width:110px;">
+          <div class="font-black text-base font-mono text-white leading-tight">
+            <span class="text-green-400">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
+            <span class="mx-0.5 text-gray-600">·</span>
+            <span class="text-red-400">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
+            {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
+          </div>
+          {% if total_games > 0 %}
+          <div class="mt-1.5 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
+            <div class="h-full rounded-full" style="width:{{ win_pct }}%;background:{{ row.coach.color or '#facc15' }};"></div>
+          </div>
+          <div class="text-xs font-mono mt-0.5" style="color:rgba(255,255,255,0.2);">{{ win_pct }}%</div>
+          {% endif %}
+        </div>
+
+        {# Diff #}
+        <div class="flex-shrink-0 text-right w-12 hidden sm:block">
+          <div class="text-sm font-bold font-mono {% if row.diff > 0 %}text-green-400{% elif row.diff < 0 %}text-red-400{% else %}text-gray-600{% endif %}">
+            {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
+          </div>
+          <div class="text-xs font-mono text-gray-700">DIFF</div>
+        </div>
+      </a>
+      {% else %}
+      <div class="cp-card px-5 py-10 text-center">
+        <p class="text-gray-600 text-sm">No teams in Pool {{ pool_label }} yet.</p>
+        {% if session.get('role') == 'admin' %}
+          <a href="/admin/teams" class="mt-2 inline-block text-xs text-yellow-500 hover:text-yellow-400">Add teams in Admin &rarr;</a>
+        {% endif %}
       </div>
+      {% endfor %}
     </div>
   </div>
   {% endmacro %}
@@ -222,63 +213,54 @@
     <p class="text-xs font-bold uppercase tracking-widest font-mono" style="color:rgba(0,245,255,0.4);">// THE REST · RANKS 04–{{ standings_all | length }}</p>
     <div class="flex-1 h-px" style="background:linear-gradient(90deg,rgba(0,245,255,0.1),transparent);"></div>
   </div>
-  {# ── Overall standings ── #}
+  {# ── Overall standings card-list ── #}
   <div class="mb-10">
     <div class="flex items-center gap-3 mb-4">
       <div class="w-1.5 h-7 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
       <h2 class="text-xl font-bold text-white">Overall Standings</h2>
       <span class="text-sm text-gray-600 font-medium">All pools combined</span>
     </div>
-    <div class="rounded-xl border border-gray-800 overflow-hidden" style="background-color:#0f1623;">
-      <div class="overflow-x-auto">
-        <table class="w-full text-base">
-          <thead>
-            <tr class="border-b border-gray-800" style="background-color:#111827;">
-              <th class="px-4 py-4 text-left w-14 text-xs font-bold uppercase tracking-wider text-gray-600">#</th>
-              <th class="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Team</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 w-14">Pool</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">W</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">L</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">T</th>
-              <th class="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600">Diff</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in standings_all %}
-            <tr class="alt-row border-b border-gray-800/50 hover:bg-yellow-400/3 transition-colors group">
-              <td class="px-4 py-4">{{ rank_badge(row.rank) }}</td>
-              <td class="px-4 py-4">
-                <a href="/team/{{ row.coach.id }}" class="flex items-center gap-3 group-hover:text-yellow-400 transition-colors">
-                  {% if row.coach.logo_url %}
-                    <img src="{{ row.coach.logo_url }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="">
-                  {% else %}
-                    <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background-color:{{ row.coach.color or '#374151' }};">
-                      {{ row.coach.team_name[:2].upper() }}
-                    </div>
-                  {% endif %}
-                  <div>
-                    <div class="font-bold text-white group-hover:text-yellow-400 transition-colors leading-tight">{{ row.coach.team_name }}</div>
-                    <div class="text-xs text-gray-500">{{ row.coach.coach_name }}</div>
-                  </div>
-                </a>
-              </td>
-              <td class="px-4 py-4 text-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded text-sm font-bold" style="background:rgba(250,204,21,0.1);color:#facc15;">{{ row.coach.pool }}</span>
-              </td>
-              <td class="px-4 py-4 text-center font-bold text-green-400">{{ row.W }}</td>
-              <td class="px-4 py-4 text-center font-bold text-red-400">{{ row.L }}</td>
-              <td class="px-4 py-4 text-center text-gray-500">{{ row.T }}</td>
-              <td class="px-4 py-4 text-center font-bold
-                {% if row.diff > 0 %}text-green-400
-                {% elif row.diff < 0 %}text-red-400
-                {% else %}text-gray-500{% endif %}">
-                {{ '%+.1f' % row.diff if row.diff != 0 else '—' }}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="space-y-2">
+      {% for row in standings_all %}
+      {% set total_games = row.W + row.L + row.T %}
+      {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
+      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-yellow-500/30 transition-all no-underline" style="text-decoration:none;">
+        <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
+        <div class="flex-shrink-0">
+          {% if row.coach.logo_url %}
+            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg" alt="">
+          {% else %}
+            <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-black text-white text-sm leading-tight truncate">{{ row.coach.team_name }}</div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-xs text-gray-500">{{ row.coach.coach_name }}</span>
+            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:rgba(250,204,21,0.1);color:#facc15;">{{ row.coach.pool }}</span>
+          </div>
+        </div>
+        <div class="flex-shrink-0 text-right" style="min-width:110px;">
+          <div class="font-black text-base font-mono text-white leading-tight">
+            <span class="text-green-400">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
+            <span class="mx-0.5 text-gray-600">·</span>
+            <span class="text-red-400">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
+            {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
+          </div>
+          {% if total_games > 0 %}
+          <div class="mt-1.5 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
+            <div class="h-full rounded-full" style="width:{{ win_pct }}%;background:{{ row.coach.color or '#facc15' }};"></div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="flex-shrink-0 text-right w-12 hidden sm:block">
+          <div class="text-sm font-bold font-mono {% if row.diff > 0 %}text-green-400{% elif row.diff < 0 %}text-red-400{% else %}text-gray-600{% endif %}">
+            {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
+          </div>
+          <div class="text-xs font-mono text-gray-700">DIFF</div>
+        </div>
+      </a>
+      {% endfor %}
     </div>
   </div>
   {% endif %}

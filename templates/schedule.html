@@ -56,8 +56,8 @@
           <span class="text-xs text-gray-700 font-medium">{{ matches | length }} match{% if matches | length != 1 %}es{% endif %}</span>
         </div>
 
-        <!-- Match Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Match Rows -->
+        <div class="space-y-2">
           {% for m in matches %}
             {% set s1 = m.score1 %}
             {% set s2 = m.score2 %}
@@ -67,107 +67,94 @@
               {% set is_tie = s1 == s2 %}
             {% endif %}
 
-            {# ── Scoreboard card ── #}
-            <div class="rounded-xl overflow-hidden card-hover glass-card" style="border:1px solid rgba(255,255,255,0.06);">
+            {# ── Broadcast-style horizontal match row ── #}
+            <div class="cp-card" style="border-radius:14px;">
 
-              {# Top color bar split by team colors #}
-              <div class="h-1 flex">
-                <div class="flex-1" style="background:{{ m.c1_color or '#374151' }};opacity:0.8;"></div>
-                <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.8;"></div>
+              {# Top color bar #}
+              <div class="h-1 overflow-hidden flex" style="border-radius:14px 14px 0 0;">
+                <div class="flex-1" style="background:{{ m.c1_color or '#374151' }};opacity:0.75;"></div>
+                <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.75;"></div>
               </div>
 
-              {# Header row #}
-              <div class="flex items-center justify-between px-4 py-2" style="background:rgba(0,0,0,0.3);">
-                <span class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.2);">WK {{ '%02d'|format(week) }} · {{ m.pool }}</span>
-                {% if has_result %}
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-black px-2 py-0.5 rounded-full
-                      {% if is_tie %}text-yellow-400 bg-yellow-400/10{% else %}text-green-400 bg-green-400/10{% endif %}">
-                      FINAL
-                    </span>
-                    <a href="/admin/match_stats/{{ m.id }}" class="text-xs text-yellow-500/60 hover:text-yellow-400 font-semibold transition-colors">Stats &rarr;</a>
-                  </div>
-                {% else %}
-                  <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="color:rgba(0,245,255,0.6);background:rgba(0,245,255,0.08);">UPCOMING</span>
-                {% endif %}
-              </div>
+              {# Row body #}
+              <div class="flex items-center px-4 py-3 gap-3">
 
-              {# Main scoreboard body #}
-              <div class="flex items-stretch">
+                {# WK / Pool label #}
+                <div class="flex-shrink-0 w-14 text-left">
+                  <div class="text-xs font-black font-mono" style="color:rgba(0,245,255,0.35);">WK{{ '%02d'|format(week) }}</div>
+                  <div class="text-xs font-mono text-gray-700">{{ m.pool }}</div>
+                </div>
 
-                {# Team 1 side #}
+                {# Team 1 — right-aligned, logo on right #}
                 <a href="/team/{{ m.coach1_id }}"
-                   class="flex-1 min-w-0 flex flex-col items-center justify-center gap-2 px-3 py-4 transition-colors hover:bg-white/5
-                     {% if has_result and not c1_win and not is_tie %}opacity-50{% endif %}">
-                  {% if m.c1_logo %}
-                    <img src="{{ m.c1_logo }}" class="w-14 h-14 object-contain rounded-xl" alt=""
-                         onerror="this.style.display='none'">
-                  {% else %}
-                    <div class="w-14 h-14 rounded-xl flex items-center justify-center text-sm font-black text-white"
-                         style="background:{{ m.c1_color or '#374151' }};">{{ m.c1_team[:2].upper() }}</div>
-                  {% endif %}
-                  <div>
-                    <div class="font-black text-sm text-center truncate
-                      {% if has_result %}{% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}
-                      {% else %}text-white{% endif %}">{{ m.c1_team }}</div>
-                    <div class="text-xs text-gray-600 text-center truncate">{{ m.c1_name }}</div>
+                   class="flex items-center gap-3 flex-1 min-w-0 justify-end hover:opacity-90 transition-opacity
+                     {% if has_result and not c1_win and not is_tie %}opacity-35{% endif %}"
+                   style="text-decoration:none;">
+                  <div class="text-right min-w-0">
+                    <div class="font-black text-sm leading-tight truncate
+                      {% if has_result %}{% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}{% else %}text-white{% endif %}">{{ m.c1_team }}</div>
+                    <div class="text-xs text-gray-600 truncate">{{ m.c1_name }}</div>
+                    {% if has_result and c1_win %}<div class="text-xs font-bold text-green-400">▲ WIN</div>{% endif %}
                   </div>
-                  {% if has_result and c1_win %}<span class="text-xs font-bold text-green-400">▲ WIN</span>{% endif %}
+                  {% if m.c1_logo %}
+                    <img src="{{ m.c1_logo }}" class="w-11 h-11 object-contain rounded-lg flex-shrink-0" alt="" onerror="this.style.display='none'">
+                  {% else %}
+                    <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background:{{ m.c1_color or '#374151' }};">{{ m.c1_team[:2].upper() }}</div>
+                  {% endif %}
                 </a>
 
-                {# Center score #}
-                <div class="flex flex-col items-center justify-center px-2 py-4 flex-shrink-0" style="min-width:90px;background:rgba(0,0,0,0.2);">
+                {# Center score / VS #}
+                <div class="flex flex-col items-center flex-shrink-0" style="min-width:88px;">
                   {% if has_result %}
                     <div class="flex items-center gap-1.5">
-                      <span class="font-black text-3xl tabular-nums
-                        {% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">
-                        {{ s1 | int }}
-                      </span>
-                      <span class="text-gray-700 font-bold text-base">:</span>
-                      <span class="font-black text-3xl tabular-nums
-                        {% if not c1_win and not is_tie %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">
-                        {{ s2 | int }}
-                      </span>
+                      <span class="font-black text-2xl tabular-nums {% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">{{ s1 | int }}</span>
+                      <span class="text-gray-700 font-bold">:</span>
+                      <span class="font-black text-2xl tabular-nums {% if not c1_win and not is_tie %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">{{ s2 | int }}</span>
                     </div>
-                    {% if is_tie %}<div class="text-xs text-yellow-500/60 font-bold uppercase tracking-wider mt-1">Tie</div>{% endif %}
+                    {% if is_tie %}<div class="text-xs text-yellow-600 font-bold mt-0.5">TIE</div>{% endif %}
                   {% else %}
                     <div class="font-black text-xl text-gray-700 tracking-widest">VS</div>
-                    <div class="text-xs text-gray-800 mt-1 font-medium">TBD</div>
+                    <div class="text-xs text-gray-800 font-mono">TBD</div>
                   {% endif %}
-
-                  {# Pokemon used row #}
+                  {# Pokemon sprites #}
                   {% if m.c1_pokemon or m.c2_pokemon %}
-                  <div class="mt-3 pt-2 border-t border-gray-800/60 w-full">
-                    <div class="flex justify-center gap-0.5 flex-wrap">
-                      {% for pname in (m.c1_pokemon + m.c2_pokemon)[:8] %}
-                      <img src="{{ pokemon_sprite_url(pname) }}"
-                           onerror="this.src='{{ pokemon_static_sprite_url(pname) }}';this.onerror=null;"
-                           title="{{ pname }}" class="w-6 h-6 object-contain" style="image-rendering:pixelated;">
-                      {% endfor %}
-                    </div>
+                  <div class="mt-1 flex gap-0.5 flex-wrap justify-center">
+                    {% for pname in (m.c1_pokemon + m.c2_pokemon)[:6] %}
+                    <img src="{{ pokemon_sprite_url(pname) }}" onerror="this.src='{{ pokemon_static_sprite_url(pname) }}';this.onerror=null;" title="{{ pname }}" class="w-5 h-5 object-contain" style="image-rendering:pixelated;">
+                    {% endfor %}
                   </div>
                   {% endif %}
                 </div>
 
-                {# Team 2 side #}
+                {# Team 2 — left-aligned, logo on left #}
                 <a href="/team/{{ m.coach2_id }}"
-                   class="flex-1 min-w-0 flex flex-col items-center justify-center gap-2 px-3 py-4 transition-colors hover:bg-white/5
-                     {% if has_result and c1_win and not is_tie %}opacity-50{% endif %}">
+                   class="flex items-center gap-3 flex-1 min-w-0 hover:opacity-90 transition-opacity
+                     {% if has_result and c1_win and not is_tie %}opacity-35{% endif %}"
+                   style="text-decoration:none;">
                   {% if m.c2_logo %}
-                    <img src="{{ m.c2_logo }}" class="w-14 h-14 object-contain rounded-xl" alt=""
-                         onerror="this.style.display='none'">
+                    <img src="{{ m.c2_logo }}" class="w-11 h-11 object-contain rounded-lg flex-shrink-0" alt="" onerror="this.style.display='none'">
                   {% else %}
-                    <div class="w-14 h-14 rounded-xl flex items-center justify-center text-sm font-black text-white"
-                         style="background:{{ m.c2_color or '#374151' }};">{{ m.c2_team[:2].upper() }}</div>
+                    <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background:{{ m.c2_color or '#374151' }};">{{ m.c2_team[:2].upper() }}</div>
                   {% endif %}
-                  <div>
-                    <div class="font-black text-sm text-center truncate
-                      {% if has_result %}{% if not c1_win and not is_tie %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}
-                      {% else %}text-white{% endif %}">{{ m.c2_team }}</div>
-                    <div class="text-xs text-gray-600 text-center truncate">{{ m.c2_name }}</div>
+                  <div class="min-w-0">
+                    <div class="font-black text-sm leading-tight truncate
+                      {% if has_result %}{% if not c1_win and not is_tie %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}{% else %}text-white{% endif %}">{{ m.c2_team }}</div>
+                    <div class="text-xs text-gray-600 truncate">{{ m.c2_name }}</div>
+                    {% if has_result and not c1_win and not is_tie %}<div class="text-xs font-bold text-green-400">▲ WIN</div>{% endif %}
                   </div>
-                  {% if has_result and not c1_win and not is_tie %}<span class="text-xs font-bold text-green-400">▲ WIN</span>{% endif %}
                 </a>
+
+                {# Status badge + stats link #}
+                <div class="flex-shrink-0 text-right w-22 ml-1">
+                  {% if has_result %}
+                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
+                    {% if session.get('role') == 'admin' %}
+                    <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:rgba(250,204,21,0.45);">Stats →</a></div>
+                    {% endif %}
+                  {% else %}
+                    <span class="inline-block text-xs font-bold px-2 py-1 rounded-md" style="color:rgba(0,245,255,0.6);background:rgba(0,245,255,0.08);border:1px solid rgba(0,245,255,0.15);">UPCOMING</span>
+                  {% endif %}
+                </div>
 
               </div>
             </div>
