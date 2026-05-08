@@ -17,7 +17,7 @@
   /* ═══ HERO ═══ */
   .home-hero {
     position: relative;
-    min-height: 520px;
+    min-height: 620px;
     display: flex; flex-direction: row;
     align-items: stretch;
     overflow: hidden;
@@ -49,40 +49,58 @@
     to   { transform: translateY(44px); }
   }
 
-  /* ── Logo rows ── */
+  /* ── Logo marquee rows ── */
   .logo-row {
     position: absolute; left: 0; right: 0;
-    display: flex; align-items: center; gap: 20px;
-    pointer-events: none; z-index: 1;
-    padding: 10px 16px;
     overflow: hidden;
+    pointer-events: none; z-index: 1;
+    padding: 6px 0;
+    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
   }
-  .logo-row-top  { top: 0; }
-  .logo-row-mid  { top: 50%; transform: translateY(-50%); }
+  .logo-row-top { top: 16px; }
+  .logo-row-bot { bottom: 16px; }
+  .logo-inner {
+    display: inline-flex; align-items: center; gap: 24px;
+    white-space: nowrap;
+    animation: logoScrollL 50s linear infinite;
+  }
+  .logo-row-bot .logo-inner {
+    animation: logoScrollR 50s linear infinite;
+  }
+  @keyframes logoScrollL {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  @keyframes logoScrollR {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+  }
   .logo-row .logo-item {
-    width: 50px; height: 50px; border-radius: 50%;
+    width: 52px; height: 52px; border-radius: 50%;
     object-fit: contain; flex-shrink: 0;
-    opacity: 0.35; filter: saturate(0.4);
+    opacity: 0.3; filter: saturate(0.3);
+    display: inline-block;
   }
   .logo-row .logo-swatch-item {
-    width: 50px; height: 50px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
     font-size: 0.55rem; font-weight: 900; color: #fff;
-    flex-shrink: 0; opacity: 0.3;
+    flex-shrink: 0; opacity: 0.25;
   }
 
   /* ── Hero left panel ── */
   .hero-left {
     flex: 0 0 48%;
     display: flex; flex-direction: column; justify-content: center;
-    padding: 4rem 2rem 4rem 4rem;
+    padding: 5.5rem 2rem 5.5rem 4.5rem;
     position: relative; z-index: 2;
   }
   @media (max-width: 768px) {
     .home-hero { flex-direction: column; min-height: auto; }
-    .hero-left  { flex: none; padding: 2.5rem 1.5rem 1.5rem; }
-    .hero-right { flex: none; padding: 0 1.5rem 2rem; min-height: 240px; }
-    .logo-row-mid { display: none; }
+    .hero-left  { flex: none; padding: 4rem 1.5rem 2rem; }
+    .hero-right { flex: none; padding: 0 1.5rem 3rem; min-height: 240px; }
+    .logo-row-bot { display: none; }
   }
 
   /* ── Hero right panel ── */
@@ -590,40 +608,44 @@
 <section class="home-hero" id="hero">
   <div class="hero-grid"></div>
 
-  <!-- Top logo row -->
+  <!-- Top logo row (scrolls left) -->
   <div class="logo-row logo-row-top">
-    {% for c in nav_coaches %}
-      {% if c.logo_url %}
-        <img src="{{ c.logo_url }}" class="logo-item" alt="">
-      {% else %}
-        <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-      {% endif %}
-    {% endfor %}
-    {% for c in nav_coaches %}
-      {% if c.logo_url %}
-        <img src="{{ c.logo_url }}" class="logo-item" alt="">
-      {% else %}
-        <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-      {% endif %}
-    {% endfor %}
+    <div class="logo-inner">
+      {% for c in nav_coaches %}
+        {% if c.logo_url %}
+          <img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}
+          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
+        {% endif %}
+      {% endfor %}
+      {% for c in nav_coaches %}
+        {% if c.logo_url %}
+          <img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}
+          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
   </div>
 
-  <!-- Mid logo row -->
-  <div class="logo-row logo-row-mid">
-    {% for c in nav_coaches | reverse %}
-      {% if c.logo_url %}
-        <img src="{{ c.logo_url }}" class="logo-item" alt="">
-      {% else %}
-        <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-      {% endif %}
-    {% endfor %}
-    {% for c in nav_coaches | reverse %}
-      {% if c.logo_url %}
-        <img src="{{ c.logo_url }}" class="logo-item" alt="">
-      {% else %}
-        <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-      {% endif %}
-    {% endfor %}
+  <!-- Bottom logo row (scrolls right) -->
+  <div class="logo-row logo-row-bot">
+    <div class="logo-inner">
+      {% for c in nav_coaches | reverse %}
+        {% if c.logo_url %}
+          <img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}
+          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
+        {% endif %}
+      {% endfor %}
+      {% for c in nav_coaches | reverse %}
+        {% if c.logo_url %}
+          <img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}
+          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
   </div>
 
   <!-- Hero Left -->
