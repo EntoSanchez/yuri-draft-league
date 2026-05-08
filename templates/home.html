@@ -17,9 +17,7 @@
   /* ═══ HERO ═══ */
   .home-hero {
     position: relative;
-    min-height: 620px;
-    display: flex; flex-direction: row;
-    align-items: stretch;
+    display: flex; flex-direction: column;
     overflow: hidden;
     background: var(--bg);
   }
@@ -49,24 +47,24 @@
     to   { transform: translateY(44px); }
   }
 
-  /* ── Logo marquee rows ── */
-  .logo-row {
-    position: absolute; left: 0; right: 0;
+  /* ── Logo marquee bands ── */
+  .logo-band {
+    flex-shrink: 0;
+    height: 88px;
     overflow: hidden;
-    pointer-events: none; z-index: 1;
-    padding: 6px 0;
-    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    position: relative; z-index: 2;
+    display: flex; align-items: center;
+    pointer-events: none;
+    mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   }
-  .logo-row-top { top: 16px; }
-  .logo-row-bot { bottom: 16px; }
   .logo-inner {
-    display: inline-flex; align-items: center; gap: 24px;
-    white-space: nowrap;
-    animation: logoScrollL 50s linear infinite;
+    display: inline-flex; align-items: center; gap: 28px;
+    white-space: nowrap; flex-shrink: 0;
+    animation: logoScrollL 45s linear infinite;
   }
-  .logo-row-bot .logo-inner {
-    animation: logoScrollR 50s linear infinite;
+  .logo-band-bot .logo-inner {
+    animation: logoScrollR 45s linear infinite;
   }
   @keyframes logoScrollL {
     from { transform: translateX(0); }
@@ -76,39 +74,46 @@
     from { transform: translateX(-50%); }
     to   { transform: translateX(0); }
   }
-  .logo-row .logo-item {
-    width: 52px; height: 52px; border-radius: 50%;
+  .logo-band .logo-item {
+    width: 72px; height: 72px; border-radius: 50%;
     object-fit: contain; flex-shrink: 0;
-    opacity: 0.3; filter: saturate(0.3);
+    opacity: 0.35; filter: saturate(0.25);
     display: inline-block;
   }
-  .logo-row .logo-swatch-item {
-    width: 52px; height: 52px; border-radius: 50%;
+  .logo-band .logo-swatch-item {
+    width: 72px; height: 72px; border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: 0.55rem; font-weight: 900; color: #fff;
+    font-size: 0.65rem; font-weight: 900; color: #fff;
     flex-shrink: 0; opacity: 0.25;
+  }
+
+  /* ── Hero body (between the two logo bands) ── */
+  .hero-body {
+    flex: 1;
+    display: flex; flex-direction: row;
+    align-items: center;
+    position: relative; z-index: 2;
+    min-height: 380px;
   }
 
   /* ── Hero left panel ── */
   .hero-left {
-    flex: 0 0 48%;
+    flex: 0 0 50%;
     display: flex; flex-direction: column; justify-content: center;
-    padding: 5.5rem 2rem 5.5rem 4.5rem;
-    position: relative; z-index: 2;
+    padding: 2.5rem 2rem 2.5rem 4.5rem;
   }
   @media (max-width: 768px) {
-    .home-hero { flex-direction: column; min-height: auto; }
-    .hero-left  { flex: none; padding: 4rem 1.5rem 2rem; }
-    .hero-right { flex: none; padding: 0 1.5rem 3rem; min-height: 240px; }
-    .logo-row-bot { display: none; }
+    .hero-body { flex-direction: column; }
+    .hero-left  { flex: none; padding: 2rem 1.5rem 1rem; }
+    .hero-right { flex: none; padding: 0 1.5rem 1.5rem; min-height: 220px; }
+    .logo-band-bot { display: none; }
   }
 
   /* ── Hero right panel ── */
   .hero-right {
     flex: 1;
     display: flex; align-items: center; justify-content: center;
-    position: relative; z-index: 2;
-    padding: 1.5rem;
+    padding: 1.5rem 3rem 1.5rem 1rem;
   }
   .hero-logo-img {
     max-height: 420px; max-width: 100%;
@@ -399,7 +404,7 @@
     pointer-events: none;
   }
   .stat-item {
-    text-align: left; padding: 1.6rem 2rem;
+    text-align: left; padding: 1.2rem 2rem;
     position: relative;
   }
   .stat-item + .stat-item::before {
@@ -608,109 +613,115 @@
 <section class="home-hero" id="hero">
   <div class="hero-grid"></div>
 
-  <!-- Top logo row (scrolls left) -->
-  <div class="logo-row logo-row-top">
+  <!-- ① Top logo band (scrolls left) -->
+  <div class="logo-band logo-band-top">
     <div class="logo-inner">
       {% for c in nav_coaches %}
-        {% if c.logo_url %}
-          <img src="{{ c.logo_url }}" class="logo-item" alt="">
-        {% else %}
-          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-        {% endif %}
+        {% if c.logo_url %}<img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}<div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>{% endif %}
       {% endfor %}
       {% for c in nav_coaches %}
-        {% if c.logo_url %}
-          <img src="{{ c.logo_url }}" class="logo-item" alt="">
-        {% else %}
-          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-        {% endif %}
+        {% if c.logo_url %}<img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}<div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>{% endif %}
       {% endfor %}
     </div>
   </div>
 
-  <!-- Bottom logo row (scrolls right) -->
-  <div class="logo-row logo-row-bot">
-    <div class="logo-inner">
-      {% for c in nav_coaches | reverse %}
-        {% if c.logo_url %}
-          <img src="{{ c.logo_url }}" class="logo-item" alt="">
-        {% else %}
-          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
+  <!-- ② Hero body: title left, shield right -->
+  <div class="hero-body">
+    <div class="hero-left">
+      <!-- Badges -->
+      <div class="hero-badges">
+        <span class="badge-live">
+          <span style="width:6px;height:6px;border-radius:50%;background:#FF2D78;box-shadow:0 0 6px #FF2D78;animation:livePulse 1.6s ease-in-out infinite;display:inline-block;"></span>
+          ON AIR
+        </span>
+        {% if season %}<span class="badge-pill">{{ season.name | upper }}</span>{% endif %}
+        {% if total_weeks > 0 %}
+        <span class="badge-pill">WK {{ '%02d' % ([completed_weeks + 1, total_weeks] | min) }} / {{ '%02d' % total_weeks }}</span>
         {% endif %}
-      {% endfor %}
-      {% for c in nav_coaches | reverse %}
-        {% if c.logo_url %}
-          <img src="{{ c.logo_url }}" class="logo-item" alt="">
-        {% else %}
-          <div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  </div>
+      </div>
 
-  <!-- Hero Left -->
-  <div class="hero-left">
-    <!-- Badges -->
-    <div class="hero-badges">
-      <span class="badge-live">
-        <span style="width:6px;height:6px;border-radius:50%;background:#FF2D78;box-shadow:0 0 6px #FF2D78;animation:livePulse 1.6s ease-in-out infinite;display:inline-block;"></span>
-        ON AIR
-      </span>
-      {% if season %}<span class="badge-pill">{{ season.name | upper }}</span>{% endif %}
-      {% if total_weeks > 0 %}
-      <span class="badge-pill">WK {{ '%02d' % ([completed_weeks + 1, total_weeks] | min) }} / {{ '%02d' % total_weeks }}</span>
-      {% endif %}
-    </div>
-
-    <!-- Title: two lines -->
-    {% set words = league_name.split() %}
-    {% if words | length >= 3 %}
-      {% set line1 = words[:2] | join(' ') %}
-      {% set line2 = words[2:] | join(' ') %}
-    {% else %}
-      {% set line1 = league_name %}
-      {% set line2 = '' %}
-    {% endif %}
-    <span class="hero-title-l1">{{ line1 }}</span>
-    {% if line2 %}<span class="hero-title-l2">{{ line2 }}</span>{% endif %}
-
-    <!-- Subtitle -->
-    <p class="hero-sub-text">
-      {% if total_weeks > 0 and total_teams > 0 %}
-        {{ total_teams }} coaches. {{ total_weeks }} weeks. One trophy. Draft, battle, climb the ranks.
+      <!-- Title: two lines -->
+      {% set words = league_name.split() %}
+      {% if words | length >= 3 %}
+        {% set line1 = words[:2] | join(' ') %}
+        {% set line2 = words[2:] | join(' ') %}
       {% else %}
-        Pokémon Draft League — compete, draft, and climb the ranks.
+        {% set line1 = league_name %}
+        {% set line2 = '' %}
       {% endif %}
-    </p>
+      <span class="hero-title-l1">{{ line1 }}</span>
+      {% if line2 %}<span class="hero-title-l2">{{ line2 }}</span>{% endif %}
 
-    <!-- CTAs -->
-    <div class="hero-ctas">
-      <a href="/standings" class="btn-pm" style="text-transform:uppercase;letter-spacing:0.06em;">Standings →</a>
-      <a href="/schedule" class="btn-sc" style="background:rgba(0,245,255,0.1);color:#00F5FF;border-color:rgba(0,245,255,0.4);text-transform:uppercase;letter-spacing:0.06em;">Live Schedule</a>
-      <a href="/pickems" class="btn-ghost" style="text-transform:uppercase;letter-spacing:0.06em;">Make Picks</a>
+      <!-- Subtitle -->
+      <p class="hero-sub-text">
+        {% if total_weeks > 0 and total_teams > 0 %}
+          {{ total_teams }} coaches. {{ total_weeks }} weeks. One trophy. Draft, battle, climb the ranks.
+        {% else %}
+          Pokémon Draft League — compete, draft, and climb the ranks.
+        {% endif %}
+      </p>
+
+      <!-- CTAs -->
+      <div class="hero-ctas">
+        <a href="/standings" class="btn-pm" style="text-transform:uppercase;letter-spacing:0.06em;">Standings →</a>
+        <a href="/schedule" class="btn-sc" style="background:rgba(0,245,255,0.1);color:#00F5FF;border-color:rgba(0,245,255,0.4);text-transform:uppercase;letter-spacing:0.06em;">Live Schedule</a>
+        <a href="/pickems" class="btn-ghost" style="text-transform:uppercase;letter-spacing:0.06em;">Make Picks</a>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <img src="/static/league-logo.jpeg" alt="{{ league_name }}" class="hero-logo-img">
     </div>
   </div>
 
-  <!-- Hero Right: league logo -->
-  <div class="hero-right">
-    <img src="/static/league-logo.jpeg" alt="{{ league_name }}" class="hero-logo-img">
+  <!-- ③ Bottom logo band (scrolls right) -->
+  <div class="logo-band logo-band-bot">
+    <div class="logo-inner">
+      {% for c in nav_coaches | reverse %}
+        {% if c.logo_url %}<img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}<div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>{% endif %}
+      {% endfor %}
+      {% for c in nav_coaches | reverse %}
+        {% if c.logo_url %}<img src="{{ c.logo_url }}" class="logo-item" alt="">
+        {% else %}<div class="logo-swatch-item" style="background:{{ c.color or '#374151' }};">{{ c.team_name[:2].upper() }}</div>{% endif %}
+      {% endfor %}
+    </div>
   </div>
+
 </section>
 
 
-{% if recent_results %}
-<!-- ═══════════════════ RESULTS TICKER ═══════════════════ -->
+<!-- ═══════════════════ STANDINGS TICKER ═══════════════════ -->
+{% if top3 or recent_results %}
 <div class="result-ticker">
   <div class="ticker-track">
     <div class="ticker-inner">
-      {% for _ in range(2) %}{% for m in recent_results %}
-      <span class="ticker-match">
-        <span class="ticker-team" style="color:{{ m.c1_color or '#00F5FF' }}">{{ m.t1 }}</span>
-        <span class="ticker-score">{{ m.score1 | int }}–{{ m.score2 | int }}</span>
-        <span class="ticker-team" style="color:{{ m.c2_color or '#FF2D78' }}">{{ m.t2 }}</span>
-      </span>
-      <span class="ticker-sep">✦</span>
-      {% endfor %}{% endfor %}
+      {% for _ in range(2) %}
+        {% if top3 %}
+          {% for i, row in enumerate(top3) %}
+          <span class="ticker-match">
+            <span class="ticker-sep" style="font-size:0.7rem;color:{% if i==0 %}#facc15{% elif i==1 %}#C0C0C0{% else %}#CD7F32{% endif %};">★ {{ ['1ST','2ND','3RD'][i] }}</span>
+            {% if row.coach.logo_url %}<img src="{{ row.coach.logo_url }}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;display:inline-block;vertical-align:middle;margin-right:4px;" alt="">{% endif %}
+            <span class="ticker-team" style="color:{{ row.coach.color or '#ffffff' }}">{{ row.coach.team_name }}</span>
+            <span class="ticker-score">{{ row.W }}–{{ row.L }}</span>
+            <span style="color:rgba(255,255,255,0.3);font-size:0.7rem;">{{ row.coach.coach_name }}</span>
+          </span>
+          <span class="ticker-sep">·</span>
+          {% endfor %}
+        {% endif %}
+        {% if recent_results %}
+          {% for m in recent_results %}
+          <span class="ticker-match">
+            <span class="ticker-team" style="color:{{ m.c1_color or '#00F5FF' }}">{{ m.t1 }}</span>
+            <span class="ticker-score">{{ m.score1 | int }}–{{ m.score2 | int }}</span>
+            <span class="ticker-team" style="color:{{ m.c2_color or '#FF2D78' }}">{{ m.t2 }}</span>
+          </span>
+          <span class="ticker-sep">✦</span>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
     </div>
   </div>
 </div>
@@ -720,7 +731,7 @@
 
   <!-- ═══════════════════ STATS STRIP ═══════════════════ -->
   <div class="stats-strip">
-    <div class="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4">
+    <div class="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4">
       <div class="stat-item">
         <div class="stat-label">TEAMS</div>
         <div class="stat-num" style="color:var(--sc);" data-count="{{ total_teams }}">0</div>
@@ -733,71 +744,23 @@
       </div>
       <div class="stat-item">
         <div class="stat-label">MATCHES</div>
-        <div class="stat-num" style="color:var(--pm);" data-count="{{ completed_matches }}">0</div>
+        <div class="stat-num" style="color:var(--pm);">
+          <span data-count="{{ completed_matches }}">0</span><span style="font-size:1.4rem;opacity:0.35;"> / {{ total_matches if total_matches is defined else '?' }}</span>
+        </div>
         <div class="stat-sublabel">PLAYED</div>
       </div>
       <div class="stat-item">
         <div class="stat-label">SEASON</div>
-        <div class="stat-num">{{ ((completed_weeks / total_weeks * 100) | round(0) | int) if total_weeks > 0 else 0 }}<span style="font-size:1.4rem;opacity:0.4;">%</span></div>
+        <div class="stat-num">{{ ((completed_weeks / total_weeks * 100) | round(0) | int) if total_weeks > 0 else 0 }}<span style="font-size:1.4rem;opacity:0.4;"> %</span></div>
         <div class="stat-sublabel">COMPLETE</div>
       </div>
     </div>
-    {% if total_weeks > 0 %}
-    <div class="max-w-4xl mx-auto px-6 pb-5 reveal">
-      <div class="flex justify-between text-xs mb-1.5" style="color:rgba(255,255,255,0.2);font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">
-        <span>Season Progress</span>
-        <span>{{ ((completed_weeks / total_weeks) * 100) | round(0) | int }}%</span>
-      </div>
-      <div class="season-track">
-        <div class="season-fill" id="season-fill"
-             data-target="{{ ((completed_weeks / total_weeks) * 100) | round(1) }}"></div>
-      </div>
-    </div>
-    {% endif %}
   </div>
-
-  <!-- ═══════════════════ TOP 3 LEADERBOARD ═══════════════════ -->
-  {% if top3 %}
-  <div style="background:var(--sf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {% for row in top3 %}
-        <a href="/team/{{ row.coach.id }}"
-           class="flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all group"
-           style="background:var(--sf2);border-color:{% if loop.index==1 %}rgba(250,204,21,0.3){% elif loop.index==2 %}rgba(192,192,192,0.15){% else %}rgba(205,127,50,0.15){% endif %};text-decoration:none;">
-          <span class="text-xs font-black font-mono flex-shrink-0 w-10 text-center"
-                style="color:{% if loop.index==1 %}#facc15{% elif loop.index==2 %}#C0C0C0{% else %}#CD7F32{% endif %};">
-            ★ {{ loop.index }}{{ ['ST','ND','RD'][loop.index-1] }}
-          </span>
-          {% if row.coach.logo_url %}
-            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg flex-shrink-0" alt="">
-          {% else %}
-            <div class="w-11 h-11 rounded-lg flex items-center justify-center font-black text-white text-xs flex-shrink-0"
-                 style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-          {% endif %}
-          <div class="flex-1 min-w-0">
-            <div class="font-black text-white text-sm truncate group-hover:text-yellow-400 transition-colors">{{ row.coach.team_name }}</div>
-            <div class="text-xs text-gray-600">{{ row.coach.coach_name }}</div>
-          </div>
-          <div class="text-right flex-shrink-0">
-            <div class="text-sm font-black font-mono tabular-nums">
-              <span style="color:#4ade80;">{{ row.W }}</span><span style="color:rgba(255,255,255,0.15);">–</span><span style="color:#f87171;">{{ row.L }}</span>{% if row.T %}<span style="color:rgba(255,255,255,0.15);">–</span><span style="color:#facc15;">{{ row.T }}</span>{% endif %}
-            </div>
-            {% if row.diff %}
-            <div class="text-xs font-bold font-mono" style="color:{{ '#4ade80' if row.diff > 0 else ('#f87171' if row.diff < 0 else 'rgba(255,255,255,0.2)') }};">{{ '%+d' % row.diff|int }}</div>
-            {% endif %}
-          </div>
-        </a>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-  {% endif %}
 
   <!-- ═══════════════════ STANDINGS + RESULTS (two columns) ═══════════════════ -->
   {% if top3 or recent_results %}
   <div class="home-sf">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
         <!-- Left: Current Standings -->
@@ -892,7 +855,7 @@
 
   <!-- ═══════════════════ QUICK NAV ═══════════════════ -->
   <div class="home-sf">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div class="mb-8 reveal">
         <p class="text-xs font-bold font-mono mb-1" style="color:rgba(0,245,255,0.4);">// LEAGUE_HUB</p>
         <h2 class="section-h">Everything in one place</h2>
@@ -912,7 +875,7 @@
 
   <!-- ═══════════════════ FOOTER CTA ═══════════════════ -->
   <div class="footer-cta">
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center reveal">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center reveal">
       <p class="section-eye mb-3">Ready to play?</p>
       <h2 class="section-h mb-2" style="font-size:2.4rem;">Dive into the action</h2>
       <p class="text-sm mb-8" style="color:rgba(255,255,255,0.35);">Everything you need to prep, compete, and win.</p>
