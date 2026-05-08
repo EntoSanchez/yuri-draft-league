@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
   <link rel="icon" type="image/jpeg" href="/static/favicon.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -31,9 +34,19 @@
       --cp-bg:     #040408;
       --cp-sf:     #070B12;
       --cp-sf2:    #0A0F1C;
+      --font-body: 'Space Grotesk', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+      --font-display: 'Rajdhani', 'Bai Jamjuree', system-ui, sans-serif;
     }
 
-    html, body { background-color: var(--cp-bg); }
+    html, body {
+      background-color: var(--cp-bg);
+      font-family: var(--font-body);
+    }
+
+    .font-mono, code, pre, [class*="font-mono"] {
+      font-family: var(--font-mono) !important;
+    }
 
     /* Circuit grid on body */
     body {

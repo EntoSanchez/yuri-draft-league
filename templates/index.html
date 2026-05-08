@@ -218,7 +218,10 @@
   {% endmacro %}
 
   {% if standings_all %}
-  <p class="text-xs font-bold uppercase tracking-widest font-mono mb-6" style="color:rgba(0,245,255,0.4);">// THE REST · RANKS 04–{{ standings_all | length }}</p>
+  <div class="flex items-center gap-3 mb-6">
+    <p class="text-xs font-bold uppercase tracking-widest font-mono" style="color:rgba(0,245,255,0.4);">// THE REST · RANKS 04–{{ standings_all | length }}</p>
+    <div class="flex-1 h-px" style="background:linear-gradient(90deg,rgba(0,245,255,0.1),transparent);"></div>
+  </div>
   {# ── Overall standings ── #}
   <div class="mb-10">
     <div class="flex items-center gap-3 mb-4">

@@ -2,12 +2,13 @@
 {% block title %}Pick'ems — {{ league_name }}{% endblock %}
 {% block content %}
 
-<div class="border-b border-gray-800/60" style="background:linear-gradient(135deg,#0f1623 0%,#080c14 100%);">
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="hero-pattern border-b border-gray-800/60" style="background:linear-gradient(135deg,#0f1623 0%,#080c14 100%);">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(255,45,120,0.5);">// PUBLIC_VOTE</p>
-    <h1 class="text-3xl font-black gradient-heading">Who Ya Got?</h1>
-    <div class="flex flex-wrap items-center gap-4 mt-2">
+    <h1 class="text-3xl font-black gradient-heading">WHO YA GOT?</h1>
+    <div class="flex flex-wrap items-center gap-3 mt-2">
       <span class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.3);">{{ matches|length }} MATCH{% if matches|length != 1 %}ES{% endif %} THIS WEEK</span>
+      <span style="color:rgba(255,255,255,0.15);">·</span>
       <span id="picked-counter" class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.5);">PICKED 0 / {{ matches|length }}</span>
     </div>
   </div>
@@ -143,8 +144,8 @@
   {% if leaderboard %}
   <div class="rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;">
     <div class="px-5 py-3 border-b border-gray-800/60">
-      <h2 class="text-sm font-bold uppercase tracking-widest text-yellow-500/70">Pick'em Leaderboard</h2>
-      <p class="text-xs text-gray-600 mt-0.5">Correct picks on completed matches</p>
+      <p class="text-xs font-bold font-mono mb-0.5" style="color:rgba(0,245,255,0.4);">// PICKEM.LEADERBOARD</p>
+      <p class="text-xs text-gray-600">Correct picks on completed matches</p>
     </div>
     <table class="w-full text-sm">
       <thead>

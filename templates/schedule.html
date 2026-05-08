@@ -5,8 +5,8 @@
 <!-- ── Page Header ── -->
 <div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest text-yellow-500/60 mb-1">Match Results</p>
-    <h1 class="text-3xl font-black gradient-heading">Schedule</h1>
+    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// MATCH.GRID</p>
+    <h1 class="text-3xl font-black gradient-heading">Schedule — {{ league_name }}</h1>
   </div>
 </div>
 
@@ -25,11 +25,18 @@
         {% set is_current = week == current_week %}
         <button onclick="switchWeek({{ week }})"
                 id="tab-{{ week }}"
-                class="week-tab px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5"
+                class="week-tab px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2"
                 style="{% if loop.first %}background:rgba(0,245,255,0.08);border-color:rgba(0,245,255,0.35);color:#00F5FF;{% else %}background-color:#0f1623;border-color:rgba(55,65,81,0.5);color:#6b7280;{% endif %}">
-          WK {{ '%02d'|format(week) }}
-          {% if is_current and not is_complete %}
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" style="box-shadow:0 0 6px #4ade80;"></span>
+          <span class="font-mono">WEEK {{ '%02d'|format(week) }}</span>
+          {% if is_complete %}
+          <span class="text-xs font-bold" style="color:rgba(74,222,128,0.7);">DONE</span>
+          {% elif is_current %}
+          <span class="flex items-center gap-1">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" style="box-shadow:0 0 6px #4ade80;"></span>
+            <span class="text-xs" style="color:rgba(74,222,128,0.7);">LIVE</span>
+          </span>
+          {% else %}
+          <span class="text-xs" style="color:rgba(107,114,128,0.6);">UPCOMING</span>
           {% endif %}
         </button>
       {% endfor %}
