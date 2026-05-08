@@ -76,20 +76,23 @@
                 <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.75;"></div>
               </div>
 
-              {# Row body — center column absolutely positioned at 50% to align with color bar split #}
+              {# Row body
+                 Layout: [WK:68px] [Team1:flex-1] [VS:abs@50%] [Team2:flex-1] [right:68px]
+                 Both side elements are the same width so the two flex-1 columns are
+                 perfectly symmetric around the 50% midpoint, matching the color bar split. #}
               <div class="flex items-center px-4 py-3" style="position:relative;min-height:68px;">
 
-                {# WK / Pool label #}
-                <div class="flex-shrink-0 w-14 text-left">
+                {# Left anchor — WK / Pool label, fixed 68px #}
+                <div class="flex-shrink-0 text-left" style="width:68px;">
                   <div class="text-xs font-black font-mono" style="color:rgba(0,245,255,0.35);">WK{{ '%02d'|format(week) }}</div>
                   <div class="text-xs font-mono text-gray-700">{{ m.pool }}</div>
                 </div>
 
-                {# Team 1 — right-aligned, logo on right; padding-right keeps clear of center #}
+                {# Team 1 — right-aligned toward center; inner padding clears the abs VS box #}
                 <a href="/team/{{ m.coach1_id }}"
                    class="flex items-center gap-3 flex-1 min-w-0 justify-end hover:opacity-90 transition-opacity
                      {% if has_result and not c1_win and not is_tie %}opacity-35{% endif %}"
-                   style="text-decoration:none;padding-right:56px;">
+                   style="text-decoration:none;padding-right:52px;">
                   <div class="text-right min-w-0">
                     <div class="font-black text-sm leading-tight truncate
                       {% if has_result %}{% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}{% else %}text-white{% endif %}">{{ m.c1_team }}</div>
@@ -103,8 +106,8 @@
                   {% endif %}
                 </a>
 
-                {# Center score / VS — absolutely centered at 50% to match color bar split #}
-                <div style="position:absolute;left:50%;transform:translateX(-50%);width:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                {# Center — absolutely at 50% so it always lands on the color bar split #}
+                <div style="position:absolute;left:50%;transform:translateX(-50%);width:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
                   {% if has_result %}
                     <div class="flex items-center gap-1.5">
                       <span class="font-black text-2xl tabular-nums {% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">{{ s1 | int }}</span>
@@ -115,7 +118,6 @@
                   {% else %}
                     <div class="font-black text-xl text-gray-700 tracking-widest">VS</div>
                   {% endif %}
-                  {# Pokemon sprites #}
                   {% if m.c1_pokemon or m.c2_pokemon %}
                   <div class="mt-1 flex gap-0.5 flex-wrap justify-center">
                     {% for pname in (m.c1_pokemon + m.c2_pokemon)[:6] %}
@@ -125,11 +127,11 @@
                   {% endif %}
                 </div>
 
-                {# Team 2 — left-aligned, logo on left; padding-left keeps clear of center #}
+                {# Team 2 — left-aligned from center; inner padding clears the abs VS box #}
                 <a href="/team/{{ m.coach2_id }}"
                    class="flex items-center gap-3 flex-1 min-w-0 hover:opacity-90 transition-opacity
                      {% if has_result and c1_win and not is_tie %}opacity-35{% endif %}"
-                   style="text-decoration:none;padding-left:56px;">
+                   style="text-decoration:none;padding-left:52px;">
                   {% if m.c2_logo %}
                     <img src="{{ m.c2_logo }}" class="w-11 h-11 object-contain rounded-lg flex-shrink-0" alt="" onerror="this.style.display='none'">
                   {% else %}
@@ -143,15 +145,15 @@
                   </div>
                 </a>
 
-                {# Status badge + stats link (only shown when result exists) #}
-                {% if has_result %}
-                <div class="flex-shrink-0 text-right ml-2" style="width:72px;">
-                  <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
-                  {% if session.get('role') == 'admin' %}
-                  <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:rgba(250,204,21,0.45);">Stats →</a></div>
+                {# Right anchor — same 68px as WK label to balance both flex-1 columns #}
+                <div class="flex-shrink-0 text-right" style="width:68px;">
+                  {% if has_result %}
+                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
+                    {% if session.get('role') == 'admin' %}
+                    <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:rgba(250,204,21,0.45);">Stats →</a></div>
+                    {% endif %}
                   {% endif %}
                 </div>
-                {% endif %}
 
               </div>
             </div>
