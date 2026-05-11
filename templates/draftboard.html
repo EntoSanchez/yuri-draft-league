@@ -386,11 +386,13 @@
 </div>
 
 <!-- ── Base stat tooltip ── -->
-<div id="poke-tooltip" style="display:none;position:fixed;z-index:9990;pointer-events:none;width:216px;padding:10px 12px 8px;border-radius:10px;background:#0b1120;border:1px solid rgba(0,245,255,0.2);box-shadow:0 8px 32px rgba(0,0,0,0.75),0 0 0 1px rgba(0,245,255,0.04) inset;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+<div id="poke-tooltip" style="display:none;position:fixed;z-index:9990;pointer-events:none;width:230px;padding:10px 12px 8px;border-radius:10px;background:#0b1120;border:1px solid rgba(0,245,255,0.2);box-shadow:0 8px 32px rgba(0,0,0,0.75),0 0 0 1px rgba(0,245,255,0.04) inset;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
     <span id="ptt-name" style="font-size:0.75rem;font-weight:800;color:#e5e7eb;text-transform:capitalize;letter-spacing:0.01em;"></span>
     <span id="ptt-bst"  style="font-size:0.62rem;font-weight:700;color:rgba(0,245,255,0.55);font-family:monospace;"></span>
   </div>
+  <div id="ptt-types" style="display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap;"></div>
+  <div id="ptt-abilities" style="margin-bottom:6px;display:flex;flex-direction:column;gap:1px;"></div>
   <div style="display:flex;flex-direction:column;gap:4px;">
     {% for stat_key, stat_label, stat_color in [
         ('hp',  'HP',  '#f87171'),
@@ -630,6 +632,13 @@ function selectAbility(a) {
 
 let _listMode = false;
 
+const _typeColors = {
+  normal:'#9ca3af',fire:'#f97316',water:'#3b82f6',electric:'#eab308',grass:'#22c55e',
+  ice:'#67e8f9',fighting:'#dc2626',poison:'#a855f7',ground:'#d97706',flying:'#818cf8',
+  psychic:'#ec4899',bug:'#84cc16',rock:'#92400e',ghost:'#6d28d9',dragon:'#1d4ed8',
+  dark:'#374151',steel:'#6b7280',fairy:'#f9a8d4'
+};
+
 function toggleBoardView() {
   _listMode = !_listMode;
   document.getElementById('boardScrollArea').classList.toggle('hidden', _listMode);
@@ -674,12 +683,7 @@ function buildListView() {
   const emptyEl = document.getElementById('db-empty');
   if (emptyEl) emptyEl.classList.add('hidden');
 
-  const typeColors = {
-    normal:'#9ca3af',fire:'#f97316',water:'#3b82f6',electric:'#eab308',grass:'#22c55e',
-    ice:'#67e8f9',fighting:'#dc2626',poison:'#a855f7',ground:'#d97706',flying:'#818cf8',
-    psychic:'#ec4899',bug:'#84cc16',rock:'#92400e',ghost:'#6d28d9',dragon:'#1d4ed8',
-    dark:'#374151',steel:'#6b7280',fairy:'#f9a8d4'
-  };
+  const typeColors = _typeColors;
 
   lv.innerHTML = groups.map(g => `
     <div class="border-b border-gray-800/60 last:border-0">
@@ -813,6 +817,28 @@ function _showStatTip(poke, e) {
   const raw    = (poke.dataset.name || '').replace(/-/g, ' ');
   if (nameEl) nameEl.textContent = raw.replace(/\b\w/g, c => c.toUpperCase());
   if (bstEl)  bstEl.textContent  = 'BST ' + bst;
+
+  // Types
+  const typesEl = document.getElementById('ptt-types');
+  if (typesEl) {
+    const t1 = (poke.dataset.type1 || '').trim();
+    const t2 = (poke.dataset.type2 || '').trim();
+    typesEl.innerHTML = [t1, t2].filter(Boolean).map(t => {
+      const c = _typeColors[t] || '#6b7280';
+      return `<span style="font-size:0.58rem;padding:1px 6px;border-radius:3px;font-weight:700;background:${c}28;border:1px solid ${c}55;color:${c};text-transform:capitalize;">${t}</span>`;
+    }).join('');
+  }
+
+  // Abilities
+  const abilitiesEl = document.getElementById('ptt-abilities');
+  if (abilitiesEl) {
+    const abilities = (poke.dataset.abilities || '').split('|').filter(a => a.trim());
+    abilitiesEl.innerHTML = abilities.map(a =>
+      `<span style="font-size:0.6rem;color:rgba(200,200,220,0.55);text-transform:capitalize;">${a.replace(/-/g,' ')}</span>`
+    ).join('');
+    abilitiesEl.style.display = abilities.length ? 'flex' : 'none';
+  }
+
   _setBar('hp',  parseInt(poke.dataset.hp  || 0));
   _setBar('atk', parseInt(poke.dataset.atk || 0));
   _setBar('def', parseInt(poke.dataset.def || 0));
@@ -824,7 +850,7 @@ function _showStatTip(poke, e) {
 }
 
 function _posTip(e) {
-  const W = 224, H = _tt.offsetHeight || 170;
+  const W = 238, H = _tt.offsetHeight || 190;
   let x = e.clientX + 16, y = e.clientY + 14;
   if (x + W > window.innerWidth  - 8) x = e.clientX - W - 8;
   if (y + H > window.innerHeight - 8) y = e.clientY - H - 8;
