@@ -4,7 +4,8 @@ Run once locally and once on PythonAnywhere.
 """
 import sqlite3, re, sys
 
-DB = "league.db"
+import os
+DB = os.environ.get("LEAGUE_DB", "league.db")
 db = sqlite3.connect(DB)
 db.row_factory = sqlite3.Row
 
