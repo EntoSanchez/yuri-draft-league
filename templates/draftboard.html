@@ -150,7 +150,10 @@
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}"
                data-type1="{{ (t.type1 or '').lower() }}"
-               data-type2="{{ (t.type2 or '').lower() }}">
+               data-type2="{{ (t.type2 or '').lower() }}"
+               data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+               data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+               data-bst="{{ t.bst or 0 }}">
             <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 opacity-40">
             <span class="text-red-500/60 line-through text-xs truncate flex-1">{{ t.name }}</span>
@@ -301,7 +304,10 @@
                data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                data-moves="{{ t.moves or '' }}"
                data-type1="{{ (t.type1 or '').lower() }}"
-               data-type2="{{ (t.type2 or '').lower() }}">
+               data-type2="{{ (t.type2 or '').lower() }}"
+               data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+               data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+               data-bst="{{ t.bst or 0 }}">
 
             <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
                  class="w-6 h-6 object-contain flex-shrink-0 {% if not is_drafted %}opacity-75{% endif %}">
@@ -377,6 +383,32 @@
   </div>
   {% endif %}
 
+</div>
+
+<!-- ── Base stat tooltip ── -->
+<div id="poke-tooltip" style="display:none;position:fixed;z-index:9990;pointer-events:none;width:216px;padding:10px 12px 8px;border-radius:10px;background:#0b1120;border:1px solid rgba(0,245,255,0.2);box-shadow:0 8px 32px rgba(0,0,0,0.75),0 0 0 1px rgba(0,245,255,0.04) inset;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+    <span id="ptt-name" style="font-size:0.75rem;font-weight:800;color:#e5e7eb;text-transform:capitalize;letter-spacing:0.01em;"></span>
+    <span id="ptt-bst"  style="font-size:0.62rem;font-weight:700;color:rgba(0,245,255,0.55);font-family:monospace;"></span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    {% for stat_key, stat_label, stat_color in [
+        ('hp',  'HP',  '#f87171'),
+        ('atk', 'Atk', '#fb923c'),
+        ('def', 'Def', '#facc15'),
+        ('spa', 'SpA', '#60a5fa'),
+        ('spd', 'SpD', '#4ade80'),
+        ('spe', 'Spe', '#c084fc')
+    ] %}
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="font-size:0.6rem;font-weight:700;color:{{ stat_color }};width:24px;text-align:right;font-family:monospace;flex-shrink:0;">{{ stat_label }}</span>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;">
+        <div id="ptt-{{ stat_key }}-bar" style="height:100%;background:{{ stat_color }};border-radius:2px;width:0%;transition:width 0.1s;"></div>
+      </div>
+      <span id="ptt-{{ stat_key }}-val" style="font-size:0.6rem;font-weight:700;color:{{ stat_color }};width:24px;text-align:right;font-family:monospace;flex-shrink:0;"></span>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 
 <!-- Admin: Points edit popover -->
@@ -761,6 +793,57 @@ document.addEventListener('keydown', e => {
 document.addEventListener('click', e => {
   const pop = document.getElementById('pts-popover');
   if (pop && !pop.contains(e.target)) closePtsPopover();
+});
+
+// ── Base stat tooltip ─────────────────────────────────────────────────────────
+const _tt = document.getElementById('poke-tooltip');
+
+function _setBar(key, val) {
+  const bar = document.getElementById('ptt-' + key + '-bar');
+  const num = document.getElementById('ptt-' + key + '-val');
+  if (bar) bar.style.width = (Math.min(val, 255) / 255 * 100).toFixed(1) + '%';
+  if (num) num.textContent = val || '—';
+}
+
+function _showStatTip(poke, e) {
+  const bst = parseInt(poke.dataset.bst || 0);
+  if (!bst) { _tt.style.display = 'none'; return; }
+  const nameEl = document.getElementById('ptt-name');
+  const bstEl  = document.getElementById('ptt-bst');
+  const raw    = (poke.dataset.name || '').replace(/-/g, ' ');
+  if (nameEl) nameEl.textContent = raw.replace(/\b\w/g, c => c.toUpperCase());
+  if (bstEl)  bstEl.textContent  = 'BST ' + bst;
+  _setBar('hp',  parseInt(poke.dataset.hp  || 0));
+  _setBar('atk', parseInt(poke.dataset.atk || 0));
+  _setBar('def', parseInt(poke.dataset.def || 0));
+  _setBar('spa', parseInt(poke.dataset.spa || 0));
+  _setBar('spd', parseInt(poke.dataset.spd || 0));
+  _setBar('spe', parseInt(poke.dataset.spe || 0));
+  _tt.style.display = 'block';
+  _posTip(e);
+}
+
+function _posTip(e) {
+  const W = 224, H = _tt.offsetHeight || 170;
+  let x = e.clientX + 16, y = e.clientY + 14;
+  if (x + W > window.innerWidth  - 8) x = e.clientX - W - 8;
+  if (y + H > window.innerHeight - 8) y = e.clientY - H - 8;
+  _tt.style.left = x + 'px';
+  _tt.style.top  = y + 'px';
+}
+
+// Event delegation — works on both column cards and dynamically built list rows
+document.addEventListener('mouseover', e => {
+  const poke = e.target.closest('.board-poke');
+  if (poke) _showStatTip(poke, e);
+  else _tt.style.display = 'none';
+});
+document.addEventListener('mousemove', e => {
+  if (_tt.style.display !== 'none') _posTip(e);
+});
+document.addEventListener('mouseout', e => {
+  if (!e.relatedTarget || !e.relatedTarget.closest('.board-poke'))
+    _tt.style.display = 'none';
 });
 </script>
 
