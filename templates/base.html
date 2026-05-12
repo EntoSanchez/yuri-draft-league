@@ -101,6 +101,13 @@
 
     /* ── Generic nav dropdown ── */
     .nav-dropdown { position: relative; }
+    .nav-dropdown::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 0; right: 0;
+      height: 8px;
+    }
     .nav-dd-menu {
       display: none;
       position: absolute;
