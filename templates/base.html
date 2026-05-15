@@ -102,8 +102,8 @@
     #main-nav.scrolled { box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
     #nav-inner { transition: height 0.25s ease; height: 64px; }
     #main-nav.scrolled #nav-inner { height: 52px; }
-    #nav-logo-img { transition: width 0.25s, height 0.25s; }
-    #main-nav.scrolled #nav-logo-img { width: 28px; height: 28px; }
+    #nav-logo-img { transition: height 0.25s; }
+    #main-nav.scrolled #nav-logo-img { height: 24px; }
 
     /* ── Nav underline ── */
     .nav-link { position: relative; transition: color 0.18s, text-shadow 0.18s; white-space: nowrap; font-weight: 600; }
@@ -199,7 +199,7 @@
     }
     .mega-team-item:hover { background: rgba(0,245,255,0.06); }
     .mega-team-logo {
-      width: 28px; height: 28px; border-radius: 6px;
+      height: 28px; width: auto; max-width: 40px;
       object-fit: contain; flex-shrink: 0;
     }
     .mega-team-placeholder {
@@ -473,7 +473,7 @@
 
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
-        <img id="nav-logo-img" src="/static/favicon.jpg" alt="League Logo" class="w-8 h-8 rounded-full object-cover flex-shrink-0" style="box-shadow:0 0 10px rgba(0,245,255,0.2)">
+        <img id="nav-logo-img" src="/static/favicon.jpg" alt="League Logo" class="h-8 w-auto object-contain flex-shrink-0" style="box-shadow:0 0 10px rgba(0,245,255,0.2)">
         <div class="hidden sm:block leading-none">
           <div class="font-black text-sm tracking-wide text-white">{{ league_name }}</div>
           {% if season %}<div class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.55);letter-spacing:0.08em;">// {{ season.name | upper }}</div>{% endif %}
@@ -672,7 +672,7 @@
   <!-- Drawer header -->
   <div class="flex items-center justify-between px-4 py-4 border-b border-gray-800/60 flex-shrink-0">
     <div class="flex items-center gap-2">
-      <img src="/static/favicon.jpg" alt="" class="w-7 h-7 rounded-full object-cover">
+      <img src="/static/favicon.jpg" alt="" class="h-7 w-auto object-contain">
       <span class="text-sm font-bold text-yellow-400">{{ league_name }}</span>
     </div>
     <button id="drawer-close" class="p-1.5 rounded-md text-gray-500 hover:text-yellow-400 hover:bg-gray-800/60 transition-all" aria-label="Close menu">
@@ -854,7 +854,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-2.5">
-        <img src="https://i.imgur.com/zt776Sk.jpeg" alt="League Logo" class="rounded-full object-cover flex-shrink-0" style="width:18px;height:18px;">
+        <img src="https://i.imgur.com/zt776Sk.jpeg" alt="League Logo" class="object-contain flex-shrink-0" style="height:18px;width:auto;">
         <span class="text-sm font-bold text-gray-500">{{ league_name }}</span>
       </div>
       <div class="flex items-center gap-5">
