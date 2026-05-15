@@ -27,16 +27,38 @@
        CYBERPUNK DESIGN SYSTEM
     ══════════════════════════════════════ */
     :root {
+      /* Legacy cp-* aliases (keep for backward compat) */
       --cp-cyan:   #00F5FF;
       --cp-pink:   #FF2D78;
       --cp-yellow: #FFE600;
       --cp-green:  #39FF14;
-      --cp-bg:     #040408;
-      --cp-sf:     #070B12;
-      --cp-sf2:    #0A0F1C;
+      --cp-bg:     #000000;
+      --cp-sf:     #08080a;
+      --cp-sf2:    #0c0c10;
       --font-body: 'Space Grotesk', system-ui, sans-serif;
       --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
       --font-display: 'Rajdhani', 'Bai Jamjuree', system-ui, sans-serif;
+
+      /* Neon-noir canonical tokens */
+      --ink:          #000000;
+      --ink-2:        #050506;
+      --panel:        #08080a;
+      --panel-2:      #0c0c10;
+      --panel-3:      #121218;
+      --hairline:     rgba(255,255,255,0.07);
+      --hairline-2:   rgba(255,255,255,0.14);
+      --magenta:      #ff2a8a;
+      --magenta-dim:  rgba(255,42,138,0.5);
+      --magenta-soft: rgba(255,42,138,0.12);
+      --cyan:         #22e1ff;
+      --cyan-dim:     rgba(34,225,255,0.5);
+      --cyan-soft:    rgba(34,225,255,0.1);
+      --lime:         #c1ff3d;
+      --amber:        #ffb84d;
+      --red:          #ff4d6b;
+      --text:         #e8e8f0;
+      --text-mute:    rgba(232,232,240,0.55);
+      --text-dim:     rgba(232,232,240,0.32);
     }
 
     html, body {
@@ -442,7 +464,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col text-gray-100 antialiased" style="background-color:#080c14;">
+<body class="min-h-screen flex flex-col text-gray-100 antialiased" style="background-color:#000;">
 
 <!-- ═══════════════════ NAVBAR ═══════════════════ -->
 <nav id="main-nav" class="sticky top-0 z-50 border-b border-gray-800/80 backdrop-blur-sm" style="background-color:rgba(8,12,20,0.97);">

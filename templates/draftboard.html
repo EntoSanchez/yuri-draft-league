@@ -137,9 +137,9 @@
       {% set banned_list = tiers | selectattr('is_banned') | list %}
       {% if banned_list %}
       <div class="board-col" data-col="banned">
-        <div class="board-col-header" style="background:linear-gradient(135deg,#7f1d1d,#991b1b);border-color:rgba(239,68,68,0.3);">
-          <div class="text-sm font-black text-red-200">Banned</div>
-          <div class="text-xs text-red-400/70 mt-0.5">{{ banned_list | length }} Pokémon</div>
+        <div class="board-col-header" style="border-bottom-color:rgba(239,68,68,0.45);">
+          <div class="text-sm font-black text-red-400" style="font-family:var(--font-display);letter-spacing:0.06em;">Banned</div>
+          <div class="text-xs mt-0.5 opacity-50" style="font-family:var(--font-mono);color:#ff4d6b;">{{ banned_list | length }} Pokémon</div>
         </div>
         <div class="board-col-body">
           {% for t in banned_list %}
@@ -282,12 +282,12 @@
       <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}" style="border-color:{{ hdr_border }};">
 
         <!-- Column header -->
-        <div class="board-col-header" style="background:{{ hdr_bg }};border-color:{{ hdr_border }};">
-          <div class="text-lg font-black leading-none" style="color:{{ hdr_pts_color }};">{{ group.points }}</div>
-          <div class="text-xs font-bold mt-0.5" style="color:{{ hdr_lbl_color }};">
+        <div class="board-col-header" style="border-bottom-color:{{ hdr_border }};">
+          <div class="text-lg font-black leading-none" style="color:{{ hdr_pts_color }};font-family:var(--font-display);letter-spacing:0.04em;">{{ group.points }}</div>
+          <div class="text-xs font-bold mt-0.5" style="color:{{ hdr_lbl_color }};font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;">
             {% if group.label %}{{ group.label }}{% else %}pts{% endif %}
           </div>
-          <div class="text-xs mt-1 opacity-50" style="color:{{ hdr_pts_color }};">{{ non_banned | length }}</div>
+          <div class="text-xs mt-0.5 opacity-40" style="color:{{ hdr_pts_color }};font-family:var(--font-mono);">{{ non_banned | length }}</div>
         </div>
 
         <!-- Pokemon list -->
@@ -442,9 +442,10 @@
 }
 
 .board-col-header {
-  padding: 10px 10px 8px;
+  padding: 8px 10px 6px;
   text-align: center;
-  border-bottom: 1px solid rgba(55,65,81,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: transparent;
   flex-shrink: 0;
 }
 
