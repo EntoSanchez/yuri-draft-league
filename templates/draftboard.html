@@ -137,9 +137,9 @@
       {% set banned_list = tiers | selectattr('is_banned') | list %}
       {% if banned_list %}
       <div class="board-col" data-col="banned">
-        <div class="board-col-header" style="border-bottom-color:rgba(239,68,68,0.45);">
-          <div class="text-sm font-black text-red-400" style="font-family:var(--font-display);letter-spacing:0.06em;">Banned</div>
-          <div class="text-xs mt-0.5 opacity-50" style="font-family:var(--font-mono);color:#ff4d6b;">{{ banned_list | length }} Pokémon</div>
+        <div class="board-col-header" style="background:linear-gradient(135deg,#7f1d1d,#991b1b);border-bottom:2px solid rgba(239,68,68,0.5);">
+          <div class="text-sm font-black text-red-200" style="font-family:var(--font-display);letter-spacing:0.06em;">Banned</div>
+          <div class="text-xs mt-0.5 opacity-60" style="font-family:var(--font-mono);color:#ff4d6b;">{{ banned_list | length }} Pokémon</div>
         </div>
         <div class="board-col-body">
           {% for t in banned_list %}
@@ -282,7 +282,7 @@
       <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}" style="border-color:{{ hdr_border }};">
 
         <!-- Column header -->
-        <div class="board-col-header" style="border-bottom-color:{{ hdr_border }};">
+        <div class="board-col-header" style="background:{{ hdr_bg }};border-bottom:2px solid {{ hdr_border }};">
           <div class="text-lg font-black leading-none" style="color:{{ hdr_pts_color }};font-family:var(--font-display);letter-spacing:0.04em;">{{ group.points }}</div>
           <div class="text-xs font-bold mt-0.5" style="color:{{ hdr_lbl_color }};font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;">
             {% if group.label %}{{ group.label }}{% else %}pts{% endif %}
