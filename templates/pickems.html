@@ -2,14 +2,14 @@
 {% block title %}Pick'ems — {{ league_name }}{% endblock %}
 {% block content %}
 
-<div class="hero-pattern border-b border-gray-800/60" style="background:linear-gradient(135deg,#0f1623 0%,#080c14 100%);">
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(255,45,120,0.5);">// PUBLIC_VOTE</p>
-    <h1 class="text-3xl font-black gradient-heading">WHO YA GOT?</h1>
+<div class="yc-page-hero hero-pattern">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <p class="yc-eyebrow">// PUBLIC_VOTE</p>
+    <h1 class="yc-page-title">WHO YA GOT?</h1>
     <div class="flex flex-wrap items-center gap-3 mt-2">
-      <span class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.3);">{{ matches|length }} MATCH{% if matches|length != 1 %}ES{% endif %} THIS WEEK</span>
-      <span style="color:rgba(255,255,255,0.15);">·</span>
-      <span id="picked-counter" class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.5);">PICKED 0 / {{ matches|length }}</span>
+      <span class="text-xs font-bold font-mono" style="color:var(--text-dim);">{{ matches|length }} MATCH{% if matches|length != 1 %}ES{% endif %} THIS WEEK</span>
+      <span style="color:var(--hairline-2);">·</span>
+      <span id="picked-counter" class="text-xs font-bold font-mono" style="color:var(--cyan);">PICKED 0 / {{ matches|length }}</span>
     </div>
   </div>
 </div>
@@ -21,8 +21,8 @@
     <label class="text-sm text-gray-400 font-semibold flex-shrink-0">Your name:</label>
     <input id="voter-name" type="text" placeholder="Enter your name to vote…" maxlength="32"
            oninput="saveName()"
-           class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none w-56"
-           style="background-color:#0f1623;">
+           class="px-3 py-2 text-sm text-white focus:outline-none w-56"
+           style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);color:var(--text);" onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'">
     <span id="name-status" class="text-xs text-gray-600"></span>
   </div>
 
@@ -30,9 +30,8 @@
   <div class="flex gap-2 flex-wrap mb-6">
     {% for w in weeks %}
     <a href="/pickems?week={{ w }}"
-       class="px-4 py-1.5 rounded-full text-sm font-bold border transition-all
-              {% if w == selected_week %}bg-yellow-400 text-gray-900 border-yellow-400{% else %}border-gray-700 text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400{% endif %}"
-       style="{% if w != selected_week %}background-color:#0f1623;{% endif %}">
+       class="px-4 py-1.5 text-sm font-bold border transition-all"
+       style="border-radius:2px;text-decoration:none;{% if w == selected_week %}background:var(--magenta-soft);border-color:var(--magenta-dim);color:var(--magenta);{% else %}background:var(--panel);border-color:var(--hairline);color:var(--text-mute);{% endif %}">
       Week {{ w }}{% if w == current_week %} <span class="text-xs opacity-70">●</span>{% endif %}
     </a>
     {% endfor %}
@@ -87,7 +86,7 @@
 
         <!-- Vote bar -->
         <div class="flex-1 min-w-0">
-          <div class="h-4 rounded-full overflow-hidden flex mb-1.5" style="background:#111827;">
+          <div class="h-4 overflow-hidden flex mb-1.5" style="border-radius:2px;background:var(--panel-2);">
             <div class="vote-bar-fill h-full transition-all duration-700" style="width:0%;background:{{ m.c1_color or '#6b7280' }};" data-target="{{ c1_pct }}"></div>
             <div class="h-full" style="width:{{ c2_pct }}%;background:{{ m.c2_color or '#6b7280' }};opacity:0.55;"></div>
           </div>
@@ -152,12 +151,12 @@
           <th class="px-5 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Name</th>
           <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider text-green-600">Correct</th>
           <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider text-gray-600">Total</th>
-          <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider text-yellow-600">%</th>
+          <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider" style="color:var(--cyan);">%</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-800/40">
         {% for i, row in enumerate(leaderboard) %}
-        <tr class="hover:bg-gray-800/20 transition-colors {% if i == 0 %}bg-yellow-500/5{% endif %}">
+        <tr class="hover:bg-gray-800/20 transition-colors {% if i == 0 %}{% endif %}" style="{% if i == 0 %}background:var(--magenta-soft);{% endif %}">
           <td class="px-5 py-2.5 text-xs text-gray-600 font-mono">
             {% if i == 0 %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black" style="background:#FFD700;color:#1a1a00;">1</span>
             {% elif i == 1 %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black" style="background:#C0C0C0;color:#111;">2</span>
@@ -167,7 +166,7 @@
           <td class="px-5 py-2.5 font-semibold text-white">{{ row.voter_name }}</td>
           <td class="px-5 py-2.5 text-center font-bold text-green-400">{{ row.correct }}</td>
           <td class="px-5 py-2.5 text-center text-gray-400">{{ row.total_picks }}</td>
-          <td class="px-5 py-2.5 text-center font-bold text-yellow-400">
+          <td class="px-5 py-2.5 text-center font-bold" style="color:var(--cyan);">
             {{ (row.correct / row.total_picks * 100) | round(0) | int }}%
           </td>
         </tr>
@@ -210,9 +209,9 @@ function highlightPick(matchId, coachId) {
   if (!card) return;
   card.querySelectorAll('.pick-btn').forEach(btn => {
     const isChosen = parseInt(btn.dataset.coachId) === coachId;
-    btn.style.background = isChosen ? 'rgba(250,204,21,0.08)' : 'transparent';
-    btn.style.border = isChosen ? '1px solid rgba(250,204,21,0.45)' : '1px solid transparent';
-    btn.style.boxShadow = isChosen ? '0 0 12px rgba(250,204,21,0.12)' : 'none';
+    btn.style.background = isChosen ? 'var(--magenta-soft)' : 'transparent';
+    btn.style.border = isChosen ? '1px solid var(--magenta-dim)' : '1px solid transparent';
+    btn.style.boxShadow = isChosen ? '0 0 12px rgba(255,42,138,0.12)' : 'none';
   });
   const statusEl = document.getElementById('pick-status-' + matchId);
   if (statusEl) {

@@ -4,34 +4,34 @@
 <style>
   .bp-page { display:flex; flex-direction:column; gap:20px; padding:16px; max-width:1400px; margin:0 auto; }
   .section-header { font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; }
-  .team-select { background:#111827; border:1px solid #374151; border-radius:6px; color:#d1d5db; font-size:0.8rem; padding:4px 10px; cursor:pointer; }
-  .team-select:focus { border-color:#facc15; outline:none; }
+  .team-select { background:var(--panel-2); border:1px solid var(--hairline); border-radius:4px; color:#d1d5db; font-size:0.8rem; padding:4px 10px; cursor:pointer; }
+  .team-select:focus { border-color:var(--cyan-dim); outline:none; }
   .type-badge { display:inline-block; font-size:0.5rem; font-weight:700; padding:1px 5px; border-radius:3px; color:#fff; margin-right:2px; white-space:nowrap; }
   .bp-chart td, .bp-chart th { width:28px; height:22px; text-align:center; font-size:0.55rem; border:1px solid rgba(55,65,81,0.2); padding:0; }
   .stat-table { border-collapse:collapse; width:100%; font-size:0.65rem; }
-  .stat-table th { background:#1f2937; color:#6b7280; font-weight:600; padding:3px 6px; border:1px solid rgba(55,65,81,0.3); text-align:center; cursor:pointer; user-select:none; }
-  .stat-table th:hover { color:#facc15; }
+  .stat-table th { background:var(--panel-2); color:#6b7280; font-weight:600; padding:3px 6px; border:1px solid rgba(55,65,81,0.3); text-align:center; cursor:pointer; user-select:none; }
+  .stat-table th:hover { color:var(--cyan); }
   .stat-table td { padding:2px 4px; border:1px solid rgba(55,65,81,0.2); text-align:center; }
-  .stat-table .ave-row td { background:#1f2937; color:#facc15; font-weight:700; border-top:2px solid rgba(55,65,81,0.5); }
+  .stat-table .ave-row td { background:var(--panel-2); color:var(--cyan); font-weight:700; border-top:2px solid rgba(55,65,81,0.5); }
   .spd-table { border-collapse:collapse; font-size:0.6rem; }
   .spd-table th, .spd-table td { border:1px solid rgba(55,65,81,0.25); padding:2px 4px; text-align:center; white-space:nowrap; }
-  .spd-table th { background:#0f172a; color:#9ca3af; font-weight:600; }
-  .spd-input { background:#0f172a; border:1px solid #374151; border-radius:3px; color:#d1d5db; width:36px; font-size:0.58rem; padding:1px 3px; text-align:center; }
-  .spd-select { background:#0f172a; border:1px solid #374151; border-radius:3px; color:#d1d5db; font-size:0.55rem; padding:1px 2px; }
+  .spd-table th { background:var(--panel-2); color:#9ca3af; font-weight:600; }
+  .spd-input { background:var(--panel-2); border:1px solid var(--hairline); border-radius:3px; color:#d1d5db; width:36px; font-size:0.58rem; padding:1px 3px; text-align:center; }
+  .spd-select { background:var(--panel-2); border:1px solid var(--hairline); border-radius:3px; color:#d1d5db; font-size:0.55rem; padding:1px 2px; }
   .mc-cat-header { color:#f3f4f6; font-size:0.7rem; font-weight:700; padding:5px 12px; text-align:center; letter-spacing:0.05em; }
   .mc-row { display:flex; align-items:center; justify-content:center; min-height:28px; gap:4px; border-bottom:1px solid rgba(55,65,81,0.12); }
   .mc-move-label { flex:0 0 160px; text-align:center; font-size:0.65rem; font-weight:600; padding:3px 8px; color:#f3f4f6; }
   .mc-sprites { display:flex; flex-wrap:wrap; align-items:center; gap:1px; width:120px; }
   .mc-sprites img { width:22px; height:22px; object-fit:contain; }
   .ac-item { display:flex; align-items:center; gap:8px; padding:5px 10px; cursor:pointer; font-size:0.78rem; color:#d1d5db; }
-  .ac-item:hover, .ac-item.active { background:#374151; }
+  .ac-item:hover, .ac-item.active { background:var(--panel-2); }
   .ac-item img { width:28px; height:28px; object-fit:contain; }
 </style>
 
 <div class="bp-page">
 
   <!-- Team Selectors -->
-  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+  <div style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);" class="p-4">
     <div class="section-header">Select Teams</div>
     <div class="grid grid-cols-2 gap-6">
       <div>
@@ -50,13 +50,13 @@
   </div>
 
   <!-- Team MU -->
-  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+  <div style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);" class="p-4">
     <div class="section-header">Team Matchup</div>
     <div id="bp-team-mu"><div class="text-gray-600 text-sm">Select teams above to see the matchup.</div></div>
   </div>
 
   <!-- Type Charts -->
-  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+  <div style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);" class="p-4">
     <div class="flex items-center gap-6 mb-3">
       <div class="section-header mb-0">Defensive Type Charts</div>
       <label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
@@ -76,7 +76,7 @@
   </div>
 
   <!-- Stats Comparison -->
-  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+  <div style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);" class="p-4">
     <div class="flex items-center gap-4 mb-3">
       <div class="section-header mb-0">Stats Comparison</div>
       <select id="stat-sort-key" class="team-select text-xs" onchange="renderStats()">
@@ -103,7 +103,7 @@
   </div>
 
   <!-- Speed Comparison -->
-  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+  <div style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);" class="p-4">
     <div class="section-header">Speed Comparison Chart</div>
     <div class="text-xs text-gray-600 mb-3">
       Cell = min EVs for your pokemon to outspeed opponent at their configured speed &nbsp;·&nbsp;
@@ -116,12 +116,13 @@
   </div>
 
   <!-- Move Coverage -->
-  <div class="rounded-lg border border-gray-800/60 bg-gray-900/40 p-4">
+  <div style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);" class="p-4">
     <div class="section-header">Move Coverage</div>
     <div class="flex flex-wrap items-center justify-center gap-3 mb-3">
       <select id="mc-category-filter"
               onchange="renderMoveCoverage()"
-              class="rounded-lg border border-gray-700 bg-gray-800 text-white text-xs px-3 py-1.5 focus:border-yellow-500 focus:outline-none">
+              style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);color:var(--text);" class="text-xs px-3 py-1.5 focus:outline-none"
+              onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'">
         <option value="">All Categories</option>
       </select>
       <div class="text-xs text-gray-600 text-center">
@@ -385,7 +386,7 @@ function renderTeamMU() {
       const types = [p.type1,p.type2].filter(Boolean).map(t=>typeBadge(t)).join("");
       const abs = [p.ability1,p.ability2,p.ability3].filter(Boolean)
         .map(a=>`<div style="font-size:0.45rem;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</div>`).join("");
-      return `<div style="display:flex;flex-direction:column;align-items:center;min-width:76px;max-width:86px;padding:4px;border:1px solid ${c}55;border-radius:6px;background:rgba(17,24,39,0.7);flex-shrink:0">
+      return `<div style="display:flex;flex-direction:column;align-items:center;min-width:76px;max-width:86px;padding:4px;border:1px solid ${c}55;border-radius:2px;background:var(--panel-2);flex-shrink:0">
         <div style="font-size:0.5rem;color:#d1d5db;font-weight:700;text-align:center;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">${p.name}</div>
         <div style="font-size:0.48rem;color:#94a3b8;margin-bottom:2px">Spe ${p.spe||0}</div>
         <img src="${p.sprite}" style="width:46px;height:46px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
@@ -533,7 +534,7 @@ function buildStatTable(tableId, team, sortKey) {
   th0.textContent="Pkm"; th0.style.width="26px"; hRow.appendChild(th0);
   COLS.forEach((k,i) => {
     const th = document.createElement("th"); th.textContent=LABELS[i];
-    if(k===sortKey) th.style.color="#facc15";
+    if(k===sortKey) th.style.color="var(--cyan)";
     hRow.appendChild(th);
   });
   thead.appendChild(hRow); el.appendChild(thead);
@@ -611,7 +612,7 @@ function renderSpeedChart() {
   const thead = document.createElement("thead");
   const hRow  = document.createElement("tr");
   const corn  = document.createElement("th");
-  corn.style.cssText="min-width:100px;text-align:center;padding:4px;background:#0f172a;vertical-align:bottom";
+  corn.style.cssText="min-width:100px;text-align:center;padding:4px;background:var(--panel-2);vertical-align:bottom";
   corn.innerHTML=`<div style="font-size:0.55rem;color:#6b7280">My Team ↓ / Opp →</div>`;
   hRow.appendChild(corn);
 
@@ -621,7 +622,7 @@ function renderSpeedChart() {
     const nat = gs(oppSpeedSettings,p.name,"nature",1.0);
     const speStat = calcSpe(p.spe||0, iv, ev, nat);
     const th = document.createElement("th");
-    th.style.cssText="text-align:center;padding:4px 2px;min-width:70px;background:#0f172a";
+    th.style.cssText="text-align:center;padding:4px 2px;min-width:70px;background:var(--panel-2)";
     th.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
       <img src="${p.sprite}" style="width:28px;height:28px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
       <div style="font-size:0.5rem;color:#d1d5db;font-weight:700;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
@@ -639,7 +640,7 @@ function renderSpeedChart() {
         <input class="spd-input" type="number" min="0" max="31" value="${iv}"
           onchange="setOS('${p.name}','iv',Math.min(31,Math.max(0,parseInt(this.value)||0)));renderSpeedChart()">
       </div>
-      <div style="font-size:0.55rem;color:#facc15;font-weight:700">Spe: ${speStat}</div>
+      <div style="font-size:0.55rem;color:var(--cyan);font-weight:700">Spe: ${speStat}</div>
     </div>`;
     hRow.appendChild(th);
   });
@@ -656,7 +657,7 @@ function renderSpeedChart() {
 
     const tr = document.createElement("tr");
     const rhdr = document.createElement("td");
-    rhdr.style.cssText="background:#0f172a;padding:3px 4px;text-align:center;vertical-align:middle";
+    rhdr.style.cssText="background:var(--panel-2);padding:3px 4px;text-align:center;vertical-align:middle";
     rhdr.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
       <img src="${p.sprite}" style="width:26px;height:26px;object-fit:contain" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
       <div style="font-size:0.5rem;color:#d1d5db;font-weight:700;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
@@ -674,7 +675,7 @@ function renderSpeedChart() {
         <input class="spd-input" type="number" min="0" max="31" value="${uIv}"
           onchange="setMS('${p.name}','iv',Math.min(31,Math.max(0,parseInt(this.value)||0)));renderSpeedChart()">
       </div>
-      <div style="font-size:0.55rem;color:#facc15;font-weight:700">Spe: ${speAtEv}</div>
+      <div style="font-size:0.55rem;color:var(--cyan);font-weight:700">Spe: ${speAtEv}</div>
     </div>`;
     tr.appendChild(rhdr);
 
@@ -707,7 +708,7 @@ function renderSpeedChart() {
           const needed = minEv - uEv;
           td.title=`Need ${minEv} total EVs (+${needed} more) to outspeed ${oppSpe}`;
           if (needed<=60)  { td.style.color="#86efac"; td.textContent=`+${needed}`; }
-          else if(needed<=140){ td.style.color="#facc15"; td.textContent=`+${needed}`; }
+          else if(needed<=140){ td.style.color="var(--amber)"; td.textContent=`+${needed}`; }
           else             { td.style.color="#fb923c"; td.textContent=`+${needed}`; }
         }
       }

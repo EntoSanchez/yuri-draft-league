@@ -3,19 +3,18 @@
 {% block content %}
 
 <!-- ── Hero Banner ── -->
-<div class="hero-pattern relative overflow-hidden" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 50%, #0f1217 100%);">
-  <div class="absolute inset-0 opacity-5" style="background-image: radial-gradient(circle at 20% 50%, #e3350d 0%, transparent 50%), radial-gradient(circle at 80% 50%, #facc15 0%, transparent 50%);"></div>
-  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+<div class="yc-page-hero hero-pattern">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="flex flex-col sm:flex-row sm:items-end gap-3">
       <div>
-        <p class="text-sm font-bold uppercase tracking-widest font-mono mb-2" style="color:rgba(0,245,255,0.4);">// LEAGUE.STANDINGS</p>
-        <h1 class="text-5xl sm:text-6xl font-black gradient-heading tracking-tight">{{ league_name }}</h1>
+        <p class="yc-eyebrow">// LEAGUE.STANDINGS</p>
+        <h1 class="yc-page-title">{{ league_name }}</h1>
       </div>
-      <div class="sm:ml-auto flex items-center gap-4 text-xs text-gray-500 font-medium pb-1">
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-green-500/60"></span> Win</span>
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-red-500/60"></span> Loss</span>
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-yellow-500/60"></span> Tie</span>
-        {% if total_weeks > 0 %}<span class="w-px h-3 bg-gray-700 hidden sm:block"></span><span class="font-bold font-mono hidden sm:block" style="color:rgba(0,245,255,0.5);">WK {{ [completed_weeks + 1, total_weeks]|min }} / {{ total_weeks }}</span>{% endif %}
+      <div class="sm:ml-auto flex items-center gap-4 text-xs font-medium pb-1" style="color:var(--text-mute);">
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm" style="background:rgba(74,222,128,0.6);"></span> Win</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm" style="background:rgba(248,113,113,0.6);"></span> Loss</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm" style="background:rgba(34,225,255,0.6);"></span> Tie</span>
+        {% if total_weeks > 0 %}<span class="w-px h-3 hidden sm:block" style="background:var(--hairline-2);"></span><span class="font-bold font-mono hidden sm:block" style="color:var(--cyan);">WK {{ [completed_weeks + 1, total_weeks]|min }} / {{ total_weeks }}</span>{% endif %}
       </div>
     </div>
   </div>
@@ -40,15 +39,15 @@
       <div class="h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
         <div class="h-full rounded-full transition-all duration-700"
              style="width:{{ ((completed_weeks / total_weeks) * 100) | round(1) }}%;
-                    background:linear-gradient(to right,#facc15,#f97316);
-                    box-shadow:0 0 8px rgba(250,204,21,0.4);">
+                    background:linear-gradient(to right,var(--cyan),var(--magenta));
+                    box-shadow:0 0 8px var(--cyan-dim);">
         </div>
       </div>
       <!-- Week pip markers -->
       <div class="flex mt-1.5" style="position:relative;">
         {% for w in all_weeks %}
         <div class="flex-1 text-center" style="position:relative;">
-          <div class="mx-auto w-1 h-1 rounded-full {% if loop.index <= completed_weeks %}bg-yellow-500/60{% else %}bg-gray-700{% endif %}"></div>
+          <div class="mx-auto w-1 h-1 rounded-full" style="background:{% if loop.index <= completed_weeks %}rgba(34,225,255,0.6){% else %}#374151{% endif %};"></div>
         </div>
         {% endfor %}
       </div>
@@ -60,7 +59,7 @@
 <!-- ── Top 3 Podium ── -->
 {% if standings_all and standings_all | length >= 1 %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
-  <p class="text-xs font-bold uppercase tracking-widest font-mono mb-6" style="color:rgba(250,204,21,0.4);">// LEAGUE.STANDINGS</p>
+  <p class="yc-eyebrow mb-6">// LEAGUE.STANDINGS</p>
   {% set top3 = standings_all[:3] %}
   <div class="flex items-end justify-center gap-3 mb-10">
     {# 2nd place (left) #}
@@ -83,7 +82,7 @@
     {% if top3 | length >= 1 %}
     {% set row = top3[0] %}
     <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center group" style="text-decoration:none;">
-      <div class="mb-1 text-xs font-bold font-mono" style="color:rgba(250,204,21,0.6);">// LEADER</div>
+      <div class="mb-1 text-xs font-bold font-mono" style="color:rgba(34,225,255,0.6);">// LEADER</div>
       <div class="mb-3 w-24 h-24 flex-shrink-0" style="filter:drop-shadow(0 0 20px rgba(250,204,21,0.35));">
         {% if row.coach.logo_url %}
           <img src="{{ row.coach.logo_url }}" class="w-24 h-24 object-contain rounded-xl" alt="">
@@ -93,7 +92,7 @@
       </div>
       <div class="text-base font-black text-white truncate mb-0.5" style="max-width:150px;">{{ row.coach.team_name }}</div>
       <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L · +{{ row.diff | abs | int }}</div>
-      <div class="rounded-t-lg flex items-center justify-center font-black text-3xl" style="width:130px;height:92px;background:rgba(250,204,21,0.12);border:1px solid rgba(250,204,21,0.35);color:#facc15;box-shadow:0 0 28px rgba(250,204,21,0.12);">1</div>
+      <div class="rounded-t-lg flex items-center justify-center font-black text-3xl" style="width:130px;height:92px;background:var(--magenta-soft);border:1px solid var(--magenta-dim);color:var(--magenta);box-shadow:0 0 28px rgba(255,42,138,0.12);">1</div>
     </a>
     {% endif %}
     {# 3rd place (right) #}
@@ -134,7 +133,7 @@
   {% macro standings_table(standings, pool_label) %}
   <div class="mb-10">
     <div class="flex items-center gap-3 mb-4">
-      <div class="w-1.5 h-7 rounded-full" style="background: linear-gradient(to bottom, #facc15, #e3350d);"></div>
+      <div class="w-1.5 h-7 rounded-full" style="background: linear-gradient(to bottom, var(--cyan), var(--magenta));"></div>
       <h2 class="text-xl font-bold text-white">Pool {{ pool_label }}</h2>
       <span class="text-sm text-gray-600 font-medium">{{ standings | length }} team{% if standings | length != 1 %}s{% endif %}</span>
     </div>
@@ -143,7 +142,7 @@
       {% for row in standings %}
       {% set total_games = row.W + row.L + row.T %}
       {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
-      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-yellow-500/30 transition-all no-underline" style="text-decoration:none;">
+      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
         {# Rank #}
         <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
 
@@ -210,13 +209,13 @@
 
   {% if standings_all %}
   <div class="flex items-center gap-3 mb-6">
-    <p class="text-xs font-bold uppercase tracking-widest font-mono" style="color:rgba(0,245,255,0.4);">// THE REST · RANKS 04–{{ standings_all | length }}</p>
-    <div class="flex-1 h-px" style="background:linear-gradient(90deg,rgba(0,245,255,0.1),transparent);"></div>
+    <p class="yc-eyebrow">// THE REST · RANKS 04–{{ standings_all | length }}</p>
+    <div class="flex-1 h-px" style="background:linear-gradient(90deg,rgba(34,225,255,0.1),transparent);"></div>
   </div>
   {# ── Overall standings card-list ── #}
   <div class="mb-10">
     <div class="flex items-center gap-3 mb-4">
-      <div class="w-1.5 h-7 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+      <div class="w-1.5 h-7 rounded-full" style="background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
       <h2 class="text-xl font-bold text-white">Overall Standings</h2>
       <span class="text-sm text-gray-600 font-medium">All pools combined</span>
     </div>
@@ -224,7 +223,7 @@
       {% for row in standings_all %}
       {% set total_games = row.W + row.L + row.T %}
       {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
-      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-yellow-500/30 transition-all no-underline" style="text-decoration:none;">
+      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
         <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
         <div class="flex-shrink-0">
           {% if row.coach.logo_url %}
@@ -237,7 +236,7 @@
           <div class="font-black text-white text-sm leading-tight truncate">{{ row.coach.team_name }}</div>
           <div class="flex items-center gap-2 mt-0.5">
             <span class="text-xs text-gray-500">{{ row.coach.coach_name }}</span>
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:rgba(250,204,21,0.1);color:#facc15;">{{ row.coach.pool }}</span>
+            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:var(--cyan-soft);color:var(--cyan);">{{ row.coach.pool }}</span>
           </div>
         </div>
         <div class="flex-shrink-0 text-right" style="min-width:110px;">
@@ -283,7 +282,7 @@
     </div>
   {% else %}
     <div class="text-center py-24">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border border-gray-800 mb-6" style="background-color:#0f1623;">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border mb-6" style="background:var(--panel);border-color:var(--hairline-2);">
         <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
         </svg>
@@ -291,7 +290,7 @@
       <h2 class="text-xl font-bold text-gray-600 mb-2">No league data yet</h2>
       <p class="text-sm text-gray-700 mb-6">Set up your teams and schedule to get started.</p>
       {% if session.get('role') == 'admin' %}
-        <a href="/admin" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold text-sm hover:bg-yellow-300 transition-colors">
+        <a href="/admin" class="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-bold text-sm transition-colors" style="background:var(--magenta);color:#000;">
           Set up your league &rarr;
         </a>
       {% endif %}

@@ -21,10 +21,10 @@
     </div>
 
     <!-- Card -->
-    <div class="rounded-2xl border border-gray-800 overflow-hidden" style="background-color:#0f1623;">
+    <div class="overflow-hidden" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
 
       <!-- Top accent bar -->
-      <div class="h-1 w-full" style="background:linear-gradient(to right, #e3350d, #facc15);"></div>
+      <div class="h-1 w-full" style="background:linear-gradient(to right, var(--magenta), var(--cyan));"></div>
 
       <div class="p-8">
         <form method="POST" class="space-y-5">
@@ -32,20 +32,22 @@
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Username</label>
             <input type="text" name="username" required autofocus
-                   class="w-full rounded-xl border border-gray-700 px-4 py-3 text-white text-sm focus:border-yellow-500/60 focus:outline-none focus:ring-2 focus:ring-yellow-500/10 transition-all"
-                   style="background-color:#080c14;">
+                   class="w-full px-4 py-3 text-white text-sm focus:outline-none transition-all"
+                   style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);"
+                   onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'">
           </div>
 
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Password</label>
             <input type="password" name="password" required
-                   class="w-full rounded-xl border border-gray-700 px-4 py-3 text-white text-sm focus:border-yellow-500/60 focus:outline-none focus:ring-2 focus:ring-yellow-500/10 transition-all"
-                   style="background-color:#080c14;">
+                   class="w-full px-4 py-3 text-white text-sm focus:outline-none transition-all"
+                   style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);"
+                   onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'">
           </div>
 
           <button type="submit"
-                  class="w-full py-3.5 rounded-xl font-black text-gray-900 text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.99] mt-2"
-                  style="background:linear-gradient(135deg, #facc15, #f59e0b);">
+                  class="w-full py-3.5 font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.99] mt-2"
+                  style="border-radius:2px;background:var(--magenta);color:#000;">
             Sign In
           </button>
 

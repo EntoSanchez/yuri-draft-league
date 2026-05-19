@@ -4,14 +4,14 @@
 
 <style>
   :root {
-    --pm:  #00F5FF;
-    --pmv: #003845;
-    --sc:  #FF2D78;
-    --er:  #FF8C00;
-    --bg:  #040408;
-    --sf:  #070B12;
-    --sf2: #0A0F1C;
-    --border: rgba(0,245,255,0.12);
+    --pm:  var(--cyan);
+    --pmv: var(--cyan-soft);
+    --sc:  var(--magenta);
+    --er:  var(--amber);
+    --bg:  var(--ink);
+    --sf:  var(--panel);
+    --sf2: var(--panel-2);
+    --border: var(--hairline);
   }
 
   /* ═══ HERO ═══ */
@@ -470,8 +470,8 @@
   /* ═══ NAV CARDS ═══ */
   .nav-card {
     display: block; text-decoration: none;
-    border-radius: 14px; padding: 1.4rem;
-    border: 1px solid rgba(0,245,255,0.1);
+    border-radius: 2px; padding: 1.4rem;
+    border: 1px solid var(--hairline);
     background: var(--sf2);
     position: relative; overflow: hidden;
     transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -497,7 +497,7 @@
   /* ═══ PODIUM ═══ */
   .podium-card {
     display: block; text-decoration: none;
-    border-radius: 14px; padding: 1.4rem 1rem;
+    border-radius: 2px; padding: 1.4rem 1rem;
     text-align: center;
     border: 1px solid rgba(255,255,255,0.07);
     background: var(--sf2);
@@ -506,11 +506,11 @@
   }
   .podium-card:hover { transform: translateY(-4px); }
   .podium-1 {
-    border-color: rgba(250,204,21,0.35);
-    background: linear-gradient(135deg, rgba(250,204,21,0.06) 0%, var(--sf2) 60%);
-    box-shadow: 0 0 24px rgba(250,204,21,0.08);
+    border-color: var(--magenta-dim);
+    background: linear-gradient(135deg, var(--magenta-soft) 0%, var(--sf2) 60%);
+    box-shadow: 0 0 24px rgba(255,42,138,0.08);
   }
-  .podium-1:hover { box-shadow: 0 8px 36px rgba(250,204,21,0.2); }
+  .podium-1:hover { box-shadow: 0 8px 36px rgba(255,42,138,0.2); }
   .podium-2 { border-color: rgba(192,192,192,0.2); }
   .podium-2:hover { box-shadow: 0 8px 36px rgba(192,192,192,0.12); }
   .podium-3 { border-color: rgba(205,127,50,0.2); }
@@ -518,7 +518,7 @@
 
   /* ═══ RESULT CARDS ═══ */
   .result-card {
-    border-radius: 14px; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px; border: 1px solid var(--hairline);
     background: var(--sf2); overflow: hidden;
     transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   }
@@ -702,7 +702,7 @@
         {% if top3 %}
           {% for i, row in enumerate(top3) %}
           <span class="ticker-match">
-            <span class="ticker-sep" style="font-size:0.7rem;color:{% if i==0 %}#facc15{% elif i==1 %}#C0C0C0{% else %}#CD7F32{% endif %};">★ {{ ['1ST','2ND','3RD'][i] }}</span>
+            <span class="ticker-sep" style="font-size:0.7rem;color:{% if i==0 %}var(--magenta){% elif i==1 %}#C0C0C0{% else %}#CD7F32{% endif %};">★ {{ ['1ST','2ND','3RD'][i] }}</span>
             {% if row.coach.logo_url %}<img src="{{ row.coach.logo_url }}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;display:inline-block;vertical-align:middle;margin-right:4px;" alt="">{% endif %}
             <span class="ticker-team" style="color:{{ row.coach.color or '#ffffff' }}">{{ row.coach.team_name }}</span>
             <span class="ticker-score">{{ row.W }}–{{ row.L }}</span>
@@ -776,8 +776,8 @@
           <div class="space-y-2 stagger">
             {% for row in top3 %}
             <a href="/team/{{ row.coach.id }}"
-               class="flex items-center gap-4 px-5 py-3.5 rounded-xl border transition-all group"
-               style="background:var(--sf2);border-color:rgba(255,255,255,0.05);text-decoration:none;">
+               class="flex items-center gap-4 px-5 py-3.5 transition-all group"
+               style="border-radius:2px;border:1px solid var(--hairline);background:var(--sf2);text-decoration:none;">
               <span class="text-lg font-black font-mono w-9 flex-shrink-0" style="color:rgba(0,245,255,0.35);">{{ '%02d' % loop.index }}</span>
               {% if row.coach.logo_url %}
                 <img src="{{ row.coach.logo_url }}" class="w-9 h-9 object-contain rounded-lg flex-shrink-0" alt="">
@@ -786,7 +786,7 @@
                      style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
               {% endif %}
               <div class="flex-1 min-w-0">
-                <div class="font-bold text-white truncate group-hover:text-yellow-400 transition-colors">{{ row.coach.team_name }}</div>
+                <div class="font-bold text-white truncate transition-colors" style="color:var(--text);">{{ row.coach.team_name }}</div>
                 <div class="text-xs" style="color:rgba(255,255,255,0.25);">{{ row.coach.coach_name }} · POOL {{ row.coach.pool }}</div>
               </div>
               <div class="flex items-center gap-4 text-sm font-mono flex-shrink-0">
@@ -815,8 +815,8 @@
             {% set s2 = m.score2 | int %}
             {% set c1_win = s1 > s2 %}
             {% set is_tie = s1 == s2 %}
-            <div class="rounded-xl border overflow-hidden transition-all hover:border-gray-700"
-                 style="background:var(--sf2);border-color:rgba(255,255,255,0.05);">
+            <div class="overflow-hidden transition-all"
+                 style="border-radius:2px;border:1px solid var(--hairline);background:var(--sf2);">
               <div class="flex items-center divide-x divide-gray-800/60">
                 <a href="/team/{{ m.c1_id }}" class="flex-1 flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 {% if not c1_win and not is_tie %}opacity-40{% endif %}" style="text-decoration:none;">
                   {% if m.c1_logo %}<img src="{{ m.c1_logo }}" class="w-9 h-9 object-contain rounded-lg flex-shrink-0" alt="">
@@ -864,7 +864,7 @@
         <a href="/standings" class="nav-card"><div class="nav-card-icon" style="background:rgba(0,245,255,0.12);color:#00F5FF;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><div class="nav-card-title">Standings</div><div class="nav-card-desc">Pool rankings and score differentials.</div><span class="nav-card-arrow">↗</span></a>
         <a href="/schedule" class="nav-card"><div class="nav-card-icon" style="background:rgba(255,45,120,0.12);color:#FF2D78;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><div class="nav-card-title">Schedule</div><div class="nav-card-desc">Weekly matchups and results.</div><span class="nav-card-arrow">↗</span></a>
         <a href="/pickems" class="nav-card"><div class="nav-card-icon" style="background:rgba(255,140,0,0.12);color:#FF8C00;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="nav-card-title">Pick'ems</div><div class="nav-card-desc">Predict winners and compete.</div><span class="nav-card-arrow">↗</span></a>
-        <a href="/playoffs" class="nav-card"><div class="nav-card-icon" style="background:rgba(250,204,21,0.1);color:#facc15;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9H4a1 1 0 01-1-1V5a1 1 0 011-1h4m10 5h2a1 1 0 001-1V5a1 1 0 00-1-1h-4m-6-1v5a5 5 0 0010 0V4M8 4v5a5 5 0 0010 0"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14v4m-3 2h6"/></svg></div><div class="nav-card-title">Playoffs</div><div class="nav-card-desc">Tournament bracket and postseason.</div><span class="nav-card-arrow">↗</span></a>
+        <a href="/playoffs" class="nav-card"><div class="nav-card-icon" style="background:var(--magenta-soft);color:var(--magenta);"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9H4a1 1 0 01-1-1V5a1 1 0 011-1h4m10 5h2a1 1 0 001-1V5a1 1 0 00-1-1h-4m-6-1v5a5 5 0 0010 0V4M8 4v5a5 5 0 0010 0"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14v4m-3 2h6"/></svg></div><div class="nav-card-title">Playoffs</div><div class="nav-card-desc">Tournament bracket and postseason.</div><span class="nav-card-arrow">↗</span></a>
         <a href="/draftboard" class="nav-card"><div class="nav-card-icon" style="background:rgba(0,245,255,0.12);color:#00F5FF;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg></div><div class="nav-card-title">Draft Board</div><div class="nav-card-desc">Full draft history and pick order.</div><span class="nav-card-arrow">↗</span></a>
         <a href="/draft-prep" class="nav-card"><div class="nav-card-icon" style="background:rgba(255,45,120,0.1);color:#FF2D78;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><div class="nav-card-title">Draft Prep</div><div class="nav-card-desc">Plan your roster before picks start.</div><span class="nav-card-arrow">↗</span></a>
         <a href="/pokedex" class="nav-card"><div class="nav-card-icon" style="background:rgba(255,140,0,0.1);color:#FF8C00;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 010 18"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor"/></svg></div><div class="nav-card-title">Pokédex</div><div class="nav-card-desc">Browse eligible Pokémon with stats.</div><span class="nav-card-arrow">↗</span></a>

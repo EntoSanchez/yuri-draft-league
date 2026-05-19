@@ -3,10 +3,10 @@
 {% block content %}
 
 <!-- ── Page Header ── -->
-<div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// MATCH.GRID</p>
-    <h1 class="text-3xl font-black gradient-heading">Schedule — {{ league_name }}</h1>
+<div class="yc-page-hero hero-pattern">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <p class="yc-eyebrow">// MATCH.GRID</p>
+    <h1 class="yc-page-title">Schedule — {{ league_name }}</h1>
   </div>
 </div>
 
@@ -25,8 +25,8 @@
         {% set is_current = week == current_week %}
         <button onclick="switchWeek({{ week }})"
                 id="tab-{{ week }}"
-                class="week-tab px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2"
-                style="{% if loop.first %}background:rgba(0,245,255,0.08);border-color:rgba(0,245,255,0.35);color:#00F5FF;{% else %}background-color:#0f1623;border-color:rgba(55,65,81,0.5);color:#6b7280;{% endif %}">
+                class="week-tab px-4 py-2 text-xs font-bold border transition-all flex items-center gap-2"
+                style="border-radius:2px;{% if loop.first %}background:var(--magenta-soft);border-color:var(--magenta-dim);color:var(--magenta);{% else %}background:var(--panel);border-color:var(--hairline);color:var(--text-mute);{% endif %}">
           <span class="font-mono">WEEK {{ '%02d'|format(week) }}</span>
           {% if is_complete %}
           <span class="text-xs font-bold" style="color:rgba(74,222,128,0.7);">DONE</span>
@@ -150,7 +150,7 @@
                   {% if has_result %}
                     <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
                     {% if session.get('role') == 'admin' %}
-                    <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:rgba(250,204,21,0.45);">Stats →</a></div>
+                    <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:var(--cyan-dim);">Stats →</a></div>
                     {% endif %}
                   {% endif %}
                 </div>
@@ -171,9 +171,9 @@ function switchWeek(week) {
   document.querySelectorAll('.week-section').forEach(s => s.style.display = 'none');
   // Deactivate all tabs
   document.querySelectorAll('.week-tab').forEach(t => {
-    t.style.background = '#0f1623';
-    t.style.borderColor = 'rgba(55,65,81,0.5)';
-    t.style.color = '#6b7280';
+    t.style.background = 'var(--panel)';
+    t.style.borderColor = 'var(--hairline)';
+    t.style.color = 'var(--text-mute)';
   });
   // Show selected section
   const section = document.getElementById('week-section-' + week);
@@ -181,9 +181,9 @@ function switchWeek(week) {
   // Activate tab
   const tab = document.getElementById('tab-' + week);
   if (tab) {
-    tab.style.background = 'rgba(0,245,255,0.08)';
-    tab.style.borderColor = 'rgba(0,245,255,0.35)';
-    tab.style.color = '#00F5FF';
+    tab.style.background = 'var(--magenta-soft)';
+    tab.style.borderColor = 'var(--magenta-dim)';
+    tab.style.color = 'var(--magenta)';
   }
 }
 // Auto-select current week on load
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <h2 class="text-xl font-bold text-gray-600 mb-2">No schedule yet</h2>
       <p class="text-sm text-gray-700 mb-6">Matches will appear here once they're scheduled.</p>
       {% if session.get('role') == 'admin' %}
-        <a href="/admin/schedule" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold text-sm hover:bg-yellow-300 transition-colors">
+        <a href="/admin/schedule" class="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-bold text-sm transition-colors" style="background:var(--magenta);color:#000;">
           Add matches &rarr;
         </a>
       {% endif %}

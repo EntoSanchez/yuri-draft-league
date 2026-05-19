@@ -26,7 +26,7 @@
   {% if is_free %}
   <span class="text-xs font-bold text-green-400 flex-shrink-0">FREE</span>
   {% else %}
-  <span class="text-xs font-bold flex-shrink-0" style="color:#facc15;">{{ poke.points }}pt</span>
+  <span class="text-xs font-bold flex-shrink-0" style="color:var(--cyan);">{{ poke.points }}pt</span>
   {% endif %}
 </div>
 {% endmacro %}
@@ -106,10 +106,10 @@
   {% if mega_on %}{% set total_picks = total_picks + s.mega|length %}{% endif %}
   {% if not uber_on %}{% set total_picks = total_picks - s.uber1|length - s.uber2|length %}{% endif %}
 {% endif %}
-<div class="rounded-xl border border-gray-800/60 overflow-hidden flex flex-col" style="background:#080c14;">
+<div class="overflow-hidden flex flex-col" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
 
   {# ── Card header ── #}
-  <div class="flex items-center gap-2 px-2.5 py-2 border-b border-gray-800/60" style="background:#0a0f1a;">
+  <div class="flex items-center gap-2 px-2.5 py-2" style="border-bottom:1px solid var(--hairline);background:var(--panel-2);">
     {% if c.logo_url %}
     <img src="{{ c.logo_url }}" class="w-7 h-7 object-contain rounded flex-shrink-0" alt="">
     {% else %}
@@ -122,7 +122,7 @@
     </div>
     <div class="flex-shrink-0 text-right leading-none">
       {% if cm == 'points' %}
-      <div class="text-xl font-black {% if rem >= 15 %}text-green-400{% elif rem >= 8 %}text-yellow-400{% elif rem >= 0 %}text-red-400{% else %}text-red-600{% endif %}">{{ rem }}</div>
+      <div class="text-xl font-black {% if rem >= 15 %}text-green-400{% elif rem >= 8 %}{% elif rem >= 0 %}text-red-400{% else %}text-red-600{% endif %}" style="{% if rem >= 8 and rem < 15 %}color:var(--amber);{% endif %}">{{ rem }}</div>
       <div class="text-gray-600" style="font-size:9px;">pts left</div>
       {% elif cm == 'tier_tickets' %}
       <span class="px-2 py-0.5 rounded text-xs font-bold text-purple-300 border border-purple-600" style="background:rgba(124,58,237,0.2);">Tickets</span>
@@ -159,7 +159,7 @@
           <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}" onerror="this.style.display='none'" class="w-6 h-6 object-contain flex-shrink-0 sprite" alt="">
           <span class="text-xs text-gray-200 truncate flex-1 leading-tight">{{ poke.pokemon_name }}</span>
           <span class="flex-shrink-0 text-gray-600 font-semibold" style="font-size:9px;">{{ poke.tier }}</span>
-          <span class="text-xs font-bold flex-shrink-0" style="color:#facc15;">{{ poke.points }}pt</span>
+          <span class="text-xs font-bold flex-shrink-0" style="color:var(--cyan);">{{ poke.points }}pt</span>
         </div>
         {% endfor %}
         {% for _ in range([8 - s.all_picks|length, 0]|max) %}
@@ -219,12 +219,12 @@
   </div>
 
   {# ── Progress footer ── #}
-  <div class="px-2.5 py-1.5 border-t border-gray-800/40 flex items-center justify-between" style="background:#0a0f1a;">
+  <div class="px-2.5 py-1.5 flex items-center justify-between" style="border-top:1px solid var(--hairline);background:var(--panel-2);">
     <span class="text-gray-600" style="font-size:10px;">{{ total_picks }}/{{ total_cap }} picks</span>
     <div class="flex-1 h-1 rounded-full bg-gray-800 overflow-hidden ml-2">
       <div class="h-full rounded-full"
            style="width:{{ ((total_picks / total_cap) * 100)|round|int if total_cap > 0 else 0 }}%;
-                  background:{% if total_picks == total_cap %}#22c55e{% elif total_picks >= (total_cap * 0.6)|int %}#facc15{% else %}#3b82f6{% endif %};"></div>
+                  background:{% if total_picks == total_cap %}#22c55e{% elif total_picks >= (total_cap * 0.6)|int %}var(--amber){% else %}var(--cyan){% endif %};"></div>
     </div>
   </div>
 
@@ -235,7 +235,7 @@
 {% macro render_pool(teams, pool_label) %}
 <div class="mb-10">
   <div class="flex items-center gap-3 mb-4">
-    <div class="w-1 h-6 rounded-full flex-shrink-0" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
+    <div class="w-1 h-6 flex-shrink-0" style="border-radius:2px;background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
     <h2 class="text-base font-black text-white uppercase tracking-wider">Pool {{ pool_label }}</h2>
     <div class="h-px flex-1 bg-gray-800/60"></div>
     <span class="text-xs text-gray-600">{{ teams|length }} teams</span>
@@ -258,8 +258,8 @@
     <div class="flex items-center gap-3">
       {% if active_session %}
       <a href="{{ url_for('draft_live') }}"
-         class="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm text-black"
-         style="background:linear-gradient(90deg,#facc15,#f59e0b);">
+         class="flex items-center gap-2 px-4 py-2 font-bold text-sm"
+         style="border-radius:2px;background:var(--magenta);color:#000;">
         <span class="relative flex h-2 w-2">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -269,12 +269,12 @@
       {% endif %}
       {% if session.get('role') == 'admin' %}
       <a href="{{ url_for('admin_draft') }}"
-         class="px-4 py-2 rounded-lg font-bold text-sm text-gray-300 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">
+         class="px-4 py-2 font-bold text-sm transition-colors" style="border-radius:2px;border:1px solid var(--hairline);color:var(--text-mute);">
         Admin Draft
       </a>
       {% endif %}
       <a href="{{ url_for('draft_board') }}"
-         class="px-4 py-2 rounded-lg font-bold text-sm text-gray-300 border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 transition-colors">
+         class="px-4 py-2 font-bold text-sm transition-colors" style="border-radius:2px;border:1px solid var(--hairline);color:var(--text-mute);">
         Draft Board
       </a>
     </div>

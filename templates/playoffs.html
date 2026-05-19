@@ -16,10 +16,10 @@
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: #facc15;
-    background: rgba(250,204,21,0.06);
-    border-bottom: 1px solid rgba(250,204,21,0.15);
-    border-right: 1px solid rgba(55,65,81,0.35);
+    color: var(--cyan);
+    background: var(--cyan-soft);
+    border-bottom: 1px solid var(--hairline-2);
+    border-right: 1px solid var(--hairline);
   }
 
   .round-matches {
@@ -83,11 +83,11 @@
     transition: border-color 0.2s, box-shadow 0.2s;
   }
   .match-card:not(.bye):hover {
-    border-color: rgba(250,204,21,0.3);
-    box-shadow: 0 0 16px rgba(250,204,21,0.07);
+    border-color: var(--magenta-dim);
+    box-shadow: 0 0 16px rgba(255,42,138,0.07);
   }
   .match-card.bye { opacity: 0.28; border-style: dashed; }
-  .match-card.has-winner { border-color: rgba(250,204,21,0.2); }
+  .match-card.has-winner { border-color: var(--magenta-dim); }
 
   .match-player {
     display: flex;
@@ -99,10 +99,10 @@
   }
   .match-player + .match-player { border-top: 1px solid rgba(55,65,81,0.5); }
 
-  /* Winner row: gold left border + subtle gold bg */
+  /* Winner row: magenta left border + subtle magenta bg */
   .match-player.winner {
-    background: rgba(250,204,21,0.09);
-    border-left-color: #facc15;
+    background: var(--magenta-soft);
+    border-left-color: var(--magenta);
   }
   .match-player.loser { opacity: 0.32; }
 
@@ -128,7 +128,7 @@
   .player-score {
     font-size: 12px; font-weight: 900; min-width: 16px; text-align: right; flex-shrink: 0; color: #6b7280;
   }
-  .player-score.winner-score { color: #facc15; }
+  .player-score.winner-score { color: var(--magenta); }
   .player-score.loser-score  { color: #ef4444; opacity: 0.55; }
 
   /* Stats link on match card */
@@ -145,7 +145,7 @@
     text-decoration: none;
     transition: color .15s, background .15s;
   }
-  .match-stats-link:hover { color: #facc15; background: rgba(250,204,21,0.06); }
+  .match-stats-link:hover { color: var(--cyan); background: var(--cyan-soft); }
 
   /* ── Champion Column ── */
   .champ-round { display: flex; flex-direction: column; width: 180px; min-width: 180px; }
@@ -156,9 +156,9 @@
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: #fbbf24;
-    background: rgba(251,191,36,0.08);
-    border-bottom: 1px solid rgba(251,191,36,0.2);
+    color: var(--magenta);
+    background: var(--magenta-soft);
+    border-bottom: 1px solid var(--magenta-dim);
   }
   .champ-body {
     flex: 1;
@@ -170,34 +170,34 @@
   .champ-card {
     text-align: center;
     padding: 20px 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(251,191,36,0.45);
-    background: linear-gradient(135deg, rgba(146,64,14,0.35), rgba(180,83,9,0.35));
+    border-radius: 2px;
+    border: 1px solid var(--magenta-dim);
+    background: var(--magenta-soft);
     width: 148px;
   }
 </style>
 
 <!-- Header -->
-<div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg,#0f1623,#080c14);">
-  <div class="max-w-full px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// POSTSEASON_{{ league_name.upper().replace(' ','_') }}</p>
-    <h1 class="text-3xl font-black gradient-heading">Playoff Bracket</h1>
-    <p class="text-sm mt-2 flex flex-wrap items-center gap-2" style="color:rgba(255,255,255,0.35);">
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
-            style="border-color:rgba(0,245,255,0.2);background:rgba(0,245,255,0.05);color:rgba(0,245,255,0.7);">
+<div class="yc-page-hero hero-pattern">
+  <div class="max-w-full px-4 sm:px-6 lg:px-8 py-12">
+    <p class="yc-eyebrow">// POSTSEASON_{{ league_name.upper().replace(' ','_') }}</p>
+    <h1 class="yc-page-title">Playoff Bracket</h1>
+    <p class="yc-page-sub flex flex-wrap items-center gap-2 mt-3">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
+            style="border-radius:2px;border-color:var(--cyan-dim);background:var(--cyan-soft);color:var(--cyan);">
         {% if settings.get('playoff_format','single') == 'double' %}DOUBLE{% else %}SINGLE{% endif %}-ELIM
       </span>
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
-            style="border-color:rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
+            style="border-radius:2px;border-color:var(--hairline);background:var(--panel-2);color:var(--text-mute);">
         {{ settings.get('playoff_players','?') }} TEAMS
       </span>
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
-            style="border-color:rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
+            style="border-radius:2px;border-color:var(--hairline);background:var(--panel-2);color:var(--text-mute);">
         FORMAT · {{ settings.get('playoff_match_format','BO5') }}
       </span>
       {% if settings.get('playoff_byes','0')|int > 0 %}
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold font-mono"
-            style="border-color:rgba(250,204,21,0.25);background:rgba(250,204,21,0.06);color:rgba(250,204,21,0.7);">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
+            style="border-radius:2px;border-color:var(--magenta-dim);background:var(--magenta-soft);color:var(--magenta);">
         TOP {{ settings.get('playoff_byes') }} · BYE
       </span>
       {% endif %}
@@ -209,7 +209,7 @@
 
 {% if not has_bracket %}
   <div class="text-center py-24">
-    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full border border-gray-800 mb-4" style="background:#0f1623;">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full border mb-4" style="border-color:var(--hairline);background:var(--panel);">
       <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>

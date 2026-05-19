@@ -306,16 +306,12 @@
        DESIGN SYSTEM ADDITIONS
     ══════════════════════════════════════ */
 
-    /* ── Gradient headings ── */
+    /* ── Gradient headings — overridden to plain text per design system ── */
     .gradient-heading {
-      background: linear-gradient(135deg, #FFE600 0%, #00F5FF 55%, #FF2D78 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      filter: drop-shadow(0 0 12px rgba(0,245,255,0.25));
+      color: var(--text);
     }
 
-    /* ── Hero dot pattern overlay ── */
+    /* ── Hero dot pattern overlay — cyan grid, not yellow dots ── */
     .hero-pattern {
       position: relative;
       overflow: hidden;
@@ -324,12 +320,36 @@
       content: '';
       position: absolute;
       inset: 0;
-      background-image: radial-gradient(circle, rgba(250,204,21,0.07) 1px, transparent 1px);
-      background-size: 22px 22px;
+      background-image:
+        linear-gradient(rgba(34,225,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,225,255,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
       pointer-events: none;
       z-index: 0;
     }
     .hero-pattern > * { position: relative; z-index: 1; }
+
+    /* ── Page hero section ── */
+    .yc-page-hero {
+      background: var(--panel);
+      border-bottom: 1px solid var(--hairline);
+      position: relative;
+    }
+    .yc-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--cyan);
+      margin-bottom: 8px;
+    }
+    .yc-page-title {
+      font-family: var(--font-display);
+      font-weight: 700; font-size: clamp(28px, 4vw, 48px);
+      text-transform: uppercase; letter-spacing: 0.01em;
+      color: var(--text); line-height: 1;
+    }
+    .yc-page-sub {
+      color: var(--text-mute); font-size: 14px; margin-top: 6px;
+    }
 
     /* ── Glassmorphism cards ── */
     .glass-card {

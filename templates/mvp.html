@@ -3,11 +3,11 @@
 {% block content %}
 
 <!-- ── Page Header ── -->
-<div class="hero-pattern border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// MVP.RACE</p>
-    <h1 class="text-3xl font-black gradient-heading">MVP Race</h1>
-    <p class="text-sm mt-1 font-mono" style="color:rgba(255,255,255,0.3);">Pokémon ranked by K/D differential across all matches.</p>
+<div class="yc-page-hero hero-pattern">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <p class="yc-eyebrow">// MVP.RACE</p>
+    <h1 class="yc-page-title">MVP Race</h1>
+    <p class="yc-page-sub">Pokémon ranked by K/D differential across all matches.</p>
   </div>
 </div>
 
@@ -39,7 +39,7 @@
           {% set rank_num = '3' %}
         {% endif %}
 
-        <div class="{{ order }} {{ scale }} rounded-xl border border-gray-800 p-5 text-center" style="background-color:#0f1623;">
+        <div class="{{ order }} {{ scale }} p-5 text-center" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
           <div class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black mb-3"
                style="background:{{ medal_bg }};color:{{ medal_color }};">{{ rank_num }}</div>
           <img src="{{ pokemon_sprite_url(p.pokemon_name) }}"
@@ -59,11 +59,11 @@
     {% endif %}
 
     <!-- Full Rankings Table -->
-    <div class="rounded-xl border border-gray-800 overflow-hidden" style="background-color:#0f1623;">
+    <div class="overflow-hidden" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
-            <tr class="border-b border-gray-800" style="background-color:#111827;">
+            <tr style="border-bottom:1px solid var(--hairline);background:var(--panel-2);">
               <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600 w-14">Rank</th>
               <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Pokemon</th>
               <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 hidden sm:table-cell">Team</th>
@@ -94,7 +94,7 @@
                 {% set rank_col = '' %}
               {% endif %}
 
-              <tr class="alt-row border-b border-gray-800/40 hover:bg-yellow-400/3 transition-colors" style="{{ row_bg }}">
+              <tr class="alt-row transition-colors" style="border-bottom:1px solid var(--hairline);{{ row_bg }}">
                 <td class="px-4 py-3.5 text-center">
                   {% if p.rank <= 3 %}
                     <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black"
@@ -134,7 +134,7 @@
                     {% if p.total_deaths > 0 %}
                       {{ '%.2f' % (p.total_kills / p.total_deaths) }}
                     {% elif p.total_kills > 0 %}
-                      <span class="text-yellow-400">&#8734;</span>
+                      <span style="color:var(--cyan);">&#8734;</span>
                     {% else %}—{% endif %}
                   </span>
                 </td>
@@ -147,7 +147,7 @@
 
   {% else %}
     <div class="text-center py-24">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border border-gray-800 mb-6" style="background-color:#0f1623;">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border mb-6" style="border-color:var(--hairline);background:var(--panel);">
         <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
         </svg>
@@ -155,7 +155,8 @@
       <h2 class="text-xl font-bold text-gray-600 mb-2">No stats yet</h2>
       <p class="text-sm text-gray-700 mb-6">Enter match results to start tracking MVP standings.</p>
       {% if session.get('role') == 'admin' %}
-        <a href="/admin/schedule" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold text-sm hover:bg-yellow-300 transition-colors">
+        <a href="/admin/schedule" class="inline-flex items-center gap-2 px-6 py-3 font-bold text-sm transition-colors"
+           style="border-radius:2px;background:var(--magenta);color:#000;">
           Enter match results &rarr;
         </a>
       {% endif %}
