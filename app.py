@@ -49,12 +49,14 @@ def _migrate_db():
             except Exception:
                 pass
         # One-time reset: coaches got 'points' auto-assigned by the old DEFAULT clause.
-        # NULL means "legacy" (no budget cap). Admins can re-opt coaches into Plan Griffin modes.
-        if not db.execute(
-            "SELECT 1 FROM league_settings WHERE key='_migration_draft_mode_reset_v1'"
-        ).fetchone():
-            db.execute("UPDATE coaches SET draft_mode = NULL WHERE draft_mode = 'points'")
-            db.execute("INSERT INTO league_settings (key, value) VALUES ('_migration_draft_mode_reset_v1', '1')")
+        try:
+            if not db.execute(
+                "SELECT 1 FROM league_settings WHERE key='_migration_draft_mode_reset_v1'"
+            ).fetchone():
+                db.execute("UPDATE coaches SET draft_mode = NULL WHERE draft_mode = 'points'")
+                db.execute("INSERT INTO league_settings (key, value) VALUES ('_migration_draft_mode_reset_v1', '1')")
+        except Exception:
+            pass
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('points_budget_griffin', '70')")
         db.execute("INSERT OR IGNORE INTO league_settings (key, value) VALUES ('draft_format', '')")
         db.execute("""
