@@ -74,6 +74,23 @@
 .yc-team .yc-eyebrow.mag { color: var(--magenta); }
 .yc-team .yc-mono { font-family: var(--fm); letter-spacing: 0.04em; }
 
+/* Defending champion banner */
+.yc-champion-banner {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 5px 14px;
+  border: 1px solid rgba(255,184,77,0.5);
+  background: rgba(255,184,77,0.08);
+  box-shadow: 0 0 18px -4px rgba(255,184,77,0.35);
+  font-family: var(--fm); font-size: 11px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: #ffb84d;
+}
+.yc-champ-crown { font-size: 14px; }
+@keyframes yc-champ-pulse {
+  0%, 100% { box-shadow: 0 0 18px -4px rgba(255,184,77,0.35); }
+  50%       { box-shadow: 0 0 28px -2px rgba(255,184,77,0.6); }
+}
+.yc-champion-banner { animation: yc-champ-pulse 3s ease-in-out infinite; }
+
 /* Panels */
 .yc-team .yc-panel {
   background: var(--panel);
@@ -263,7 +280,14 @@
         <!-- Info -->
         <div class="flex-1 min-w-0">
           <p class="yc-eyebrow mag">// TEAM_DOSSIER · POOL {{ coach.pool }} · ID #{{ coach.id }}</p>
-          <h1 class="yc-h1 mt-2" style="font-size:56px;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;">
+          {% if coach.is_defending_champ %}
+          <div class="yc-champion-banner mt-2">
+            <span class="yc-champ-crown">&#9651;</span>
+            <span class="yc-champ-label">DEFENDING CHAMPION</span>
+            <span class="yc-champ-crown">&#9651;</span>
+          </div>
+          {% endif %}
+          <h1 class="yc-h1 mt-2" style="font-size:56px;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;{% if coach.is_defending_champ %}text-shadow:0 0 32px #ffb84d80,0 0 24px {{ coach.color or '#ff2a8a' }}40;{% endif %}">
             {{ coach.team_name }}
           </h1>
           <p class="yc-mono mt-3" style="font-size:12px;color:var(--text-mute);">

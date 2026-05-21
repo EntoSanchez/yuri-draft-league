@@ -42,6 +42,7 @@ def _migrate_db():
         for stmt in [
             "ALTER TABLE coaches ADD COLUMN draft_mode TEXT",
             "ALTER TABLE draft_picks ADD COLUMN ticket_used TEXT",
+            "ALTER TABLE coaches ADD COLUMN is_defending_champ INTEGER DEFAULT 0",
         ]:
             try:
                 db.execute(stmt)
@@ -1467,32 +1468,40 @@ def admin_teams():
         if action == "add":
             uploaded = _save_logo_file(request.files.get("logo_file"))
             logo_url = uploaded or request.form.get("logo_url", "")
+            is_champ = 1 if request.form.get("is_defending_champ") else 0
             with get_db() as db:
+                if is_champ:
+                    db.execute("UPDATE coaches SET is_defending_champ=0")
                 db.execute(
-                    "INSERT INTO coaches (coach_name, team_name, pool, color, logo_url, showdown_name, battle_music_url, draft_mode) VALUES (?,?,?,?,?,?,?,?)",
+                    "INSERT INTO coaches (coach_name, team_name, pool, color, logo_url, showdown_name, battle_music_url, draft_mode, is_defending_champ) VALUES (?,?,?,?,?,?,?,?,?)",
                     (request.form["coach_name"], request.form["team_name"],
                      request.form["pool"], request.form.get("color", "#3b82f6"),
                      logo_url,
                      request.form.get("showdown_name", ""),
                      request.form.get("battle_music_url", ""),
-                     request.form.get("draft_mode") or None)
+                     request.form.get("draft_mode") or None,
+                     is_champ)
                 )
             flash("Team added!", "success")
         elif action == "edit":
             cid = request.form["coach_id"]
             uploaded = _save_logo_file(request.files.get("logo_file"))
+            is_champ = 1 if request.form.get("is_defending_champ") else 0
             with get_db() as db:
                 existing = db.execute("SELECT logo_url FROM coaches WHERE id=?", (cid,)).fetchone()
                 existing_logo = existing["logo_url"] if existing else ""
                 logo_url = uploaded or request.form.get("logo_url", "") or existing_logo or ""
+                if is_champ:
+                    db.execute("UPDATE coaches SET is_defending_champ=0 WHERE id!=?", (cid,))
                 db.execute(
-                    "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=?, draft_mode=? WHERE id=?",
+                    "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=?, draft_mode=?, is_defending_champ=? WHERE id=?",
                     (request.form["coach_name"], request.form["team_name"],
                      request.form["pool"], request.form.get("color", "#3b82f6"),
                      logo_url,
                      request.form.get("showdown_name", ""),
                      request.form.get("battle_music_url", ""),
-                     request.form.get("draft_mode") or None, cid)
+                     request.form.get("draft_mode") or None,
+                     is_champ, cid)
                 )
             flash("Team updated!", "success")
         elif action == "delete":

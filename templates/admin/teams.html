@@ -87,7 +87,12 @@
                 {% endif %}
             </div>
             <div class="flex-1 min-w-0">
-                <div class="font-bold">{{ c.team_name }}</div>
+                <div class="font-bold flex items-center gap-2">
+                    {{ c.team_name }}
+                    {% if c.is_defending_champ %}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded" style="background:rgba(255,184,77,0.15);color:#ffb84d;border:1px solid rgba(255,184,77,0.4);">&#9651; CHAMP</span>
+                    {% endif %}
+                </div>
                 <div class="text-sm text-gray-400">{{ c.coach_name }} · Pool {{ c.pool }}</div>
             </div>
             <div class="flex gap-2">
@@ -162,6 +167,15 @@
                                    class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-yellow-500 focus:outline-none">
                         </div>
                     </div>
+                </div>
+                <div class="sm:col-span-2 flex items-center gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" name="is_defending_champ" value="1"
+                               {% if c.is_defending_champ %}checked{% endif %}
+                               class="w-4 h-4 accent-yellow-500">
+                        <span class="text-sm font-semibold" style="color:#ffb84d;">&#9651; Defending Champion</span>
+                    </label>
+                    <span class="text-xs text-gray-600">(only one team can hold this)</span>
                 </div>
                 <div>
                     <button type="submit" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded text-sm font-semibold">Save Changes</button>
