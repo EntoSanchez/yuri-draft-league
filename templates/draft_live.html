@@ -263,40 +263,17 @@
 <div style="padding:14px 18px 40px;max-width:1600px;margin:0 auto;">
 
 {% if session is none %}
-{# ── No active draft ── #}
-<div style="max-width:520px;margin:64px auto;text-align:center;">
-  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);letter-spacing:.14em;margin-bottom:12px;">// NO_ACTIVE_SESSION</div>
-  <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--text);margin-bottom:8px;">No Live Draft</div>
-  <p style="color:var(--text-mute);font-size:13px;margin-bottom:20px;">There is no draft session running right now.</p>
-  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-    <a href="{{ url_for('draft_sheet') }}" style="padding:8px 18px;border:1px solid var(--hairline);border-radius:2px;color:var(--text-mute);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-decoration:none;">DRAFT SHEET</a>
-    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:8px 18px;background:var(--magenta);border-radius:2px;color:#000;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-decoration:none;">ADMIN: SETUP</a>{% endif %}
+{# ── No active draft: compact banner only (grid still renders below) ── #}
+<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:14px;background:var(--panel-2);border:1px solid var(--hairline);border-radius:2px;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="dl-ey dim">// NO_ACTIVE_SESSION</span>
+    <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text-mute);">No Live Draft</span>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('draft_sheet') }}" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;color:var(--text-mute);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-decoration:none;">SHEET</a>
+    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:5px 12px;background:var(--magenta);border-radius:2px;color:#000;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-decoration:none;">ADMIN: SETUP</a>{% endif %}
   </div>
 </div>
-
-{# Coach roster cards when no session #}
-{% for pool_label, pool_coaches in [('A', coaches_a), ('B', coaches_b)] %}
-{% if pool_coaches %}
-<div style="max-width:960px;margin:0 auto 24px;">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-    <div style="width:3px;height:16px;border-radius:2px;background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
-    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text-mute);letter-spacing:.1em;">// POOL_{{ pool_label }}</span>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">
-    {% for coach in pool_coaches %}{% set cm = coach.draft_mode or 'legacy' %}
-    <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel);">
-      {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:30px;height:30px;object-fit:contain;border-radius:2px;" alt="">
-      {% else %}<div style="width:30px;height:30px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
-      <div style="flex:1;min-width:0;">
-        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ coach.team_name }}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);">{{ coach.coach_name }}</div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-{% endfor %}
 
 {% else %}{# ── Active/Paused draft ── #}
 
@@ -487,14 +464,16 @@ if (ticketSel) {
 </div>
 {% endif %}
 
-{# ── Two-pool grid ── #}
+{% endif %}{# end session check #}
+
+{# ── Two-pool grid ── always rendered regardless of session state #}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
   {{ pool_col('A', coaches_a, grid_a, current_coach_a_id, current_slot_a, last_pick_a) }}
   {{ pool_col('B', coaches_b, grid_b, current_coach_b_id, current_slot_b, last_pick_b) }}
 </div>
 
-{# ── Captain selection ── #}
-{% if my_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
+{# ── Captain selection ── only when session active #}
+{% if session and my_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
 <div style="padding:16px;border:1px solid var(--hairline);background:var(--panel);border-radius:2px;">
   <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;margin-bottom:12px;">// CAPTAIN_SELECTION <span style="color:var(--text-dim);font-weight:400;">— ≤13pts or Tier 4/5</span></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:7px;">
@@ -529,7 +508,6 @@ if (ticketSel) {
 </div>
 {% endif %}
 
-{% endif %}{# end session exists #}
 </div>
 
 {% if session and session.status in ('active', 'paused') %}

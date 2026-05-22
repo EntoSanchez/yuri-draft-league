@@ -3061,15 +3061,64 @@ def draft_live():
         coaches = db.execute("SELECT * FROM coaches ORDER BY pool, id").fetchall()
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
 
+        coaches_a = [c for c in coaches if c["pool"] == "A"]
+        coaches_b = [c for c in coaches if c["pool"] == "B"]
+        coaches_map = {c["id"]: dict(c) for c in coaches}
+        pool_a_ids = {c["id"] for c in coaches_a}
+        pool_b_ids = {c["id"] for c in coaches_b}
+
+        # Build grid from pokemon_roster — always, so the grid shows even without an active session
+        _roster_rows_base = db.execute("""
+            SELECT pr.*, COALESCE(dt.tier_label,'') as poke_tier_label
+            FROM pokemon_roster pr
+            LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
+        """).fetchall()
+        _uber_counts_base = {}
+        _roster_base = []
+        for r in _roster_rows_base:
+            tier = r["tier"]
+            if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
+                cid = r["coach_id"]
+                count = _uber_counts_base.get(cid, 0)
+                tier = "Uber 2" if count >= 1 else "Uber 1"
+                _uber_counts_base[cid] = count + 1
+            _roster_base.append({
+                "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
+                "points": r["points"], "tier": tier,
+                "poke_tier_label": r["poke_tier_label"],
+                "is_tera_captain": int(r["is_tera_captain"]) if r["is_tera_captain"] else 0,
+                "is_zmove_captain": int(r["is_zmove_captain"]) if r["is_zmove_captain"] else 0,
+                "is_free_pick": r["is_free_pick"] or 0,
+                "ticket_used": "",
+            })
+        grid_a, max_a = _build_draft_grid(coaches_a, _roster_base)
+        grid_b, max_b = _build_draft_grid(coaches_b, _roster_base)
+
         if session_row is None:
             is_admin = session.get("role") == "admin"
             return render_template(
                 "draft_live.html",
                 session=None,
                 coaches=coaches,
-                coaches_a=[c for c in coaches if c["pool"] == "A"],
-                coaches_b=[c for c in coaches if c["pool"] == "B"],
+                coaches_a=coaches_a,
+                coaches_b=coaches_b,
+                coaches_map=coaches_map,
+                grid_a=grid_a, grid_b=grid_b,
+                max_a=max_a, max_b=max_b,
+                tier_order=TIER_ORDER,
+                coaches_draft_states={},
+                current_coach_a_id=None,
+                current_coach_b_id=None,
+                current_coach_id=None,
+                current_slot_a=None,
+                current_slot_b=None,
+                current_slot=None,
+                last_pick_a=None,
+                last_pick_b=None,
                 is_admin=is_admin,
+                my_picks=[],
+                mechanic_tera=settings.get("mechanic_tera", "0"),
+                mechanic_zmove=settings.get("mechanic_zmove", "0"),
                 league_name=settings.get("league_name", "Pokemon Draft League"),
             )
 
@@ -3086,10 +3135,7 @@ def draft_live():
 
         snake_order = json.loads(session_row["snake_order"] or "[]")
 
-        # Per-pool independent sequences and pick counters
-        pool_a_ids = {c["id"] for c in coaches if c["pool"] == "A"}
-        pool_b_ids = {c["id"] for c in coaches if c["pool"] == "B"}
-
+        # Per-pool independent sequences and pick counters (pool_a/b_ids already set above)
         seq_a = _get_pool_sequence(snake_order, pool_a_ids, round_structure)
         seq_b = _get_pool_sequence(snake_order, pool_b_ids, round_structure)
 
@@ -3160,10 +3206,8 @@ def draft_live():
                 "is_free_pick": r["is_free_pick"] or 0,
                 "ticket_used": (pick_info["ticket_used"] if pick_info else None) or "",
             })
-        grid_a, max_a = _build_draft_grid([c for c in coaches if c["pool"] == "A"], roster_from_picks)
-        grid_b, max_b = _build_draft_grid([c for c in coaches if c["pool"] == "B"], roster_from_picks)
-
-        coaches_map = {c["id"]: dict(c) for c in coaches}
+        grid_a, max_a = _build_draft_grid(coaches_a, roster_from_picks)
+        grid_b, max_b = _build_draft_grid(coaches_b, roster_from_picks)
 
         # Per-coach draft state (mode, remaining budget/tickets, uber status)
         coaches_draft_states = {
