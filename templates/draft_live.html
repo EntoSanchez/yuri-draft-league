@@ -2,67 +2,184 @@
 {% block title %}Live Draft – {{ league_name }}{% endblock %}
 
 {% block content %}
+{% set TC = {"Tier 1":"#5a9bff","Tier 2":"#b07dff","Tier 3":"#3dd9c2","Tier 4":"#7ddc6a","Tier 5":"#9a9aa8","Uber 1":"#ffc94d","Uber 2":"#ffc94d","Free Pick":"#ffb84d"} %}
+{% set TS = {"Tier 1":"T1","Tier 2":"T2","Tier 3":"T3","Tier 4":"T4","Tier 5":"T5","Free Pick":"FP"} %}
+{% set MAIN_TIERS = ["Tier 1","Tier 2","Tier 3","Tier 4","Tier 5"] %}
+{% set MAIN_COUNTS = {"Tier 1":1,"Tier 2":1,"Tier 3":2,"Tier 4":2,"Tier 5":2} %}
 
-{% set tier_colors = {
-  "Uber 1":    "background:linear-gradient(90deg,#7f1d1d,#991b1b); color:#fca5a5;",
-  "Uber 2":    "background:linear-gradient(90deg,#7c2d12,#9a3412); color:#fdba74;",
-  "Tier 1":    "background:linear-gradient(90deg,#1e3a5f,#1e40af); color:#93c5fd;",
-  "Tier 2":    "background:linear-gradient(90deg,#3b0764,#6b21a8); color:#d8b4fe;",
-  "Tier 3":    "background:linear-gradient(90deg,#134e4a,#0f766e); color:#5eead4;",
-  "Tier 4":    "background:linear-gradient(90deg,#1a2e1a,#166534); color:#86efac;",
-  "Tier 5":    "background:linear-gradient(90deg,#1f2937,#374151); color:#9ca3af;",
-  "Free Pick": "background:linear-gradient(90deg,#713f12,#92400e); color:#fde68a;",
-} %}
+{% macro pool_grid(pool_label, coaches_pool, grid_pool) %}
+<div style="min-width:0;">
+  {# Determine if on-clock coach is in this pool #}
+  {% set ns = namespace(clock_in_pool=false) %}
+  {% for c in coaches_pool %}{% if c.id == current_coach_id %}{% set ns.clock_in_pool = true %}{% endif %}{% endfor %}
 
-<div class="max-w-full px-2 py-4">
+  {# Pool header #}
+  <div style="padding:10px 14px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;margin-bottom:4px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;">// POOL_{{ pool_label }}</div>
+      {% if current_slot %}<div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-top:2px;">Round {{ current_slot[2] }}</div>{% endif %}
+    </div>
+    {% if ns.clock_in_pool and current_coach_id in coaches_map %}
+    {% set cc = coaches_map[current_coach_id] %}
+    <div style="text-align:right;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.08em;">// ON_CLOCK</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--magenta);margin-top:2px;text-transform:uppercase;">{{ cc.team_name }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Team rows #}
+  <div style="border:1px solid var(--hairline);border-radius:2px;overflow:hidden;background:var(--panel);">
+    {% for coach in coaches_pool %}
+    {% set cm = coach.draft_mode or 'legacy' %}
+    {% set cds = coaches_draft_states.get(coach.id, {}) %}
+    {% set is_on_clock = coach.id == current_coach_id %}
+
+    {# Build main slot list: [(tier_name, pick_or_none), ...] x8 #}
+    {% set slot_list = [] %}
+    {% if cm == 'tier_tickets' %}
+      {% for tier_name in MAIN_TIERS %}
+        {% set tier_count = MAIN_COUNTS[tier_name] %}
+        {% set tp = grid_pool.get(tier_name, {}).get(coach.id, []) %}
+        {% for i in range(tier_count) %}
+          {% if i < tp|length %}{% if slot_list.append((tier_name, tp[i])) %}{% endif %}
+          {% else %}{% if slot_list.append((tier_name, none)) %}{% endif %}{% endif %}
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      {% set flat = [] %}
+      {% for tier_name in MAIN_TIERS %}
+        {% for p in grid_pool.get(tier_name, {}).get(coach.id, []) %}{% if flat.append((tier_name, p)) %}{% endif %}{% endfor %}
+      {% endfor %}
+      {% for i in range(8) %}
+        {% if i < flat|length %}{% if slot_list.append(flat[i]) %}{% endif %}
+        {% else %}{% if slot_list.append(("PT", none)) %}{% endif %}{% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {# Collect uber picks #}
+    {% set uber_list = [] %}
+    {% for tier_name in tier_order %}
+      {% if 'Uber' in tier_name %}
+        {% for p in grid_pool.get(tier_name, {}).get(coach.id, []) %}{% if uber_list.append(p) %}{% endif %}{% endfor %}
+      {% endif %}
+    {% endfor %}
+
+    <div style="display:grid;grid-template-columns:3px 30px 120px auto;align-items:center;gap:8px;padding:7px 10px 7px 0;border-bottom:1px solid var(--hairline);background:{% if is_on_clock %}rgba(255,42,138,0.04){% else %}transparent{% endif %};">
+
+      {# Accent bar #}
+      <div style="height:50px;border-radius:0 2px 2px 0;background:{% if is_on_clock %}var(--magenta){% else %}transparent{% endif %};{% if is_on_clock %}box-shadow:0 0 10px var(--magenta-dim);{% endif %}"></div>
+
+      {# Logo #}
+      {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:2px;" alt="">
+      {% else %}<div style="width:28px;height:28px;background:{{ coach.color or '#374151' }};border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
+
+      {# Team info #}
+      <div style="min-width:0;">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+          <span style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:{% if is_on_clock %}var(--magenta){% else %}var(--text){% endif %};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;text-transform:uppercase;">{{ coach.team_name }}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:1px 4px;border-radius:2px;flex-shrink:0;{% if cm=='tier_tickets' %}color:var(--cyan);border:1px solid var(--cyan-dim);background:var(--cyan-soft);{% elif cm=='points' %}color:var(--magenta);border:1px solid var(--magenta-dim);background:var(--magenta-soft);{% else %}color:var(--text-mute);border:1px solid var(--hairline);{% endif %}">{{ 'TIER' if cm=='tier_tickets' else ('PTS' if cm=='points' else 'LGCY') }}</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+          <span style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ coach.coach_name }}</span>
+          {% if cm == 'points' and cds %}
+          <span style="color:var(--text-dim);">·</span>
+          <span style="color:var(--magenta);font-variant-numeric:tabular-nums;">{{ cds.spent or 0 }}<span style="color:var(--text-dim);">/{{ cds.budget or 70 }}</span></span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Slot cells #}
+      <div style="display:flex;align-items:center;overflow-x:auto;">
+        <div style="display:flex;gap:2px;flex-shrink:0;">
+          {% for tier_name, pick in slot_list %}
+          {% set sc = TC.get(tier_name, '#9a9aa8') %}
+          {% set sl = TS.get(tier_name, '—') %}
+          {% if pick is none %}
+          <div style="width:38px;height:50px;border:1px dashed {{ sc }};background:rgba(255,255,255,0.012);flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:1px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:{{ sc }};opacity:0.45;letter-spacing:.04em;">{{ sl }}</span>
+          </div>
+          {% else %}
+          <div style="width:38px;height:50px;border:1px solid {{ sc }};background:var(--panel-2);flex-shrink:0;display:flex;flex-direction:column;padding:2px;border-radius:1px;position:relative;" title="{{ pick.pokemon_name }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;line-height:1;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:{{ sc }};letter-spacing:.04em;">{{ sl }}</span>
+              {% if cm == 'points' %}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>
+              {% elif cm == 'tier_tickets' and pick.ticket_used and pick.ticket_used != 'uber' %}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:#a78bfa;font-weight:600;">{{ pick.ticket_used[:2] }}</span>{% endif %}
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.style.display='none'" style="width:26px;height:26px;object-fit:contain;" alt="">
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text-mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ pick.pokemon_name }}</div>
+            {% if pick.is_tera_captain and mechanic_tera == '1' %}<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:#22d3ee;"></div>{% endif %}
+            {% if pick.is_zmove_captain and mechanic_zmove == '1' %}<div style="position:absolute;top:1px;right:{% if pick.is_tera_captain and mechanic_tera=='1' %}8px{% else %}1px{% endif %};width:5px;height:5px;border-radius:50%;background:#a78bfa;"></div>{% endif %}
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+
+        <div style="width:1px;height:38px;background:var(--hairline);margin:0 6px;flex-shrink:0;"></div>
+
+        <div style="display:flex;gap:2px;flex-shrink:0;">
+          {% for i in range(2) %}
+          {% if i < uber_list|length %}{% set pick = uber_list[i] %}
+          <div style="width:38px;height:50px;border:1px solid #ffc94d;background:var(--panel-2);flex-shrink:0;display:flex;flex-direction:column;padding:2px;border-radius:1px;" title="{{ pick.pokemon_name }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;line-height:1;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#ffc94d;letter-spacing:.04em;">UBR</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.style.display='none'" style="width:26px;height:26px;object-fit:contain;" alt="">
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text-mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ pick.pokemon_name }}</div>
+          </div>
+          {% else %}
+          <div style="width:38px;height:50px;border:1px dashed #ffc94d;background:rgba(255,255,255,0.012);flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:1px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:#ffc94d;opacity:0.45;">UBR</span>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
+<div style="padding:12px 16px 32px;max-width:1600px;margin:0 auto;">
 
 {% if session is none %}
-  <!-- No active session -->
-  <div class="max-w-lg mx-auto text-center pt-12 pb-6">
-    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background:var(--panel);border:1px solid var(--hairline);">
-      <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-      </svg>
+
+  <div style="max-width:520px;margin:56px auto 40px;text-align:center;">
+    <div style="width:48px;height:48px;margin:0 auto 16px;border:1px solid var(--hairline);border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);">
+      <svg width="20" height="20" fill="none" stroke="#4b5563" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     </div>
-    <h2 class="text-xl font-black text-white mb-2">No Active Draft</h2>
-    <p class="text-gray-500 text-sm mb-6">There is no live draft session at the moment.</p>
-    <div class="flex items-center justify-center gap-3">
-      <a href="{{ url_for('draft_sheet') }}" class="px-4 py-2 text-sm font-bold transition-colors" style="border-radius:2px;border:1px solid var(--hairline);color:var(--text-mute);">View Draft Sheet</a>
-      {% if is_admin %}
-      <a href="{{ url_for('admin_draft') }}" class="px-4 py-2 text-sm font-bold" style="border-radius:2px;background:var(--magenta);color:#000;">Admin: Setup Draft</a>
-      {% endif %}
+    <h2 style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--text);margin:0 0 8px;">No Active Draft</h2>
+    <p style="color:var(--text-mute);font-size:13px;margin:0 0 20px;">There is no live draft session running right now.</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <a href="{{ url_for('draft_sheet') }}" style="padding:8px 16px;border:1px solid var(--hairline);border-radius:2px;color:var(--text-mute);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-decoration:none;">DRAFT SHEET</a>
+      {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:8px 16px;background:var(--magenta);border-radius:2px;color:#000;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-decoration:none;">ADMIN: SETUP</a>{% endif %}
     </div>
   </div>
 
-  <!-- Draft mode overview per coach -->
   {% for pool_label, pool_coaches in [('A', coaches_a), ('B', coaches_b)] %}
   {% if pool_coaches %}
-  <div class="max-w-4xl mx-auto mb-6">
-    <div class="flex items-center gap-2 mb-3 px-1">
-      <div class="w-1 h-4" style="border-radius:2px;background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
-      <h3 class="text-xs font-bold text-white uppercase tracking-wider">Pool {{ pool_label }} — Draft Modes</h3>
+  <div style="max-width:900px;margin:0 auto 24px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div style="width:3px;height:16px;border-radius:2px;background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text-mute);letter-spacing:.1em;">// POOL_{{ pool_label }}</span>
     </div>
-    <div class="grid gap-2" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));">
-      {% for coach in pool_coaches %}
-      {% set cm = coach.draft_mode or 'legacy' %}
-      <div class="rounded-lg border p-3 flex items-center gap-3
-        {% if cm == 'tier_tickets' %}border-purple-700/40{% elif cm == 'points' %}border-blue-700/40{% else %}border-gray-700/40{% endif %}"
-        style="background:var(--panel-2);">
-        {% if coach.logo_url %}
-        <img src="{{ coach.logo_url }}" class="w-8 h-8 object-contain rounded flex-shrink-0" alt="">
-        {% else %}
-        <div class="w-8 h-8 rounded flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-             style="background:{{ coach.color or '#374151' }};">{{ coach.team_name[:2].upper() }}</div>
-        {% endif %}
-        <div class="flex-1 min-w-0">
-          <div class="text-xs font-bold text-white truncate">{{ coach.team_name }}</div>
-          <div class="text-gray-500 truncate" style="font-size:10px;">{{ coach.coach_name }}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">
+      {% for coach in pool_coaches %}{% set cm = coach.draft_mode or 'legacy' %}
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid {% if cm=='tier_tickets' %}rgba(124,58,237,.4){% elif cm=='points' %}rgba(59,130,246,.4){% else %}var(--hairline){% endif %};border-radius:2px;background:var(--panel);">
+        {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:32px;height:32px;object-fit:contain;border-radius:2px;" alt="">
+        {% else %}<div style="width:32px;height:32px;background:{{ coach.color or '#374151' }};border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ coach.team_name }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);">{{ coach.coach_name }}</div>
         </div>
-        <span class="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0
-          {% if cm == 'tier_tickets' %}text-purple-300 border border-purple-600{% elif cm == 'points' %}text-blue-300 border border-blue-600{% else %}text-gray-500 border border-gray-700{% endif %}"
-          style="background:rgba(0,0,0,0.3);font-size:9px;">
-          {% if cm == 'tier_tickets' %}Tickets{% elif cm == 'points' %}Points{% else %}Legacy{% endif %}
-        </span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;{% if cm=='tier_tickets' %}color:#c4b5fd;border:1px solid #7c3aed;background:rgba(124,58,237,.15);{% elif cm=='points' %}color:#93c5fd;border:1px solid #3b82f6;background:rgba(59,130,246,.15);{% else %}color:#6b7280;border:1px solid #4b5563;{% endif %}">{{ 'TIER' if cm=='tier_tickets' else ('PTS' if cm=='points' else 'LGCY') }}</span>
       </div>
       {% endfor %}
     </div>
@@ -72,290 +189,133 @@
 
 {% else %}
 
-  <!-- Session header -->
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-2">
+  {# ── Status strip ── #}
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border:1px solid {% if is_admin %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:var(--panel-2);border-radius:2px;{% if is_admin %}box-shadow:0 0 20px -8px var(--magenta-dim);{% endif %}">
     <div>
-      <div class="flex items-center gap-2 mb-1">
-        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold
-          {% if session.status == 'active' %}text-green-400 border border-green-600{% elif session.status == 'paused' %}text-yellow-400 border border-yellow-600{% else %}text-gray-400 border border-gray-600{% endif %}"
-          style="background:rgba(0,0,0,0.3);">
-          {% if session.status == 'active' %}
-          <span class="relative flex h-1.5 w-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span></span>
-          {% endif %}
-          {{ session.status|upper }}
-        </span>
-        <h1 class="text-xl font-black text-white">{{ session.name }}</h1>
-        {% if session.season %}<span class="text-xs text-gray-500">{{ session.season }}</span>{% endif %}
-      </div>
-      {% if current_slot %}
-      <p class="text-sm text-gray-400">
-        Round <span class="text-white font-bold">{{ current_slot[2] }}</span>
-        · Pick <span class="font-bold" style="color:var(--magenta);">#{{ current_slot[0] }}</span>
-        · <span class="text-gray-300">{{ coaches_map[current_coach_id].team_name if current_coach_id in coaches_map else '?' }}</span>'s turn
-      </p>
-      {% endif %}
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;">{% if is_admin %}// ADMIN_MODE{% else %}// LIVE_DRAFT{% endif %}</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;color:var(--text);line-height:1.1;margin-top:2px;">{{ session.name }}{% if session.season %} · {{ session.season }}{% endif %}</div>
     </div>
-    <div class="flex items-center gap-2">
-      <a href="{{ url_for('draft_sheet') }}" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 border border-gray-700 hover:border-gray-500 transition-colors">Sheet View</a>
-      {% if is_admin %}
-      <a href="{{ url_for('admin_draft') }}" class="px-3 py-1.5 text-xs font-bold transition-colors" style="border-radius:2px;border:1px solid var(--hairline);color:var(--text-mute);">Admin Controls</a>
-      {% endif %}
-    </div>
+    {% if current_slot %}
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mute);">ROUND <span style="color:var(--magenta);font-weight:700;">{{ current_slot[2] }}</span></div>
+    {% endif %}
+    <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid {% if session.status=='active' %}#16a34a{% elif session.status=='paused' %}#ca8a04{% else %}#4b5563{% endif %};border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:{% if session.status=='active' %}#4ade80{% elif session.status=='paused' %}#fbbf24{% else %}#9ca3af{% endif %};">
+      {% if session.status == 'active' %}<span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse 1.5s infinite;"></span>{% endif %}
+      {{ session.status|upper }}
+    </span>
+    <div style="flex:1;"></div>
+    <a href="{{ url_for('draft_sheet') }}" style="padding:5px 10px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">SHEET</a>
+    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:5px 10px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">ADMIN</a>{% endif %}
   </div>
 
-  <!-- Pick order strip -->
+  {# ── Up next strip ── #}
   {% if next_5 %}
-  <div class="px-2 mb-4">
-    <div class="flex items-center gap-2 overflow-x-auto pb-1">
-      <span class="text-xs text-gray-600 font-bold uppercase tracking-wider whitespace-nowrap">Up next:</span>
-      {% for pick_num, r_idx, slot, cid in next_5 %}
-      {% set c = coaches_map.get(cid, {}) %}
-      <div class="flex items-center gap-1.5 px-2.5 py-1.5 flex-shrink-0"
-           style="border-radius:2px;border:1px solid {% if loop.first %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:var(--panel);{% if loop.first %}box-shadow:0 0 10px rgba(255,42,138,0.15);{% endif %}">
-        {% if c.get('logo_url') %}
-        <img src="{{ c.logo_url }}" class="w-5 h-5 object-contain rounded" alt="">
-        {% else %}
-        <div class="w-5 h-5 rounded flex items-center justify-center text-xs font-black text-white"
-             style="background:{{ c.get('color','#374151') }};font-size:8px;">{{ c.get('team_name','?')[:2].upper() }}</div>
-        {% endif %}
-        <div>
-          <div class="text-xs font-bold leading-tight" style="color:{% if loop.first %}var(--magenta){% else %}var(--text){% endif %};">{{ c.get('team_name','?') }}</div>
-          <div class="text-gray-600 leading-tight" style="font-size:10px;">#{{ pick_num }}</div>
-        </div>
+  <div style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:16px;">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);letter-spacing:.08em;white-space:nowrap;flex-shrink:0;">UP NEXT</span>
+    {% for pick_num, r_idx, slot, cid in next_5 %}{% set c = coaches_map.get(cid, {}) %}
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;flex-shrink:0;border:1px solid {% if loop.first %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:var(--panel);border-radius:2px;{% if loop.first %}box-shadow:0 0 10px rgba(255,42,138,.12);{% endif %}">
+      {% if c.get('logo_url') %}<img src="{{ c.logo_url }}" style="width:18px;height:18px;object-fit:contain;" alt="">
+      {% else %}<div style="width:18px;height:18px;background:{{ c.get('color','#374151') }};border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:8px;font-weight:700;color:#fff;">{{ c.get('team_name','?')[:2].upper() }}</div>{% endif %}
+      <div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:{% if loop.first %}var(--magenta){% else %}var(--text){% endif %};line-height:1;">{{ c.get('team_name','?') }}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);">#{{ pick_num }}</div>
       </div>
-      {% endfor %}
     </div>
+    {% endfor %}
   </div>
   {% endif %}
 
-  <!-- Draft grid -->
-  {% macro render_live_grid(coaches_pool, grid, max_picks, pool_label) %}
-  <div class="mb-6">
-    <div class="flex items-center gap-2 mb-2 px-1">
-      <div class="w-1 h-4" style="border-radius:2px;background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
-      <h3 class="text-xs font-bold text-white uppercase tracking-wider">Pool {{ pool_label }}</h3>
-    </div>
-    <div class="overflow-x-auto" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
-      <table class="border-collapse text-xs" style="min-width:max-content;">
-        <thead>
-          <tr style="background:var(--panel-2); border-bottom:2px solid var(--hairline);">
-            <th class="px-3 py-2 text-left text-gray-600 font-bold uppercase tracking-wider sticky left-0 z-10 whitespace-nowrap" style="background:var(--panel-2); min-width:70px;">Tier</th>
-            {% for coach in coaches_pool %}
-            <th class="px-2 py-1.5 text-center {% if coach.id == current_coach_id %}ring-2{% endif %}"
-                style="min-width:130px; {% if coach.id == current_coach_id %}ring-color:var(--magenta);background:var(--magenta-soft);{% endif %}">
-              <div class="flex flex-col items-center gap-1">
-                {% if coach.logo_url %}
-                <img src="{{ coach.logo_url }}" class="w-7 h-7 object-contain rounded" alt="">
-                {% else %}
-                <div class="w-7 h-7 rounded flex items-center justify-center text-xs font-black text-white"
-                     style="background:{{ coach.color or '#374151' }};">{{ coach.team_name[:2].upper() }}</div>
-                {% endif %}
-                <div class="font-bold text-xs leading-tight" style="color:{% if coach.id == current_coach_id %}var(--magenta){% else %}var(--text){% endif %};">{{ coach.team_name }}</div>
-                {% if coach.id == current_coach_id %}<div class="text-xs leading-tight" style="color:var(--magenta);font-size:9px;">PICKING</div>{% endif %}
-                {% set cm = coach.draft_mode or 'legacy' %}
-                {% set cds = coaches_draft_states.get(coach.id, {}) %}
-                <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-top:2px; display:inline-block;
-                  {% if cm == 'tier_tickets' %}background:rgba(124,58,237,0.3);color:#c4b5fd;border:1px solid #7c3aed;
-                  {% elif cm == 'points' %}background:rgba(59,130,246,0.25);color:#93c5fd;border:1px solid #3b82f6;
-                  {% else %}background:rgba(55,65,81,0.2);color:#9ca3af;border:1px solid #4b5563;{% endif %}">
-                  {% if cm == 'tier_tickets' %}Tickets
-                  {% elif cm == 'points' %}Points{% if cds %} · {{ cds.remaining }}pt{% endif %}
-                  {% else %}Legacy{% endif %}
-                </span>
-              </div>
-            </th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for tier in tier_order %}
-          {% set tier_max = max_picks[tier] %}
-          {% for row_idx in range(tier_max) %}
-          <tr class="border-b border-gray-800/30 hover:bg-gray-800/10 transition-colors">
-            {% if row_idx == 0 %}
-            <td class="px-2 py-1 font-bold whitespace-nowrap sticky left-0 z-10 text-xs"
-                rowspan="{{ tier_max }}"
-                style="{{ tier_colors[tier] }} border-right:2px solid rgba(255,255,255,0.08);">
-              {% if 'Uber' in tier %}Ubers{% else %}{{ tier }}{% endif %}
-            </td>
-            {% endif %}
-            {% for coach in coaches_pool %}
-            {% set cell_pokemon = grid[tier][coach.id] %}
-            <td class="px-1.5 py-1 text-center align-middle"
-                style="border-left:1px solid var(--hairline);{% if coach.id == current_coach_id and session.status == 'active' %}background:var(--magenta-soft);{% endif %}">
-              {% if row_idx < cell_pokemon|length %}
-              {% set poke = cell_pokemon[row_idx] %}
-              {% set cm = coach.draft_mode or 'legacy' %}
-              <div class="flex items-center gap-1 justify-center flex-wrap">
-                {% if cm == 'tier_tickets' and poke.ticket_used and poke.ticket_used != 'uber' %}
-                <span class="inline-flex items-center justify-center rounded font-bold"
-                      style="background:rgba(124,58,237,0.2);color:#a78bfa;border:1px solid #7c3aed;font-size:8px;padding:0 3px;min-width:20px;">{{ poke.ticket_used }}</span>
-                {% else %}
-                <span class="inline-flex items-center justify-center w-5 h-4 text-xs font-bold"
-                      style="border-radius:2px;background:var(--cyan-soft);color:var(--cyan);font-size:9px;">{{ poke.points }}</span>
-                {% endif %}
-                <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}"
-                     onerror="this.style.display='none'"
-                     class="w-6 h-6 object-contain sprite flex-shrink-0"
-                     alt="{{ poke.pokemon_name }}">
-                <span class="text-gray-300 font-medium leading-tight truncate max-w-[70px]" title="{{ poke.pokemon_name }}">{{ poke.pokemon_name }}</span>
-                {% if poke.is_tera_captain and mechanic_tera == '1' %}<span style="font-size:8px;font-weight:800;color:#22d3ee;background:rgba(6,182,212,0.2);border:1px solid #06b6d4;padding:0 3px;border-radius:2px;flex-shrink:0;" title="Tera Captain">T</span>{% endif %}
-                {% if poke.is_zmove_captain and mechanic_zmove == '1' %}<span style="font-size:8px;font-weight:800;color:#a78bfa;background:rgba(139,92,246,0.2);border:1px solid #8b5cf6;padding:0 3px;border-radius:2px;flex-shrink:0;" title="Z-Move Captain">Z</span>{% endif %}
-              </div>
-              {% else %}
-              <span class="text-gray-800">—</span>
-              {% endif %}
-            </td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  {# ── Two-pool grid ── #}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    {{ pool_grid('A', coaches_a, grid_a) }}
+    {{ pool_grid('B', coaches_b, grid_b) }}
   </div>
-  {% endmacro %}
 
-  {{ render_live_grid(coaches_a, grid_a, max_a, "A") }}
-  {{ render_live_grid(coaches_b, grid_b, max_b, "B") }}
-
-  <!-- Pick section -->
+  {# ── Pick form ── #}
   {% if can_pick and session.status == 'active' and current_slot %}
-  <div class="mt-6 px-2">
-    <div class="p-4" style="border-radius:2px;border:1px solid var(--magenta-dim);background:var(--panel);">
-      <div class="flex items-center gap-2 mb-4">
-        <div class="w-2 h-2 rounded-full animate-pulse" style="background:var(--magenta);"></div>
-        <h3 class="text-sm font-bold text-white">
-          {% if is_admin %}Admin: {% endif %}Make a Pick
-          <span style="color:var(--magenta);">– {{ current_slot[2] }}</span>
-        </h3>
+  <div style="margin-bottom:20px;">
+    <div style="padding:16px;border:1px solid var(--magenta-dim);background:var(--panel);border-radius:2px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--magenta);animation:pulse 1.5s infinite;"></div>
+        <h3 style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin:0;">{% if is_admin %}Admin: {% endif %}Make a Pick</h3>
       </div>
 
-      {# Show who this pick is being made for #}
       {% if current_coach_id and coaches_map.get(current_coach_id) %}
       {% set picking_coach = coaches_map[current_coach_id] %}
-      <div class="flex items-center gap-3 mb-4 p-3" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);">
-        <span class="text-xs text-gray-500 font-bold uppercase tracking-wider flex-shrink-0">Picking for:</span>
-        {% if picking_coach.get('logo_url') %}
-        <img src="{{ picking_coach.logo_url }}" class="w-8 h-8 object-contain rounded flex-shrink-0" alt="">
-        {% endif %}
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:10px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);letter-spacing:.08em;flex-shrink:0;">PICKING FOR</span>
+        {% if picking_coach.get('logo_url') %}<img src="{{ picking_coach.logo_url }}" style="width:32px;height:32px;object-fit:contain;" alt="">{% endif %}
         <div>
-          <div class="text-sm font-bold text-white leading-tight">{{ picking_coach.get('team_name','?') }}</div>
-          <div class="text-xs text-gray-500 leading-tight">{{ picking_coach.get('coach_name','?') }}</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--text);">{{ picking_coach.get('team_name','?') }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);">{{ picking_coach.get('coach_name','?') }}</div>
         </div>
         {% if is_admin and current_coach_id != session.get('coach_id') %}
-        <span class="ml-auto text-xs font-bold px-2 py-0.5 rounded-full text-orange-300 border border-orange-700/40" style="background:rgba(194,65,12,0.15);">Admin pick</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:2px;color:#fb923c;border:1px solid rgba(194,65,12,.5);background:rgba(194,65,12,.1);">ADMIN PICK</span>
         {% endif %}
       </div>
       {% endif %}
 
-      <!-- Draft mode status panel -->
       {% if current_draft_state and current_draft_state.mode != 'legacy' %}
-      <div class="mb-4 rounded-lg border p-3
-        {% if current_draft_state.mode == 'tier_tickets' %}border-purple-700/50{% else %}border-blue-700/50{% endif %}"
-        style="background:var(--panel-2);">
-        <div class="flex flex-wrap items-center gap-3">
-          <!-- Mode badge -->
-          <span class="px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0
-            {% if current_draft_state.mode == 'tier_tickets' %}text-purple-300 border border-purple-600{% else %}text-blue-300 border border-blue-600{% endif %}"
-            style="background:rgba(0,0,0,0.3);">
-            {% if current_draft_state.mode == 'tier_tickets' %}Tier Tickets{% else %}Points{% endif %}
-          </span>
-
+      <div style="margin-bottom:14px;padding:10px;border:1px solid {% if current_draft_state.mode=='tier_tickets' %}rgba(124,58,237,.4){% else %}rgba(59,130,246,.4){% endif %};background:var(--panel-2);border-radius:2px;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:2px;{% if current_draft_state.mode=='tier_tickets' %}color:#c4b5fd;border:1px solid #7c3aed;background:rgba(124,58,237,.2);{% else %}color:#93c5fd;border:1px solid #3b82f6;background:rgba(59,130,246,.2);{% endif %}">{% if current_draft_state.mode=='tier_tickets' %}TIER TICKETS{% else %}POINTS{% endif %}</span>
           {% if current_draft_state.mode == 'points' %}
-            <!-- Points budget -->
-            <div class="flex items-center gap-2 flex-1">
-              <div class="flex-1 h-2 rounded-full overflow-hidden" style="background:#1f2937; min-width:80px;">
-                {% set pct = [(current_draft_state.spent / current_draft_state.budget * 100)|int, 100]|min %}
-                <div class="h-full rounded-full transition-all"
-                     style="width:{{ pct }}%; background:{% if pct > 90 %}#ef4444{% elif pct > 70 %}#f59e0b{% else %}#3b82f6{% endif %};"></div>
-              </div>
-              <span class="text-xs font-bold text-white flex-shrink-0">
-                {{ current_draft_state.remaining }}pt left
-                <span class="text-gray-500 font-normal">({{ current_draft_state.spent }}/{{ current_draft_state.budget }})</span>
-              </span>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;">
+            <div style="flex:1;height:6px;border-radius:3px;overflow:hidden;background:#1f2937;min-width:60px;">
+              {% set pct = [(current_draft_state.spent / current_draft_state.budget * 100)|int, 100]|min %}
+              <div style="width:{{ pct }}%;height:100%;border-radius:3px;background:{% if pct > 90 %}#ef4444{% elif pct > 70 %}#f59e0b{% else %}#3b82f6{% endif %};"></div>
             </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;">{{ current_draft_state.remaining }}pt left <span style="color:var(--text-mute);font-weight:400;">({{ current_draft_state.spent }}/{{ current_draft_state.budget }})</span></span>
+          </div>
           {% else %}
-            <!-- Ticket chips -->
-            <div class="flex flex-wrap gap-1.5">
-              {% for ticket, total in ticket_alloc.items() %}
-              {% set rem = current_draft_state.remaining_tickets.get(ticket, 0) %}
-              <span class="px-2 py-0.5 rounded text-xs font-bold flex-shrink-0
-                {% if rem > 0 %}text-white{% else %}text-gray-600 line-through{% endif %}"
-                style="background:{% if rem > 0 %}rgba(139,92,246,0.25); border:1px solid #7c3aed;{% else %}rgba(55,65,81,0.3); border:1px solid #374151;{% endif %}">
-                {{ ticket }}: {{ rem }}/{{ total }}
-              </span>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            {% for ticket, total in ticket_alloc.items() %}{% set rem = current_draft_state.remaining_tickets.get(ticket, 0) %}
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:2px;{% if rem > 0 %}color:#fff;background:rgba(139,92,246,.2);border:1px solid #7c3aed;{% else %}color:#4b5563;background:rgba(55,65,81,.3);border:1px solid #374151;text-decoration:line-through;{% endif %}">{{ ticket }}: {{ rem }}/{{ total }}</span>
+            {% endfor %}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
+            <label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);">USE TICKET</label>
+            <select id="ticket-override" style="padding:3px 6px;border:1px solid #4b5563;border-radius:2px;background:var(--panel-2);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;">
+              <option value="">Auto</option>
+              {% for ticket, total in ticket_alloc.items() %}{% set rem = current_draft_state.remaining_tickets.get(ticket, 0) %}
+              <option value="{{ ticket }}" {% if rem == 0 %}disabled{% endif %}>{{ ticket }} ({{ rem }} left)</option>
               {% endfor %}
-            </div>
-            <!-- Ticket override for downgrade -->
-            <div class="flex items-center gap-2 ml-auto flex-shrink-0">
-              <label class="text-xs text-gray-500">Use ticket:</label>
-              <select id="ticket-override"
-                      class="px-2 py-0.5 rounded text-xs text-white border border-gray-600 focus:border-purple-500 focus:outline-none"
-                      style="background:var(--panel-2);">
-                <option value="">Auto</option>
-                {% for ticket, total in ticket_alloc.items() %}
-                {% set rem = current_draft_state.remaining_tickets.get(ticket, 0) %}
-                <option value="{{ ticket }}" {% if rem == 0 %}disabled{% endif %}>
-                  {{ ticket }} ({{ rem }} left)
-                </option>
-                {% endfor %}
-              </select>
-            </div>
+            </select>
+          </div>
           {% endif %}
-
-          <!-- Uber status -->
-          <div class="flex items-center gap-1.5 flex-shrink-0 border-l border-gray-700 pl-3 ml-auto">
-            <span class="text-xs text-gray-500">Uber:</span>
+          <div style="display:flex;align-items:center;gap:5px;border-left:1px solid var(--hairline);padding-left:10px;flex-shrink:0;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);">UBER</span>
             {% set uber_slots = current_draft_state.uber_slots_used %}
             {% for i in range(2) %}
-            <div class="w-4 h-4 rounded-full border flex items-center justify-center"
-                 style="{% if i < uber_slots %}background:#dc2626; border-color:#991b1b;{% else %}background:transparent; border-color:#374151;{% endif %}">
-              {% if i < uber_slots %}
-              <span class="text-white" style="font-size:8px;">✓</span>
-              {% endif %}
+            <div style="width:14px;height:14px;border-radius:50%;border:1px solid {% if i < uber_slots %}#991b1b{% else %}#374151{% endif %};background:{% if i < uber_slots %}#dc2626{% else %}transparent{% endif %};display:flex;align-items:center;justify-content:center;">
+              {% if i < uber_slots %}<span style="font-size:8px;color:#fff;">✓</span>{% endif %}
             </div>
             {% endfor %}
-            {% if current_draft_state.uber_named %}
-            <span class="text-xs text-gray-400">({{ current_draft_state.uber_named | join(', ') }})</span>
-            {% endif %}
-            {% if current_draft_state.valid_next_uber and uber_slots < 2 %}
-            <span class="text-xs text-gray-600">→ {{ current_draft_state.valid_next_uber | join('/') }}</span>
-            {% endif %}
           </div>
         </div>
       </div>
       {% endif %}
 
-      <!-- Search -->
-      <div class="mb-3">
+      <div style="margin-bottom:10px;">
         <input type="text" id="poke-search" placeholder="Search Pokémon name…"
-               class="w-full px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none transition-colors"
-               style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);"
-               onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'"
-               oninput="filterPokes(this.value)">
+               style="width:100%;padding:8px 12px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel-2);color:var(--text);font-size:13px;box-sizing:border-box;"
+               onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'" oninput="filterPokes(this.value)">
       </div>
-
-      <!-- Available pokemon grid -->
-      <div id="poke-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 max-h-72 overflow-y-auto pr-1">
+      <div id="poke-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;max-height:280px;overflow-y:auto;padding-right:4px;">
         {% for poke in avail_pokemon %}
         <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card">
           <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
           <button type="submit"
-                  class="w-full flex flex-col items-center gap-1 p-2 transition-colors text-center group"
-                  style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);"
+                  style="width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;cursor:pointer;"
                   onmouseover="this.style.borderColor='var(--magenta-dim)';this.style.background='var(--magenta-soft)'" onmouseout="this.style.borderColor='var(--hairline)';this.style.background='var(--panel-2)'"
                   data-name="{{ poke.name|lower }}">
-            <img src="{{ pokemon_sprite_url(poke.name) }}"
-                 onerror="this.style.display='none'"
-                 class="w-10 h-10 object-contain sprite">
-            <span class="text-xs font-medium text-gray-300 group-hover:text-white leading-tight truncate w-full" title="{{ poke.name }}">{{ poke.name }}</span>
-            <span class="text-xs font-bold" style="color:var(--cyan);">{{ poke.points }}pts</span>
-            {% if poke.tier_label %}<span class="text-gray-600 leading-tight" style="font-size:9px;">{{ poke.tier_label }}</span>{% endif %}
+            <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.style.display='none'" style="width:40px;height:40px;object-fit:contain;" alt="">
+            <span style="font-size:11px;font-weight:500;color:#d1d5db;line-height:1.2;text-align:center;word-break:break-word;">{{ poke.name }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--cyan);">{{ poke.points }}pts</span>
+            {% if poke.tier_label %}<span style="font-size:9px;color:var(--text-mute);">{{ poke.tier_label }}</span>{% endif %}
           </button>
         </form>
         {% else %}
-        <div class="col-span-full text-center py-8 text-gray-600 text-sm">No Pokémon available for this tier.</div>
+        <div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-mute);font-size:13px;">No Pokémon available.</div>
         {% endfor %}
       </div>
     </div>
@@ -370,83 +330,59 @@
       card.style.display = (!q || name.includes(q)) ? '' : 'none';
     });
   }
-
-  // Sync ticket-override dropdown into every poke-card form before submit
   var ticketSel = document.getElementById('ticket-override');
   if (ticketSel) {
     document.getElementById('poke-grid').addEventListener('submit', function(e) {
       var form = e.target.closest('form');
       if (!form) return;
       var hidden = form.querySelector('input[name="ticket_used"]');
-      if (!hidden) {
-        hidden = document.createElement('input');
-        hidden.type = 'hidden';
-        hidden.name = 'ticket_used';
-        form.appendChild(hidden);
-      }
+      if (!hidden) { hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = 'ticket_used'; form.appendChild(hidden); }
       hidden.value = ticketSel.value;
     }, true);
   }
   </script>
 
   {% elif session.status == 'paused' %}
-  <div class="mt-4 px-2">
-    <div class="px-4 py-3 text-center" style="border-radius:2px;border:1px solid var(--magenta-dim);background:var(--magenta-soft);">
-      <span class="font-bold text-sm" style="color:var(--magenta);">Draft is paused.</span>
-    </div>
+  <div style="margin-bottom:20px;padding:14px;text-align:center;border:1px solid var(--magenta-dim);background:var(--magenta-soft);border-radius:2px;">
+    <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--magenta);">Draft is paused.</span>
   </div>
   {% elif current_slot is none %}
-  <div class="mt-4 px-2">
-    <div class="rounded-lg border border-green-700/40 px-4 py-3 text-center" style="background:#0a1a0a;">
-      <span class="text-green-400 font-bold text-sm">Draft is complete!</span>
-    </div>
+  <div style="margin-bottom:20px;padding:14px;text-align:center;border:1px solid rgba(22,163,74,.4);background:rgba(20,83,45,.15);border-radius:2px;">
+    <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#4ade80;">Draft is complete!</span>
   </div>
   {% endif %}
 
   {# ── Captain Selection Panel ── #}
   {% if my_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
-  <div class="mt-6 px-2">
-    <div class="p-4" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
-      <h3 class="text-sm font-bold text-white mb-3">
+  <div style="margin-bottom:20px;">
+    <div style="padding:16px;border:1px solid var(--hairline);background:var(--panel);border-radius:2px;">
+      <h3 style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin:0 0 12px;">
         <span style="color:#22d3ee;">T</span>/<span style="color:#a78bfa;">Z</span> Captain Selection
-        <span class="text-gray-600 font-normal text-xs ml-2">≤13pts or Tier 4/5 eligible · combined ≤18pts</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;color:var(--text-mute);margin-left:8px;">≤13pts or Tier 4/5 · combined ≤18pts</span>
       </h3>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
         {% for poke in my_picks %}
-        <div class="flex flex-col items-center gap-1 p-2" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel-2);">
-          <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}"
-               onerror="this.style.display='none'"
-               class="w-10 h-10 object-contain"
-               alt="{{ poke.pokemon_name }}">
-          <span class="text-xs text-gray-300 font-medium leading-tight text-center">{{ poke.pokemon_name }}</span>
-          <span class="text-xs font-bold" style="color:var(--cyan);">{{ poke.points }}pts</span>
-          <div class="flex gap-1 mt-0.5">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;">
+          <img src="{{ pokemon_sprite_url(poke.pokemon_name) }}" onerror="this.style.display='none'" style="width:40px;height:40px;object-fit:contain;" alt="{{ poke.pokemon_name }}">
+          <span style="font-size:11px;color:#d1d5db;font-weight:500;text-align:center;line-height:1.2;">{{ poke.pokemon_name }}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--cyan);">{{ poke.points }}pts</span>
+          <div style="display:flex;gap:4px;margin-top:2px;">
             {% if mechanic_tera == '1' %}
-            <form method="POST" action="{{ url_for('draft_live_set_captain') }}" class="inline">
+            <form method="POST" action="{{ url_for('draft_live_set_captain') }}" style="display:inline;">
               <input type="hidden" name="pokemon_name" value="{{ poke.pokemon_name }}">
               <input type="hidden" name="captain_type" value="tera">
               <input type="hidden" name="coach_id" value="{{ poke.coach_id }}">
               <input type="hidden" name="value" value="{{ '0' if poke.is_tera_captain else '1' }}">
-              <button type="submit"
-                      class="px-1.5 py-0.5 rounded text-xs font-bold transition-colors"
-                      style="{% if poke.is_tera_captain %}background:rgba(6,182,212,0.25);border:1px solid #06b6d4;color:#22d3ee;{% else %}background:rgba(55,65,81,0.4);border:1px solid rgba(55,65,81,0.6);color:#6b7280;{% endif %}"
-                      {% if not poke.is_tera_captain and poke.points > 13 and poke.tier not in ('Tier 4', 'Tier 5') %}disabled title="Pokémon must be ≤13pts or Tier 4/5"{% endif %}>
-                T
-              </button>
+              <button type="submit" style="padding:2px 6px;border-radius:2px;font-size:11px;font-weight:700;cursor:pointer;{% if poke.is_tera_captain %}background:rgba(6,182,212,.2);border:1px solid #06b6d4;color:#22d3ee;{% else %}background:rgba(55,65,81,.3);border:1px solid rgba(55,65,81,.5);color:#6b7280;{% endif %}" {% if not poke.is_tera_captain and poke.points > 13 and poke.tier not in ('Tier 4','Tier 5') %}disabled title="Must be ≤13pts or Tier 4/5"{% endif %}>T</button>
             </form>
             {% endif %}
             {% if mechanic_zmove == '1' %}
-            <form method="POST" action="{{ url_for('draft_live_set_captain') }}" class="inline">
+            <form method="POST" action="{{ url_for('draft_live_set_captain') }}" style="display:inline;">
               <input type="hidden" name="pokemon_name" value="{{ poke.pokemon_name }}">
               <input type="hidden" name="captain_type" value="zmove">
               <input type="hidden" name="coach_id" value="{{ poke.coach_id }}">
               <input type="hidden" name="value" value="{{ '0' if poke.is_zmove_captain else '1' }}">
-              <button type="submit"
-                      class="px-1.5 py-0.5 rounded text-xs font-bold transition-colors"
-                      style="{% if poke.is_zmove_captain %}background:rgba(139,92,246,0.25);border:1px solid #8b5cf6;color:#a78bfa;{% else %}background:rgba(55,65,81,0.4);border:1px solid rgba(55,65,81,0.6);color:#6b7280;{% endif %}"
-                      {% if not poke.is_zmove_captain and poke.points > 13 and poke.tier not in ('Tier 4', 'Tier 5') %}disabled title="Pokémon must be ≤13pts or Tier 4/5"{% endif %}>
-                Z
-              </button>
+              <button type="submit" style="padding:2px 6px;border-radius:2px;font-size:11px;font-weight:700;cursor:pointer;{% if poke.is_zmove_captain %}background:rgba(139,92,246,.2);border:1px solid #8b5cf6;color:#a78bfa;{% else %}background:rgba(55,65,81,.3);border:1px solid rgba(55,65,81,.5);color:#6b7280;{% endif %}" {% if not poke.is_zmove_captain and poke.points > 13 and poke.tier not in ('Tier 4','Tier 5') %}disabled title="Must be ≤13pts or Tier 4/5"{% endif %}>Z</button>
             </form>
             {% endif %}
           </div>
