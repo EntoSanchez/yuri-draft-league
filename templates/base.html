@@ -39,6 +39,10 @@
       --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
       --font-display: 'Rajdhani', 'Bai Jamjuree', system-ui, sans-serif;
 
+      /* Animation easings */
+      --ease-out-cubic: cubic-bezier(.2, .7, .2, 1);
+      --ease-back-out:  cubic-bezier(.34, 1.56, .64, 1);
+
       /* Neon-noir canonical tokens */
       --ink:          #000000;
       --ink-2:        #050506;
@@ -482,6 +486,160 @@
       position: relative;
       z-index: 1;
     }
+
+    /* ══════════════════════════════════════
+       ANIMATION SYSTEM
+    ══════════════════════════════════════ */
+
+    /* Accessibility: collapse all animations for users who prefer reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+      }
+    }
+
+    /* §01 · Sliding tab underline */
+    .tab-underline {
+      position: absolute; bottom: -1px; height: 2px;
+      background: var(--magenta); box-shadow: 0 0 8px var(--magenta);
+      transition: left .32s var(--ease-out-cubic), width .32s var(--ease-out-cubic);
+      pointer-events: none;
+    }
+    .tab-glow {
+      position: absolute; bottom: -1px; height: 2px;
+      background: var(--magenta);
+      box-shadow: 0 0 24px var(--magenta), 0 0 12px var(--magenta);
+      opacity: .5; pointer-events: none;
+      transition: left .42s var(--ease-out-cubic) .06s, width .42s var(--ease-out-cubic) .06s;
+    }
+
+    /* §02 · Pick'em bars */
+    .pickbar-l, .pickbar-r {
+      height: 100%;
+      transition: width .8s var(--ease-back-out), filter .25s, box-shadow .25s;
+    }
+    .pickbar-l { background: var(--magenta); box-shadow: inset 0 0 12px rgba(255,42,138,.5); }
+    .pickbar-r { background: var(--cyan);    box-shadow: inset 0 0 12px rgba(34,225,255,.5); }
+    .pickbar-l.flash, .pickbar-r.flash {
+      filter: brightness(1.5);
+      box-shadow: inset 0 0 18px rgba(255,255,255,.4), 0 0 16px currentColor;
+    }
+    .float-plus {
+      position: absolute;
+      font: 700 20px/1 var(--font-display);
+      pointer-events: none; z-index: 5;
+      transform: translate(-50%, 0);
+      text-shadow: 0 0 12px currentColor;
+      animation: float-up .9s var(--ease-out-cubic) forwards;
+    }
+    @keyframes float-up {
+      0%   { transform: translate(-50%, 0)     scale(.7); opacity: 0; }
+      20%  { transform: translate(-50%, -10px) scale(1);  opacity: 1; }
+      100% { transform: translate(-50%, -56px) scale(.9); opacity: 0; }
+    }
+
+    /* §03 · Standings sparkline + delta + cell glow */
+    .spark { width: 100%; height: 22px; display: block; overflow: visible; }
+    .spark-path {
+      stroke-dasharray: 200;
+      stroke-dashoffset: 200;
+      animation: spark-draw 700ms var(--ease-out-cubic) forwards;
+      filter: drop-shadow(0 0 4px var(--cyan-dim));
+    }
+    @keyframes spark-draw { to { stroke-dashoffset: 0; } }
+    .delta {
+      font: 10px/1 var(--font-mono); letter-spacing: .04em;
+      padding: 1px 5px; border: 1px solid currentColor;
+      animation: delta-in .4s var(--ease-out-cubic), delta-out 4s ease-out 0s both;
+    }
+    .delta.up   { color: var(--lime); }
+    .delta.down { color: var(--red); }
+    @keyframes delta-in  { from { transform: translateY(-4px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes delta-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+    .cell.glow {
+      background: var(--cyan-soft);
+      box-shadow: inset 0 0 12px -2px var(--cyan-dim);
+      animation: cell-glow .8s ease-out;
+    }
+    @keyframes cell-glow {
+      0%   { background: rgba(34,225,255,.3); box-shadow: inset 0 0 22px var(--cyan); }
+      100% { background: var(--cyan-soft);   box-shadow: inset 0 0 0 transparent; }
+    }
+
+    /* §04A · Mono ticker type-on */
+    .typeon {
+      display: inline-block; max-width: 100%;
+      overflow: hidden; white-space: nowrap;
+      animation: type-on 1.4s steps(40, end) forwards;
+    }
+    @keyframes type-on { from { width: 0; } to { width: 100%; } }
+
+    /* §04C · Hairline glint sweep */
+    .glint-rule {
+      flex: 1; height: 1px; background: var(--hairline);
+      position: relative; overflow: hidden;
+    }
+    .glint-rule::after {
+      content: ""; position: absolute; top: -1px; left: -120px;
+      width: 120px; height: 3px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      filter: blur(.5px);
+      animation: glint 6s linear infinite;
+    }
+    @keyframes glint { 0% { left: -120px; } 100% { left: 100%; } }
+
+    /* §04D · Logo hover scale + dual glow */
+    .tlogo {
+      transition: transform .25s var(--ease-out-cubic), box-shadow .25s, border-color .25s;
+    }
+    .tlogo:hover {
+      transform: scale(1.08);
+      border-color: var(--magenta-dim) !important;
+      box-shadow: 0 0 24px -4px var(--magenta-dim), 0 0 16px -8px var(--cyan-dim);
+    }
+
+    /* §05 · Route transitions */
+    .route-body { position: relative; overflow: hidden; }
+    .scan-wipe {
+      position: absolute; left: -120px; top: 0; bottom: 0; width: 120px;
+      background: linear-gradient(90deg, transparent, var(--magenta) 50%, transparent);
+      box-shadow: 0 0 24px var(--magenta-dim);
+      animation: scan-wipe 360ms cubic-bezier(.4,0,.2,1);
+      pointer-events: none; z-index: 999;
+    }
+    @keyframes scan-wipe { from { left: -120px; } to { left: 100%; } }
+    .route-page { animation: route-in .35s var(--ease-out-cubic); }
+    @keyframes route-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* §06 · Defending champion crown + chip */
+    .champ-logo { position: relative; display: inline-flex; }
+    .champ-crown {
+      position: absolute;
+      top: -10px; left: 50%;
+      transform: translateX(-50%);
+      width: 22px; height: 11px;
+      filter: drop-shadow(0 0 4px var(--amber));
+      z-index: 3;
+    }
+    .champ-logo.sm .champ-crown { width: 16px; height: 8px;  top: -7px; }
+    .champ-logo.lg .champ-crown { width: 36px; height: 18px; top: -16px; }
+    .champ-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono);
+      letter-spacing: .14em; text-transform: uppercase;
+      padding: 3px 8px;
+      border: 1px solid var(--amber);
+      background: rgba(255,184,77,.10);
+      color: var(--amber);
+      font-weight: 500;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .champ-chip-sm { font-size: 9px;  padding: 2px 6px; }
+    .champ-chip-lg { font-size: 11px; padding: 5px 10px; }
+    .champ-chip-icon { font-size: 11px; text-shadow: 0 0 4px var(--amber); }
   </style>
 </head>
 <body class="min-h-screen flex flex-col text-gray-100 antialiased" style="background-color:#000;">
@@ -865,8 +1023,11 @@
 {% endwith %}
 
 <!-- ═══════════════════ MAIN ═══════════════════ -->
-<main class="flex-1">
-  {% block content %}{% endblock %}
+<main class="flex-1 route-body" id="route-body">
+  <span class="scan-wipe" aria-hidden="true"></span>
+  <div class="route-page">
+    {% block content %}{% endblock %}
+  </div>
 </main>
 
 <!-- ═══════════════════ FOOTER ═══════════════════ -->
@@ -933,29 +1094,20 @@
   });
 </script>
 <script>
-// ── Page transitions ──
+// ── Page transitions (scan-wipe fires via CSS on load; this handles nav-out fade) ──
 (function() {
-  const main = document.querySelector('main');
-  if (!main) return;
-
-  // Fade in on load
-  main.style.opacity = '0';
-  main.style.transition = 'opacity 0.22s ease';
-  window.addEventListener('DOMContentLoaded', () => {
-    requestAnimationFrame(() => requestAnimationFrame(() => { main.style.opacity = '1'; }));
-  });
-
-  // Fade out before navigating away
+  const rb = document.getElementById('route-body');
+  if (!rb) return;
   document.addEventListener('click', function(e) {
     const a = e.target.closest('a[href]');
     if (!a) return;
     const href = a.getAttribute('href');
-    // Skip external, hash-only, admin, or same-page links
     if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto')
         || a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
-    main.style.opacity = '0';
-    setTimeout(() => { window.location.href = href; }, 200);
+    rb.style.opacity = '0';
+    rb.style.transition = 'opacity 0.18s ease';
+    setTimeout(() => { window.location.href = href; }, 180);
   });
 })();
 </script>
@@ -973,12 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.style.transform = 'translateY(0)';
     }));
   });
-  // Animate page headers
-  document.querySelectorAll('.hero-pattern, .page-fade').forEach(el => {
-    el.style.opacity = '0';
-    el.style.transition = 'opacity 0.4s ease';
-    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.opacity = '1'; }));
-  });
+  // (Page headers fade in via .route-page CSS animation on the main wrapper)
 });
 </script>
 </body>

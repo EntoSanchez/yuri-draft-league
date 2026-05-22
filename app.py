@@ -1088,7 +1088,9 @@ def schedule():
         matches = db.execute("""
             SELECT s.*,
                    c1.coach_name as c1_name, c1.team_name as c1_team, c1.color as c1_color, c1.logo_url as c1_logo,
-                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo
+                   c1.is_defending_champ as c1_is_champ,
+                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo,
+                   c2.is_defending_champ as c2_is_champ
             FROM schedule s
             JOIN coaches c1 ON s.coach1_id = c1.id
             JOIN coaches c2 ON s.coach2_id = c2.id
@@ -1158,7 +1160,9 @@ def pickems():
         matches = db.execute("""
             SELECT s.*,
                    c1.coach_name as c1_name, c1.team_name as c1_team, c1.color as c1_color, c1.logo_url as c1_logo,
-                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo
+                   c1.is_defending_champ as c1_is_champ,
+                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo,
+                   c2.is_defending_champ as c2_is_champ
             FROM schedule s
             JOIN coaches c1 ON s.coach1_id = c1.id
             JOIN coaches c2 ON s.coach2_id = c2.id
@@ -1226,6 +1230,22 @@ def pickems_vote():
             VALUES (?, ?, ?, ?)
             ON CONFLICT(voter_name, week, match_id) DO UPDATE SET picked_coach_id=excluded.picked_coach_id
         """, (voter_name, week, match_id, picked_coach_id))
+        # Return updated vote counts so client can animate bars
+        match_row = db.execute(
+            "SELECT coach1_id, coach2_id FROM schedule WHERE id=?", (match_id,)
+        ).fetchone()
+        if match_row:
+            c1_id, c2_id = match_row["coach1_id"], match_row["coach2_id"]
+            votes = db.execute(
+                "SELECT picked_coach_id, COUNT(*) as n FROM pickem_votes WHERE match_id=? GROUP BY picked_coach_id",
+                (match_id,)
+            ).fetchall()
+            vote_map = {r["picked_coach_id"]: r["n"] for r in votes}
+            c1_n = vote_map.get(c1_id, 0)
+            c2_n = vote_map.get(c2_id, 0)
+            total = c1_n + c2_n
+            c1_pct = round(c1_n / total * 100) if total > 0 else 50
+            return jsonify({"ok": True, "c1_pct": c1_pct, "c2_pct": 100 - c1_pct})
     return jsonify({"ok": True})
 
 

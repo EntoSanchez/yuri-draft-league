@@ -237,20 +237,28 @@
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-7">
 
         <!-- Logo in bracket frame -->
-        <div class="yc-brackets mag flex-shrink-0" style="padding:6px;">
-          <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-          {% if coach.logo_url %}
-            <img src="{{ coach.logo_url }}" alt="{{ coach.team_name }}"
-                 class="object-contain"
-                 style="width:188px;height:188px;background:#000;display:block;
-                        box-shadow:0 0 60px -10px {{ coach.color or '#ff2a8a' }}80, inset 0 0 30px rgba(0,0,0,0.6);">
-          {% else %}
-            <div class="flex items-center justify-center"
-                 style="width:188px;height:188px;background:{{ coach.color or '#111' }};
-                        font-family:var(--fd);font-weight:700;font-size:48px;color:#fff;">
-              {{ coach.team_name[:2].upper() }}
-            </div>
+        <div class="{% if coach.is_defending_champ %}champ-logo lg{% endif %}" style="{% if coach.is_defending_champ %}margin-top:18px;{% endif %}">
+          {% if coach.is_defending_champ %}
+          <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-label="Defending champion">
+            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
+            <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
+          </svg>
           {% endif %}
+          <div class="yc-brackets mag flex-shrink-0" style="padding:6px;">
+            <span class="yc-br-tr"></span><span class="yc-br-br"></span>
+            {% if coach.logo_url %}
+              <img src="{{ coach.logo_url }}" alt="{{ coach.team_name }}"
+                   class="object-contain"
+                   style="width:188px;height:188px;background:#000;display:block;
+                          box-shadow:0 0 60px -10px {{ coach.color or '#ff2a8a' }}80, inset 0 0 30px rgba(0,0,0,0.6);{% if coach.is_defending_champ %}box-shadow:0 0 60px -10px #ffb84d80, inset 0 0 30px rgba(0,0,0,0.6);{% endif %}">
+            {% else %}
+              <div class="flex items-center justify-center"
+                   style="width:188px;height:188px;background:{{ coach.color or '#111' }};
+                          font-family:var(--fd);font-weight:700;font-size:48px;color:#fff;">
+                {{ coach.team_name[:2].upper() }}
+              </div>
+            {% endif %}
+          </div>
         </div>
 
         <!-- Sprite carousel -->
