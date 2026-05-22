@@ -45,6 +45,8 @@ def _migrate_db():
             "ALTER TABLE coaches ADD COLUMN is_defending_champ INTEGER DEFAULT 0",
             "ALTER TABLE draft_sessions ADD COLUMN current_pick_a INTEGER DEFAULT 1",
             "ALTER TABLE draft_sessions ADD COLUMN current_pick_b INTEGER DEFAULT 1",
+            "ALTER TABLE pokemon_roster ADD COLUMN is_zmove_captain INTEGER DEFAULT 0",
+            "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
         ]:
             try:
                 db.execute(stmt)
@@ -3075,6 +3077,7 @@ def draft_live():
         """).fetchall()
         _uber_counts_base = {}
         _roster_base = []
+        _base_keys = _roster_rows_base[0].keys() if _roster_rows_base else []
         for r in _roster_rows_base:
             tier = r["tier"]
             if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
@@ -3086,9 +3089,9 @@ def draft_live():
                 "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
                 "points": r["points"], "tier": tier,
                 "poke_tier_label": r["poke_tier_label"],
-                "is_tera_captain": int(r["is_tera_captain"]) if r["is_tera_captain"] else 0,
-                "is_zmove_captain": int(r["is_zmove_captain"]) if r["is_zmove_captain"] else 0,
-                "is_free_pick": r["is_free_pick"] or 0,
+                "is_tera_captain": int(r["is_tera_captain"]) if "is_tera_captain" in _base_keys and r["is_tera_captain"] else 0,
+                "is_zmove_captain": int(r["is_zmove_captain"]) if "is_zmove_captain" in _base_keys and r["is_zmove_captain"] else 0,
+                "is_free_pick": (r["is_free_pick"] or 0) if "is_free_pick" in _base_keys else 0,
                 "ticket_used": "",
             })
         grid_a, max_a = _build_draft_grid(coaches_a, _roster_base)
@@ -3188,6 +3191,7 @@ def draft_live():
         # Track uber slot assignment per coach so misnamed entries land in the right row
         uber_counts = {}
         roster_from_picks = []
+        _roster_keys = roster_rows[0].keys() if roster_rows else []
         for r in roster_rows:
             pick_info = pick_info_map.get((r["coach_id"], r["pokemon_name"]))
             tier = r["tier"]
@@ -3201,9 +3205,9 @@ def draft_live():
                 "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
                 "points": r["points"], "tier": tier,
                 "poke_tier_label": r["poke_tier_label"],
-                "is_tera_captain": int(r["is_tera_captain"]) if r["is_tera_captain"] else 0,
-                "is_zmove_captain": int(r["is_zmove_captain"]) if r["is_zmove_captain"] else 0,
-                "is_free_pick": r["is_free_pick"] or 0,
+                "is_tera_captain": int(r["is_tera_captain"]) if "is_tera_captain" in _roster_keys and r["is_tera_captain"] else 0,
+                "is_zmove_captain": int(r["is_zmove_captain"]) if "is_zmove_captain" in _roster_keys and r["is_zmove_captain"] else 0,
+                "is_free_pick": (r["is_free_pick"] or 0) if "is_free_pick" in _roster_keys else 0,
                 "ticket_used": (pick_info["ticket_used"] if pick_info else None) or "",
             })
         grid_a, max_a = _build_draft_grid(coaches_a, roster_from_picks)
