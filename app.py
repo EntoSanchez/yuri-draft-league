@@ -3070,11 +3070,14 @@ def draft_live():
         pool_b_ids = {c["id"] for c in coaches_b}
 
         # Build grid from pokemon_roster — always, so the grid shows even without an active session
-        _roster_rows_base = db.execute("""
-            SELECT pr.*, COALESCE(dt.tier_label,'') as poke_tier_label
-            FROM pokemon_roster pr
-            LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
-        """).fetchall()
+        try:
+            _roster_rows_base = db.execute("""
+                SELECT pr.*, COALESCE(dt.tier_label,'') as poke_tier_label
+                FROM pokemon_roster pr
+                LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
+            """).fetchall()
+        except Exception:
+            _roster_rows_base = []
         _uber_counts_base = {}
         _roster_base = []
         _base_keys = _roster_rows_base[0].keys() if _roster_rows_base else []
@@ -3085,15 +3088,18 @@ def draft_live():
                 count = _uber_counts_base.get(cid, 0)
                 tier = "Uber 2" if count >= 1 else "Uber 1"
                 _uber_counts_base[cid] = count + 1
-            _roster_base.append({
-                "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
-                "points": r["points"], "tier": tier,
-                "poke_tier_label": r["poke_tier_label"],
-                "is_tera_captain": int(r["is_tera_captain"]) if "is_tera_captain" in _base_keys and r["is_tera_captain"] else 0,
-                "is_zmove_captain": int(r["is_zmove_captain"]) if "is_zmove_captain" in _base_keys and r["is_zmove_captain"] else 0,
-                "is_free_pick": (r["is_free_pick"] or 0) if "is_free_pick" in _base_keys else 0,
-                "ticket_used": "",
-            })
+            try:
+                _roster_base.append({
+                    "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
+                    "points": r["points"], "tier": tier,
+                    "poke_tier_label": r["poke_tier_label"],
+                    "is_tera_captain": int(r["is_tera_captain"]) if "is_tera_captain" in _base_keys and r["is_tera_captain"] else 0,
+                    "is_zmove_captain": int(r["is_zmove_captain"]) if "is_zmove_captain" in _base_keys and r["is_zmove_captain"] else 0,
+                    "is_free_pick": (r["is_free_pick"] or 0) if "is_free_pick" in _base_keys else 0,
+                    "ticket_used": "",
+                })
+            except Exception:
+                pass
         grid_a, max_a = _build_draft_grid(coaches_a, _roster_base)
         grid_b, max_b = _build_draft_grid(coaches_b, _roster_base)
 
@@ -3680,27 +3686,208 @@ def admin_draft():
 
         elif action == "update_snake":
             sid = request.form.get("session_id")
-            snake_ids = request.form.getlist("snake_order")
-            snake_json = json.dumps([int(x) for x in snake_ids if x])
+            # Accept separate per-pool ordered lists: pool_a_order[] and pool_b_order[]
+            a_ids = request.form.getlist("pool_a_order")
+            b_ids = request.form.getlist("pool_b_order")
+            if a_ids or b_ids:
+                combined = [int(x) for x in (a_ids + b_ids) if x]
+            else:
+                combined = [int(x) for x in request.form.getlist("snake_order") if x]
+            snake_json = json.dumps(combined)
             with get_db() as db:
                 db.execute("UPDATE draft_sessions SET snake_order=? WHERE id=?", (snake_json, sid))
-            flash("Snake order updated.", "success")
+            flash("Draft order updated.", "success")
+
+        elif action == "skip_pick":
+            sid = request.form.get("session_id")
+            pick_pool = request.form.get("pick_pool", "A")
+            with get_db() as db:
+                sess = db.execute("SELECT * FROM draft_sessions WHERE id=?", (sid,)).fetchone()
+                coaches_all = db.execute("SELECT * FROM coaches ORDER BY pool, id").fetchall()
+                rs_str = settings.get("draft_round_structure", "")
+                try:
+                    rs = json.loads(rs_str) if rs_str else DEFAULT_ROUND_STRUCTURE
+                except Exception:
+                    rs = DEFAULT_ROUND_STRUCTURE
+                so = json.loads(sess["snake_order"] or "[]")
+                p_ids = {c["id"] for c in coaches_all if c["pool"] == pick_pool}
+                seq = _get_pool_sequence(so, p_ids, rs)
+                col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
+                cur = (sess["current_pick_a"] or 1) if pick_pool == "A" else (sess["current_pick_b"] or 1)
+                if seq and 0 < cur <= len(seq):
+                    slot = seq[cur - 1]
+                    coach_id = slot[3]
+                    tier = slot[2]
+                    pick_num = slot[0]
+                    db.execute(
+                        "INSERT INTO draft_picks (session_id, pick_number, coach_id, pokemon_name, tier, is_free_pick, ticket_used) VALUES (?,?,?,?,?,?,?)",
+                        (sid, pick_num, coach_id, "(SKIP)", tier, 0, None)
+                    )
+                    db.execute(f"UPDATE draft_sessions SET {col}=? WHERE id=?", (cur + 1, sid))
+                    flash(f"Pool {pick_pool} pick skipped — blank placeholder recorded.", "info")
+                else:
+                    flash("No current pick slot found.", "warning")
+
+        elif action == "undo_pick":
+            sid = request.form.get("session_id")
+            pick_pool = request.form.get("pick_pool", "A")
+            col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
+            with get_db() as db:
+                sess = db.execute("SELECT * FROM draft_sessions WHERE id=?", (sid,)).fetchone()
+                cur = (sess["current_pick_a"] or 1) if pick_pool == "A" else (sess["current_pick_b"] or 1)
+                if cur > 1:
+                    coaches_all = db.execute("SELECT * FROM coaches ORDER BY pool, id").fetchall()
+                    p_ids = {c["id"] for c in coaches_all if c["pool"] == pick_pool}
+                    # Find the last pick for this pool and delete it
+                    last = db.execute(
+                        "SELECT * FROM draft_picks WHERE session_id=? AND coach_id IN ({}) ORDER BY pick_number DESC LIMIT 1".format(
+                            ",".join("?" * len(p_ids))
+                        ),
+                        (sid, *list(p_ids))
+                    ).fetchone()
+                    if last:
+                        db.execute("DELETE FROM draft_picks WHERE id=?", (last["id"],))
+                    db.execute(f"UPDATE draft_sessions SET {col}=? WHERE id=?", (cur - 1, sid))
+                    # Also remove from pokemon_roster if it exists there
+                    if last and last["pokemon_name"] != "(SKIP)":
+                        db.execute(
+                            "DELETE FROM pokemon_roster WHERE coach_id=? AND pokemon_name=?",
+                            (last["coach_id"], last["pokemon_name"])
+                        )
+                    flash(f"Pool {pick_pool} last pick undone.", "success")
+                else:
+                    flash("No picks to undo.", "warning")
 
         return redirect(url_for("admin_draft"))
 
-    # Build snake order coach list for active session
+    # Build live draft data when session is active
+    coaches_map = {c["id"]: dict(c) for c in coaches}
     active_snake = []
+    grid_a = grid_b = {}
+    max_a = max_b = {}
+    current_slot_a = current_slot_b = None
+    current_coach_a_id = current_coach_b_id = None
+    current_pick_a = current_pick_b = 1
+    last_pick_a = last_pick_b = None
+    coaches_draft_states = {}
+    avail_pokemon_a = avail_pokemon_b = []
+    coaches_a = [c for c in coaches if c["pool"] == "A"]
+    coaches_b = [c for c in coaches if c["pool"] == "B"]
+    snake_ids = []
+
     if active_session:
         snake_ids = json.loads(active_session["snake_order"] or "[]")
-        coaches_map = {c["id"]: dict(c) for c in coaches}
         active_snake = [coaches_map[cid] for cid in snake_ids if cid in coaches_map]
+
+        with get_db() as db:
+            picks = db.execute(
+                "SELECT * FROM draft_picks WHERE session_id=? ORDER BY pick_number",
+                (active_session["id"],)
+            ).fetchall()
+            pool_a_ids = {c["id"] for c in coaches_a}
+            pool_b_ids = {c["id"] for c in coaches_b}
+
+            seq_a = _get_pool_sequence(snake_ids, pool_a_ids, round_structure)
+            seq_b = _get_pool_sequence(snake_ids, pool_b_ids, round_structure)
+
+            current_pick_a = active_session["current_pick_a"] or 1
+            current_pick_b = active_session["current_pick_b"] or 1
+
+            current_slot_a = seq_a[current_pick_a - 1] if seq_a and 0 < current_pick_a <= len(seq_a) else None
+            current_slot_b = seq_b[current_pick_b - 1] if seq_b and 0 < current_pick_b <= len(seq_b) else None
+            current_coach_a_id = current_slot_a[3] if current_slot_a else None
+            current_coach_b_id = current_slot_b[3] if current_slot_b else None
+
+            picked_names_a = {p["pokemon_name"] for p in picks if p["coach_id"] in pool_a_ids}
+            picked_names_b = {p["pokemon_name"] for p in picks if p["coach_id"] in pool_b_ids}
+            all_draft = db.execute(
+                "SELECT * FROM draft_tiers WHERE is_banned != 1 ORDER BY points DESC, name"
+            ).fetchall()
+            avail_pokemon_a = [dict(p, tier_label=_regular_tier_label(p["points"] or 0) or p["tier_label"] or "")
+                               for p in all_draft if p["name"] not in picked_names_a]
+            avail_pokemon_b = [dict(p, tier_label=_regular_tier_label(p["points"] or 0) or p["tier_label"] or "")
+                               for p in all_draft if p["name"] not in picked_names_b]
+
+            # Build roster grid
+            try:
+                roster_rows = db.execute("""
+                    SELECT pr.*, COALESCE(dt.tier_label,'') as poke_tier_label
+                    FROM pokemon_roster pr
+                    LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
+                """).fetchall()
+            except Exception:
+                roster_rows = []
+            _rkeys = roster_rows[0].keys() if roster_rows else []
+            _uber_c = {}
+            roster_picks = []
+            for r in roster_rows:
+                tier = r["tier"]
+                if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
+                    cid = r["coach_id"]
+                    cnt = _uber_c.get(cid, 0)
+                    tier = "Uber 2" if cnt >= 1 else "Uber 1"
+                    _uber_c[cid] = cnt + 1
+                pick_info = next((p for p in picks if p["coach_id"] == r["coach_id"] and p["pokemon_name"] == r["pokemon_name"]), None)
+                try:
+                    roster_picks.append({
+                        "coach_id": r["coach_id"], "pokemon_name": r["pokemon_name"],
+                        "points": r["points"], "tier": tier,
+                        "poke_tier_label": r["poke_tier_label"],
+                        "is_tera_captain": int(r["is_tera_captain"]) if "is_tera_captain" in _rkeys and r["is_tera_captain"] else 0,
+                        "is_zmove_captain": int(r["is_zmove_captain"]) if "is_zmove_captain" in _rkeys and r["is_zmove_captain"] else 0,
+                        "is_free_pick": (r["is_free_pick"] or 0) if "is_free_pick" in _rkeys else 0,
+                        "ticket_used": (pick_info["ticket_used"] if pick_info else None) or "",
+                    })
+                except Exception:
+                    pass
+
+            grid_a, max_a = _build_draft_grid(coaches_a, roster_picks)
+            grid_b, max_b = _build_draft_grid(coaches_b, roster_picks)
+            coaches_draft_states = {
+                c["id"]: _get_coach_draft_state(db, c["id"], active_session["id"])
+                for c in coaches
+            }
+            last_pick_a = next((p for p in reversed(picks) if p["coach_id"] in pool_a_ids), None)
+            last_pick_b = next((p for p in reversed(picks) if p["coach_id"] in pool_b_ids), None)
+
+    # Per-pool snake order for the editor
+    snake_a = [coaches_map[cid] for cid in snake_ids if cid in coaches_map and coaches_map[cid]["pool"] == "A"] if active_session else []
+    snake_b = [coaches_map[cid] for cid in snake_ids if cid in coaches_map and coaches_map[cid]["pool"] == "B"] if active_session else []
+    # Coaches not yet in snake order (for new sessions)
+    in_order_ids = set(snake_ids) if active_session else set()
+    coaches_not_ordered_a = [c for c in coaches_a if c["id"] not in in_order_ids]
+    coaches_not_ordered_b = [c for c in coaches_b if c["id"] not in in_order_ids]
 
     return render_template(
         "admin/draft.html",
         coaches=coaches,
+        coaches_a=coaches_a,
+        coaches_b=coaches_b,
+        coaches_map=coaches_map,
         sessions=sessions,
-        active_session=active_session,
+        active_session=dict(active_session) if active_session else None,
         active_snake=active_snake,
+        snake_a=snake_a,
+        snake_b=snake_b,
+        coaches_not_ordered_a=coaches_not_ordered_a,
+        coaches_not_ordered_b=coaches_not_ordered_b,
+        grid_a=grid_a, grid_b=grid_b,
+        max_a=max_a, max_b=max_b,
+        tier_order=TIER_ORDER,
+        coaches_draft_states=coaches_draft_states,
+        current_slot_a=current_slot_a,
+        current_slot_b=current_slot_b,
+        current_coach_a_id=current_coach_a_id,
+        current_coach_b_id=current_coach_b_id,
+        current_pick_a=current_pick_a,
+        current_pick_b=current_pick_b,
+        last_pick_a=dict(last_pick_a) if last_pick_a else None,
+        last_pick_b=dict(last_pick_b) if last_pick_b else None,
+        avail_pokemon_a=avail_pokemon_a,
+        avail_pokemon_b=avail_pokemon_b,
+        ticket_alloc=TICKET_ALLOC,
+        mechanic_tera=settings.get("mechanic_tera", "0"),
+        mechanic_zmove=settings.get("mechanic_zmove", "0"),
         round_structure=round_structure,
         round_structure_json=json.dumps(round_structure, indent=2),
         league_name=settings.get("league_name", "Pokemon Draft League"),
