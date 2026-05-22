@@ -733,12 +733,12 @@
 
         <!-- Draft dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/draft', '/draft/live', '/draftboard', '/draft-prep', '/transactions'] %}active{% endif %}">
             Draft
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
           <div class="nav-dd-menu">
-            <a href="/draft" class="nav-dd-item">
+            <a href="/draft/live" class="nav-dd-item">
               <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
               Draft Live
             </a>
@@ -933,10 +933,10 @@
         <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         Draft
       </span>
-      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/draft', '/draft/live', '/draftboard', '/draft-prep', '/transactions'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
     </button>
-    <div id="draft-sub" class="drawer-sub {% if request.path in ['/draft', '/draftboard', '/draft-prep', '/transactions'] %}open{% endif %}">
-      <a href="/draft" class="drawer-sub-link">Draft Live</a>
+    <div id="draft-sub" class="drawer-sub {% if request.path in ['/draft', '/draft/live', '/draftboard', '/draft-prep', '/transactions'] %}open{% endif %}">
+      <a href="/draft/live" class="drawer-sub-link">Draft Live</a>
       <a href="/draftboard" class="drawer-sub-link">Draft Board</a>
       <a href="/draft-prep" class="drawer-sub-link">Draft Prep</a>
       <a href="/transactions" class="drawer-sub-link">Transactions</a>
