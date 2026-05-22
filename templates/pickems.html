@@ -2,43 +2,137 @@
 {% block title %}Pick'ems — {{ league_name }}{% endblock %}
 {% block content %}
 
-<div class="yc-page-hero hero-pattern">
+<style>
+  .pk-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    align-items: stretch;
+    min-height: 72px;
+    border: 1px solid var(--hairline);
+    background: var(--panel-2);
+    margin-bottom: 6px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .pk-team {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    transition: background .15s;
+  }
+  .pk-team:hover { background: rgba(255,255,255,.03); }
+  .pk-team.picked { background: var(--magenta-soft); }
+  .pk-team-r {
+    flex-direction: row-reverse;
+    text-align: right;
+    border-left: 1px solid var(--hairline);
+  }
+  .pk-team-l {
+    border-right: 1px solid var(--hairline);
+  }
+  .pk-circle {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; background: #374151;
+  }
+  .pk-circle img { width: 100%; height: 100%; object-fit: contain; }
+  .pk-name {
+    font-family: var(--font-display); font-size: 14px; font-weight: 700;
+    color: var(--text); line-height: 1.2; letter-spacing: .03em;
+    text-transform: uppercase;
+  }
+  .pk-coach {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+    margin-top: 2px; letter-spacing: .04em;
+  }
+  .pk-bar-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .pk-bar-bg {
+    position: absolute; inset: 0;
+    display: flex;
+  }
+  .pk-bar-fill-l {
+    height: 100%; background: var(--magenta); opacity: .55;
+    transition: width .8s cubic-bezier(.34,1.56,.64,1);
+  }
+  .pk-bar-fill-r {
+    height: 100%; background: var(--cyan); opacity: .35;
+    transition: width .8s cubic-bezier(.34,1.56,.64,1);
+    margin-left: auto;
+  }
+  .pk-bar-overlay {
+    position: relative; z-index: 1;
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px; pointer-events: none;
+  }
+  .pk-pct {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #fff;
+  }
+  .pk-status {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: rgba(255,255,255,.3); letter-spacing: .06em; text-align: center;
+  }
+  .pk-status.locked {
+    color: rgba(74,222,128,.85);
+  }
+  .pk-result-badge {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 2px;
+    border: 1px solid rgba(74,222,128,.35); background: rgba(74,222,128,.08);
+    color: rgba(74,222,128,.9);
+  }
+</style>
+
+<!-- Header -->
+<div class="yc-page-hero hero-pattern" style="position:relative;">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <p class="yc-eyebrow">// PUBLIC_VOTE</p>
     <h1 class="yc-page-title">WHO YA GOT?</h1>
-    <div class="flex flex-wrap items-center gap-3 mt-2">
-      <span class="text-xs font-bold font-mono" style="color:var(--text-dim);">{{ matches|length }} MATCH{% if matches|length != 1 %}ES{% endif %} THIS WEEK</span>
-      <span style="color:var(--hairline-2);">·</span>
-      <span id="picked-counter" class="text-xs font-bold font-mono" style="color:var(--cyan);">PICKED 0 / {{ matches|length }}</span>
-    </div>
+    <p style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:6px;letter-spacing:.05em;">
+      LOCKS IN THIS WEEK · {{ matches|length }} MATCH{% if matches|length != 1 %}ES{% endif %}
+    </p>
+  </div>
+  <!-- Picked counter -->
+  <div style="position:absolute;top:20px;right:24px;padding:12px 18px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;text-align:center;min-width:80px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;">PICKED</div>
+    <div id="picked-counter-display" style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--magenta);line-height:1.1;">0/{{ matches|length }}</div>
   </div>
 </div>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-  <!-- Name input -->
-  <div class="mb-6 flex items-center gap-3">
-    <label class="text-sm text-gray-400 font-semibold flex-shrink-0">Your name:</label>
-    <input id="voter-name" type="text" placeholder="Enter your name to vote…" maxlength="32"
-           oninput="saveName()"
-           class="px-3 py-2 text-sm text-white focus:outline-none w-56"
-           style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);color:var(--text);" onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'">
-    <span id="name-status" class="text-xs text-gray-600"></span>
+  <!-- Name + week row -->
+  <div class="flex flex-wrap items-center gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <label class="text-xs font-mono" style="color:var(--text-dim);">YOUR NAME</label>
+      <input id="voter-name" type="text" placeholder="Enter name to vote…" maxlength="32"
+             oninput="saveName()"
+             style="padding:6px 12px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel);color:var(--text);font-family:var(--font-mono);font-size:12px;width:180px;"
+             onfocus="this.style.borderColor='var(--cyan-dim)'" onblur="this.style.borderColor='var(--hairline)'">
+      <span id="name-status" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
+    </div>
+    <!-- Week selector -->
+    <div class="flex items-center gap-1 ml-auto">
+      {% for w in weeks %}
+      <a href="/pickems?week={{ w }}"
+         style="padding:5px 12px;border:1px solid {% if w == selected_week %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:{% if w == selected_week %}var(--magenta-soft){% else %}var(--panel){% endif %};border-radius:2px;text-decoration:none;font-family:var(--font-mono);font-size:11px;font-weight:700;color:{% if w == selected_week %}var(--magenta){% else %}var(--text-mute){% endif %};">
+        WK{{ '%02d'|format(w) }}{% if w == current_week %} ●{% endif %}
+      </a>
+      {% endfor %}
+    </div>
   </div>
 
-  <!-- Week selector -->
-  <div class="flex gap-2 flex-wrap mb-6">
-    {% for w in weeks %}
-    <a href="/pickems?week={{ w }}"
-       class="px-4 py-1.5 text-sm font-bold border transition-all"
-       style="border-radius:2px;text-decoration:none;{% if w == selected_week %}background:var(--magenta-soft);border-color:var(--magenta-dim);color:var(--magenta);{% else %}background:var(--panel);border-color:var(--hairline);color:var(--text-mute);{% endif %}">
-      Week {{ w }}{% if w == current_week %} <span class="text-xs opacity-70">●</span>{% endif %}
-    </a>
-    {% endfor %}
-  </div>
-
-  <!-- Matches -->
-  <div class="space-y-3 mb-10" id="matches-container">
+  <!-- Match rows -->
+  <div id="matches-container" style="margin-bottom:24px;">
     {% for m in matches %}
     {% set result_known = m.winner_id is not none %}
     {% set c1_votes = m.votes.get(m.coach1_id, []) %}
@@ -47,148 +141,81 @@
     {% set c1_pct = ((c1_votes|length / total_votes * 100) | round(0) | int) if total_votes > 0 else 50 %}
     {% set c2_pct = 100 - c1_pct %}
 
-    <div class="cp-card" data-match-id="{{ m.id }}" data-c1-pct="{{ c1_pct }}" data-c2-pct="{{ c2_pct }}" style="position:relative;overflow:hidden;">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-2" style="background:rgba(0,0,0,0.25);border-bottom:1px solid rgba(255,255,255,0.05);border-radius:14px 14px 0 0;">
-        <span class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.35);">WK {{ selected_week }}</span>
-        {% if result_known %}
-          <span class="text-xs font-bold text-green-400">Final: {{ m.score1 }}–{{ m.score2 }}</span>
-        {% else %}
-          <span id="pick-status-{{ m.id }}" class="text-xs font-bold font-mono" style="color:rgba(255,255,255,0.25);">CLICK A SIDE TO PICK</span>
-        {% endif %}
-      </div>
+    <div class="pk-row" data-match-id="{{ m.id }}" data-c1-pct="{{ c1_pct }}" data-c2-pct="{{ c2_pct }}">
 
-      <!-- Pick row -->
-      <div class="flex items-center px-3 py-4 gap-3">
-
-        <!-- Team 1 pick button -->
-        <button class="pick-btn flex items-center gap-3 flex-shrink-0 px-3 py-2 rounded-xl transition-all
-                        {% if result_known and m.winner_id == m.coach1_id %}ring-1 ring-green-500/40 bg-green-500/5{% endif %}"
-                onclick="vote({{ m.id }}, {{ m.coach1_id }}, {{ selected_week }}, this, 'l')"
-                data-coach-id="{{ m.coach1_id }}"
-                style="background:transparent;border:1px solid transparent;min-width:150px;cursor:pointer;text-align:left;">
-          <div class="flex items-center gap-2.5">
-            <span class="{% if m.c1_is_champ %}champ-logo sm{% endif %} flex-shrink-0" style="{% if m.c1_is_champ %}margin-top:8px;{% endif %}">
-              {% if m.c1_logo %}
-                <img src="{{ m.c1_logo }}" class="w-12 h-12 object-contain rounded-xl" alt="{{ m.c1_team }}">
-              {% else %}
-                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white" style="background:{{ m.c1_color or '#374151' }}">{{ m.c1_team[0] }}</div>
-              {% endif %}
-              {% if m.c1_is_champ %}
-              <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-                <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-                <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-              </svg>
-              {% endif %}
-            </span>
-            <div>
-              <div class="font-bold text-white text-sm leading-tight">{{ m.c1_team }}</div>
-              <div class="text-xs text-gray-600">{{ m.c1_name }}</div>
-              <div class="text-sm font-black font-mono mt-0.5" style="color:{{ m.c1_color or '#6b7280' }}">{{ c1_pct }}%</div>
-            </div>
-          </div>
-          {% if result_known and m.winner_id == m.coach1_id %}
-            <div class="text-xs font-bold text-green-400 mt-1 flex items-center gap-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Winner</div>
-          {% endif %}
-        </button>
-
-        <!-- Vote bar -->
-        <div class="flex-1 min-w-0">
-          <div class="h-4 overflow-hidden flex mb-1.5" style="border-radius:2px;background:var(--panel-2);">
-            <div class="vote-bar-l h-full" style="width:0%;background:{{ m.c1_color or '#6b7280' }};box-shadow:inset 0 0 12px rgba(255,42,138,.3);transition:width .8s var(--ease-back-out),filter .25s,box-shadow .25s;" data-target="{{ c1_pct }}" data-match="{{ m.id }}" data-side="l"></div>
-            <div class="vote-bar-r h-full" style="width:{{ c2_pct }}%;background:{{ m.c2_color or '#6b7280' }};opacity:0.55;transition:width .8s var(--ease-back-out),filter .25s,box-shadow .25s;" data-target="{{ c2_pct }}" data-match="{{ m.id }}" data-side="r"></div>
-          </div>
-          <div class="flex items-center justify-between text-xs font-mono">
-            <span style="color:{{ m.c1_color or '#6b7280' }}">{{ c1_votes|length }} vote{% if c1_votes|length != 1 %}s{% endif %}</span>
-            <span style="color:rgba(255,255,255,0.15)">{{ total_votes }} TOTAL</span>
-            <span style="color:{{ m.c2_color or '#6b7280' }}">{{ c2_votes|length }} vote{% if c2_votes|length != 1 %}s{% endif %}</span>
-          </div>
-          {% if c1_votes or c2_votes %}
-          <div class="flex justify-between mt-1.5">
-            <div style="color:{{ m.c1_color or '#9ca3af' }};font-size:0.6rem;max-width:48%;word-break:break-word;">
-              {% for v in c1_votes %}<span class="mr-0.5">{{ v }}</span>{% endfor %}
-            </div>
-            <div style="color:{{ m.c2_color or '#9ca3af' }};font-size:0.6rem;max-width:48%;text-align:right;word-break:break-word;">
-              {% for v in c2_votes %}<span class="ml-0.5">{{ v }}</span>{% endfor %}
-            </div>
-          </div>
+      <!-- Team 1 (left) -->
+      <button class="pk-team pk-team-l"
+              onclick="vote({{ m.id }}, {{ m.coach1_id }}, {{ selected_week }}, 'l')"
+              data-coach-id="{{ m.coach1_id }}"
+              data-side="l">
+        <div class="pk-circle" style="background:{{ m.c1_color or '#374151' }};">
+          {% if m.c1_logo %}
+            <img src="{{ m.c1_logo }}" alt="{{ m.c1_team }}" onerror="this.style.display='none'">
+          {% else %}
+            <span style="font-family:var(--font-display);font-size:12px;font-weight:700;color:#fff;">{{ m.c1_team[:2].upper() }}</span>
           {% endif %}
         </div>
-
-        <!-- Team 2 pick button -->
-        <button class="pick-btn flex items-center gap-3 flex-shrink-0 px-3 py-2 rounded-xl transition-all
-                        {% if result_known and m.winner_id == m.coach2_id %}ring-1 ring-green-500/40 bg-green-500/5{% endif %}"
-                onclick="vote({{ m.id }}, {{ m.coach2_id }}, {{ selected_week }}, this, 'r')"
-                data-coach-id="{{ m.coach2_id }}"
-                style="background:transparent;border:1px solid transparent;min-width:150px;cursor:pointer;text-align:right;">
-          <div class="flex items-center gap-2.5 justify-end w-full">
-            <div>
-              <div class="font-bold text-white text-sm leading-tight">{{ m.c2_team }}</div>
-              <div class="text-xs text-gray-600">{{ m.c2_name }}</div>
-              <div class="text-sm font-black font-mono mt-0.5 text-right" style="color:{{ m.c2_color or '#6b7280' }}">{{ c2_pct }}%</div>
-            </div>
-            <span class="{% if m.c2_is_champ %}champ-logo sm{% endif %} flex-shrink-0" style="{% if m.c2_is_champ %}margin-top:8px;{% endif %}">
-              {% if m.c2_logo %}
-                <img src="{{ m.c2_logo }}" class="w-12 h-12 object-contain rounded-xl" alt="{{ m.c2_team }}">
-              {% else %}
-                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white" style="background:{{ m.c2_color or '#374151' }}">{{ m.c2_team[0] }}</div>
-              {% endif %}
-              {% if m.c2_is_champ %}
-              <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-                <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-                <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-              </svg>
-              {% endif %}
-            </span>
-          </div>
-          {% if result_known and m.winner_id == m.coach2_id %}
-            <div class="text-xs font-bold text-green-400 mt-1 flex items-center justify-end gap-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Winner</div>
+        <div>
+          <div class="pk-name">{{ m.c1_team }}</div>
+          <div class="pk-coach">{{ m.c1_name.upper() }}</div>
+          {% if result_known and m.winner_id == m.coach1_id %}
+            <span class="pk-result-badge" style="margin-top:4px;display:inline-block;">WINNER</span>
           {% endif %}
-        </button>
+        </div>
+      </button>
 
+      <!-- Bar -->
+      <div class="pk-bar-wrap">
+        <div class="pk-bar-bg">
+          <div class="vote-bar-l pk-bar-fill-l" style="width:0%;" data-target="{{ c1_pct }}" data-match="{{ m.id }}"></div>
+          <div class="vote-bar-r pk-bar-fill-r" style="width:{{ c2_pct }}%;" data-target="{{ c2_pct }}" data-match="{{ m.id }}"></div>
+        </div>
+        <div class="pk-bar-overlay">
+          <span class="pk-pct">{{ c1_pct }}%</span>
+          <span id="pick-status-{{ m.id }}" class="pk-status">
+            {% if result_known %}
+              FINAL {{ m.score1 }}–{{ m.score2 }}
+            {% else %}
+              CLICK A SIDE TO PICK
+            {% endif %}
+          </span>
+          <span class="pk-pct">{{ c2_pct }}%</span>
+        </div>
       </div>
+
+      <!-- Team 2 (right) -->
+      <button class="pk-team pk-team-r"
+              onclick="vote({{ m.id }}, {{ m.coach2_id }}, {{ selected_week }}, 'r')"
+              data-coach-id="{{ m.coach2_id }}"
+              data-side="r">
+        <div class="pk-circle" style="background:{{ m.c2_color or '#374151' }};">
+          {% if m.c2_logo %}
+            <img src="{{ m.c2_logo }}" alt="{{ m.c2_team }}" onerror="this.style.display='none'">
+          {% else %}
+            <span style="font-family:var(--font-display);font-size:12px;font-weight:700;color:#fff;">{{ m.c2_team[:2].upper() }}</span>
+          {% endif %}
+        </div>
+        <div style="text-align:right;">
+          <div class="pk-name">{{ m.c2_team }}</div>
+          <div class="pk-coach">{{ m.c2_name.upper() }}</div>
+          {% if result_known and m.winner_id == m.coach2_id %}
+            <span class="pk-result-badge" style="margin-top:4px;display:inline-block;">WINNER</span>
+          {% endif %}
+        </div>
+      </button>
+
     </div>
     {% else %}
-    <div class="cp-card text-center py-16 text-gray-600">No matches scheduled for this week.</div>
+    <div style="text-align:center;padding:56px;color:var(--text-mute);font-family:var(--font-mono);font-size:13px;">NO MATCHES SCHEDULED FOR THIS WEEK.</div>
     {% endfor %}
   </div>
 
-  <!-- Leaderboard -->
-  {% if leaderboard %}
-  <div class="cp-card overflow-hidden">
-    <div class="px-5 py-3 border-b border-gray-800/60">
-      <p class="text-xs font-bold font-mono mb-0.5" style="color:rgba(0,245,255,0.4);">// PICKEM.LEADERBOARD</p>
-      <p class="text-xs text-gray-600">Correct picks on completed matches</p>
-    </div>
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-gray-800/60">
-          <th class="px-5 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600 w-10">#</th>
-          <th class="px-5 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Name</th>
-          <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider text-green-600">Correct</th>
-          <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider text-gray-600">Total</th>
-          <th class="px-5 py-2 text-center text-xs font-bold uppercase tracking-wider" style="color:var(--cyan);">%</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-800/40">
-        {% for i, row in enumerate(leaderboard) %}
-        <tr class="hover:bg-gray-800/20 transition-colors {% if i == 0 %}{% endif %}" style="{% if i == 0 %}background:var(--magenta-soft);{% endif %}">
-          <td class="px-5 py-2.5 text-xs text-gray-600 font-mono">
-            {% if i == 0 %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black" style="background:#FFD700;color:#1a1a00;">1</span>
-            {% elif i == 1 %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black" style="background:#C0C0C0;color:#111;">2</span>
-            {% elif i == 2 %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black" style="background:#CD7F32;color:#1a0900;">3</span>
-            {% else %}{{ i + 1 }}{% endif %}
-          </td>
-          <td class="px-5 py-2.5 font-semibold text-white">{{ row.voter_name }}</td>
-          <td class="px-5 py-2.5 text-center font-bold text-green-400">{{ row.correct }}</td>
-          <td class="px-5 py-2.5 text-center text-gray-400">{{ row.total_picks }}</td>
-          <td class="px-5 py-2.5 text-center font-bold" style="color:var(--cyan);">
-            {{ (row.correct / row.total_picks * 100) | round(0) | int }}%
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- Bottom action buttons -->
+  {% if matches %}
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button onclick="lockInPicks()" style="padding:10px 24px;background:var(--magenta);border:none;border-radius:2px;font-family:var(--font-mono);font-size:12px;font-weight:700;color:#050506;cursor:pointer;letter-spacing:.06em;">+ LOCK IN PICKS</button>
+    <button onclick="saveDraft()" style="padding:10px 24px;background:transparent;border:1px solid var(--hairline);border-radius:2px;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-mute);cursor:pointer;letter-spacing:.06em;">SAVE DRAFT</button>
+    <span id="lock-status" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
   </div>
   {% endif %}
 
@@ -207,42 +234,41 @@ function saveName() {
   localStorage.setItem('pickem_voter_name', name);
 }
 
-// Highlight previously voted picks on load
+function updatePickedCounter() {
+  const total = {{ matches|length }};
+  const picked = Object.keys(MY_VOTES).length;
+  const el = document.getElementById('picked-counter-display');
+  if (el) el.textContent = picked + '/' + total;
+}
+
+function highlightPick(matchId, coachId) {
+  const row = document.querySelector(`[data-match-id="${matchId}"]`);
+  if (!row) return;
+  row.querySelectorAll('.pk-team').forEach(btn => {
+    const chosen = parseInt(btn.dataset.coachId) === coachId;
+    btn.classList.toggle('picked', chosen);
+  });
+  const statusEl = document.getElementById('pick-status-' + matchId);
+  if (statusEl) {
+    statusEl.textContent = '✓ LOCKED';
+    statusEl.classList.add('locked');
+  }
+}
+
+// Restore previous picks on load
 Object.entries(MY_VOTES).forEach(([matchId, coachId]) => {
   highlightPick(parseInt(matchId), parseInt(coachId));
 });
 updatePickedCounter();
 
-function updatePickedCounter() {
-  const total = {{ matches|length }};
-  const picked = Object.keys(MY_VOTES).length;
-  const el = document.getElementById('picked-counter');
-  if (el) el.textContent = 'PICKED ' + picked + ' / ' + total;
-}
-
-function highlightPick(matchId, coachId) {
-  const card = document.querySelector(`[data-match-id="${matchId}"]`);
-  if (!card) return;
-  card.querySelectorAll('.pick-btn').forEach(btn => {
-    const isChosen = parseInt(btn.dataset.coachId) === coachId;
-    btn.style.background = isChosen ? 'var(--magenta-soft)' : 'transparent';
-    btn.style.border = isChosen ? '1px solid var(--magenta-dim)' : '1px solid transparent';
-    btn.style.boxShadow = isChosen ? '0 0 12px rgba(255,42,138,0.12)' : 'none';
-  });
-  const statusEl = document.getElementById('pick-status-' + matchId);
-  if (statusEl) {
-    statusEl.textContent = '✓ LOCKED';
-    statusEl.style.color = 'rgba(57,255,20,0.75)';
-  }
-}
-
-async function vote(matchId, coachId, week, btn, side) {
+async function vote(matchId, coachId, week, side) {
   const voterName = document.getElementById('voter-name').value.trim();
   if (!voterName) {
     document.getElementById('voter-name').focus();
-    document.getElementById('name-status').textContent = '← Enter your name first';
-    document.getElementById('name-status').style.color = '#f87171';
-    setTimeout(() => { document.getElementById('name-status').textContent = ''; }, 2500);
+    const ns = document.getElementById('name-status');
+    ns.textContent = '← enter name first';
+    ns.style.color = 'var(--red)';
+    setTimeout(() => { ns.textContent = ''; }, 2500);
     return;
   }
 
@@ -261,19 +287,49 @@ async function vote(matchId, coachId, week, btn, side) {
   highlightPick(matchId, coachId);
   updatePickedCounter();
 
-  // Animate bars + flash + float if server returned updated percentages
   if (data && data.c1_pct !== undefined) {
-    updateBarsAndFlash(matchId, data.c1_pct, btn, side);
-  } else if (btn) {
-    spawnFloat(btn, side);
+    const row = document.querySelector('[data-match-id="' + matchId + '"]');
+    if (row) {
+      const barL = row.querySelector('.vote-bar-l');
+      const barR = row.querySelector('.vote-bar-r');
+      const pctL = row.querySelector('.pk-bar-overlay .pk-pct:first-child');
+      const pctR = row.querySelector('.pk-bar-overlay .pk-pct:last-child');
+      const newC2 = 100 - data.c1_pct;
+      if (barL) barL.style.width = data.c1_pct + '%';
+      if (barR) barR.style.width = newC2 + '%';
+      if (pctL) pctL.textContent = data.c1_pct + '%';
+      if (pctR) pctR.textContent = newC2 + '%';
+    }
   }
 
-  document.getElementById('name-status').textContent = '✓ Vote saved!';
-  document.getElementById('name-status').style.color = '#4ade80';
-  setTimeout(() => { document.getElementById('name-status').textContent = ''; }, 1500);
+  const ns = document.getElementById('name-status');
+  ns.textContent = '✓ vote saved';
+  ns.style.color = 'rgba(74,222,128,.8)';
+  setTimeout(() => { ns.textContent = ''; }, 1500);
 }
 
-// Animate vote bars in on load with springy easing
+function lockInPicks() {
+  const picked = Object.keys(MY_VOTES).length;
+  const total = {{ matches|length }};
+  const ls = document.getElementById('lock-status');
+  if (picked === 0) {
+    ls.textContent = 'No picks to lock in yet.';
+    ls.style.color = 'var(--text-dim)';
+  } else {
+    ls.textContent = '✓ ' + picked + '/' + total + ' picks locked in!';
+    ls.style.color = 'rgba(74,222,128,.85)';
+  }
+  setTimeout(() => { ls.textContent = ''; }, 3000);
+}
+
+function saveDraft() {
+  const ls = document.getElementById('lock-status');
+  ls.textContent = '✓ Draft saved locally.';
+  ls.style.color = 'rgba(74,222,128,.6)';
+  setTimeout(() => { ls.textContent = ''; }, 2000);
+}
+
+// Animate bars in on load
 document.addEventListener('turbo:load', () => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('.vote-bar-l, .vote-bar-r').forEach(bar => {
@@ -281,53 +337,6 @@ document.addEventListener('turbo:load', () => {
     });
   }));
 });
-
-// Track lead per match for flash detection
-const prevLead = {};
-document.querySelectorAll('[data-match-id]').forEach(card => {
-  const id = card.dataset.matchId;
-  const c1 = parseInt(card.dataset.c1Pct || 50);
-  prevLead[id] = c1 >= 50 ? 'l' : 'r';
-});
-
-function spawnFloat(btn, side) {
-  const card = btn.closest('[data-match-id]');
-  if (!card) return;
-  const rect  = btn.getBoundingClientRect();
-  const stage = card.getBoundingClientRect();
-  const plus  = document.createElement('span');
-  plus.className = 'float-plus';
-  plus.textContent = '+1';
-  plus.style.left  = (rect.left - stage.left + rect.width / 2) + 'px';
-  plus.style.top   = (rect.top - stage.top) + 'px';
-  plus.style.color = side === 'l' ? 'var(--magenta)' : 'var(--cyan)';
-  card.appendChild(plus);
-  setTimeout(() => plus.remove(), 900);
-}
-
-function updateBarsAndFlash(matchId, newC1Pct, btn, side) {
-  const card = document.querySelector('[data-match-id="' + matchId + '"]');
-  if (!card) return;
-  const barL = card.querySelector('.vote-bar-l');
-  const barR = card.querySelector('.vote-bar-r');
-  const newC2 = 100 - newC1Pct;
-  if (barL) barL.style.width = newC1Pct + '%';
-  if (barR) barR.style.width = newC2 + '%';
-
-  // Lead-change flash
-  const newLead = newC1Pct >= 50 ? 'l' : 'r';
-  if (newLead !== prevLead[matchId]) {
-    const flashBar = newLead === 'l' ? barL : barR;
-    if (flashBar) {
-      flashBar.classList.add('flash');
-      setTimeout(() => flashBar.classList.remove('flash'), 700);
-    }
-    prevLead[matchId] = newLead;
-  }
-
-  // +1 float
-  if (btn) spawnFloat(btn, side);
-}
 </script>
 
 {% endblock %}

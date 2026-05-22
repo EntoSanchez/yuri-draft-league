@@ -17,31 +17,24 @@
 
     <!-- Week tab bar -->
     {% if weeks | length > 1 %}
-    <div class="relative flex flex-wrap gap-2 mb-8" id="week-tabs">
+    <div id="week-tabs" style="display:flex;border-bottom:1px solid var(--hairline);margin-bottom:24px;overflow-x:auto;">
       {% for week in weeks %}
-        {% set matches = by_week.get(week, []) %}
-        {% set has_result = matches | selectattr('score1', 'defined') | selectattr('score1', 'ne', none) | list | length %}
-        {% set is_complete = has_result == matches | length and matches | length > 0 %}
-        {% set is_current = week == current_week %}
+        {% set wmatches = by_week.get(week, []) %}
+        {% set has_result = wmatches | selectattr('score1', 'defined') | selectattr('score1', 'ne', none) | list | length %}
+        {% set is_complete = has_result == wmatches | length and wmatches | length > 0 %}
+        {% set is_active = loop.first %}
         <button onclick="switchWeek({{ week }})"
                 id="tab-{{ week }}"
-                class="week-tab px-4 py-2 text-xs font-bold border transition-all flex items-center gap-2"
-                style="border-radius:2px;{% if loop.first %}background:var(--magenta-soft);border-color:var(--magenta-dim);color:var(--magenta);{% else %}background:var(--panel);border-color:var(--hairline);color:var(--text-mute);{% endif %}">
-          <span class="font-mono">WEEK {{ '%02d'|format(week) }}</span>
-          {% if is_complete %}
-          <span class="text-xs font-bold" style="color:rgba(74,222,128,0.7);">DONE</span>
-          {% elif is_current %}
-          <span class="flex items-center gap-1">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" style="box-shadow:0 0 6px #4ade80;"></span>
-            <span class="text-xs" style="color:rgba(74,222,128,0.7);">LIVE</span>
-          </span>
-          {% else %}
-          <span class="text-xs" style="color:rgba(107,114,128,0.6);">UPCOMING</span>
-          {% endif %}
+                class="week-tab"
+                style="padding:12px 20px;border:none;border-right:1px solid var(--hairline);border-bottom:2px solid {% if is_active %}var(--magenta){% else %}transparent{% endif %};margin-bottom:-1px;background:{% if is_active %}var(--magenta-soft){% else %}transparent{% endif %};cursor:pointer;flex-shrink:0;text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;">WEEK</div>
+          <div class="tab-num" style="font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1;color:{% if is_active %}var(--magenta){% else %}var(--text-mute){% endif %};">{{ '%02d'|format(week) }}</div>
+          <div class="tab-status" style="font-family:var(--font-mono);font-size:9px;font-weight:700;margin-top:2px;color:{% if is_complete %}rgba(74,222,128,.7){% elif week == current_week %}rgba(74,222,128,.7){% else %}var(--text-dim){% endif %};">
+            {% if is_complete %}DONE{% elif week == current_week %}LIVE{% else %}UPCOMING{% endif %}
+          </div>
         </button>
       {% endfor %}
-      <span class="tab-underline" id="sched-underline"></span>
-      <span class="tab-glow"      id="sched-glow"></span>
+      <div style="flex:1;"></div>
     </div>
     {% endif %}
 
@@ -185,52 +178,28 @@
 <script>
 const CURRENT_WEEK = {{ current_week if current_week else 1 }};
 
-// Sliding tab underline measurement
-function measureTabUnderline(tab) {
-  const container = document.getElementById('week-tabs');
-  const ul = document.getElementById('sched-underline');
-  const gl = document.getElementById('sched-glow');
-  if (!tab || !container || !ul || !gl) return;
-  const pr = container.getBoundingClientRect();
-  const tr = tab.getBoundingClientRect();
-  const left  = tr.left - pr.left;
-  const width = tr.width;
-  ul.style.left  = left  + 'px';
-  ul.style.width = width + 'px';
-  gl.style.left  = left  + 'px';
-  gl.style.width = width + 'px';
-}
-
 function switchWeek(week) {
   document.querySelectorAll('.week-section').forEach(s => s.style.display = 'none');
   document.querySelectorAll('.week-tab').forEach(t => {
-    t.style.background   = 'var(--panel)';
-    t.style.borderColor  = 'var(--hairline)';
-    t.style.color        = 'var(--text-mute)';
+    t.style.background   = 'transparent';
+    t.style.borderBottom = '2px solid transparent';
+    const num = t.querySelector('.tab-num');
+    if (num) num.style.color = 'var(--text-mute)';
   });
   const section = document.getElementById('week-section-' + week);
   if (section) section.style.display = '';
   const tab = document.getElementById('tab-' + week);
   if (tab) {
-    tab.style.background  = 'var(--magenta-soft)';
-    tab.style.borderColor = 'var(--magenta-dim)';
-    tab.style.color       = 'var(--magenta)';
-    measureTabUnderline(tab);
+    tab.style.background   = 'var(--magenta-soft)';
+    tab.style.borderBottom = '2px solid var(--magenta)';
+    const num = tab.querySelector('.tab-num');
+    if (num) num.style.color = 'var(--magenta)';
   }
 }
 
 document.addEventListener('turbo:load', () => {
-  const tabs = document.querySelectorAll('.week-tab');
-  if (tabs.length > 0) {
+  if (document.querySelectorAll('.week-tab').length > 0) {
     switchWeek(CURRENT_WEEK);
-  }
-  // Re-measure on resize
-  const container = document.getElementById('week-tabs');
-  if (container && window.ResizeObserver) {
-    new ResizeObserver(() => {
-      const active = container.querySelector('.week-tab[style*="magenta-soft"]');
-      if (active) measureTabUnderline(active);
-    }).observe(container);
   }
 });
 </script>
