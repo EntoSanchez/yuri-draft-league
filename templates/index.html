@@ -362,7 +362,7 @@
 
 <script>
 // Render sparkline SVG paths from data-pts attributes
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
   document.querySelectorAll('.spark[data-pts]').forEach(svg => {
     const pts = svg.dataset.pts.split(',').map(Number).filter(x => !isNaN(x));
     if (pts.length < 2) return;

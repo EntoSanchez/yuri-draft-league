@@ -219,7 +219,7 @@ function switchWeek(week) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
   const tabs = document.querySelectorAll('.week-tab');
   if (tabs.length > 0) {
     switchWeek(CURRENT_WEEK);

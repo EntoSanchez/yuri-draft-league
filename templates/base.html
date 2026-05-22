@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@hotwire/turbo@8/dist/turbo.es2017.umd.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1041,7 +1042,7 @@
   </div>
 </footer>
 
-<script>
+<script data-turbo-eval="false">
   // ── Nav scroll shrink ──
   const mainNav = document.getElementById('main-nav');
   if (mainNav) {
@@ -1084,28 +1085,16 @@
     if (h && (h === p || (h.length > 1 && p.startsWith(h)))) el.classList.add('active');
   });
 </script>
-<script>
-// ── Page transitions (scan-wipe fires via CSS on load; this handles nav-out fade) ──
-(function() {
-  const rb = document.getElementById('route-body');
-  if (!rb) return;
-  document.addEventListener('click', function(e) {
-    const a = e.target.closest('a[href]');
-    if (!a) return;
-    const href = a.getAttribute('href');
-    if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto')
-        || a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    e.preventDefault();
-    rb.style.opacity = '0';
-    rb.style.transition = 'opacity 0.18s ease';
-    setTimeout(() => { window.location.href = href; }, 180);
-  });
-})();
+<script data-turbo-eval="false">
+// ── Page transitions — Turbo handles navigation; fade out before visit ──
+document.addEventListener('turbo:before-visit', () => {
+  const rp = document.querySelector('.route-page');
+  if (rp) { rp.style.opacity = '0'; rp.style.transition = 'opacity 0.12s ease'; }
+});
 </script>
-<script>
-// ── Global page animations ──
-document.addEventListener('DOMContentLoaded', () => {
-  // Stagger-animate all cards on page load
+<script data-turbo-eval="false">
+// ── Global page animations — turbo:load fires on first load and after every Turbo visit ──
+document.addEventListener('turbo:load', () => {
   const targets = document.querySelectorAll('.card-hover');
   targets.forEach((el, i) => {
     el.style.opacity = '0';
@@ -1116,7 +1105,6 @@ document.addEventListener('DOMContentLoaded', () => {
       el.style.transform = 'translateY(0)';
     }));
   });
-  // (Page headers fade in via .route-page CSS animation on the main wrapper)
 });
 </script>
 </body>

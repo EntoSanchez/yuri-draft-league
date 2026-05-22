@@ -274,7 +274,7 @@ async function vote(matchId, coachId, week, btn, side) {
 }
 
 // Animate vote bars in on load with springy easing
-window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('.vote-bar-l, .vote-bar-r').forEach(bar => {
       bar.style.width = (bar.dataset.target || '0') + '%';
