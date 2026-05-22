@@ -120,7 +120,7 @@
         {% endif %}
         <div>
           <div class="text-xs font-bold leading-tight" style="color:{% if loop.first %}var(--magenta){% else %}var(--text){% endif %};">{{ c.get('team_name','?') }}</div>
-          <div class="text-gray-600 leading-tight" style="font-size:10px;">{{ slot }} · #{{ pick_num }}</div>
+          <div class="text-gray-600 leading-tight" style="font-size:10px;">#{{ pick_num }}</div>
         </div>
       </div>
       {% endfor %}
@@ -176,7 +176,7 @@
             <td class="px-2 py-1 font-bold whitespace-nowrap sticky left-0 z-10 text-xs"
                 rowspan="{{ tier_max }}"
                 style="{{ tier_colors[tier] }} border-right:2px solid rgba(255,255,255,0.08);">
-              {{ tier }}
+              {% if 'Uber' in tier %}Ubers{% else %}{{ tier }}{% endif %}
             </td>
             {% endif %}
             {% for coach in coaches_pool %}

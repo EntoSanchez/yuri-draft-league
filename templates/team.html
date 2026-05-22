@@ -295,7 +295,7 @@
             <span class="yc-champ-crown">&#9651;</span>
           </div>
           {% endif %}
-          <h1 class="yc-h1 mt-2" style="font-size:56px;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;{% if coach.is_defending_champ %}text-shadow:0 0 32px #ffb84d80,0 0 24px {{ coach.color or '#ff2a8a' }}40;{% endif %}">
+          <h1 class="yc-h1 mt-2" style="font-size:clamp(24px,5vw,56px);line-height:1.05;word-break:break-word;overflow-wrap:break-word;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;{% if coach.is_defending_champ %}text-shadow:0 0 32px #ffb84d80,0 0 24px {{ coach.color or '#ff2a8a' }}40;{% endif %}">
             {{ coach.team_name }}
           </h1>
           <p class="yc-mono mt-3" style="font-size:12px;color:var(--text-mute);">
