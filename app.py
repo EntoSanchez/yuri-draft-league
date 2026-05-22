@@ -3107,7 +3107,7 @@ def draft_live():
             is_admin = session.get("role") == "admin"
             return render_template(
                 "draft_live.html",
-                session=None,
+                draft_session=None,
                 coaches=coaches,
                 coaches_a=coaches_a,
                 coaches_b=coaches_b,
@@ -3273,7 +3273,7 @@ def draft_live():
 
     return render_template(
         "draft_live.html",
-        session=dict(session_row),
+        draft_session=dict(session_row),
         picks=picks,
         coaches=coaches,
         coaches_a=[c for c in coaches if c["pool"] == "A"],

@@ -262,7 +262,7 @@
 {# ═══════════════ PAGE CONTENT ═══════════════ #}
 <div style="padding:14px 18px 40px;max-width:1600px;margin:0 auto;">
 
-{% if session is none %}
+{% if draft_session is none %}
 {# ── No active draft: compact banner only (grid still renders below) ── #}
 <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:14px;background:var(--panel-2);border:1px solid var(--hairline);border-radius:2px;">
   <div style="display:flex;align-items:center;gap:12px;">
@@ -275,20 +275,20 @@
   </div>
 </div>
 
-{% else %}{# ── Active/Paused draft ── #}
+{% else %}{# ── Active/Paused draft_session ── #}
 
 {# ── Status strip ── #}
 <div style="display:grid;grid-template-columns:auto auto auto 1fr auto;gap:18px;align-items:center;padding:10px 16px;margin-bottom:14px;background:var(--panel-2);border:1px solid {% if is_admin %}var(--magenta-dim){% else %}var(--hairline){% endif %};border-radius:2px;{% if is_admin %}box-shadow:0 0 20px -8px var(--magenta-dim);{% endif %}">
   <div>
     <div class="dl-ey">{{ '// ADMIN_MODE' if is_admin else '// LIVE_DRAFT' }}</div>
-    <div class="dl-h2" style="font-size:18px;margin-top:2px;">{{ session.name }}{% if session.season %} · {{ session.season }}{% endif %}</div>
+    <div class="dl-h2" style="font-size:18px;margin-top:2px;">{{ draft_session.name }}{% if draft_session.season %} · {{ draft_session.season }}{% endif %}</div>
   </div>
   <div class="dl-mono">
     {% if current_slot_a %}A: RND <span style="color:var(--magenta);font-weight:700;">{{ current_slot_a[2][:2] }}</span>{% endif %}
     {% if current_slot_a and current_slot_b %} &nbsp;{% endif %}
     {% if current_slot_b %}B: RND <span style="color:var(--magenta);font-weight:700;">{{ current_slot_b[2][:2] }}</span>{% endif %}
   </div>
-  <span class="dl-chip {% if session.status=='active' %}live{% elif session.status=='paused' %}paused{% endif %}">{{ session.status|upper }}</span>
+  <span class="dl-chip {% if draft_session.status=='active' %}live{% elif draft_session.status=='paused' %}paused{% endif %}">{{ draft_session.status|upper }}</span>
   <div></div>{# spacer #}
   <div style="display:flex;gap:8px;align-items:center;">
     <a href="{{ url_for('draft_sheet') }}" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">SHEET</a>
@@ -297,7 +297,7 @@
 </div>
 
 {# ── Admin: two-panel simultaneous pick entry (above the grid) ── #}
-{% if is_admin and session.status == 'active' %}
+{% if is_admin and draft_session.status == 'active' %}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
   {% for pool_label, slot, draft_state, avail in [
       ('A', current_slot_a, current_draft_state_a, avail_pokemon_a),
@@ -383,7 +383,7 @@ function filterPool(pool, q) {
 {% endif %}{# end admin pick panels #}
 
 {# ── Non-admin: own-pool pick form ── #}
-{% if can_pick and not is_admin and session.status == 'active' and current_slot %}
+{% if can_pick and not is_admin and draft_session.status == 'active' and current_slot %}
 <div style="margin-bottom:14px;">
   <div class="dl-pick-panel">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
@@ -454,7 +454,7 @@ if (ticketSel) {
   }, true);
 }
 </script>
-{% elif not is_admin and session.status == 'paused' %}
+{% elif not is_admin and draft_session.status == 'paused' %}
 <div style="margin-bottom:14px;padding:14px;text-align:center;border:1px solid var(--amber);background:rgba(255,184,77,.06);border-radius:2px;">
   <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--amber);">Draft is paused.</span>
 </div>
@@ -473,7 +473,7 @@ if (ticketSel) {
 </div>
 
 {# ── Captain selection ── only when session active #}
-{% if session and my_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
+{% if draft_session andmy_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
 <div style="padding:16px;border:1px solid var(--hairline);background:var(--panel);border-radius:2px;">
   <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;margin-bottom:12px;">// CAPTAIN_SELECTION <span style="color:var(--text-dim);font-weight:400;">— ≤13pts or Tier 4/5</span></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:7px;">
@@ -510,12 +510,12 @@ if (ticketSel) {
 
 </div>
 
-{% if session and session.status in ('active', 'paused') %}
+{% if draft_session anddraft_session.status in ('active', 'paused') %}
 <script>
 const _pollBase = {
   pickA: {{ current_pick_a if current_pick_a is not none else 1 }},
   pickB: {{ current_pick_b if current_pick_b is not none else 1 }},
-  status: '{{ session.status }}'
+  status: '{{ draft_session.status }}'
 };
 function _pollDraft() {
   fetch('/draft/live/status')
