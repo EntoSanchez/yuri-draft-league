@@ -601,15 +601,7 @@
     }
 
     /* §05 · Route transitions */
-    .route-body { position: relative; overflow: hidden; }
-    .scan-wipe {
-      position: absolute; left: -120px; top: 0; bottom: 0; width: 120px;
-      background: linear-gradient(90deg, transparent, var(--magenta) 50%, transparent);
-      box-shadow: 0 0 24px var(--magenta-dim);
-      animation: scan-wipe 360ms cubic-bezier(.4,0,.2,1);
-      pointer-events: none; z-index: 999;
-    }
-    @keyframes scan-wipe { from { left: -120px; } to { left: 100%; } }
+    .route-body { position: relative; }
     .route-page { animation: route-in .35s var(--ease-out-cubic); }
     @keyframes route-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1024,7 +1016,6 @@
 
 <!-- ═══════════════════ MAIN ═══════════════════ -->
 <main class="flex-1 route-body" id="route-body">
-  <span class="scan-wipe" aria-hidden="true"></span>
   <div class="route-page">
     {% block content %}{% endblock %}
   </div>
