@@ -230,8 +230,71 @@
     {{ pool_grid('B', coaches_b, grid_b) }}
   </div>
 
-  {# ── Pick form ── #}
-  {% if can_pick and session.status == 'active' and current_slot %}
+  {# ── Admin: two-pool simultaneous pick panels ── #}
+  {% if is_admin and session.status == 'active' %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+    {% for pool_label, slot, draft_state, avail in [
+        ('A', current_slot_a, current_draft_state_a, avail_pokemon_a),
+        ('B', current_slot_b, current_draft_state_b, avail_pokemon_b),
+    ] %}
+    {% set cc = coaches_map.get(slot[3]) if slot else none %}
+    <div style="padding:14px;border:1px solid {% if slot %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:var(--panel);border-radius:2px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:{% if slot %}var(--magenta){% else %}var(--text-dim){% endif %};{% if slot %}animation:pulse 1.5s infinite;{% endif %}"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.08em;">// POOL_{{ pool_label }}{% if slot %} · ROUND {{ slot[1]+1 }}{% endif %}</span>
+      </div>
+      {% if cc %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;">
+        {% if cc.get('logo_url') %}<img src="{{ cc.logo_url }}" style="width:28px;height:28px;object-fit:contain;" alt="">
+        {% else %}<div style="width:28px;height:28px;background:{{ cc.get('color','#374151') }};border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;color:#fff;">{{ cc.get('team_name','?')[:2].upper() }}</div>{% endif %}
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--magenta);">{{ cc.get('team_name','?') }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);">{{ cc.get('coach_name','?') }} · SLOT {{ slot[2] }}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <input type="text" id="poke-search-{{ pool_label }}" placeholder="Search…"
+               style="width:100%;padding:6px 10px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel-2);color:var(--text);font-size:12px;box-sizing:border-box;"
+               oninput="filterPokesPool('{{ pool_label }}', this.value)">
+      </div>
+      <div id="poke-grid-{{ pool_label }}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;max-height:220px;overflow-y:auto;">
+        {% for poke in avail %}
+        <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card-{{ pool_label }}">
+          <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
+          <input type="hidden" name="pick_pool" value="{{ pool_label }}">
+          <button type="submit"
+                  style="width:100%;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;cursor:pointer;"
+                  onmouseover="this.style.borderColor='var(--magenta-dim)';this.style.background='var(--magenta-soft)'" onmouseout="this.style.borderColor='var(--hairline)';this.style.background='var(--panel-2)'"
+                  data-name="{{ poke.name|lower }}">
+            <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.style.display='none'" style="width:36px;height:36px;object-fit:contain;" alt="">
+            <span style="font-size:10px;font-weight:500;color:#d1d5db;line-height:1.2;text-align:center;word-break:break-word;">{{ poke.name }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--cyan);">{{ poke.points }}pts</span>
+          </button>
+        </form>
+        {% else %}
+        <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-mute);font-size:12px;">All picked.</div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:20px;color:var(--text-mute);font-size:12px;font-family:'JetBrains Mono',monospace;">POOL {{ pool_label }} DRAFT COMPLETE</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <script>
+  function filterPokesPool(pool, q) {
+    q = q.toLowerCase().trim();
+    document.querySelectorAll('.poke-card-' + pool).forEach(function(card) {
+      var btn = card.querySelector('button');
+      var name = btn ? btn.dataset.name : '';
+      card.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+  }
+  </script>
+  {% endif %}
+
+  {# ── Non-admin own-pool pick form ── #}
+  {% if can_pick and not is_admin and session.status == 'active' and current_slot %}
   <div style="margin-bottom:20px;">
     <div style="padding:16px;border:1px solid var(--magenta-dim);background:var(--panel);border-radius:2px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
@@ -304,6 +367,7 @@
         {% for poke in avail_pokemon %}
         <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card">
           <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
+          <input type="hidden" name="pick_pool" value="{{ my_pool or 'A' }}">
           <button type="submit"
                   style="width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;cursor:pointer;"
                   onmouseover="this.style.borderColor='var(--magenta-dim)';this.style.background='var(--magenta-soft)'" onmouseout="this.style.borderColor='var(--hairline)';this.style.background='var(--panel-2)'"
@@ -342,11 +406,11 @@
   }
   </script>
 
-  {% elif session.status == 'paused' %}
+  {% elif not is_admin and session.status == 'paused' %}
   <div style="margin-bottom:20px;padding:14px;text-align:center;border:1px solid var(--magenta-dim);background:var(--magenta-soft);border-radius:2px;">
     <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--magenta);">Draft is paused.</span>
   </div>
-  {% elif current_slot is none %}
+  {% elif not is_admin and current_slot is none %}
   <div style="margin-bottom:20px;padding:14px;text-align:center;border:1px solid rgba(22,163,74,.4);background:rgba(20,83,45,.15);border-radius:2px;">
     <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#4ade80;">Draft is complete!</span>
   </div>
@@ -399,14 +463,15 @@
 {% if session and session.status in ('active', 'paused') %}
 <script>
   const _pollBase = {
-    pick: {{ session.current_pick if session.current_pick is not none else 0 }},
+    pickA: {{ current_pick_a if current_pick_a is not none else 1 }},
+    pickB: {{ current_pick_b if current_pick_b is not none else 1 }},
     status: '{{ session.status }}'
   };
   function _pollDraft() {
     fetch('/draft/live/status')
       .then(r => r.json())
       .then(d => {
-        if (d.current_pick !== _pollBase.pick || d.status !== _pollBase.status)
+        if (d.current_pick_a !== _pollBase.pickA || d.current_pick_b !== _pollBase.pickB || d.status !== _pollBase.status)
           window.location.reload();
       })
       .catch(() => {});

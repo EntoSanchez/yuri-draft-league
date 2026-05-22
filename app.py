@@ -43,6 +43,8 @@ def _migrate_db():
             "ALTER TABLE coaches ADD COLUMN draft_mode TEXT",
             "ALTER TABLE draft_picks ADD COLUMN ticket_used TEXT",
             "ALTER TABLE coaches ADD COLUMN is_defending_champ INTEGER DEFAULT 0",
+            "ALTER TABLE draft_sessions ADD COLUMN current_pick_a INTEGER DEFAULT 1",
+            "ALTER TABLE draft_sessions ADD COLUMN current_pick_b INTEGER DEFAULT 1",
         ]:
             try:
                 db.execute(stmt)
@@ -2813,6 +2815,12 @@ def _get_snake_pick_sequence(snake_order, round_structure):
     return picks
 
 
+def _get_pool_sequence(snake_order, pool_coach_ids, round_structure):
+    """Return snake sequence for a single pool (filters snake_order to pool coaches only)."""
+    pool_order = [c for c in snake_order if c in pool_coach_ids]
+    return _get_snake_pick_sequence(pool_order, round_structure)
+
+
 def _auto_slot(pokemon_name, poke_pts, mega_names_set, existing_roster_rows):
     """Auto-assign a new pick to the correct roster slot.
 
@@ -3070,9 +3078,6 @@ def draft_live():
             (session_row["id"],)
         ).fetchall()
 
-        # Available pokemon (not yet picked)
-        picked_names = {p["pokemon_name"] for p in picks}
-
         round_structure_str = settings.get("draft_round_structure", "")
         try:
             round_structure = json.loads(round_structure_str) if round_structure_str else DEFAULT_ROUND_STRUCTURE
@@ -3080,12 +3085,25 @@ def draft_live():
             round_structure = DEFAULT_ROUND_STRUCTURE
 
         snake_order = json.loads(session_row["snake_order"] or "[]")
-        current_pick = session_row["current_pick"]
-        current_round = session_row["current_round"]
 
-        seq = _get_snake_pick_sequence(snake_order, round_structure)
-        current_slot = seq[current_pick - 1] if seq and 0 < current_pick <= len(seq) else None
-        next_5 = seq[current_pick - 1: current_pick + 4] if seq else []
+        # Per-pool independent sequences and pick counters
+        pool_a_ids = {c["id"] for c in coaches if c["pool"] == "A"}
+        pool_b_ids = {c["id"] for c in coaches if c["pool"] == "B"}
+
+        seq_a = _get_pool_sequence(snake_order, pool_a_ids, round_structure)
+        seq_b = _get_pool_sequence(snake_order, pool_b_ids, round_structure)
+
+        current_pick_a = session_row["current_pick_a"] or 1
+        current_pick_b = session_row["current_pick_b"] or 1
+
+        current_slot_a = seq_a[current_pick_a - 1] if seq_a and 0 < current_pick_a <= len(seq_a) else None
+        current_slot_b = seq_b[current_pick_b - 1] if seq_b and 0 < current_pick_b <= len(seq_b) else None
+
+        current_coach_a_id = current_slot_a[3] if current_slot_a else None
+        current_coach_b_id = current_slot_b[3] if current_slot_b else None
+
+        next_5_a = seq_a[current_pick_a - 1: current_pick_a + 4] if seq_a else []
+        next_5_b = seq_b[current_pick_b - 1: current_pick_b + 4] if seq_b else []
 
         mega_names_set = {r["name"] for r in db.execute(
             "SELECT name FROM draft_tiers WHERE is_mega=1"
@@ -3095,16 +3113,23 @@ def draft_live():
             "SELECT * FROM draft_tiers WHERE is_banned != 1 ORDER BY points DESC, name"
         ).fetchall()
 
-        # All picks are free-order; first overall pick must be a regular-tier pokemon (not mega)
-        is_first_pick = (current_pick == 1)
-        avail_pokemon = []
-        for p in all_draft:
-            if p["name"] in picked_names:
-                continue
-            if is_first_pick and p["name"] in mega_names_set:
-                continue
-            computed_tier = _regular_tier_label(p["points"] or 0)
-            avail_pokemon.append(dict(p, tier_label=computed_tier or p["tier_label"] or ""))
+        # Available pokemon per pool (pools draft independently — same mon can appear in both)
+        picked_names_a = {p["pokemon_name"] for p in picks if p["coach_id"] in pool_a_ids}
+        picked_names_b = {p["pokemon_name"] for p in picks if p["coach_id"] in pool_b_ids}
+
+        def _make_avail(picked_names, is_first):
+            result = []
+            for p in all_draft:
+                if p["name"] in picked_names:
+                    continue
+                if is_first and p["name"] in mega_names_set:
+                    continue
+                computed_tier = _regular_tier_label(p["points"] or 0)
+                result.append(dict(p, tier_label=computed_tier or p["tier_label"] or ""))
+            return result
+
+        avail_pokemon_a = _make_avail(picked_names_a, current_pick_a == 1)
+        avail_pokemon_b = _make_avail(picked_names_b, current_pick_b == 1)
 
         # Build grid from pokemon_roster (full roster) + ticket_used from current session
         pick_info_map = {(p["coach_id"], p["pokemon_name"]): p for p in picks}
@@ -3139,7 +3164,6 @@ def draft_live():
         grid_b, max_b = _build_draft_grid([c for c in coaches if c["pool"] == "B"], roster_from_picks)
 
         coaches_map = {c["id"]: dict(c) for c in coaches}
-        current_coach_id = current_slot[3] if current_slot else None
 
         # Per-coach draft state (mode, remaining budget/tickets, uber status)
         coaches_draft_states = {
@@ -3149,7 +3173,27 @@ def draft_live():
 
     is_admin = session.get("role") == "admin"
     my_coach_id = session.get("coach_id")
-    can_pick = is_admin or (my_coach_id == current_coach_id)
+
+    # Determine which pool the logged-in coach belongs to
+    my_coach_row = coaches_map.get(my_coach_id) if my_coach_id else None
+    my_pool = my_coach_row["pool"] if my_coach_row else None
+
+    if my_pool == "A":
+        current_coach_id = current_coach_a_id
+        current_slot = current_slot_a
+        can_pick = is_admin or (my_coach_id == current_coach_a_id)
+        avail_pokemon = avail_pokemon_a
+    elif my_pool == "B":
+        current_coach_id = current_coach_b_id
+        current_slot = current_slot_b
+        can_pick = is_admin or (my_coach_id == current_coach_b_id)
+        avail_pokemon = avail_pokemon_b
+    else:
+        # Admin without coach assignment
+        current_coach_id = current_coach_a_id
+        current_slot = current_slot_a
+        can_pick = is_admin
+        avail_pokemon = avail_pokemon_a
 
     # Build current user's picks from pokemon_roster for the captain panel
     my_picks = []
@@ -3166,6 +3210,8 @@ def draft_live():
                 })
 
     current_draft_state = coaches_draft_states.get(current_coach_id, {}) if current_coach_id else {}
+    current_draft_state_a = coaches_draft_states.get(current_coach_a_id, {}) if current_coach_a_id else {}
+    current_draft_state_b = coaches_draft_states.get(current_coach_b_id, {}) if current_coach_b_id else {}
 
     return render_template(
         "draft_live.html",
@@ -3178,18 +3224,30 @@ def draft_live():
         max_a=max_a, max_b=max_b,
         tier_order=TIER_ORDER,
         avail_pokemon=avail_pokemon,
+        avail_pokemon_a=avail_pokemon_a,
+        avail_pokemon_b=avail_pokemon_b,
         current_slot=current_slot,
-        next_5=next_5,
-        coaches_map=coaches_map,
+        current_slot_a=current_slot_a,
+        current_slot_b=current_slot_b,
         current_coach_id=current_coach_id,
+        current_coach_a_id=current_coach_a_id,
+        current_coach_b_id=current_coach_b_id,
+        current_pick_a=current_pick_a,
+        current_pick_b=current_pick_b,
+        next_5=next_5_a,
+        next_5_a=next_5_a,
+        next_5_b=next_5_b,
+        coaches_map=coaches_map,
         can_pick=can_pick,
         is_admin=is_admin,
+        my_pool=my_pool,
         round_structure=round_structure,
-        seq=seq,
         my_coach_id=my_coach_id,
         my_picks=my_picks,
         coaches_draft_states=coaches_draft_states,
         current_draft_state=current_draft_state,
+        current_draft_state_a=current_draft_state_a,
+        current_draft_state_b=current_draft_state_b,
         ticket_alloc=TICKET_ALLOC,
         tier_to_ticket=TIER_TO_TICKET,
         mechanic_tera=settings.get("mechanic_tera", "0"),
@@ -3223,9 +3281,29 @@ def draft_live_pick():
         except Exception:
             round_structure = DEFAULT_ROUND_STRUCTURE
 
+        is_admin = session.get("role") == "admin"
+        my_coach_id = session.get("coach_id")
+
+        coaches_all = db.execute("SELECT * FROM coaches").fetchall()
+        pool_a_ids = {c["id"] for c in coaches_all if c["pool"] == "A"}
+        pool_b_ids = {c["id"] for c in coaches_all if c["pool"] == "B"}
+
+        # Determine which pool this pick is for
+        if is_admin:
+            pick_pool = request.form.get("pick_pool", "A")
+        else:
+            coach_row = next((c for c in coaches_all if c["id"] == my_coach_id), None)
+            if not coach_row:
+                flash("Coach not found.", "warning")
+                return redirect(url_for("draft_live"))
+            pick_pool = coach_row["pool"]
+
+        pool_ids = pool_a_ids if pick_pool == "A" else pool_b_ids
+
         snake_order = json.loads(session_row["snake_order"] or "[]")
-        current_pick = session_row["current_pick"]
-        seq = _get_snake_pick_sequence(snake_order, round_structure)
+        seq = _get_pool_sequence(snake_order, pool_ids, round_structure)
+
+        current_pick = (session_row["current_pick_a"] or 1) if pick_pool == "A" else (session_row["current_pick_b"] or 1)
 
         if not seq or current_pick < 1 or current_pick > len(seq):
             flash("Draft is complete or pick number is invalid.", "warning")
@@ -3233,16 +3311,15 @@ def draft_live_pick():
 
         pick_num, round_idx, slot_name, coach_id = seq[current_pick - 1]
 
-        is_admin = session.get("role") == "admin"
-        my_coach_id = session.get("coach_id")
         if not is_admin and my_coach_id != coach_id:
             flash("It's not your turn.", "warning")
             return redirect(url_for("draft_live"))
 
-        # Check not already picked
+        # Check not already picked within this pool (pools are independent)
+        placeholders = ",".join("?" * len(pool_ids))
         existing = db.execute(
-            "SELECT id FROM draft_picks WHERE session_id=? AND pokemon_name=?",
-            (session_row["id"], pokemon_name)
+            f"SELECT id FROM draft_picks WHERE session_id=? AND pokemon_name=? AND coach_id IN ({placeholders})",
+            [session_row["id"], pokemon_name] + list(pool_ids),
         ).fetchone()
         if existing:
             flash(f"{pokemon_name} has already been picked.", "warning")
@@ -3361,8 +3438,9 @@ def draft_live_pick():
             "INSERT OR IGNORE INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (?,?,?,?,0,0,?)",
             (coach_id, pokemon_name, points, actual_slot, 1 if is_free else 0)
         )
+        pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
         db.execute(
-            "UPDATE draft_sessions SET current_pick=? WHERE id=?",
+            f"UPDATE draft_sessions SET {pick_col}=? WHERE id=?",
             (current_pick + 1, session_row["id"])
         )
 
@@ -3374,12 +3452,17 @@ def draft_live_pick():
 def draft_live_status():
     with get_db() as db:
         row = db.execute(
-            "SELECT id, current_pick, status FROM draft_sessions "
+            "SELECT id, current_pick_a, current_pick_b, status FROM draft_sessions "
             "WHERE status IN ('active','paused') ORDER BY id DESC LIMIT 1"
         ).fetchone()
     if not row:
-        return {"status": "none", "current_pick": 0, "session_id": None}
-    return {"status": row["status"], "current_pick": row["current_pick"], "session_id": row["id"]}
+        return {"status": "none", "current_pick_a": 0, "current_pick_b": 0, "session_id": None}
+    return {
+        "status": row["status"],
+        "current_pick_a": row["current_pick_a"] or 1,
+        "current_pick_b": row["current_pick_b"] or 1,
+        "session_id": row["id"],
+    }
 
 
 @app.route("/draft/live/set_captain", methods=["POST"])
@@ -3484,8 +3567,8 @@ def admin_draft():
             snake_json = json.dumps([int(x) for x in snake_ids if x])
             with get_db() as db:
                 db.execute(
-                    "INSERT INTO draft_sessions (name, season, status, snake_order, current_round, current_pick) VALUES (?,?,?,?,?,?)",
-                    (name, season, "setup", snake_json, 1, 1)
+                    "INSERT INTO draft_sessions (name, season, status, snake_order, current_round, current_pick, current_pick_a, current_pick_b) VALUES (?,?,?,?,?,?,?,?)",
+                    (name, season, "setup", snake_json, 1, 1, 1, 1)
                 )
             flash("Draft session created.", "success")
 
@@ -3501,7 +3584,7 @@ def admin_draft():
         elif action == "start":
             sid = request.form.get("session_id")
             with get_db() as db:
-                db.execute("UPDATE draft_sessions SET status='active', current_pick=1 WHERE id=?", (sid,))
+                db.execute("UPDATE draft_sessions SET status='active', current_pick=1, current_pick_a=1, current_pick_b=1 WHERE id=?", (sid,))
             flash("Draft started.", "success")
 
         elif action == "pause":
@@ -3525,19 +3608,21 @@ def admin_draft():
         elif action == "reset":
             sid = request.form.get("session_id")
             with get_db() as db:
-                db.execute("UPDATE draft_sessions SET status='setup', current_pick=1, current_round=1 WHERE id=?", (sid,))
+                db.execute("UPDATE draft_sessions SET status='setup', current_pick=1, current_round=1, current_pick_a=1, current_pick_b=1 WHERE id=?", (sid,))
                 db.execute("DELETE FROM draft_picks WHERE session_id=?", (sid,))
             flash("Draft reset.", "warning")
 
         elif action == "set_pick":
             sid = request.form.get("session_id")
+            pick_pool = request.form.get("pick_pool", "A")
             try:
                 pick_num = int(request.form.get("pick_number", 1))
             except ValueError:
                 pick_num = 1
+            col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
             with get_db() as db:
-                db.execute("UPDATE draft_sessions SET current_pick=? WHERE id=?", (pick_num, sid))
-            flash(f"Current pick set to {pick_num}.", "success")
+                db.execute(f"UPDATE draft_sessions SET {col}=? WHERE id=?", (pick_num, sid))
+            flash(f"Pool {pick_pool} pick set to {pick_num}.", "success")
 
         elif action == "update_snake":
             sid = request.form.get("session_id")

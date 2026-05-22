@@ -113,17 +113,23 @@
       </form>
     </div>
 
-    <!-- Override pick number -->
-    <form method="POST" class="flex items-center gap-2">
-      <input type="hidden" name="action" value="set_pick">
-      <input type="hidden" name="session_id" value="{{ active_session.id }}">
-      <label class="text-xs font-mono" style="color:var(--text-dim);white-space:nowrap;">OVERRIDE PICK #:</label>
-      <input type="number" name="pick_number" value="{{ active_session.current_pick }}" min="1"
-             class="w-20 px-2 py-1.5 text-sm border focus:outline-none"
-             style="border-radius:2px;background:var(--panel);border-color:var(--hairline-2);color:var(--text);font-family:var(--font-mono);">
-      <button type="submit" class="px-3 py-1.5 text-xs font-black font-mono border transition-colors hover:border-magenta"
-              style="border-radius:2px;border-color:var(--hairline);background:var(--panel);color:var(--text-mute);">SET</button>
-    </form>
+    <!-- Override pick number per pool -->
+    <div class="flex flex-wrap gap-3">
+      {% for pool_label in ['A', 'B'] %}
+      <form method="POST" class="flex items-center gap-2">
+        <input type="hidden" name="action" value="set_pick">
+        <input type="hidden" name="session_id" value="{{ active_session.id }}">
+        <input type="hidden" name="pick_pool" value="{{ pool_label }}">
+        <label class="text-xs font-mono" style="color:var(--text-dim);white-space:nowrap;">POOL {{ pool_label }} PICK #:</label>
+        <input type="number" name="pick_number"
+               value="{{ active_session.current_pick_a if pool_label == 'A' else active_session.current_pick_b }}" min="1"
+               class="w-20 px-2 py-1.5 text-sm border focus:outline-none"
+               style="border-radius:2px;background:var(--panel);border-color:var(--hairline-2);color:var(--text);font-family:var(--font-mono);">
+        <button type="submit" class="px-3 py-1.5 text-xs font-black font-mono border"
+                style="border-radius:2px;border-color:var(--hairline);background:var(--panel);color:var(--text-mute);">SET</button>
+      </form>
+      {% endfor %}
+    </div>
 
     <!-- Snake order for active session -->
     {% if active_snake %}
