@@ -3213,6 +3213,10 @@ def draft_live():
     current_draft_state_a = coaches_draft_states.get(current_coach_a_id, {}) if current_coach_a_id else {}
     current_draft_state_b = coaches_draft_states.get(current_coach_b_id, {}) if current_coach_b_id else {}
 
+    # Most recent pick per pool (for LAST_PICK display in pool header)
+    last_pick_a = next((p for p in reversed(picks) if p["coach_id"] in pool_a_ids), None)
+    last_pick_b = next((p for p in reversed(picks) if p["coach_id"] in pool_b_ids), None)
+
     return render_template(
         "draft_live.html",
         session=dict(session_row),
@@ -3248,6 +3252,8 @@ def draft_live():
         current_draft_state=current_draft_state,
         current_draft_state_a=current_draft_state_a,
         current_draft_state_b=current_draft_state_b,
+        last_pick_a=dict(last_pick_a) if last_pick_a else None,
+        last_pick_b=dict(last_pick_b) if last_pick_b else None,
         ticket_alloc=TICKET_ALLOC,
         tier_to_ticket=TIER_TO_TICKET,
         mechanic_tera=settings.get("mechanic_tera", "0"),
