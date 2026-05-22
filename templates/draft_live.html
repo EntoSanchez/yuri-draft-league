@@ -473,7 +473,7 @@ if (ticketSel) {
 </div>
 
 {# ── Captain selection ── only when session active #}
-{% if draft_session andmy_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
+{% if draft_session and my_picks and (mechanic_tera == '1' or mechanic_zmove == '1') %}
 <div style="padding:16px;border:1px solid var(--hairline);background:var(--panel);border-radius:2px;">
   <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;margin-bottom:12px;">// CAPTAIN_SELECTION <span style="color:var(--text-dim);font-weight:400;">— ≤13pts or Tier 4/5</span></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:7px;">
@@ -510,7 +510,7 @@ if (ticketSel) {
 
 </div>
 
-{% if draft_session anddraft_session.status in ('active', 'paused') %}
+{% if draft_session and draft_session.status in ('active', 'paused') %}
 <script>
 const _pollBase = {
   pickA: {{ current_pick_a if current_pick_a is not none else 1 }},
