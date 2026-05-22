@@ -350,13 +350,12 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7">
 
     <!-- ── Roster ─────────────────────────────────────────────────────────── -->
-    {% if roster %}
     <section>
       <div class="yc-sechead">
         <span class="yc-eyebrow mag">// ROSTER</span>
-        <span class="yc-h2" style="font-size:22px;">The {{ roster|length }}</span>
+        <span class="yc-h2" style="font-size:22px;">The {% if roster %}{{ roster|length }}{% else %}Ten{% endif %}</span>
         <span class="yc-rule"></span>
-        <span class="yc-mono" style="font-size:10px;color:var(--text-dim);">{{ roster|length }} UNITS</span>
+        <span class="yc-mono" style="font-size:10px;color:var(--text-dim);">{{ roster|length if roster else 0 }} UNITS</span>
         <!-- Mechanic chips -->
         <div class="flex flex-wrap gap-2">
           {% if settings.get('mechanic_tera','0') == '1' %}
@@ -416,11 +415,25 @@
               </p>
             </div>
             {% endfor %}
+            {# Pokeball placeholders for unfilled slots #}
+            {% for i in range(10 - (roster|length)) %}
+            <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:78px;opacity:0.4;">
+              <div class="relative" style="padding:6px;background:var(--panel-2);border:1px dashed var(--hairline);">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
+                     style="width:54px;height:54px;image-rendering:pixelated;object-fit:contain;"
+                     alt="Empty slot">
+              </div>
+              <div class="text-center">
+                <span class="yc-mono inline-block px-2 py-0.5"
+                      style="font-size:10px;color:var(--text-dim);border:1px solid var(--hairline);">—pt</span>
+              </div>
+              <p class="text-center yc-mono" style="font-size:9px;color:var(--text-dim);max-width:4.8rem;line-height:1.2;">empty</p>
+            </div>
+            {% endfor %}
           </div>
         </div>
       </div>
     </section>
-    {% endif %}
 
     <!-- ── Team Shape (radar) + Type Grid + Coach Stats ───────────────────── -->
     {%- set ns_stat = namespace(hp=0, atk=0, def_=0, spa=0, spd=0, spe=0, cnt=0) -%}

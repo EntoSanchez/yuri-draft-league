@@ -7,20 +7,20 @@
 {% set MAIN_TIERS = ["Tier 1","Tier 2","Tier 3","Tier 4","Tier 5"] %}
 {% set MAIN_COUNTS = {"Tier 1":1,"Tier 2":1,"Tier 3":2,"Tier 4":2,"Tier 5":2} %}
 
-{% macro pool_grid(pool_label, coaches_pool, grid_pool) %}
+{% macro pool_grid(pool_label, coaches_pool, grid_pool, pool_current_coach_id, pool_current_slot) %}
 <div style="min-width:0;">
   {# Determine if on-clock coach is in this pool #}
   {% set ns = namespace(clock_in_pool=false) %}
-  {% for c in coaches_pool %}{% if c.id == current_coach_id %}{% set ns.clock_in_pool = true %}{% endif %}{% endfor %}
+  {% for c in coaches_pool %}{% if c.id == pool_current_coach_id %}{% set ns.clock_in_pool = true %}{% endif %}{% endfor %}
 
   {# Pool header #}
   <div style="padding:10px 14px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;margin-bottom:4px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
     <div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;">// POOL_{{ pool_label }}</div>
-      {% if current_slot %}<div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-top:2px;">Round {{ current_slot[2] }}</div>{% endif %}
+      {% if pool_current_slot %}<div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-top:2px;">Round {{ pool_current_slot[2] }}</div>{% endif %}
     </div>
-    {% if ns.clock_in_pool and current_coach_id in coaches_map %}
-    {% set cc = coaches_map[current_coach_id] %}
+    {% if ns.clock_in_pool and pool_current_coach_id in coaches_map %}
+    {% set cc = coaches_map[pool_current_coach_id] %}
     <div style="text-align:right;">
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.08em;">// ON_CLOCK</div>
       <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--magenta);margin-top:2px;text-transform:uppercase;">{{ cc.team_name }}</div>
@@ -33,7 +33,7 @@
     {% for coach in coaches_pool %}
     {% set cm = coach.draft_mode or 'legacy' %}
     {% set cds = coaches_draft_states.get(coach.id, {}) %}
-    {% set is_on_clock = coach.id == current_coach_id %}
+    {% set is_on_clock = coach.id == pool_current_coach_id %}
 
     {# Build main slot list: [(tier_name, pick_or_none), ...] x8 #}
     {% set slot_list = [] %}
@@ -195,8 +195,11 @@
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--magenta);letter-spacing:.1em;">{% if is_admin %}// ADMIN_MODE{% else %}// LIVE_DRAFT{% endif %}</div>
       <div style="font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;color:var(--text);line-height:1.1;margin-top:2px;">{{ session.name }}{% if session.season %} · {{ session.season }}{% endif %}</div>
     </div>
-    {% if current_slot %}
-    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mute);">ROUND <span style="color:var(--magenta);font-weight:700;">{{ current_slot[2] }}</span></div>
+    {% if current_slot_a %}
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mute);">A: ROUND <span style="color:var(--magenta);font-weight:700;">{{ current_slot_a[2] }}</span></div>
+    {% endif %}
+    {% if current_slot_b %}
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mute);">B: ROUND <span style="color:var(--magenta);font-weight:700;">{{ current_slot_b[2] }}</span></div>
     {% endif %}
     <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid {% if session.status=='active' %}#16a34a{% elif session.status=='paused' %}#ca8a04{% else %}#4b5563{% endif %};border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:{% if session.status=='active' %}#4ade80{% elif session.status=='paused' %}#fbbf24{% else %}#9ca3af{% endif %};">
       {% if session.status == 'active' %}<span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse 1.5s infinite;"></span>{% endif %}
@@ -207,18 +210,22 @@
     {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:5px 10px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">ADMIN</a>{% endif %}
   </div>
 
-  {# ── Up next strip ── #}
-  {% if next_5 %}
-  <div style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:16px;">
-    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);letter-spacing:.08em;white-space:nowrap;flex-shrink:0;">UP NEXT</span>
-    {% for pick_num, r_idx, slot, cid in next_5 %}{% set c = coaches_map.get(cid, {}) %}
-    <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;flex-shrink:0;border:1px solid {% if loop.first %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:var(--panel);border-radius:2px;{% if loop.first %}box-shadow:0 0 10px rgba(255,42,138,.12);{% endif %}">
-      {% if c.get('logo_url') %}<img src="{{ c.logo_url }}" style="width:18px;height:18px;object-fit:contain;" alt="">
-      {% else %}<div style="width:18px;height:18px;background:{{ c.get('color','#374151') }};border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:8px;font-weight:700;color:#fff;">{{ c.get('team_name','?')[:2].upper() }}</div>{% endif %}
-      <div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:{% if loop.first %}var(--magenta){% else %}var(--text){% endif %};line-height:1;">{{ c.get('team_name','?') }}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);">#{{ pick_num }}</div>
+  {# ── Up next strip — one row per pool ── #}
+  {% if next_5_a or next_5_b %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    {% for pool_label, pool_next in [('A', next_5_a), ('B', next_5_b)] %}
+    <div style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding:4px 0;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--text-mute);letter-spacing:.08em;white-space:nowrap;flex-shrink:0;">POOL {{ pool_label }} ↓</span>
+      {% for pick_num, r_idx, slot, cid in pool_next %}{% set c = coaches_map.get(cid, {}) %}
+      <div style="display:flex;align-items:center;gap:5px;padding:4px 8px;flex-shrink:0;border:1px solid {% if loop.first %}var(--magenta-dim){% else %}var(--hairline){% endif %};background:var(--panel);border-radius:2px;{% if loop.first %}box-shadow:0 0 8px rgba(255,42,138,.1);{% endif %}">
+        {% if c.get('logo_url') %}<img src="{{ c.logo_url }}" style="width:16px;height:16px;object-fit:contain;" alt="">
+        {% else %}<div style="width:16px;height:16px;background:{{ c.get('color','#374151') }};border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:7px;font-weight:700;color:#fff;">{{ c.get('team_name','?')[:2].upper() }}</div>{% endif %}
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;color:{% if loop.first %}var(--magenta){% else %}var(--text){% endif %};line-height:1;white-space:nowrap;">{{ c.get('team_name','?') }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-mute);">#{{ pick_num }}</div>
+        </div>
       </div>
+      {% endfor %}
     </div>
     {% endfor %}
   </div>
@@ -226,8 +233,8 @@
 
   {# ── Two-pool grid ── #}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-    {{ pool_grid('A', coaches_a, grid_a) }}
-    {{ pool_grid('B', coaches_b, grid_b) }}
+    {{ pool_grid('A', coaches_a, grid_a, current_coach_a_id, current_slot_a) }}
+    {{ pool_grid('B', coaches_b, grid_b, current_coach_b_id, current_slot_b) }}
   </div>
 
   {# ── Admin: two-pool simultaneous pick panels ── #}

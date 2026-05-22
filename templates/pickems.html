@@ -164,23 +164,39 @@
         </div>
       </button>
 
-      <!-- Bar -->
-      <div class="pk-bar-wrap">
-        <div class="pk-bar-bg">
-          <div class="vote-bar-l pk-bar-fill-l" style="width:0%;" data-target="{{ c1_pct }}" data-match="{{ m.id }}"></div>
-          <div class="vote-bar-r pk-bar-fill-r" style="width:{{ c2_pct }}%;" data-target="{{ c2_pct }}" data-match="{{ m.id }}"></div>
+      <!-- Bar + voter names -->
+      <div class="pk-bar-wrap" style="flex-direction:column;align-items:stretch;">
+        <div style="flex:1;position:relative;display:flex;align-items:center;min-height:52px;">
+          <div class="pk-bar-bg">
+            <div class="vote-bar-l pk-bar-fill-l" style="width:{{ c1_pct }}%;" data-target="{{ c1_pct }}" data-match="{{ m.id }}"></div>
+            <div class="vote-bar-r pk-bar-fill-r" style="width:{{ c2_pct }}%;" data-target="{{ c2_pct }}" data-match="{{ m.id }}"></div>
+          </div>
+          <div class="pk-bar-overlay">
+            <span class="pk-pct">{{ c1_pct }}%</span>
+            <span id="pick-status-{{ m.id }}" class="pk-status">
+              {% if result_known %}
+                FINAL {{ m.score1 }}–{{ m.score2 }}
+              {% else %}
+                CLICK A SIDE TO PICK
+              {% endif %}
+            </span>
+            <span class="pk-pct">{{ c2_pct }}%</span>
+          </div>
         </div>
-        <div class="pk-bar-overlay">
-          <span class="pk-pct">{{ c1_pct }}%</span>
-          <span id="pick-status-{{ m.id }}" class="pk-status">
-            {% if result_known %}
-              FINAL {{ m.score1 }}–{{ m.score2 }}
-            {% else %}
-              CLICK A SIDE TO PICK
-            {% endif %}
-          </span>
-          <span class="pk-pct">{{ c2_pct }}%</span>
+        {% if c1_votes or c2_votes %}
+        <div style="display:flex;justify-content:space-between;padding:4px 10px;gap:8px;border-top:1px solid var(--hairline);">
+          <div style="flex:1;display:flex;flex-wrap:wrap;gap:3px;">
+            {% for v in c1_votes %}
+            <span style="font-family:var(--font-mono);font-size:9px;padding:1px 5px;border-radius:2px;background:rgba(255,42,138,.1);border:1px solid rgba(255,42,138,.2);color:var(--magenta);white-space:nowrap;">{{ v }}</span>
+            {% endfor %}
+          </div>
+          <div style="flex:1;display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end;">
+            {% for v in c2_votes %}
+            <span style="font-family:var(--font-mono);font-size:9px;padding:1px 5px;border-radius:2px;background:rgba(34,225,255,.08);border:1px solid rgba(34,225,255,.2);color:var(--cyan);white-space:nowrap;">{{ v }}</span>
+            {% endfor %}
+          </div>
         </div>
+        {% endif %}
       </div>
 
       <!-- Team 2 (right) -->
@@ -329,14 +345,7 @@ function saveDraft() {
   setTimeout(() => { ls.textContent = ''; }, 2000);
 }
 
-// Animate bars in on load
-document.addEventListener('turbo:load', () => {
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    document.querySelectorAll('.vote-bar-l, .vote-bar-r').forEach(bar => {
-      bar.style.width = (bar.dataset.target || '0') + '%';
-    });
-  }));
-});
+// Bars initialize at correct width from server; no animation needed on load.
 </script>
 
 {% endblock %}
