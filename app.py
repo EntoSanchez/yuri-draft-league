@@ -3613,14 +3613,35 @@ def admin_draft_debug():
             "SELECT * FROM draft_sessions WHERE status IN ('active','paused','setup') ORDER BY id DESC LIMIT 1"
         ).fetchone()
     import glob as _glob
+    import sqlite3 as _sqlite3
     db_exists = _os.path.exists(db_path) if db_path != "NOT SET — using fallback" else "N/A"
     search_paths = _glob.glob("/home/zcs55397/**/*.db", recursive=True)
+
+    other_db_info = []
+    for other_path in search_paths:
+        if other_path == db_path:
+            continue
+        try:
+            conn = _sqlite3.connect(other_path)
+            conn.row_factory = _sqlite3.Row
+            c = conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0]
+            s = conn.execute("SELECT COUNT(*) FROM draft_sessions").fetchone()[0]
+            p = conn.execute("SELECT COUNT(*) FROM draft_picks").fetchone()[0]
+            sess_list = conn.execute("SELECT name, status, season FROM draft_sessions ORDER BY id DESC LIMIT 3").fetchall()
+            conn.close()
+            other_db_info.append(f"  {other_path}: coaches={c} sessions={s} picks={p} recent={[(r['name'],r['status'],r['season']) for r in sess_list]}")
+        except Exception as e:
+            other_db_info.append(f"  {other_path}: ERROR {e}")
+
     lines = [
         f"DB_PATH env: {db_path}",
         f"DB file exists: {db_exists}",
-        f"All .db files found under /home/zcs55397/: {search_paths}",
+        f"Current DB: coaches={len(coaches)} sessions={len(sessions)} picks={picks_count}",
+        f"",
+        f"Other .db files:",
+    ] + other_db_info + [
+        f"",
         f"active_session query result: {dict(active) if active else None}",
-        f"draft_picks total: {picks_count}",
         f"",
         f"All sessions ({len(sessions)}):",
     ]
