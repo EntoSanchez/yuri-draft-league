@@ -604,7 +604,7 @@
     /* §05 · Route transitions */
     .route-body { position: relative; }
     .route-page { animation: route-in .35s var(--ease-out-cubic); }
-    @keyframes route-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes route-in { from { transform: translateY(8px); } to { transform: translateY(0); } }
 
     /* §06 · Defending champion crown + chip */
     .champ-logo { position: relative; display: inline-flex; }
@@ -1086,18 +1086,6 @@
   });
 </script>
 <script data-turbo-eval="false">
-// ── Page transitions — Turbo handles navigation; fade out before visit ──
-document.addEventListener('turbo:before-visit', () => {
-  const rp = document.querySelector('.route-page');
-  if (rp) { rp.style.opacity = '0'; rp.style.transition = 'opacity 0.12s ease'; }
-});
-</script>
-<script data-turbo-eval="false">
-// ── Page transition restore — clear inline opacity set by before-visit ──
-document.addEventListener('turbo:load', () => {
-  const rp = document.querySelector('.route-page');
-  if (rp) { rp.style.opacity = ''; rp.style.transition = ''; }
-});
 // ── Global page animations — turbo:load fires on first load and after every Turbo visit ──
 document.addEventListener('turbo:load', () => {
   const targets = document.querySelectorAll('.card-hover');
