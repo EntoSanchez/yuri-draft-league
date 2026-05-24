@@ -3603,16 +3603,28 @@ def replays():
 @app.route("/admin/draft/debug")
 @admin_required
 def admin_draft_debug():
+    import os as _os
+    db_path = _os.environ.get("DB_PATH", "NOT SET — using fallback")
     with get_db() as db:
         sessions = db.execute("SELECT * FROM draft_sessions ORDER BY id DESC").fetchall()
         coaches = db.execute("SELECT * FROM coaches").fetchall()
-    lines = [f"Sessions ({len(sessions)}):"]
+        picks_count = db.execute("SELECT COUNT(*) FROM draft_picks").fetchone()[0]
+        active = db.execute(
+            "SELECT * FROM draft_sessions WHERE status IN ('active','paused','setup') ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    lines = [
+        f"DB_PATH env: {db_path}",
+        f"active_session query result: {dict(active) if active else None}",
+        f"draft_picks total: {picks_count}",
+        f"",
+        f"All sessions ({len(sessions)}):",
+    ]
     for s in sessions:
-        lines.append(f"  id={s['id']} name={s['name']} status={s['status']}")
-    lines.append(f"Coaches ({len(coaches)}):")
+        lines.append(f"  id={s['id']} name={s['name']!r} status={s['status']} season={s['season']}")
+    lines.append(f"\nCoaches ({len(coaches)}):")
     for c in coaches:
         lines.append(f"  id={c['id']} pool={c['pool']} name={c['team_name']}")
-    return "<pre>" + "\n".join(lines) + "</pre>"
+    return "<pre style='font-size:14px;padding:20px;'>" + "\n".join(lines) + "</pre>"
 
 
 @app.route("/admin/draft", methods=["GET", "POST"])
