@@ -3612,8 +3612,13 @@ def admin_draft_debug():
         active = db.execute(
             "SELECT * FROM draft_sessions WHERE status IN ('active','paused','setup') ORDER BY id DESC LIMIT 1"
         ).fetchone()
+    import glob as _glob
+    db_exists = _os.path.exists(db_path) if db_path != "NOT SET — using fallback" else "N/A"
+    search_paths = _glob.glob("/home/zcs55397/**/*.db", recursive=True)
     lines = [
         f"DB_PATH env: {db_path}",
+        f"DB file exists: {db_exists}",
+        f"All .db files found under /home/zcs55397/: {search_paths}",
         f"active_session query result: {dict(active) if active else None}",
         f"draft_picks total: {picks_count}",
         f"",
