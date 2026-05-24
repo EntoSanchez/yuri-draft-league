@@ -1093,6 +1093,11 @@ document.addEventListener('turbo:before-visit', () => {
 });
 </script>
 <script data-turbo-eval="false">
+// ── Page transition restore — clear inline opacity set by before-visit ──
+document.addEventListener('turbo:load', () => {
+  const rp = document.querySelector('.route-page');
+  if (rp) { rp.style.opacity = ''; rp.style.transition = ''; }
+});
 // ── Global page animations — turbo:load fires on first load and after every Turbo visit ──
 document.addEventListener('turbo:load', () => {
   const targets = document.querySelectorAll('.card-hover');
