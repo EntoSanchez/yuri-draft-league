@@ -268,7 +268,7 @@
       </a>
       {% endif %}
       {% if session.get('role') == 'admin' %}
-      <a href="{{ url_for('admin_draft') }}"
+      <a href="{{ url_for('admin_draft') }}" data-turbo="false"
          class="px-4 py-2 font-bold text-sm transition-colors" style="border-radius:2px;border:1px solid var(--hairline);color:var(--text-mute);">
         Admin Draft
       </a>

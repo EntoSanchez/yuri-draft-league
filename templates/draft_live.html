@@ -271,7 +271,7 @@
   </div>
   <div style="display:flex;gap:8px;">
     <a href="{{ url_for('draft_sheet') }}" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;color:var(--text-mute);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-decoration:none;">SHEET</a>
-    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:5px 12px;background:var(--magenta);border-radius:2px;color:#000;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-decoration:none;">ADMIN: SETUP</a>{% endif %}
+    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" data-turbo="false" style="padding:5px 12px;background:var(--magenta);border-radius:2px;color:#000;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-decoration:none;">ADMIN: SETUP</a>{% endif %}
   </div>
 </div>
 
@@ -292,7 +292,7 @@
   <div></div>{# spacer #}
   <div style="display:flex;gap:8px;align-items:center;">
     <a href="{{ url_for('draft_sheet') }}" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">SHEET</a>
-    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">ADMIN</a>{% endif %}
+    {% if is_admin %}<a href="{{ url_for('admin_draft') }}" data-turbo="false" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">ADMIN</a>{% endif %}
   </div>
 </div>
 
