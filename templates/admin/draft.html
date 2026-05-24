@@ -467,15 +467,52 @@ setInterval(_apollDraft,8000);
 {% endif %}
 
 {% else %}
-<div style="background:#cc0000;color:#fff;padding:16px;font-size:18px;font-weight:bold;">TEST 1 — RED</div>
-<div style="background:#006600;color:#fff;padding:16px;font-size:18px;font-weight:bold;">TEST 2 — GREEN</div>
-<form method="POST" style="background:#000066;color:#fff;padding:16px;font-size:18px;">
-  <div style="font-weight:bold;margin-bottom:8px;">TEST 3 — FORM (BLUE)</div>
-  <input type="hidden" name="action" value="create_session">
-  <input type="text" name="name" placeholder="session name" style="color:#000;padding:4px;margin-bottom:8px;display:block;width:300px;">
-  <button type="submit" style="background:#fff;color:#000;padding:4px 12px;">CREATE</button>
-</form>
-<div style="background:#660066;color:#fff;padding:16px;font-size:18px;font-weight:bold;">TEST 4 — PURPLE (after form)</div>
+{# ════════════════════════════════════════════ NO SESSION ════════════════════════════════════════════ #}
+<div style="max-width:1200px;margin:0 auto;">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <div style="width:3px;height:32px;background:linear-gradient(to bottom,var(--magenta),var(--cyan));border-radius:2px;"></div>
+    <div>
+      <div class="ad-ey">// ADMIN · DRAFT.SETUP</div>
+      <div class="ad-h1" style="margin-top:2px;">Draft Setup</div>
+    </div>
+  </div>
+
+{# ── Create New Session ── #}
+<div style="padding:16px;margin-bottom:14px;background:var(--panel-2);border:1px solid var(--hairline);border-radius:2px;">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-mute);margin-bottom:12px;">// NEW_DRAFT_SESSION</div>
+  <form method="POST">
+    <input type="hidden" name="action" value="create_session">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);margin-bottom:4px;">SESSION NAME</label>
+        <input type="text" name="name" required placeholder="e.g. Season 9 Draft" style="width:100%;padding:7px 10px;background:var(--panel);border:1px solid var(--hairline-2);border-radius:2px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;">
+      </div>
+      <div>
+        <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);margin-bottom:4px;">SEASON (OPTIONAL)</label>
+        <input type="text" name="season" placeholder="e.g. S9" style="width:100%;padding:7px 10px;background:var(--panel);border:1px solid var(--hairline-2);border-radius:2px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;">
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);margin-bottom:8px;">SNAKE ORDER — Pool A then Pool B (check in draft order)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        {% for pool_label, pool_coaches in [('A', coaches_a), ('B', coaches_b)] %}
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;color:{{ 'var(--magenta)' if pool_label=='A' else 'var(--cyan)' }};">// POOL_{{ pool_label }}</div>
+          {% for coach in pool_coaches %}
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel);margin-bottom:3px;cursor:pointer;">
+            <input type="checkbox" name="snake_order" value="{{ coach.id }}" style="accent-color:var(--magenta);">
+            {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:18px;height:18px;object-fit:contain;border-radius:2px;" alt="">
+            {% else %}<div style="width:18px;height:18px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
+            <span style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--text);">{{ coach.team_name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit" style="display:inline-flex;align-items:center;justify-content:center;padding:6px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;border:none;background:var(--magenta);color:#000;">CREATE SESSION</button>
+  </form>
+</div>
 
 {# ── Round Structure ── #}
 <details class="ad-panel" style="margin-bottom:14px;">
