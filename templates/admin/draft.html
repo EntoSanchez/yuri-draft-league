@@ -110,6 +110,11 @@
       <input type="hidden" name="session_id" value="{{ active_session.id }}">
       <button type="submit" class="ad-btn ad-btn-lime">▶ START DRAFT</button>
     </form>
+    <form method="POST" onsubmit="return confirm('Discard this setup session?')">
+      <input type="hidden" name="action" value="discard_session">
+      <input type="hidden" name="session_id" value="{{ active_session.id }}">
+      <button type="submit" class="ad-btn ad-btn-danger">✕ DISCARD SETUP</button>
+    </form>
     {% endif %}
     <a href="{{ url_for('draft_live') }}" class="ad-btn ad-btn-ghost">LIVE VIEW</a>
   </div>

@@ -3623,12 +3623,8 @@ def admin_draft():
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
         sessions = db.execute("SELECT * FROM draft_sessions ORDER BY id DESC").fetchall()
         active_session = db.execute(
-            "SELECT * FROM draft_sessions WHERE status IN ('active','paused') ORDER BY id DESC LIMIT 1"
+            "SELECT * FROM draft_sessions WHERE status IN ('active','paused','setup') ORDER BY id DESC LIMIT 1"
         ).fetchone()
-        if not active_session:
-            active_session = db.execute(
-                "SELECT * FROM draft_sessions WHERE status = 'setup' ORDER BY id DESC LIMIT 1"
-            ).fetchone()
 
     round_structure_str = settings.get("draft_round_structure", "")
     try:
@@ -3690,6 +3686,12 @@ def admin_draft():
                 db.execute("UPDATE draft_sessions SET status='setup', current_pick=1, current_round=1, current_pick_a=1, current_pick_b=1 WHERE id=?", (sid,))
                 db.execute("DELETE FROM draft_picks WHERE session_id=?", (sid,))
             flash("Draft reset.", "warning")
+
+        elif action == "discard_session":
+            sid = request.form.get("session_id")
+            with get_db() as db:
+                db.execute("UPDATE draft_sessions SET status='completed' WHERE id=?", (sid,))
+            flash("Session discarded.", "warning")
 
         elif action == "set_pick":
             sid = request.form.get("session_id")
