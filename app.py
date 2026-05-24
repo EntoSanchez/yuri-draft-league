@@ -3600,6 +3600,21 @@ def replays():
 
 # ─── Admin: Draft ─────────────────────────────────────────────────────────────
 
+@app.route("/admin/draft/debug")
+@admin_required
+def admin_draft_debug():
+    with get_db() as db:
+        sessions = db.execute("SELECT * FROM draft_sessions ORDER BY id DESC").fetchall()
+        coaches = db.execute("SELECT * FROM coaches").fetchall()
+    lines = [f"Sessions ({len(sessions)}):"]
+    for s in sessions:
+        lines.append(f"  id={s['id']} name={s['name']} status={s['status']}")
+    lines.append(f"Coaches ({len(coaches)}):")
+    for c in coaches:
+        lines.append(f"  id={c['id']} pool={c['pool']} name={c['team_name']}")
+    return "<pre>" + "\n".join(lines) + "</pre>"
+
+
 @app.route("/admin/draft", methods=["GET", "POST"])
 @admin_required
 def admin_draft():
