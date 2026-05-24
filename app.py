@@ -3610,6 +3610,10 @@ def admin_draft():
         active_session = db.execute(
             "SELECT * FROM draft_sessions WHERE status IN ('active','paused') ORDER BY id DESC LIMIT 1"
         ).fetchone()
+        if not active_session:
+            active_session = db.execute(
+                "SELECT * FROM draft_sessions WHERE status = 'setup' ORDER BY id DESC LIMIT 1"
+            ).fetchone()
 
     round_structure_str = settings.get("draft_round_structure", "")
     try:
