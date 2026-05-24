@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Admin: Draft – {{ league_name }}{% endblock %}
-{% block head_extra %}<meta name="turbo-visit-control" content="reload">{% endblock %}
+{% block head_extra %}
+<meta name="turbo-visit-control" content="reload">
+<meta name="turbo-cache-control" content="no-cache">
+{% endblock %}
 
 {% block content %}
 {# Design tokens #}
@@ -579,4 +582,5 @@ setInterval(_apollDraft,8000);
 </script>
 
 </div>
+<script>if(window.Turbo)Turbo.clearCache();</script>
 {% endblock %}

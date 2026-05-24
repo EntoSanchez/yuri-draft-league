@@ -3862,7 +3862,8 @@ def admin_draft():
     coaches_not_ordered_a = [c for c in coaches_a if c["id"] not in in_order_ids]
     coaches_not_ordered_b = [c for c in coaches_b if c["id"] not in in_order_ids]
 
-    return render_template(
+    from flask import make_response
+    resp = make_response(render_template(
         "admin/draft.html",
         coaches=coaches,
         coaches_a=coaches_a,
@@ -3895,7 +3896,10 @@ def admin_draft():
         round_structure=round_structure,
         round_structure_json=json.dumps(round_structure, indent=2),
         league_name=settings.get("league_name", "Pokemon Draft League"),
-    )
+    ))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 
 @app.route("/draft-prep")
