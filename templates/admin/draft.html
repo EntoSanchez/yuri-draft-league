@@ -125,6 +125,48 @@
   </div>
 </div>
 
+{# ── Always-visible action bar ── #}
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:#0c0c10;border:1px solid rgba(255,255,255,0.07);border-radius:2px;">
+  {% if active_session.status == 'setup' %}
+  <form method="POST">
+    <input type="hidden" name="action" value="start">
+    <input type="hidden" name="session_id" value="{{ active_session.id }}">
+    <button type="submit" style="display:inline-flex;align-items:center;padding:7px 16px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#c1ff3d;color:#050506;">▶ START DRAFT</button>
+  </form>
+  {% elif active_session.status == 'active' %}
+  <form method="POST">
+    <input type="hidden" name="action" value="pause">
+    <input type="hidden" name="session_id" value="{{ active_session.id }}">
+    <button type="submit" style="display:inline-flex;align-items:center;padding:7px 16px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,184,77,.5);background:rgba(255,184,77,.1);color:#ffb84d;">⏸ PAUSE</button>
+  </form>
+  {% elif active_session.status == 'paused' %}
+  <form method="POST">
+    <input type="hidden" name="action" value="resume">
+    <input type="hidden" name="session_id" value="{{ active_session.id }}">
+    <button type="submit" style="display:inline-flex;align-items:center;padding:7px 16px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#c1ff3d;color:#050506;">▶ RESUME</button>
+  </form>
+  {% endif %}
+  <form method="POST" onsubmit="return confirm('Undo last Pool A pick?')">
+    <input type="hidden" name="action" value="undo_pick">
+    <input type="hidden" name="session_id" value="{{ active_session.id }}">
+    <input type="hidden" name="pick_pool" value="A">
+    <button type="submit" style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,42,138,.4);background:transparent;color:#ff2a8a;">↩ UNDO A</button>
+  </form>
+  <form method="POST" onsubmit="return confirm('Undo last Pool B pick?')">
+    <input type="hidden" name="action" value="undo_pick">
+    <input type="hidden" name="session_id" value="{{ active_session.id }}">
+    <input type="hidden" name="pick_pool" value="B">
+    <button type="submit" style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(34,225,255,.4);background:transparent;color:#22e1ff;">↩ UNDO B</button>
+  </form>
+  <a href="{{ url_for('draft_live') }}" style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(232,232,240,0.55);">LIVE VIEW</a>
+  <div style="flex:1;"></div>
+  <form method="POST" onsubmit="return confirm('End and archive this session?')">
+    <input type="hidden" name="action" value="discard_session">
+    <input type="hidden" name="session_id" value="{{ active_session.id }}">
+    <button type="submit" style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #ff4d6b;background:rgba(255,77,107,.1);color:#ff4d6b;">✕ END SESSION</button>
+  </form>
+</div>
+
 {# ── Two pick panels ── #}
 {% if active_session.status in ('active', 'setup') %}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
