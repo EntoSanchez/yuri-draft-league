@@ -375,9 +375,9 @@
       <div class="yc-brackets">
         <span class="yc-br-tr"></span><span class="yc-br-br"></span>
         <div class="yc-panel p-5">
-          <div class="flex flex-wrap gap-3">
+          <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:8px;">
             {% for p in roster %}
-            <div class="flex flex-col items-center gap-1.5 flex-shrink-0 group" style="width:78px;">
+            <div class="flex flex-col items-center gap-1.5 group" style="min-width:0;">
               <div class="relative" style="padding:6px;background:var(--panel-2);border:1px solid var(--hairline);">
                 <img src="{{ pokemon_sprite_url(p.name) }}"
                      onerror="this.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
@@ -410,14 +410,14 @@
                   {% if p.is_free_pick and settings.get('draft_free_pick_type','none') != 'none' %}<span style="color:var(--lime);text-decoration:line-through;opacity:0.6;">{{ p.points }}</span>FREE{% else %}{{ p.points }}<span style="color:var(--text-dim);">pt</span>{% endif %}
                 </span>
               </div>
-              <p class="text-center yc-mono" style="font-size:9px;color:var(--text-mute);word-break:break-word;max-width:4.8rem;line-height:1.2;">
+              <p class="text-center yc-mono" style="font-size:9px;color:var(--text-mute);word-break:break-word;width:100%;line-height:1.2;">
                 {{ p.name.split(' ')[-1] if ' ' in p.name else p.name }}
               </p>
             </div>
             {% endfor %}
             {# Pokeball placeholders for unfilled slots #}
             {% for i in range(10 - (roster|length)) %}
-            <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:78px;opacity:0.4;">
+            <div class="flex flex-col items-center gap-1.5" style="min-width:0;opacity:0.4;">
               <div class="relative" style="padding:6px;background:var(--panel-2);border:1px dashed var(--hairline);">
                 <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
                      style="width:54px;height:54px;image-rendering:pixelated;object-fit:contain;"
