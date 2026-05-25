@@ -493,19 +493,22 @@ setInterval(_apollDraft,8000);
       </div>
     </div>
     <div style="margin-bottom:12px;">
-      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);margin-bottom:8px;">SNAKE ORDER — Pool A then Pool B (check in draft order)</label>
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);margin-bottom:8px;">SNAKE ORDER — Drag to set pick order (top = picks 1st, round 1)</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         {% for pool_label, pool_coaches in [('A', coaches_a), ('B', coaches_b)] %}
         <div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;color:{{ 'var(--magenta)' if pool_label=='A' else 'var(--cyan)' }};">// POOL_{{ pool_label }}</div>
-          {% for coach in pool_coaches %}
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel);margin-bottom:3px;cursor:pointer;">
-            <input type="checkbox" name="snake_order" value="{{ coach.id }}" style="accent-color:var(--magenta);">
-            {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:18px;height:18px;object-fit:contain;border-radius:2px;" alt="">
-            {% else %}<div style="width:18px;height:18px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
-            <span style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--text);">{{ coach.team_name }}</span>
-          </label>
-          {% endfor %}
+          <div id="new-sortable-{{ pool_label }}" style="min-height:40px;">
+            {% for coach in pool_coaches %}
+            <div class="sort-item" draggable="true" data-id="{{ coach.id }}">
+              <span class="sort-handle">⠿</span>
+              {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:18px;height:18px;object-fit:contain;border-radius:2px;" alt="">
+              {% else %}<div style="width:18px;height:18px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
+              <span style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--text);">{{ coach.team_name }}</span>
+              <input type="hidden" name="snake_order" value="{{ coach.id }}">
+            </div>
+            {% endfor %}
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -555,8 +558,7 @@ setInterval(_apollDraft,8000);
 {# Drag-to-reorder JS #}
 <script>
 (function() {
-  ['A','B'].forEach(function(pool) {
-    var list = document.getElementById('sortable-' + pool);
+  function initSortable(list, renameKey) {
     if (!list) return;
     var dragged = null;
     list.addEventListener('dragstart', function(e) {
@@ -574,12 +576,19 @@ setInterval(_apollDraft,8000);
       var rect = target.getBoundingClientRect();
       var after = e.clientY > rect.top + rect.height / 2;
       list.insertBefore(dragged, after ? target.nextSibling : target);
-      // Re-sync hidden inputs to match visual order
-      list.querySelectorAll('.sort-item').forEach(function(item, idx) {
-        var inp = item.querySelector('input[type=hidden]');
-        if (inp) inp.name = 'pool_' + pool.toLowerCase() + '_order';
-      });
+      if (renameKey) {
+        list.querySelectorAll('.sort-item').forEach(function(item) {
+          var inp = item.querySelector('input[type=hidden]');
+          if (inp) inp.name = renameKey;
+        });
+      }
     });
+  }
+  ['A','B'].forEach(function(pool) {
+    // Active session order editor (submits pool_a_order / pool_b_order)
+    initSortable(document.getElementById('sortable-' + pool), 'pool_' + pool.toLowerCase() + '_order');
+    // New session create form (submits snake_order, Pool A then Pool B in visual order)
+    initSortable(document.getElementById('new-sortable-' + pool), null);
   });
 })();
 </script>
