@@ -251,7 +251,7 @@
                 onclick="document.getElementById('mon-input-{{ pool_label }}').value='{{ poke.name }}';"
                 style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 4px;border:1px solid var(--hairline);border-radius:2px;background:var(--panel-2);cursor:pointer;width:100%;transition:border-color .1s;"
                 onmouseover="this.style.borderColor='{{ pool_color }}'" onmouseout="this.style.borderColor='var(--hairline)'">
-          <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.style.display='none'" style="width:28px;height:28px;object-fit:contain;" alt="">
+          <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(poke.name) }}';" style="width:28px;height:28px;object-fit:contain;" alt="">
           <span style="font-size:8px;color:var(--text-mute);text-align:center;line-height:1.2;word-break:break-word;">{{ poke.name.split(' ')[-1] }}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:{{ pool_color }};">{{ poke.points }}p</span>
         </button>
@@ -403,7 +403,7 @@ function skipPick(pool, sid) {
                 {% if cm=='points' %}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>{% endif %}
               </div>
               <div style="flex:1;display:flex;align-items:center;justify-content:center;">
-                <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.style.display='none'" style="width:26px;height:26px;object-fit:contain;" alt="">
+                <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:26px;height:26px;object-fit:contain;" alt="">
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--text-mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ pick.pokemon_name.split(' ')[-1] }}</div>
             </div>
@@ -416,7 +416,7 @@ function skipPick(pool, sid) {
             {% if i < uber_list|length %}{% set pick = uber_list[i] %}
             <div class="dl-cell dl-cell-filled" style="border:1px solid #ffc94d;background:var(--panel-2);" title="{{ pick.pokemon_name }}">
               <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#ffc94d;">UBR</span></div>
-              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.style.display='none'" style="width:26px;height:26px;object-fit:contain;" alt=""></div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:26px;height:26px;object-fit:contain;" alt=""></div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--text-mute);text-align:center;overflow:hidden;text-overflow:ellipsis;">{{ pick.pokemon_name.split(' ')[-1] }}</div>
             </div>
             {% else %}
