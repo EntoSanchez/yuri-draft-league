@@ -197,16 +197,17 @@ def pokemon_sprite_url(name, shiny=False):
     """Return the animated GIF sprite URL for a Pokemon name.
 
     Priority:
-    1. PokeAPI GitHub showdown GIF via numeric ID (IDs 1-9999, most reliable)
-    2. Showdown CDN slug-based URL (covers alt-forms and works without ID map)
+    1. PokeAPI GitHub showdown GIF via numeric ID (Gen 1-8, IDs 1-905 only —
+       PokeAPI GitHub does not have animated GIFs for Gen 9+)
+    2. Showdown CDN slug-based URL (covers all gens including Gen 9)
     """
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
-        if pid and pid < 10000:
+        if pid and 1 <= pid <= 905:
             folder = f"{SPRITE_BASE}/shiny" if shiny else SPRITE_BASE
             return f"{folder}/{pid}.gif"
-    # Fallback: Showdown CDN uses slug filenames directly
+    # Fallback: Showdown CDN (has animated sprites for all gens including Gen 9)
     ani_folder = f"{SHOWDOWN_ANI}-shiny" if shiny else SHOWDOWN_ANI
     return f"{ani_folder}/{slugs[0]}.gif"
 
@@ -216,21 +217,22 @@ app.jinja_env.globals["enumerate"] = enumerate
 
 
 SHOWDOWN_STATIC = "https://play.pokemonshowdown.com/sprites/gen5"
+SHOWDOWN_DEX = "https://play.pokemonshowdown.com/sprites/dex"
 
 
 def pokemon_static_sprite_url(name):
     """Return static PNG sprite URL for a Pokemon name.
 
     Priority:
-    1. PokeAPI numeric sprite (IDs 1–9999, reliable)
-    2. Showdown gen5 static sprite by slug (covers alt-forms)
+    1. PokeAPI numeric sprite (IDs 1–9999, reliable, covers all gens)
+    2. Showdown dex sprite by slug (official HOME artwork, covers all gens)
     """
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
         if pid:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-    return f"{SHOWDOWN_STATIC}/{slugs[0]}.png"
+    return f"{SHOWDOWN_DEX}/{slugs[0]}.png"
 
 
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
