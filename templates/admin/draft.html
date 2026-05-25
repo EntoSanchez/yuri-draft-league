@@ -116,6 +116,11 @@
       <button type="submit" class="ad-btn ad-btn-danger">✕ DISCARD SETUP</button>
     </form>
     {% endif %}
+    <form method="POST" onsubmit="return confirm('End and archive this session?')">
+      <input type="hidden" name="action" value="discard_session">
+      <input type="hidden" name="session_id" value="{{ active_session.id }}">
+      <button type="submit" class="ad-btn ad-btn-danger">✕ END SESSION</button>
+    </form>
     <a href="{{ url_for('draft_live') }}" class="ad-btn ad-btn-ghost">LIVE VIEW</a>
   </div>
 </div>
@@ -419,7 +424,7 @@ function skipPick(pool, sid) {
 </details>
 
 {# ── Draft order editor ── #}
-<details class="ad-panel" style="margin-bottom:20px;">
+<details class="ad-panel" style="margin-bottom:20px;" open>
   <summary style="padding:10px 14px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);letter-spacing:.1em;list-style:none;display:flex;align-items:center;gap:8px;">
     <span style="color:var(--text-dim);">▶</span> // DRAFT_ORDER_EDITOR
   </summary>
