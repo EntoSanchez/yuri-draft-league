@@ -3,39 +3,43 @@
 {% block content %}
 
 {# ============================================================================
-   TEAM DETAIL — Neon-noir cyberpunk theme.
-   Same data shape as before. All functionality preserved (admin edit button,
-   captain badges, mechanic flags, sprite carousel, expandable match history,
-   music widget). New aesthetic only: dark ink black bg, magenta + cyan glow
-   accents, Rajdhani display headings, JetBrains Mono labels, corner brackets.
+   TEAM DETAIL — Redesigned per team-detail-design-guide.md
+   Chakra Petch display font · 3-col header grid · This Week first · Last3/Next3
+   All functionality preserved (admin edit, captain badges, carousel, history,
+   music widget, stats matrix).
 ============================================================================ #}
 
 <style>
-/* ── Scoped theme tokens (only affect .yc-team) ───────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 .yc-team {
-  --ink:        #05060a;
-  --panel:      #0d0e16;
-  --panel-2:    #11131e;
-  --hairline:   rgba(255,255,255,0.08);
-  --hairline-2: rgba(255,255,255,0.14);
-  --magenta:    #ff2a8a;
-  --magenta-d:  rgba(255,42,138,0.5);
-  --magenta-s:  rgba(255,42,138,0.12);
-  --cyan:       #22e1ff;
-  --cyan-d:     rgba(34,225,255,0.5);
-  --cyan-s:     rgba(34,225,255,0.10);
-  --lime:       #c1ff3d;
-  --red:        #ff4d6b;
-  --text:       #e8e8f0;
-  --text-mute:  rgba(232,232,240,0.55);
-  --text-dim:   rgba(232,232,240,0.32);
-  --fd:         "Rajdhani", system-ui, sans-serif;
-  --fm:         "JetBrains Mono", ui-monospace, monospace;
+  --ink:          #05060a;
+  --panel:        #0d0e16;
+  --panel-2:      #11131e;
+  --hairline:     rgba(255,255,255,0.08);
+  --hairline-2:   rgba(255,255,255,0.14);
+  --magenta:      #ff2a8a;
+  --magenta-d:    rgba(255,42,138,0.5);
+  --magenta-s:    rgba(255,42,138,0.12);
+  --cyan:         #22e1ff;
+  --cyan-d:       rgba(34,225,255,0.5);
+  --cyan-s:       rgba(34,225,255,0.10);
+  --lime:         #c1ff3d;
+  --red:          #ff4d6b;
+  --text:         #e8e8f0;
+  --text-mute:    rgba(232,232,240,0.55);
+  --text-dim:     rgba(232,232,240,0.32);
+  --fd:           "Chakra Petch", system-ui, sans-serif;
+  --fm:           "JetBrains Mono", ui-monospace, monospace;
+  --tier-1:       #5a9bff;
+  --tier-2:       #b07dff;
+  --tier-3:       #3dd9c2;
+  --tier-4:       #7ddc6a;
+  --tier-5:       #9a9aa8;
+  --uber-gold:    #ffc94d;
+  --uber-silver:  #d2d2dc;
 }
 
-/* Page background — deep ink with subtle scanlines + grid */
 .yc-team {
   background: var(--ink);
   color: var(--text);
@@ -57,7 +61,6 @@
 }
 .yc-team > * { position: relative; z-index: 1; }
 
-/* Typography */
 .yc-team .yc-h1 {
   font-family: var(--fd); font-weight: 700;
   letter-spacing: -0.01em; line-height: 1; text-transform: uppercase;
@@ -68,13 +71,12 @@
 }
 .yc-team .yc-eyebrow {
   font-family: var(--fm); font-size: 10px;
-  letter-spacing: 0.18em; text-transform: uppercase;
+  letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--cyan);
 }
 .yc-team .yc-eyebrow.mag { color: var(--magenta); }
 .yc-team .yc-mono { font-family: var(--fm); letter-spacing: 0.04em; }
 
-/* Defending champion banner */
 .yc-champion-banner {
   display: inline-flex; align-items: center; gap: 10px;
   padding: 5px 14px;
@@ -91,7 +93,6 @@
 }
 .yc-champion-banner { animation: yc-champ-pulse 3s ease-in-out infinite; }
 
-/* Panels */
 .yc-team .yc-panel {
   background: var(--panel);
   border: 1px solid var(--hairline);
@@ -107,7 +108,6 @@
 }
 .yc-team .yc-panel-2 { background: var(--panel-2); }
 
-/* Corner brackets */
 .yc-team .yc-brackets { position: relative; }
 .yc-team .yc-brackets::before,
 .yc-team .yc-brackets::after,
@@ -125,7 +125,6 @@
 .yc-team .yc-brackets.mag > .yc-br-tr,
 .yc-team .yc-brackets.mag > .yc-br-br { border-color: var(--magenta); }
 
-/* Section header */
 .yc-team .yc-sechead {
   display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px;
 }
@@ -133,7 +132,6 @@
   flex: 1; height: 1px; background: var(--hairline); margin: 0 8px; align-self: center;
 }
 
-/* Buttons */
 .yc-team .yc-btn {
   display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--fd); font-weight: 600;
@@ -144,13 +142,11 @@
   border: 1px solid var(--hairline-2);
   border-radius: 2px; cursor: pointer;
   position: relative; text-decoration: none;
+  white-space: nowrap;
 }
 .yc-team .yc-btn.primary {
   color: var(--ink); background: var(--magenta); border-color: var(--magenta);
   box-shadow: 0 0 18px -4px var(--magenta-d);
-}
-.yc-team .yc-btn.cyan {
-  color: var(--ink); background: var(--cyan); border-color: var(--cyan);
 }
 .yc-team .yc-btn:hover { filter: brightness(1.15); }
 .yc-team .yc-btn::after {
@@ -159,7 +155,6 @@
   border-top: 1px solid currentColor; border-right: 1px solid currentColor;
 }
 
-/* Chips */
 .yc-team .yc-chip {
   display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--fm); font-size: 10px;
@@ -174,12 +169,10 @@
 .yc-team .yc-chip.lime { color: var(--lime);    border-color: rgba(193,255,61,0.35); background: rgba(193,255,61,0.08); }
 .yc-team .yc-chip.red  { color: var(--red);     border-color: rgba(255,77,107,0.45); background: rgba(255,77,107,0.08); }
 
-/* Bars */
 .yc-team .yc-bar { height: 4px; background: rgba(255,255,255,0.06); }
 .yc-team .yc-bar > i { display: block; height: 100%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan-d); }
 .yc-team .yc-bar.mag > i { background: var(--magenta); box-shadow: 0 0 8px var(--magenta-d); }
 
-/* Tables */
 .yc-team .yc-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 .yc-team .yc-tbl th {
   text-align: left;
@@ -193,10 +186,9 @@
 .yc-team .yc-tbl tr:hover td { background: rgba(34,225,255,0.03); }
 .yc-team .yc-tbl .num { font-family: var(--fm); }
 
-/* Dotted divider */
 .yc-team .yc-dot { border-top: 1px dashed var(--hairline-2); height: 1px; }
 
-/* Type badge colors (kept from original — official type palette) */
+/* Type badges */
 .yc-team .type-normal    { background:#A8A878; color:#fff; }
 .yc-team .type-fire      { background:#F08030; color:#fff; }
 .yc-team .type-water     { background:#6890F0; color:#fff; }
@@ -223,140 +215,332 @@
   background: var(--red); box-shadow: 0 0 6px var(--red);
   animation: yc-pulse 1.4s ease-in-out infinite;
 }
+
+/* ── Header 3-col grid ───────────────────────────────────────────────────── */
+.yc-header-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 22px;
+  align-items: center;
+}
+.yc-logo-block {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.yc-record-cards {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.yc-micro-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  min-width: 62px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+}
+.yc-micro-card .mc-label {
+  font-family: var(--fm);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.yc-micro-card .mc-value {
+  font-family: var(--fm);
+  font-size: 22px;
+  line-height: 1;
+  font-feature-settings: 'tnum';
+}
+
+/* ── This Week top bar ───────────────────────────────────────────────────── */
+.yc-tw-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto auto;
+  gap: 20px;
+  align-items: center;
+  padding: 18px 24px;
+  background: rgba(255,42,138,0.04);
+  border-bottom: 1px solid var(--hairline);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Schedule strips ─────────────────────────────────────────────────────── */
+.yc-strip-row {
+  display: grid;
+  grid-template-columns: 46px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px dashed var(--hairline);
+}
+.yc-strip-row:last-child { border-bottom: none; }
 </style>
 
 <div class="yc-team">
 
-  <!-- ── Hero header ────────────────────────────────────────────────────── -->
+  <!-- ── HEADER BAND ─────────────────────────────────────────────────────── -->
   <div class="border-b" style="border-color:var(--hairline);background:linear-gradient(135deg,#0a0c14 0%,#05060a 70%);position:relative;overflow:hidden;">
-    <!-- Coach color glow -->
     <div aria-hidden="true" style="position:absolute;top:-120px;left:-80px;width:520px;height:520px;background:radial-gradient(circle,{{ coach.color or '#ff2a8a' }}33,transparent 60%);filter:blur(20px);pointer-events:none;"></div>
     <div aria-hidden="true" style="position:absolute;bottom:-120px;right:-80px;width:520px;height:520px;background:radial-gradient(circle,rgba(34,225,255,0.18),transparent 60%);filter:blur(20px);pointer-events:none;"></div>
 
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-7">
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="yc-header-grid">
 
-        <!-- Logo in bracket frame -->
-        <div class="{% if coach.is_defending_champ %}champ-logo lg{% endif %}" style="{% if coach.is_defending_champ %}margin-top:18px;{% endif %}">
+        <!-- LEFT — logo block -->
+        <div class="yc-logo-block">
           {% if coach.is_defending_champ %}
-          <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-label="Defending champion">
-            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-            <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
+          <svg viewBox="0 0 28 14" fill="none" style="width:28px;height:14px;" aria-label="Defending champion">
+            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="#ffb84d" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
+            <line x1="1" y1="13" x2="27" y2="13" stroke="#ffb84d" stroke-width="1.5"/>
           </svg>
           {% endif %}
-          <div class="yc-brackets mag flex-shrink-0" style="padding:6px;">
+          <div class="yc-brackets mag" style="padding:6px;">
             <span class="yc-br-tr"></span><span class="yc-br-br"></span>
             {% if coach.logo_url %}
               <img src="{{ coach.logo_url }}" alt="{{ coach.team_name }}"
                    class="object-contain"
-                   style="width:188px;height:188px;background:#000;display:block;
-                          box-shadow:0 0 60px -10px {{ coach.color or '#ff2a8a' }}80, inset 0 0 30px rgba(0,0,0,0.6);{% if coach.is_defending_champ %}box-shadow:0 0 60px -10px #ffb84d80, inset 0 0 30px rgba(0,0,0,0.6);{% endif %}">
+                   style="width:120px;height:120px;background:#000;display:block;
+                          box-shadow:0 0 40px -8px {{ coach.color or '#ff2a8a' }}80;{% if coach.is_defending_champ %}box-shadow:0 0 40px -8px #ffb84d80;{% endif %}">
             {% else %}
               <div class="flex items-center justify-center"
-                   style="width:188px;height:188px;background:{{ coach.color or '#111' }};
-                          font-family:var(--fd);font-weight:700;font-size:48px;color:#fff;">
+                   style="width:120px;height:120px;background:{{ coach.color or '#111' }};
+                          font-family:var(--fd);font-weight:700;font-size:40px;color:#fff;">
                 {{ coach.team_name[:2].upper() }}
               </div>
             {% endif %}
           </div>
-        </div>
-
-        <!-- Sprite carousel -->
-        {% if roster %}
-        <div class="relative flex-shrink-0 flex flex-col items-center gap-2" style="width:96px;">
-          <div class="yc-brackets" style="padding:4px;">
-            <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-            <div class="relative" style="width:80px;height:80px;">
-              <div class="absolute inset-0 opacity-30"
-                   style="background:radial-gradient(circle,{{ coach.color or '#22e1ff' }},transparent 70%);filter:blur(6px);"></div>
-              {% for p in roster %}
-              <img src="{{ pokemon_sprite_url(p.name) }}"
-                   onerror="this.onerror=function(){};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
-                   class="roster-sprite absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
-                   style="image-rendering:pixelated;opacity:{{ '1' if loop.first else '0' }};"
-                   data-name="{{ p.name }}" alt="{{ p.name }}">
-              {% endfor %}
-            </div>
+          {% if roster %}
+          <div style="position:relative;width:48px;height:48px;">
+            <div style="position:absolute;inset:0;opacity:0.3;background:radial-gradient(circle,{{ coach.color or '#22e1ff' }},transparent 70%);filter:blur(4px);"></div>
+            {% for p in roster %}
+            <img src="{{ pokemon_sprite_url(p.name) }}"
+                 onerror="this.onerror=function(){};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
+                 class="roster-sprite"
+                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;transition:opacity 0.5s;opacity:{{ '1' if loop.first else '0' }};"
+                 data-name="{{ p.name }}" alt="{{ p.name }}">
+            {% endfor %}
           </div>
-          <div id="carousel-name" class="yc-mono text-center truncate w-full"
-               style="font-size:9px;color:var(--cyan);">
+          <div id="carousel-name" class="yc-mono text-center"
+               style="font-size:8px;color:var(--cyan);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
             {{ roster[0].name.split(' ')[-1] if roster and ' ' in roster[0].name else (roster[0].name if roster else '') }}
           </div>
+          {% endif %}
+          <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">ID #{{ coach.id }}</div>
         </div>
-        {% endif %}
 
-        <!-- Info -->
-        <div class="flex-1 min-w-0">
-          <p class="yc-eyebrow mag">// TEAM_DOSSIER · POOL {{ coach.pool }} · ID #{{ coach.id }}</p>
+        <!-- CENTER — identity -->
+        <div style="min-width:0;">
+          <p class="yc-eyebrow">// TEAM_DOSSIER · POOL {{ coach.pool }}</p>
           {% if coach.is_defending_champ %}
-          <div class="yc-champion-banner mt-2">
+          <div class="yc-champion-banner" style="margin-top:8px;">
             <span class="yc-champ-crown">&#9651;</span>
-            <span class="yc-champ-label">DEFENDING CHAMPION</span>
+            <span>DEFENDING CHAMPION</span>
             <span class="yc-champ-crown">&#9651;</span>
           </div>
           {% endif %}
-          <h1 class="yc-h1 mt-2" style="font-size:clamp(24px,5vw,56px);line-height:1.05;word-break:break-word;overflow-wrap:break-word;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;{% if coach.is_defending_champ %}text-shadow:0 0 32px #ffb84d80,0 0 24px {{ coach.color or '#ff2a8a' }}40;{% endif %}">
+          <h1 class="yc-h1" style="font-size:clamp(24px,4vw,52px);margin-top:8px;word-break:break-word;overflow-wrap:break-word;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;{% if coach.is_defending_champ %}text-shadow:0 0 32px #ffb84d80,0 0 24px {{ coach.color or '#ff2a8a' }}40;{% endif %}">
             {{ coach.team_name }}
           </h1>
-          <p class="yc-mono mt-3" style="font-size:12px;color:var(--text-mute);">
+          <p class="yc-mono" style="font-size:12px;color:var(--text-mute);margin-top:8px;">
             COACH&nbsp;<span style="color:var(--cyan);">{{ coach.coach_name|upper }}</span>
             {% if coach.showdown_name %}
             <span style="color:var(--text-dim);">&nbsp;·&nbsp;</span>
             <a href="https://pokemonshowdown.com/users/{{ coach.showdown_name }}" target="_blank" rel="noopener"
-               style="color:var(--magenta);text-decoration:none;" title="Pokémon Showdown profile">
-              PS://{{ coach.showdown_name }}
-            </a>
+               style="color:var(--magenta);text-decoration:none;">PS://{{ coach.showdown_name }}</a>
+            {% endif %}
+            {% if settings.get('draft_style') %}
+            <span style="color:var(--text-dim);">&nbsp;·&nbsp;</span>
+            <span style="color:var(--magenta);">{{ settings.get('draft_style','POINTS')|upper }}</span>
             {% endif %}
           </p>
-
-          <!-- Record stat cards -->
-          {% if standing %}
-          <div class="flex flex-wrap items-center gap-3 mt-5">
-            <div class="yc-brackets" style="padding:2px;">
-              <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-              <div class="yc-panel" style="padding:8px 14px;">
-                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">RECORD</div>
-                <div class="yc-mono mt-0.5" style="font-size:18px;color:var(--text);">
-                  <span style="color:var(--lime);">{{ standing.W }}</span><span style="color:var(--text-dim);">W</span><span style="color:var(--text-dim);">·</span><span style="color:var(--red);">{{ standing.L }}</span><span style="color:var(--text-dim);">L</span>{% if standing.T %}<span style="color:var(--text-dim);">·</span><span style="color:#facc15;">{{ standing.T }}</span><span style="color:var(--text-dim);">T</span>{% endif %}
-                </div>
-              </div>
-            </div>
-            <div class="yc-brackets mag" style="padding:2px;">
-              <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-              <div class="yc-panel" style="padding:8px 14px;">
-                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">RANK</div>
-                <div class="yc-mono mt-0.5" style="font-size:18px;color:var(--magenta);">#{{ standing.rank }}</div>
-              </div>
-            </div>
-            <div class="yc-brackets" style="padding:2px;">
-              <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-              <div class="yc-panel" style="padding:8px 14px;">
-                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">DIFF</div>
-                <div class="yc-mono mt-0.5" style="font-size:18px;color:{% if standing.diff > 0 %}var(--cyan){% elif standing.diff < 0 %}var(--red){% else %}var(--text-mute){% endif %};">
-                  {% if standing.diff > 0 %}+{% endif %}{{ "%.1f"|format(standing.diff) }}
-                </div>
-              </div>
-            </div>
-            {% if session.get('role') == 'admin' %}
-            <a href="/admin/roster/{{ coach.id }}" class="yc-btn ml-auto">Edit Roster</a>
+          <!-- Mechanic chips -->
+          <div class="flex flex-wrap gap-2" style="margin-top:10px;">
+            {% if settings.get('mechanic_tera','0') == '1' %}
+            <span class="yc-chip" style="color:#c084fc;border-color:rgba(192,132,252,0.4);background:rgba(192,132,252,0.08);">★ TERA</span>
+            {% endif %}
+            {% if settings.get('mechanic_zmove','0') == '1' %}
+            <span class="yc-chip" style="color:#fbbf24;border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.08);">⚡ Z-MOVE</span>
+            {% endif %}
+            {% if settings.get('mechanic_mega','0') == '1' %}
+            <span class="yc-chip cyan">◎ MEGA</span>
+            {% endif %}
+            {% if settings.get('draft_free_pick_type','none') != 'none' %}
+            <span class="yc-chip lime">{% if settings.get('draft_free_pick_type') == 'four_any' %}4 FREE PICKS{% else %}1 FREE/TIER{% endif %}</span>
             {% endif %}
           </div>
+        </div>
+
+        <!-- RIGHT — 4 micro-cards + admin -->
+        <div class="yc-record-cards">
+          {% if standing %}
+          <div class="yc-micro-card">
+            <span class="mc-label">W</span>
+            <span class="mc-value" style="color:var(--lime);">{{ standing.W }}</span>
+          </div>
+          <div class="yc-micro-card">
+            <span class="mc-label">L</span>
+            <span class="mc-value" style="color:var(--text-mute);">{{ standing.L }}</span>
+          </div>
+          <div class="yc-micro-card">
+            <span class="mc-label">DIFF</span>
+            <span class="mc-value" style="color:{% if standing.diff > 0 %}var(--cyan){% elif standing.diff < 0 %}var(--red){% else %}var(--text-mute){% endif %};">{% if standing.diff > 0 %}+{% endif %}{{ '%.0f'|format(standing.diff) }}</span>
+          </div>
+          <div class="yc-brackets mag" style="padding:2px;">
+            <span class="yc-br-tr"></span><span class="yc-br-br"></span>
+            <div class="yc-micro-card" style="border:none;">
+              <span class="mc-label">RNK</span>
+              <span class="mc-value" style="color:var(--magenta);">#{{ standing.rank }}</span>
+            </div>
+          </div>
+          {% endif %}
+          {% if session.get('role') == 'admin' %}
+          <a href="/admin/roster/{{ coach.id }}" class="yc-btn" style="margin-left:4px;">Edit Roster</a>
           {% endif %}
         </div>
+
       </div>
     </div>
   </div>
 
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7">
 
-    <!-- ── Roster ─────────────────────────────────────────────────────────── -->
+    <!-- ── THIS WEEK (before roster) ──────────────────────────────────────── -->
+    {% if matchup %}
+    <section>
+      <div class="yc-sechead">
+        <span class="yc-eyebrow mag">// THIS_WEEK</span>
+        <span class="yc-h2" style="font-size:22px;">Week {{ '%02d' % matchup.week }}</span>
+        <span class="yc-rule"></span>
+        {% if matchup.my_score is not none and matchup.opp_score is not none %}
+          {% if matchup.my_score > matchup.opp_score %}<span class="yc-chip lime">WIN</span>
+          {% elif matchup.my_score < matchup.opp_score %}<span class="yc-chip red">LOSS</span>
+          {% else %}<span class="yc-chip" style="color:#facc15;border-color:rgba(250,204,21,0.4);">TIE</span>{% endif %}
+        {% else %}
+          <span class="yc-chip cyan"><span class="yc-live-dot"></span> PENDING</span>
+        {% endif %}
+      </div>
+
+      <div class="yc-brackets mag">
+        <span class="yc-br-tr"></span><span class="yc-br-br"></span>
+        <div class="yc-panel glow-mag overflow-hidden">
+
+          <!-- Top bar: eyebrow | my team | VS/score | opp | week pill | CTA -->
+          <div class="yc-tw-bar">
+            <!-- col 1: eyebrow -->
+            <div>
+              <div class="yc-eyebrow mag" style="font-size:9px;">// THIS_WEEK</div>
+              <div class="yc-mono" style="font-size:10px;color:var(--text-dim);margin-top:3px;">WK{{ '%02d' % matchup.week }}</div>
+            </div>
+
+            <!-- col 2: my team (right-aligned) -->
+            <div style="text-align:right;min-width:0;">
+              {% if coach.logo_url %}
+              <img src="{{ coach.logo_url }}" class="object-contain" style="width:36px;height:36px;border:1px solid var(--hairline);background:#000;display:inline-block;margin-bottom:4px;" alt="">
+              {% else %}
+              <div style="width:36px;height:36px;background:{{ coach.color or '#111' }};display:inline-flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;color:#fff;font-size:11px;margin-bottom:4px;">{{ coach.team_name[:2].upper() }}</div>
+              {% endif %}
+              <div class="yc-h2" style="font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ coach.team_name }}</div>
+              <div class="yc-mono" style="font-size:10px;color:var(--text-dim);">{{ coach.coach_name|upper }}</div>
+              {% if standing %}<div class="yc-mono" style="font-size:10px;color:var(--text-mute);">{{ standing.W }}W · {{ standing.L }}L</div>{% endif %}
+            </div>
+
+            <!-- col 3: VS / final score -->
+            <div style="text-align:center;min-width:80px;">
+              {% if matchup.my_score is not none and matchup.opp_score is not none %}
+                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">FINAL</div>
+                <div class="yc-h1" style="font-size:32px;letter-spacing:0;line-height:1.1;">
+                  <span style="color:{% if matchup.my_score > matchup.opp_score %}var(--lime){% else %}var(--text-mute){% endif %};">{{ matchup.my_score|int }}</span>
+                  <span style="color:var(--magenta);margin:0 6px;">–</span>
+                  <span style="color:{% if matchup.opp_score > matchup.my_score %}var(--lime){% else %}var(--text-mute){% endif %};">{{ matchup.opp_score|int }}</span>
+                </div>
+              {% else %}
+                <div class="yc-h1" style="font-size:28px;color:var(--cyan);">VS</div>
+                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">UPCOMING</div>
+              {% endif %}
+            </div>
+
+            <!-- col 4: opponent team -->
+            <div style="min-width:0;">
+              {% if matchup.opp_logo %}
+              <img src="{{ matchup.opp_logo }}" class="object-contain" style="width:36px;height:36px;border:1px solid var(--hairline);background:#000;display:block;margin-bottom:4px;" alt="">
+              {% else %}
+              <div style="width:36px;height:36px;background:{{ matchup.opp_color or '#111' }};display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;color:#fff;font-size:11px;margin-bottom:4px;">{{ matchup.opp_team[:2].upper() }}</div>
+              {% endif %}
+              <div class="yc-h2" style="font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ matchup.opp_team }}</div>
+              <div class="yc-mono" style="font-size:10px;color:var(--text-dim);">OPPONENT</div>
+              <a href="/team/{{ matchup.opp_id }}" class="yc-mono" style="font-size:10px;color:var(--cyan);text-decoration:none;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">VIEW TEAM →</a>
+            </div>
+
+            <!-- col 5: week pill -->
+            <div style="border-left:1px solid var(--hairline);padding-left:20px;text-align:center;min-width:56px;">
+              <div class="yc-eyebrow" style="font-size:9px;">WEEK</div>
+              <div class="yc-mono" style="font-size:26px;color:var(--magenta);font-feature-settings:'tnum';">{{ '%02d' % matchup.week }}</div>
+            </div>
+
+            <!-- col 6: Battle Prep CTA -->
+            <a href="/draft-prep" class="yc-btn primary">&#9658; BATTLE PREP</a>
+
+            <!-- bg blob -->
+            <div aria-hidden="true" style="position:absolute;top:-60px;right:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(255,42,138,0.18),transparent 60%);pointer-events:none;"></div>
+          </div>
+
+          <!-- Side-by-side rosters -->
+          <div class="grid grid-cols-2" style="border-top:1px solid var(--hairline);">
+            <div class="p-4" style="border-right:1px solid var(--hairline);">
+              {% for p in roster %}
+              <div class="flex items-center gap-2 py-1.5" style="border-bottom:1px dashed var(--hairline);">
+                <img src="{{ pokemon_sprite_url(p.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.name) }}';" class="object-contain flex-shrink-0" style="width:28px;height:28px;image-rendering:pixelated;">
+                <div class="flex-1 min-w-0">
+                  <span class="yc-mono truncate block" style="font-size:11px;color:var(--text);font-weight:500;">{{ p.name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span style="color:#c084fc;">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span style="color:#fbbf24;">⚡</span>{% endif %}{% if p.is_free_pick and settings.get('draft_free_pick_type','none')!='none' %} <span style="color:var(--lime);">F</span>{% endif %}</span>
+                  <div class="flex gap-1 mt-0.5">
+                    {% if p.type1 %}<span class="type-{{ p.type1|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ p.type1[:3].upper() }}</span>{% endif %}
+                    {% if p.type2 %}<span class="type-{{ p.type2|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ p.type2[:3].upper() }}</span>{% endif %}
+                  </div>
+                </div>
+                <span class="yc-mono flex-shrink-0" style="font-size:11px;color:#facc15;">{{ p.points }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="p-4">
+              {% for p in matchup.opp_roster %}
+              {% set opp_slug = p.pokemon_name.lower().replace(' ','-').replace("'",'').replace('.','') %}
+              {% set opp_pd = matchup.opp_pd_map.get(opp_slug, {}) %}
+              <div class="flex items-center gap-2 py-1.5 flex-row-reverse" style="border-bottom:1px dashed var(--hairline);">
+                <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="object-contain flex-shrink-0" style="width:28px;height:28px;image-rendering:pixelated;">
+                <div class="flex-1 min-w-0 text-right">
+                  <span class="yc-mono truncate block" style="font-size:11px;color:var(--text);font-weight:500;">{{ p.pokemon_name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span style="color:#c084fc;">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span style="color:#fbbf24;">⚡</span>{% endif %}{% if p.is_free_pick and settings.get('draft_free_pick_type','none')!='none' %} <span style="color:var(--lime);">F</span>{% endif %}</span>
+                  <div class="flex gap-1 mt-0.5 justify-end">
+                    {% if opp_pd.type1 %}<span class="type-{{ opp_pd.type1|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ opp_pd.type1[:3].upper() }}</span>{% endif %}
+                    {% if opp_pd.type2 %}<span class="type-{{ opp_pd.type2|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ opp_pd.type2[:3].upper() }}</span>{% endif %}
+                  </div>
+                </div>
+                <span class="yc-mono flex-shrink-0" style="font-size:11px;color:#facc15;">{{ p.points }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ── ROSTER ────────────────────────────────────────────────────────── -->
     <section>
       <div class="yc-sechead">
         <span class="yc-eyebrow mag">// ROSTER</span>
         <span class="yc-h2" style="font-size:22px;">The {% if roster %}{{ roster|length }}{% else %}Ten{% endif %}</span>
         <span class="yc-rule"></span>
         <span class="yc-mono" style="font-size:10px;color:var(--text-dim);">{{ roster|length if roster else 0 }} UNITS</span>
-        <!-- Mechanic chips -->
         <div class="flex flex-wrap gap-2">
           {% if settings.get('mechanic_tera','0') == '1' %}
           <span class="yc-chip" style="color:#c084fc;border-color:rgba(192,132,252,0.4);background:rgba(192,132,252,0.08);">★ TERA CAPTAIN</span>
@@ -385,7 +569,6 @@
                      style="width:54px;height:54px;image-rendering:pixelated;"
                      alt="{{ p.name }}" title="{{ p.name }}">
                 <div class="hidden items-center justify-center" style="width:54px;height:54px;color:var(--text-dim);">?</div>
-                <!-- Captain badges -->
                 {% set badge_count = namespace(n=0) %}
                 {% if p.is_tera_captain and settings.get('mechanic_tera','0') == '1' %}
                 <span class="absolute -top-1 -right-1 flex items-center justify-center"
@@ -415,17 +598,14 @@
               </p>
             </div>
             {% endfor %}
-            {# Pokeball placeholders for unfilled slots #}
             {% for i in range(10 - (roster|length)) %}
             <div class="flex flex-col items-center gap-1.5" style="min-width:0;opacity:0.4;">
               <div class="relative" style="padding:6px;background:var(--panel-2);border:1px dashed var(--hairline);">
                 <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
-                     style="width:54px;height:54px;image-rendering:pixelated;object-fit:contain;"
-                     alt="Empty slot">
+                     style="width:54px;height:54px;image-rendering:pixelated;object-fit:contain;" alt="Empty slot">
               </div>
               <div class="text-center">
-                <span class="yc-mono inline-block px-2 py-0.5"
-                      style="font-size:10px;color:var(--text-dim);border:1px solid var(--hairline);">—pt</span>
+                <span class="yc-mono inline-block px-2 py-0.5" style="font-size:10px;color:var(--text-dim);border:1px solid var(--hairline);">—pt</span>
               </div>
               <p class="text-center yc-mono" style="font-size:9px;color:var(--text-dim);max-width:4.8rem;line-height:1.2;">empty</p>
             </div>
@@ -435,7 +615,89 @@
       </div>
     </section>
 
-    <!-- ── Team Shape (radar) + Type Grid + Coach Stats ───────────────────── -->
+    <!-- ── LAST 3 / NEXT 3 STRIPS ─────────────────────────────────────────── -->
+    {% if match_history or schedule %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+      <!-- Last 3 -->
+      <section>
+        <div class="yc-sechead">
+          <span class="yc-eyebrow">// LAST_3</span>
+          <span class="yc-h2" style="font-size:16px;">Recent</span>
+        </div>
+        <div class="yc-brackets">
+          <span class="yc-br-tr"></span><span class="yc-br-br"></span>
+          <div class="yc-panel overflow-hidden">
+            {% set shown = namespace(n=0) %}
+            {% for m in match_history|reverse %}
+              {% if shown.n < 3 %}
+              {% set result_color = 'var(--lime)' if m.result == 'W' else ('var(--red)' if m.result == 'L' else '#facc15') %}
+              <div class="yc-strip-row">
+                <span class="yc-mono" style="font-size:10px;color:var(--text-dim);">WK{{ '%02d' % m.week }}</span>
+                <div class="flex items-center gap-2 min-w-0">
+                  {% if m.opp_logo %}
+                  <img src="{{ m.opp_logo }}" class="flex-shrink-0 object-contain" style="width:18px;height:18px;border:1px solid var(--hairline);background:#000;" onerror="this.style.display='none'">
+                  {% else %}
+                  <div class="flex-shrink-0" style="width:18px;height:18px;background:{{ m.opp_color or '#333' }};"></div>
+                  {% endif %}
+                  <a href="/team/{{ m.opp_id }}" class="yc-mono truncate" style="font-size:11px;color:var(--text);text-decoration:none;font-family:var(--fd);font-weight:600;letter-spacing:0.02em;"
+                     onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--text)'">{{ m.opp_team }}</a>
+                </div>
+                <span class="yc-mono flex-shrink-0" style="font-size:11px;font-weight:600;color:{{ result_color }};">{{ m.result }}</span>
+                <span class="yc-mono flex-shrink-0" style="font-size:11px;color:var(--text-mute);">{{ m.my_score|int }}–{{ m.opp_score|int }}</span>
+              </div>
+              {% set shown.n = shown.n + 1 %}
+              {% endif %}
+            {% else %}
+            <p class="yc-mono" style="padding:16px 14px;font-size:11px;color:var(--text-dim);">No matches played yet.</p>
+            {% endfor %}
+            {% if shown.n == 0 %}
+            <p class="yc-mono" style="padding:16px 14px;font-size:11px;color:var(--text-dim);">No matches played yet.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <!-- Next 3 -->
+      <section>
+        <div class="yc-sechead">
+          <span class="yc-eyebrow mag">// NEXT_3</span>
+          <span class="yc-h2" style="font-size:16px;">Upcoming</span>
+        </div>
+        <div class="yc-brackets mag">
+          <span class="yc-br-tr"></span><span class="yc-br-br"></span>
+          <div class="yc-panel overflow-hidden">
+            {% set nxt = namespace(n=0) %}
+            {% for m in schedule %}
+              {% set is_c1 = (m.coach1_id == coach.id) %}
+              {% set my_sc  = m.score1 if is_c1 else m.score2 %}
+              {% set opp_sc = m.score2 if is_c1 else m.score1 %}
+              {% if my_sc is none and opp_sc is none and nxt.n < 3 %}
+              {% set opp_team = m.c2_team if is_c1 else m.c1_team %}
+              {% set opp_id   = m.coach2_id if is_c1 else m.coach1_id %}
+              <div class="yc-strip-row" {% if m.week == current_week %}style="background:var(--magenta-s);"{% endif %}>
+                <span class="yc-mono" style="font-size:10px;color:var(--text-dim);">WK{{ '%02d' % m.week }}</span>
+                <div class="flex items-center gap-2 min-w-0">
+                  <a href="/team/{{ opp_id }}" class="yc-mono truncate" style="font-size:11px;color:var(--text);text-decoration:none;font-family:var(--fd);font-weight:600;letter-spacing:0.02em;"
+                     onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--text)'">{{ opp_team }}</a>
+                </div>
+                <span class="yc-chip cyan" style="font-size:9px;padding:2px 6px;">{% if m.week == current_week %}<span class="yc-live-dot" style="margin-right:4px;"></span>NOW{% else %}VS{% endif %}</span>
+                <span class="yc-mono flex-shrink-0" style="font-size:10px;color:var(--text-dim);">—</span>
+              </div>
+              {% set nxt.n = nxt.n + 1 %}
+              {% endif %}
+            {% endfor %}
+            {% if nxt.n == 0 %}
+            <p class="yc-mono" style="padding:16px 14px;font-size:11px;color:var(--text-dim);">No upcoming matches.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+    </div>
+    {% endif %}
+
+    <!-- ── THREE-COLUMN ANALYSIS ──────────────────────────────────────────── -->
     {%- set ns_stat = namespace(hp=0, atk=0, def_=0, spa=0, spd=0, spe=0, cnt=0) -%}
     {%- for p in roster -%}{%- if p.hp -%}
       {%- set ns_stat.hp   = ns_stat.hp   + p.hp -%}
@@ -450,7 +712,6 @@
     {% if ns_stat.cnt > 0 or roster or standing %}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-      <!-- TEAM SHAPE -->
       {% if ns_stat.cnt > 0 %}
       {% set avg_hp  = ns_stat.hp  / ns_stat.cnt %}
       {% set avg_atk = ns_stat.atk / ns_stat.cnt %}
@@ -519,7 +780,6 @@
       </section>
       {% endif %}
 
-      <!-- TYPE GRID -->
       {% if roster %}
       <section>
         <div class="yc-sechead">
@@ -558,7 +818,6 @@
       </section>
       {% endif %}
 
-      <!-- COACH STATS (no draft grade) -->
       {% if standing %}
       <section>
         <div class="yc-sechead">
@@ -600,109 +859,7 @@
     </div>
     {% endif %}
 
-    <!-- ── This Week Matchup ──────────────────────────────────────────────── -->
-    {% if matchup %}
-    <section>
-      <div class="yc-sechead">
-        <span class="yc-eyebrow mag">// THIS_WEEK</span>
-        <span class="yc-h2" style="font-size:22px;">Week {{ '%02d' % matchup.week }}</span>
-        <span class="yc-rule"></span>
-        {% if matchup.my_score is not none and matchup.opp_score is not none %}
-          {% if matchup.my_score > matchup.opp_score %}
-            <span class="yc-chip lime">WIN</span>
-          {% elif matchup.my_score < matchup.opp_score %}
-            <span class="yc-chip red">LOSS</span>
-          {% else %}
-            <span class="yc-chip" style="color:#facc15;border-color:rgba(250,204,21,0.4);">TIE</span>
-          {% endif %}
-        {% else %}
-          <span class="yc-chip cyan"><span class="yc-live-dot"></span> PENDING</span>
-        {% endif %}
-      </div>
-
-      <div class="yc-brackets mag">
-        <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-        <div class="yc-panel glow-mag overflow-hidden">
-          <!-- VS bar -->
-          <div class="grid items-center px-6 py-4 border-b" style="grid-template-columns:1fr auto 1fr;gap:24px;border-color:var(--hairline);background:rgba(255,42,138,0.04);">
-            <div class="flex items-center gap-3 justify-end">
-              <div style="text-align:right;">
-                <div class="yc-h2" style="font-size:16px;color:var(--text);">{{ coach.team_name }}</div>
-                <div class="yc-mono" style="font-size:10px;color:var(--text-dim);">{{ coach.coach_name|upper }}</div>
-              </div>
-              {% if coach.logo_url %}
-                <img src="{{ coach.logo_url }}" class="object-contain flex-shrink-0" style="width:48px;height:48px;border:1px solid var(--hairline);background:#000;" alt="">
-              {% else %}
-                <div class="flex-shrink-0 flex items-center justify-center" style="width:48px;height:48px;background:{{ coach.color or '#111' }};font-family:var(--fd);font-weight:700;color:#fff;font-size:14px;">{{ coach.team_name[:2].upper() }}</div>
-              {% endif %}
-            </div>
-            <div style="text-align:center;">
-              {% if matchup.my_score is not none and matchup.opp_score is not none %}
-                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">FINAL</div>
-                <div class="yc-h1" style="font-size:36px;color:var(--text);letter-spacing:0;">
-                  <span style="color:{% if matchup.my_score > matchup.opp_score %}var(--lime){% else %}var(--text-mute){% endif %};">{{ matchup.my_score|int }}</span>
-                  <span style="color:var(--magenta);margin:0 8px;">–</span>
-                  <span style="color:{% if matchup.opp_score > matchup.my_score %}var(--lime){% else %}var(--text-mute){% endif %};">{{ matchup.opp_score|int }}</span>
-                </div>
-              {% else %}
-                <div class="yc-h1" style="font-size:36px;color:var(--cyan);">VS</div>
-                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">UPCOMING</div>
-              {% endif %}
-            </div>
-            <div class="flex items-center gap-3">
-              {% if matchup.opp_logo %}
-                <img src="{{ matchup.opp_logo }}" class="object-contain flex-shrink-0" style="width:48px;height:48px;border:1px solid var(--hairline);background:#000;" alt="">
-              {% else %}
-                <div class="flex-shrink-0 flex items-center justify-center" style="width:48px;height:48px;background:{{ matchup.opp_color or '#111' }};font-family:var(--fd);font-weight:700;color:#fff;font-size:14px;">{{ matchup.opp_team[:2].upper() }}</div>
-              {% endif %}
-              <div>
-                <div class="yc-h2" style="font-size:16px;color:var(--text);">{{ matchup.opp_team }}</div>
-                <div class="yc-mono" style="font-size:10px;color:var(--text-dim);">VS</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Side-by-side rosters -->
-          <div class="grid grid-cols-2" style="border-top:1px solid var(--hairline);">
-            <div class="p-4" style="border-right:1px solid var(--hairline);">
-              {% for p in roster %}
-              <div class="flex items-center gap-2 py-1.5" style="border-bottom:1px dashed var(--hairline);">
-                <img src="{{ pokemon_sprite_url(p.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.name) }}';" class="object-contain flex-shrink-0" style="width:28px;height:28px;image-rendering:pixelated;">
-                <div class="flex-1 min-w-0">
-                  <span class="yc-mono truncate block" style="font-size:11px;color:var(--text);font-weight:500;">{{ p.name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span style="color:#c084fc;">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span style="color:#fbbf24;">⚡</span>{% endif %}{% if p.is_free_pick and settings.get('draft_free_pick_type','none')!='none' %} <span style="color:var(--lime);">F</span>{% endif %}</span>
-                  <div class="flex gap-1 mt-0.5">
-                    {% if p.type1 %}<span class="type-{{ p.type1|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ p.type1[:3].upper() }}</span>{% endif %}
-                    {% if p.type2 %}<span class="type-{{ p.type2|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ p.type2[:3].upper() }}</span>{% endif %}
-                  </div>
-                </div>
-                <span class="yc-mono flex-shrink-0" style="font-size:11px;color:#facc15;">{{ p.points }}</span>
-              </div>
-              {% endfor %}
-            </div>
-            <div class="p-4">
-              {% for p in matchup.opp_roster %}
-              {% set opp_slug = p.pokemon_name.lower().replace(' ','-').replace("'",'').replace('.','') %}
-              {% set opp_pd = matchup.opp_pd_map.get(opp_slug, {}) %}
-              <div class="flex items-center gap-2 py-1.5 flex-row-reverse" style="border-bottom:1px dashed var(--hairline);">
-                <img src="{{ pokemon_sprite_url(p.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';" class="object-contain flex-shrink-0" style="width:28px;height:28px;image-rendering:pixelated;">
-                <div class="flex-1 min-w-0 text-right">
-                  <span class="yc-mono truncate block" style="font-size:11px;color:var(--text);font-weight:500;">{{ p.pokemon_name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span style="color:#c084fc;">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span style="color:#fbbf24;">⚡</span>{% endif %}{% if p.is_free_pick and settings.get('draft_free_pick_type','none')!='none' %} <span style="color:var(--lime);">F</span>{% endif %}</span>
-                  <div class="flex gap-1 mt-0.5 justify-end">
-                    {% if opp_pd.type1 %}<span class="type-{{ opp_pd.type1|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ opp_pd.type1[:3].upper() }}</span>{% endif %}
-                    {% if opp_pd.type2 %}<span class="type-{{ opp_pd.type2|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ opp_pd.type2[:3].upper() }}</span>{% endif %}
-                  </div>
-                </div>
-                <span class="yc-mono flex-shrink-0" style="font-size:11px;color:#facc15;">{{ p.points }}</span>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-    {% endif %}
-
-    <!-- ── Match History ──────────────────────────────────────────────────── -->
+    <!-- ── MATCH HISTORY ─────────────────────────────────────────────────── -->
     {% if match_history %}
     <section>
       <div class="yc-sechead">
@@ -744,7 +901,6 @@
                    onclick="event.stopPropagation()"
                    onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--text)'">{{ m.opp_team }}</a>
               </div>
-              <!-- Sprite preview -->
               <div class="flex gap-0.5 flex-shrink-0 items-center">
                 {% set preview_pokes = [] %}
                 {% for g in m.games %}{% for p in g.my_pokes %}{% if preview_pokes.append(p) %}{% endif %}{% endfor %}{% endfor %}
@@ -768,11 +924,8 @@
                 <div class="flex items-center gap-3 px-4 py-2" style="background:rgba(0,0,0,0.3);">
                   <span class="yc-mono" style="font-size:9px;color:var(--text-dim);width:60px;">GAME {{ g.game_number }}</span>
                   {% if g.my_won is not none %}
-                    {% if g.my_won %}
-                      <span class="yc-chip lime">WON</span>
-                    {% else %}
-                      <span class="yc-chip red">LOST</span>
-                    {% endif %}
+                    {% if g.my_won %}<span class="yc-chip lime">WON</span>
+                    {% else %}<span class="yc-chip red">LOST</span>{% endif %}
                   {% endif %}
                   {% if g.replay_url %}
                   <a href="{{ g.replay_url }}" target="_blank" rel="noopener"
@@ -857,9 +1010,8 @@
     </section>
     {% endif %}
 
-    <!-- ── Schedule + Team Stats Table ────────────────────────────────────── -->
+    <!-- ── SCHEDULE + STATS TABLE ─────────────────────────────────────────── -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      <!-- Schedule -->
       <section class="xl:col-span-1">
         <div class="yc-sechead">
           <span class="yc-eyebrow">// SCHEDULE</span>
@@ -916,7 +1068,6 @@
         </div>
       </section>
 
-      <!-- Team Stats Table -->
       <section class="xl:col-span-2">
         <div class="yc-sechead">
           <span class="yc-eyebrow">// TEAM_STATS</span>
@@ -1022,7 +1173,6 @@ function toggleMatch(id) {
   if (chevron) chevron.classList.toggle('rotate-180');
 }
 
-// Roster sprite carousel
 (function() {
   const frames = Array.from(document.querySelectorAll('.roster-sprite'));
   const nameEl = document.getElementById('carousel-name');
@@ -1041,10 +1191,8 @@ function toggleMatch(id) {
 </script>
 
 {% if youtube_id %}
-<!-- Floating Battle Music Player -->
 <div id="music-widget" style="position:fixed;bottom:20px;right:20px;z-index:100;font-family:'JetBrains Mono', monospace;">
   <div id="music-expanded" style="background:#0d0e16;border:1px solid rgba(255,42,138,0.5);border-radius:0;overflow:hidden;width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.6),0 0 24px -8px rgba(255,42,138,0.5);position:relative;">
-    <!-- Corner brackets -->
     <span style="position:absolute;top:-1px;left:-1px;width:10px;height:10px;border:1px solid #ff2a8a;border-right:0;border-bottom:0;pointer-events:none;"></span>
     <span style="position:absolute;top:-1px;right:-1px;width:10px;height:10px;border:1px solid #ff2a8a;border-left:0;border-bottom:0;pointer-events:none;"></span>
     <span style="position:absolute;bottom:-1px;left:-1px;width:10px;height:10px;border:1px solid #ff2a8a;border-right:0;border-top:0;pointer-events:none;"></span>
@@ -1062,8 +1210,7 @@ function toggleMatch(id) {
             src="https://www.youtube.com/embed/{{ youtube_id }}?rel=0&modestbranding=1&autoplay=1"
             frameborder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-            style="display:block;"></iframe>
+            allowfullscreen style="display:block;"></iframe>
   </div>
   <div id="music-mini" style="display:none;background:#0d0e16;border:1px solid rgba(255,42,138,0.5);padding:8px 16px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.5),0 0 16px -6px rgba(255,42,138,0.5);position:relative;"
        onclick="toggleMusicPlayer()">

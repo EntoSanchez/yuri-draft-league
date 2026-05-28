@@ -3,198 +3,335 @@
 
 {% block content %}
 <style>
-  /* ── Layout ── */
-  #dp-root { display: flex; height: calc(100vh - 64px); overflow: hidden; }
-  #dp-left  { width: 320px; min-width: 280px; flex-shrink: 0; overflow-y: auto;
-              border-right: 1px solid var(--hairline); background: var(--panel); }
-  #dp-right { flex: 1; overflow-y: auto; padding: 16px; }
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-  /* ── Slot rows ── */
-  .slot-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px;
-              border-bottom: 1px solid rgba(55,65,81,0.25); }
-  .slot-num { width: 18px; text-align: right; color: #4b5563; font-size: 0.7rem; flex-shrink: 0; }
-  .slot-type-select {
-    flex: 0 0 120px; font-size: 0.68rem;
-    background: var(--panel-2); border: 1px solid var(--hairline); color: #9ca3af;
-    border-radius: 4px; padding: 2px 4px; height: 24px;
-  }
-  .slot-search {
-    flex: 1; font-size: 0.72rem; height: 24px; padding: 2px 6px;
-    background: var(--panel-2); border: 1px solid var(--hairline); color: #e5e7eb;
-    border-radius: 4px;
-  }
-  .slot-search:focus { outline: none; border-color: var(--cyan-dim); }
-  .slot-cost { font-size: 0.68rem; color: var(--cyan); width: 22px; text-align: right; flex-shrink: 0; }
-  .slot-clear-btn { font-size: 0.65rem; color: #4b5563; cursor: pointer; flex-shrink: 0; padding: 0 2px; line-height: 1; }
-  .slot-clear-btn:hover { color: #f87171; }
-  .alt-toggle { font-size: 0.6rem; color: #374151; cursor: pointer; flex-shrink: 0; padding: 0 1px; line-height: 1; user-select: none; }
-  .alt-toggle:hover { color: #6b7280; }
+/* ── Design tokens scoped to builder ── */
+.dp-builder {
+  --ink:          #04040a;
+  --panel:        #0b0b12;
+  --panel-2:      #10101a;
+  --hairline:     rgba(232,232,248,0.10);
+  --hairline-2:   rgba(232,232,248,0.18);
+  --magenta:      #ff3d97;
+  --magenta-dim:  rgba(255,61,151,0.35);
+  --magenta-s:    rgba(255,61,151,0.10);
+  --cyan:         #3de5ff;
+  --cyan-dim:     rgba(61,229,255,0.35);
+  --cyan-s:       rgba(61,229,255,0.10);
+  --lime:         #c7ff52;
+  --amber:        #ffc257;
+  --red:          #ff5878;
+  --tier-1:       #5a9bff;
+  --tier-2:       #b07dff;
+  --tier-3:       #3dd9c2;
+  --tier-4:       #7ddc6a;
+  --tier-5:       #9a9aa8;
+  --uber-gold:    #ffc94d;
+  --uber-silver:  #d2d2dc;
+  --uber-bronze:  #d08552;
+  --text:         #eaeaf2;
+  --text-mute:    rgba(234,234,242,0.68);
+  --text-dim:     rgba(234,234,242,0.46);
+  --fd:           "Chakra Petch", system-ui, sans-serif;
+  --fm:           "JetBrains Mono", ui-monospace, monospace;
+}
 
-  /* ── Alt sub-rows ── */
-  .slot-alts { display: none; padding: 2px 10px 5px 28px; border-bottom: 1px solid rgba(55,65,81,0.25); background: rgba(0,0,0,0.14); }
-  .slot-alts.open { display: block; }
-  .alt-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
-  .alt-sprite { width: 20px; height: 20px; image-rendering: pixelated; flex-shrink: 0; }
-  .alt-search { flex: 1; font-size: 0.67rem; height: 19px; padding: 1px 5px; background: var(--panel-2); border: 1px solid var(--hairline); color: #9ca3af; border-radius: 3px; }
-  .alt-search:focus { outline: none; border-color: rgba(6,182,212,0.35); }
-  .alt-clear { font-size: 0.6rem; color: #374151; cursor: pointer; flex-shrink: 0; line-height: 1; }
-  .alt-clear:hover { color: #f87171; }
-  .add-alt-btn { margin-top: 3px; font-size: 0.6rem; color: #374151; cursor: pointer; border: 1px dashed rgba(55,65,81,0.4); padding: 1px 8px; border-radius: 3px; background: none; display: inline-block; }
-  .add-alt-btn:hover { color: #9ca3af; border-color: #6b7280; }
-  .captain-btn {
-    font-size: 0.58rem; font-weight: 800; width: 16px; height: 16px; flex-shrink: 0;
-    border-radius: 3px; border: 1px solid rgba(55,65,81,0.5);
-    background: rgba(15,22,35,0.8); cursor: pointer; padding: 0;
-    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
-  }
-  .captain-btn:disabled { opacity: 0.2; cursor: default; }
-  .tera-btn { color: #67e8f9; }
-  .tera-btn.active { background: rgba(6,182,212,0.25); border-color: #06b6d4; color: #22d3ee; }
-  .zmove-btn { color: #c4b5fd; }
-  .zmove-btn.active { background: rgba(139,92,246,0.25); border-color: #8b5cf6; color: #a78bfa; }
+/* ── Root layout ── */
+.dp-builder { background: var(--ink); color: var(--text); }
+#dp-root {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 64px); overflow: hidden;
+  position: relative; z-index: 1;
+  padding: 12px; gap: 10px;
+}
 
-  /* ── Autocomplete ── */
-  .ac-dropdown {
-    position: fixed; z-index: 200;
-    background: var(--panel); border: 1px solid var(--hairline);
-    border-radius: 4px; max-height: 180px; overflow-y: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-  }
-  .ac-item { display: flex; align-items: center; gap: 8px;
-             padding: 5px 10px; font-size: 0.75rem; cursor: pointer; color: #d1d5db; }
-  .ac-item:hover, .ac-item.active { background: var(--cyan-soft); color: var(--cyan); }
-  .ac-item img { width: 28px; height: 28px; image-rendering: pixelated; }
+/* ── TopBar ── */
+#dp-topbar {
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 18px; align-items: center;
+  padding: 10px 14px; flex-shrink: 0;
+  background: var(--panel-2); border: 1px solid var(--hairline-2);
+}
+.dp-topbar-title .dp-eyebrow { font-family:var(--fm); font-size:10px; font-weight:500; letter-spacing:0.16em; text-transform:uppercase; color:var(--magenta); }
+.dp-topbar-title .dp-h2 { font-family:var(--fd); font-size:18px; font-weight:700; text-transform:uppercase; color:var(--text); margin-top:2px; }
+.dp-topbar-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.dp-plan-input {
+  font-family:var(--fm); font-size:11px; height:28px; padding:2px 8px;
+  background:var(--ink); border:1px solid var(--hairline-2); color:var(--text);
+  outline:none; min-width:130px;
+}
+.dp-plan-input:focus { border-color:var(--magenta-dim); }
+.dp-btn {
+  font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; padding:6px 12px; border-radius:0; cursor:pointer; border:1px solid;
+  white-space:nowrap;
+}
+.dp-btn.primary { background:var(--magenta); color:var(--ink); border-color:var(--magenta); box-shadow:0 0 12px -2px var(--magenta-dim); }
+.dp-btn.ghost   { background:transparent; color:var(--text-mute); border-color:var(--hairline-2); }
+.dp-btn:hover   { filter:brightness(1.15); }
 
-  /* ── Budget bar ── */
-  #budget-bar { height: 4px; border-radius: 2px; background: #22c55e; transition: width 0.3s, background 0.3s; }
+/* ── BudgetHUD ── */
+#dp-hud {
+  display:flex; gap:18px; align-items:center; justify-content:center;
+  padding:6px 14px; border:1px solid var(--hairline-2); background:var(--panel);
+  font-feature-settings:'tnum' on;
+}
+.dp-hud-block { display:flex; flex-direction:column; gap:3px; }
+.dp-hud-label { font-family:var(--fm); font-size:10px; color:var(--text-mute); letter-spacing:0.12em; text-transform:uppercase; }
+.dp-hud-val   { font-family:var(--fm); font-size:18px; font-weight:600; display:flex; align-items:baseline; gap:3px; }
+.dp-hud-denom { font-family:var(--fm); font-size:13px; color:var(--text-dim); }
+.dp-hud-bar   { height:4px; background:rgba(255,255,255,0.06); min-width:72px; }
+.dp-hud-bar-fill { height:100%; box-shadow:0 0 6px var(--magenta-dim); transition:width 0.3s; }
+.dp-hud-sep   { width:1px; background:var(--hairline-2); align-self:stretch; }
+.dp-tier-group { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.dp-tier-dots  { display:flex; gap:3px; }
+.dp-tier-dot   { width:8px; height:8px; border-radius:50%; border:1px solid; }
+.dp-tier-lbl   { font-family:var(--fm); font-size:9px; font-weight:700; }
+.dp-uber-slots { display:flex; gap:4px; align-items:center; }
+.dp-uber-chip  { font-family:var(--fm); font-size:10px; font-weight:700; padding:2px 6px; letter-spacing:0.05em; }
 
-  /* ── Type badges ── */
-  .type-badge {
-    display: inline-block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
-    padding: 1px 6px; border-radius: 3px; text-transform: uppercase; color: #fff;
-  }
+/* ── Body grid ── */
+#dp-body {
+  flex:1; min-height:0;
+  display:grid; grid-template-columns:330px 1fr;
+  gap:12px;
+}
 
-  /* ── Pokemon card (overview panel) ── */
-  .poke-card {
-    display: flex; flex-direction: column; align-items: center;
-    background: var(--panel); border: 1px solid var(--hairline);
-    border-radius: 4px; padding: 10px 8px; width: 120px; flex-shrink: 0;
-  }
-  .poke-card img { width: 72px; height: 72px; image-rendering: pixelated; }
-  .poke-card .poke-name { font-size: 0.65rem; text-align: center; color: #e5e7eb; margin-top: 4px; font-weight: 600; }
-  .poke-card .poke-pts  { font-size: 0.6rem; color: var(--cyan); }
+/* ── Left: SlotList ── */
+#dp-left {
+  background:var(--panel); border:1px solid var(--hairline-2);
+  display:flex; flex-direction:column; min-height:0; overflow:hidden;
+}
+.dp-list-header {
+  padding:9px 12px; border-bottom:1px solid var(--hairline-2);
+  display:flex; justify-content:space-between; align-items:baseline;
+  flex-shrink:0;
+}
+.dp-list-header .dp-eyebrow { font-family:var(--fm); font-size:10px; font-weight:500; letter-spacing:0.16em; text-transform:uppercase; color:var(--cyan); }
+#slot-container { overflow-y:auto; flex:1; }
+#slot-container::-webkit-scrollbar { width:3px; }
+#slot-container::-webkit-scrollbar-thumb { background:#1e2d45; }
 
-  /* ── Stat bar ── */
-  .stat-bar-bg { background: var(--panel-2); border-radius: 2px; height: 6px; overflow: hidden; }
-  .stat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+/* ── Slot rows ── */
+.dp-slot-row {
+  display:grid; grid-template-columns:3px 24px 1fr;
+  align-items:center; padding:7px 10px 7px 0;
+  border-bottom:1px solid var(--hairline); cursor:pointer;
+  transition:background 0.1s;
+}
+.dp-slot-row:hover   { background:rgba(255,61,151,0.04); }
+.dp-slot-row.selected { background:rgba(255,61,151,0.06); }
+.dp-slot-accent { width:3px; height:42px; flex-shrink:0; transition:background 0.15s; }
+.dp-slot-num { font-family:var(--fm); font-size:10px; font-weight:700; text-align:center; }
+.dp-slot-info { min-width:0; padding-left:8px; }
+.dp-slot-top  { display:flex; align-items:center; gap:5px; margin-bottom:3px; }
+.dp-slot-bot  { display:flex; align-items:center; gap:4px; min-width:0; }
+.dp-tag-chip  { font-family:var(--fm); font-size:9px; font-weight:700; padding:1px 5px; border:1px solid; letter-spacing:0.08em; flex-shrink:0; }
+.dp-alt-badge { font-family:var(--fm); font-size:9px; font-weight:600; color:var(--cyan); margin-left:auto; flex-shrink:0; }
+.dp-slot-poke { font-family:var(--fm); font-size:11px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dp-slot-empty{ font-family:var(--fm); font-size:10px; color:var(--text-dim); }
+.dp-slot-cost { font-family:var(--fm); font-size:11px; font-weight:600; color:var(--magenta); margin-left:auto; flex-shrink:0; }
+.dp-row-chip  { font-family:var(--fm); font-size:8px; font-weight:700; padding:1px 4px; border-radius:2px; }
 
-  /* ── Move coverage section ── */
-  .move-section-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 10px; cursor: pointer;
-    background: rgba(15,22,35,0.8); border: 1px solid rgba(55,65,81,0.4); border-radius: 6px;
-    margin-bottom: 4px;
-  }
-  .move-section-header:hover { background: var(--panel-2); }
-  .move-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 4px 10px; }
-  .move-chip {
-    display: flex; align-items: center; gap: 4px;
-    background: rgba(15,22,35,0.9); border: 1px solid rgba(55,65,81,0.4);
-    border-radius: 20px; padding: 3px 8px 3px 4px; font-size: 0.65rem; color: #9ca3af;
-  }
-  .move-chip.has-coverage { border-color: rgba(34,197,94,0.5); color: #4ade80; background: rgba(34,197,94,0.07); }
-  .move-chip img { width: 22px; height: 22px; image-rendering: pixelated; border-radius: 50%; }
+/* ── Plans section in left panel ── */
+#dp-plans-section { border-top:1px solid var(--hairline-2); flex-shrink:0; }
+#plans-list { padding:4px 8px 6px; max-height:100px; overflow-y:auto; }
+#plans-list::-webkit-scrollbar { width:3px; }
+#plans-list::-webkit-scrollbar-thumb { background:#1e2d45; }
 
-  /* ── Role panel ── */
-  .role-row { display: flex; align-items: center; justify-content: space-between;
-              padding: 5px 10px; border-bottom: 1px solid rgba(55,65,81,0.2); font-size: 0.75rem; min-height: 34px; }
-  .role-sprites { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
-  .role-sprites img { width: 26px; height: 26px; object-fit: contain; }
-  .role-count { font-weight: 700; width: 24px; text-align: right; }
-  .role-count.ok  { color: #4ade80; }
-  .role-count.warn { color: var(--amber); }
-  .role-count.bad  { color: #f87171; }
+/* ── Right pane ── */
+#dp-right-pane {
+  display:grid; grid-template-rows:auto 1fr;
+  gap:10px; min-height:0;
+}
 
-  /* ── Type chart table ── */
-  #type-chart-table td, #type-chart-table th {
-    width: 28px; height: 22px; text-align: center; font-size: 0.55rem;
-    border: 1px solid rgba(55,65,81,0.25); padding: 0;
-  }
-  .eff-0   { background: rgba(30,30,50,0.9); color: #6b7280; }   /* type immune (0×) */
-  .eff-0ab { background: rgba(139,92,246,0.3); color: #c4b5fd; } /* ability immune */
-  .eff-25  { background: rgba(239,68,68,0.3);  color: #fca5a5; }
-  .eff-50  { background: rgba(239,68,68,0.2);  color: #fca5a5; }
-  .eff-100 { background: transparent; color: #4b5563; }
-  .eff-200 { background: rgba(34,197,94,0.2);  color: #86efac; }
-  .eff-400 { background: rgba(34,197,94,0.45); color: #4ade80; }
+/* ── FocusedSlot ── */
+#dp-focused {
+  background:var(--panel); border:1px solid var(--magenta-dim);
+  box-shadow:0 0 24px -8px var(--magenta-dim);
+  padding:14px; position:relative; overflow-y:auto;
+}
+.dp-focused-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.dp-focused-eyebrow { font-family:var(--fm); font-size:10px; font-weight:500; letter-spacing:0.16em; text-transform:uppercase; color:var(--magenta); }
+.dp-focused-title { font-family:var(--fd); font-size:18px; font-weight:700; text-transform:uppercase; color:var(--text); margin-top:3px; }
+.dp-focused-body { display:grid; grid-template-columns:210px 1fr; gap:14px; }
+.dp-type-select {
+  font-family:var(--fm); font-size:10px; background:var(--panel-2);
+  border:1px solid var(--hairline-2); color:var(--text); padding:4px 8px;
+  border-radius:0; outline:none; cursor:pointer; max-width:180px;
+}
+.dp-type-select:focus { border-color:var(--magenta-dim); }
 
-  /* ── Tabs ── */
-  .dp-tab { padding: 6px 14px; font-size: 0.8rem; border-bottom: 2px solid transparent; cursor: pointer; color: #6b7280; }
-  .dp-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+/* BigModeToggle */
+.dp-big-mode-toggle { display:inline-flex; }
+.dp-mode-seg {
+  padding:7px 16px; border-radius:0; cursor:pointer;
+  font-family:var(--fd); font-size:11px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  background:transparent; color:var(--text-mute); border:none;
+}
+.dp-mode-tier { border:1px solid var(--cyan-dim) !important; }
+.dp-mode-tier.active { background:var(--cyan); color:var(--ink); box-shadow:0 0 12px -2px var(--cyan-dim); }
+.dp-mode-pt { border:1px solid var(--magenta-dim) !important; border-left:none !important; }
+.dp-mode-pt.active { background:var(--magenta); color:var(--ink); box-shadow:0 0 12px -2px var(--magenta-dim); }
 
-  /* ── Checklist rows ── */
-  .cl-row { display: flex; align-items: center; min-height: 28px;
-            border-bottom: 1px solid rgba(55,65,81,0.2); padding: 2px 8px; gap: 6px; }
-  .cl-row:last-child { border-bottom: none; }
-  .cl-label { width: 108px; flex-shrink: 0; font-size: 0.65rem; font-weight: 600; color: #6b7280; }
-  .cl-label.red   { color: #f87171; }
-  .cl-label.orange{ color: #fb923c; }
-  .cl-label.cyan  { color: #67e8f9; }
-  .cl-label.green { color: #4ade80; }
-  .cl-sprites { display: flex; flex-wrap: wrap; gap: 0; align-items: center; }
-  .cl-sprite  { width: 32px; height: 32px; image-rendering: pixelated; }
+/* Captain buttons */
+.dp-capt-row { display:flex; gap:6px; margin-top:8px; }
+.dp-capt-btn { font-family:var(--fm); font-size:10px; font-weight:700; padding:3px 10px; border:1px solid; border-radius:0; cursor:pointer; }
+.dp-tera-btn  { color:var(--cyan); border-color:var(--cyan-dim); background:transparent; }
+.dp-tera-btn.active  { background:var(--cyan-s); border-color:var(--cyan); }
+.dp-zmove-btn { color:#c4b5fd; border-color:rgba(196,181,253,0.4); background:transparent; }
+.dp-zmove-btn.active { background:rgba(196,181,253,0.18); border-color:#c4b5fd; }
+.dp-capt-btn:disabled { opacity:0.25; cursor:default; }
 
-  /* ── Scrollbar in panels ── */
-  #dp-left::-webkit-scrollbar, #dp-right::-webkit-scrollbar { width: 4px; }
-  #dp-left::-webkit-scrollbar-thumb, #dp-right::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 2px; }
+/* PrimaryCard */
+.dp-primary-empty {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; border:1px dashed; padding:14px; min-height:180px;
+}
+.dp-primary-filled {
+  border:1px solid; background:var(--panel-2); padding:14px; position:relative; min-height:180px;
+}
+.dp-primary-label {
+  position:absolute; top:8px; right:10px; font-family:var(--fm); font-size:9px;
+  font-weight:700; letter-spacing:0.15em;
+}
+.dp-primary-sprite {
+  height:80px; border:1px dashed var(--hairline-2); margin-bottom:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:repeating-linear-gradient(45deg,transparent 0 10px,rgba(255,255,255,.015) 10px 11px);
+}
+.dp-primary-search {
+  width:100%; font-family:var(--fm); font-size:11px; height:26px; padding:2px 8px;
+  background:var(--ink); border:1px solid var(--hairline-2); color:var(--text); outline:none;
+}
+.dp-primary-search:focus { border-color:var(--magenta-dim); }
+.dp-primary-name { font-family:var(--fd); font-size:16px; font-weight:700; text-transform:uppercase; color:var(--text); margin:4px 0 3px; }
+.dp-type-chip-lg { font-family:var(--fm); font-size:9px; font-weight:700; padding:2px 5px; border-radius:2px; }
+.dp-primary-cost { font-family:var(--fm); font-size:14px; font-weight:600; color:var(--magenta); margin-left:auto; }
+.dp-clear-btn {
+  font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:0.08em;
+  padding:3px 8px; border:1px solid var(--hairline-2); color:var(--text-dim);
+  background:transparent; cursor:pointer; margin-top:8px;
+}
+.dp-clear-btn:hover { border-color:var(--red); color:var(--red); }
 
-  /* ── Mobile panel toggle ── */
-  #mobile-panel-tabs { display: none; }
+/* AltsList */
+.dp-alts-hdr { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.dp-alts-eyebrow { font-family:var(--fm); font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--cyan); }
+.dp-alts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.dp-alt-card {
+  border:1px solid var(--hairline-2); padding:9px; background:var(--panel-2);
+  display:flex; flex-direction:column; gap:4px; position:relative;
+}
+.dp-alt-rank { font-family:var(--fm); font-size:9px; font-weight:700; color:var(--text-dim); letter-spacing:0.12em; }
+.dp-promote-btn { font-family:var(--fm); font-size:9px; font-weight:600; color:var(--cyan); cursor:pointer; letter-spacing:0.05em; }
+.dp-promote-btn:hover { color:var(--text); }
+.dp-alt-sprite-frame {
+  height:48px; border:1px dashed var(--hairline);
+  display:flex; align-items:center; justify-content:center;
+  background:repeating-linear-gradient(45deg,transparent 0 5px,rgba(255,255,255,.012) 5px 6px);
+}
+.dp-alt-empty-cell {
+  border:1px dashed var(--hairline-2); min-height:120px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:5px; cursor:pointer; transition:border-color 0.15s;
+}
+.dp-alt-empty-cell:hover { border-color:var(--cyan); }
+.dp-alt-search {
+  width:100%; font-family:var(--fm); font-size:10px; height:22px; padding:1px 6px;
+  background:var(--ink); border:1px solid var(--hairline-2); color:var(--text); outline:none;
+}
+.dp-alt-search:focus { border-color:var(--cyan-dim); }
+.dp-alt-remove { position:absolute; top:5px; right:6px; font-family:var(--fm); font-size:9px; color:var(--text-dim); cursor:pointer; line-height:1; }
+.dp-alt-remove:hover { color:var(--red); }
 
-  @media (max-width: 767px) {
-    #dp-root { flex-direction: column; }
+/* ── Analysis panel ── */
+#dp-analysis {
+  background:var(--panel); border:1px solid var(--hairline-2);
+  display:flex; flex-direction:column; min-height:0; overflow:hidden;
+}
+#dp-tabs { display:flex; border-bottom:1px solid var(--hairline-2); flex-shrink:0; }
+.dp-tab { padding:7px 14px; font-family:var(--fm); font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; border-bottom:2px solid transparent; cursor:pointer; color:var(--text-dim); }
+.dp-tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+#dp-analysis-body { flex:1; overflow-y:auto; padding:14px; }
+#dp-analysis-body::-webkit-scrollbar { width:3px; }
+#dp-analysis-body::-webkit-scrollbar-thumb { background:#1e2d45; }
 
-    #mobile-panel-tabs {
-      display: flex; flex-shrink: 0;
-      border-bottom: 1px solid var(--hairline);
-      background: var(--panel);
-      position: sticky; top: 0; z-index: 50;
-    }
-    .mobile-ptab {
-      flex: 1; text-align: center;
-      padding: 10px 0; font-size: 0.78rem; font-weight: 700;
-      color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent;
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .mobile-ptab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+/* ── Autocomplete ── */
+.ac-dropdown {
+  position:fixed; z-index:300; background:var(--panel-2);
+  border:1px solid var(--hairline-2);
+  max-height:180px; overflow-y:auto;
+  box-shadow:0 8px 24px rgba(0,0,0,0.7);
+}
+.ac-item { display:flex; align-items:center; gap:8px; padding:5px 10px; font-family:var(--fm); font-size:11px; cursor:pointer; color:var(--text-mute); }
+.ac-item:hover, .ac-item.active { background:var(--cyan-s); color:var(--cyan); }
+.ac-item img { width:26px; height:26px; image-rendering:pixelated; }
+.hidden { display:none !important; }
 
-    #dp-left {
-      width: 100%; min-width: 0;
-      border-right: none; border-bottom: 1px solid rgba(55,65,81,0.3);
-      flex-shrink: 0;
-      max-height: none;
-      height: auto;
-    }
-    #dp-left.mobile-hidden { display: none; }
+/* ── Analysis content styles (kept from original) ── */
+.type-badge { display:inline-block; font-size:0.6rem; font-weight:700; letter-spacing:0.04em; padding:1px 6px; border-radius:3px; text-transform:uppercase; color:#fff; }
+.poke-card { display:flex; flex-direction:column; align-items:center; background:var(--panel-2); border:1px solid var(--hairline-2); padding:10px 8px; width:120px; flex-shrink:0; }
+.poke-card img { width:72px; height:72px; image-rendering:pixelated; }
+.poke-card .poke-name { font-size:0.65rem; text-align:center; color:var(--text); margin-top:4px; font-weight:600; }
+.poke-card .poke-pts  { font-size:0.6rem; color:var(--magenta); }
+.stat-bar-bg   { background:rgba(255,255,255,0.06); border-radius:0; height:4px; overflow:hidden; }
+.stat-bar-fill { height:100%; border-radius:0; transition:width 0.4s; }
+.move-section-header { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; cursor:pointer; background:rgba(10,10,20,0.8); border:1px solid var(--hairline); margin-bottom:4px; }
+.move-section-header:hover { background:var(--panel-2); }
+.move-grid { display:flex; flex-wrap:wrap; gap:4px; padding:6px 4px 10px; }
+.move-chip { display:flex; align-items:center; gap:4px; background:rgba(10,10,20,0.9); border:1px solid var(--hairline); padding:3px 8px 3px 4px; font-size:0.65rem; color:var(--text-dim); }
+.move-chip.has-coverage { border-color:rgba(61,229,255,0.4); color:var(--cyan); background:rgba(61,229,255,0.06); }
+.move-chip img { width:22px; height:22px; image-rendering:pixelated; border-radius:50%; }
+.role-row { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; border-bottom:1px solid var(--hairline); font-size:0.75rem; min-height:34px; }
+.role-sprites { display:flex; align-items:center; gap:2px; flex-wrap:wrap; }
+.role-sprites img { width:26px; height:26px; object-fit:contain; }
+.role-count { font-weight:700; width:24px; text-align:right; }
+.role-count.ok   { color:var(--lime); }
+.role-count.warn { color:var(--amber); }
+.role-count.bad  { color:var(--red); }
+#type-chart-table td, #type-chart-table th { width:28px; height:22px; text-align:center; font-size:0.55rem; border:1px solid var(--hairline); padding:0; }
+.eff-0   { background:rgba(20,20,40,0.9); color:#6b7280; }
+.eff-0ab { background:rgba(139,92,246,0.3); color:#c4b5fd; }
+.eff-25  { background:rgba(239,68,68,0.3); color:#fca5a5; }
+.eff-50  { background:rgba(239,68,68,0.2); color:#fca5a5; }
+.eff-100 { background:transparent; color:var(--text-dim); }
+.eff-200 { background:rgba(61,229,255,0.15); color:#86efac; }
+.eff-400 { background:rgba(61,229,255,0.35); color:var(--lime); }
+.cl-row { display:flex; align-items:center; min-height:28px; border-bottom:1px solid var(--hairline); padding:2px 8px; gap:6px; }
+.cl-row:last-child { border-bottom:none; }
+.cl-label { width:108px; flex-shrink:0; font-size:0.65rem; font-weight:600; color:var(--text-dim); }
+.cl-label.red   { color:var(--red); }
+.cl-label.orange{ color:var(--amber); }
+.cl-label.cyan  { color:var(--cyan); }
+.cl-label.green { color:var(--lime); }
+.cl-sprites { display:flex; flex-wrap:wrap; gap:0; align-items:center; }
+.cl-sprite  { width:32px; height:32px; image-rendering:pixelated; }
 
-    #dp-right {
-      flex: 1;
-      padding: 12px;
-      min-height: 0;
-      overflow-y: auto;
-    }
-    #dp-right.mobile-hidden { display: none; }
-
-    /* Autocomplete: cap width on mobile so it doesn't overflow */
-    .ac-dropdown { max-width: calc(100vw - 24px); left: 12px !important; }
-
-    /* Slot row: tighten up on narrow screens */
-    .slot-type-select { flex: 0 0 100px; font-size: 0.63rem; }
-    .slot-search { font-size: 0.68rem; }
-  }
+/* ── Type badge colors ── */
+.type-normal   { background:#A8A878; color:#fff; }
+.type-fire     { background:#F08030; color:#fff; }
+.type-water    { background:#6890F0; color:#fff; }
+.type-electric { background:#F8D030; color:#333; }
+.type-grass    { background:#78C850; color:#fff; }
+.type-ice      { background:#98D8D8; color:#333; }
+.type-fighting { background:#C03028; color:#fff; }
+.type-poison   { background:#A040A0; color:#fff; }
+.type-ground   { background:#E0C068; color:#333; }
+.type-flying   { background:#A890F0; color:#fff; }
+.type-psychic  { background:#F85888; color:#fff; }
+.type-bug      { background:#A8B820; color:#fff; }
+.type-rock     { background:#B8A038; color:#fff; }
+.type-ghost    { background:#705898; color:#fff; }
+.type-dragon   { background:#7038F8; color:#fff; }
+.type-dark     { background:#705848; color:#fff; }
+.type-steel    { background:#B8B8D0; color:#333; }
+.type-fairy    { background:#EE99AC; color:#333; }
+.type-stellar  { background:#40B5A5; color:#fff; }
 </style>
 
-<!-- Type colors JS constant -->
+<!-- JS constants (same as before) -->
 <script>
 const TYPE_COLORS = {
   Normal:'#9DA0AA', Fire:'#FF6B3E', Water:'#5090D6', Electric:'#F4D23C',
@@ -203,50 +340,41 @@ const TYPE_COLORS = {
   Rock:'#C5B78C', Ghost:'#5269AD', Dragon:'#0B6DC3', Dark:'#5A5465',
   Steel:'#5A8EA2', Fairy:'#EC8FE6',
 };
-
-// Gen 8 type chart: EFF[atk][def] = multiplier*100
-// Rows = attacking type, Cols = defending type
-// Order: Normal,Fire,Water,Electric,Grass,Ice,Fighting,Poison,Ground,Flying,Psychic,Bug,Rock,Ghost,Dragon,Dark,Steel,Fairy
 const TYPES = ['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
 const EFF_MATRIX = [
-//  Nor  Fir  Wat  Ele  Gra  Ice  Fig  Poi  Gro  Fly  Psy  Bug  Roc  Gho  Dra  Dar  Ste  Fai
-  [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,  50,   0, 100, 100,  50, 100], // Normal
-  [100,  50,  50, 100, 200, 200, 100, 100, 100, 100, 100, 200,  50, 100,  50, 100, 200, 100], // Fire
-  [100, 200,  50, 100,  50, 100, 100, 100, 200, 100, 100, 100, 200, 100,  50, 100, 100, 100], // Water
-  [100, 100, 200,  50,  50, 100, 100, 100,   0, 200, 100, 100, 100, 100,  50, 100, 100, 100], // Electric
-  [100,  50, 200, 100,  50, 100, 100,  50, 200,  50, 100,  50, 200, 100,  50, 100,  50, 100], // Grass
-  [100,  50,  50, 100, 200,  50, 100, 100, 200, 200, 100, 100, 100, 100, 200, 100,  50, 100], // Ice
-  [200, 100, 100, 100, 100, 200, 100,  50, 100,  50,  50,  50, 200,   0, 100, 200, 200,  50], // Fighting
-  [100, 100, 100, 100, 200, 100, 100,  50,  50, 100, 100, 100,  50,  50, 100, 100,   0, 200], // Poison
-  [100, 200, 100, 200,  50, 100, 100, 200, 100,   0, 100,  50, 200, 100, 100, 100, 200, 100], // Ground
-  [100, 100, 100,  50, 200, 100, 200, 100, 100, 100, 100, 200,  50, 100, 100, 100,  50, 100], // Flying
-  [100, 100, 100, 100, 100, 100, 200, 200, 100, 100,  50, 100, 100, 100, 100,   0,  50, 100], // Psychic
-  [100,  50, 100, 100, 200, 100,  50,  50, 100,  50, 200, 100, 100,  50, 100, 200,  50,  50], // Bug
-  [100, 200, 100, 100, 100, 200,  50, 100,  50, 200, 100, 200, 100, 100, 100, 100,  50, 100], // Rock
-  [  0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 200, 100, 100, 200, 100,  50, 100, 100], // Ghost
-  [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 200, 100,  50,   0], // Dragon
-  [100, 100, 100, 100, 100, 100,  50, 100, 100, 100, 200, 100, 100, 200, 100,  50, 100,  50], // Dark  (SE: Psychic/Ghost; ½: Fighting/Dark/Fairy)
-  [100,  50,  50,  50, 100, 200, 100, 100, 100, 100, 100, 100, 200, 100, 100, 100,  50, 200], // Steel (SE: Ice/Rock/Fairy; ½: Fire/Water/Electric/Steel)
-  [100,  50, 100, 100, 100, 100, 200,  50, 100, 100, 100, 100, 100, 100, 200, 200,  50, 100], // Fairy (SE: Fighting/Dragon/Dark; ½: Fire/Poison/Steel)
+  [100,100,100,100,100,100,100,100,100,100,100,100, 50,  0,100,100, 50,100],
+  [100, 50, 50,100,200,200,100,100,100,100,100,200, 50,100, 50,100,200,100],
+  [100,200, 50,100, 50,100,100,100,200,100,100,100,200,100, 50,100,100,100],
+  [100,100,200, 50, 50,100,100,100,  0,200,100,100,100,100, 50,100,100,100],
+  [100, 50,200,100, 50,100,100, 50,200, 50,100, 50,200,100, 50,100, 50,100],
+  [100, 50, 50,100,200, 50,100,100,200,200,100,100,100,100,200,100, 50,100],
+  [200,100,100,100,100,200,100, 50,100, 50, 50, 50,200,  0,100,200,200, 50],
+  [100,100,100,100,200,100,100, 50, 50,100,100,100, 50, 50,100,100,  0,200],
+  [100,200,100,200, 50,100,100,200,100,  0,100, 50,200,100,100,100,200,100],
+  [100,100,100, 50,200,100,200,100,100,100,100,200, 50,100,100,100, 50,100],
+  [100,100,100,100,100,100,200,200,100,100, 50,100,100,100,100,  0, 50,100],
+  [100, 50,100,100,200,100, 50, 50,100, 50,200,100,100, 50,100,200, 50, 50],
+  [100,200,100,100,100,200, 50,100, 50,200,100,200,100,100,100,100, 50,100],
+  [  0,100,100,100,100,100,100,100,100,100,200,100,100,200,100, 50,100,100],
+  [100,100,100,100,100,100,100,100,100,100,100,100,100,100,200,100, 50,  0],
+  [100,100,100,100,100,100, 50,100,100,100,200,100,100,200,100, 50,100, 50],
+  [100, 50, 50, 50,100,200,100,100,100,100,100,100,200,100,100,100, 50,200],
+  [100, 50,100,100,100,100,200, 50,100,100,100,100,100,100,200,200, 50,100],
 ];
-
-// Ability-based type immunities: ability (lowercase) → { TypeName: 0 }
 const ABILITY_IMMUNITIES = {
-  'levitate':         { 'Ground': 0 },
-  'flash fire':       { 'Fire': 0 },
-  'volt absorb':      { 'Electric': 0 },
-  'lightning rod':    { 'Electric': 0 },
-  'motor drive':      { 'Electric': 0 },
-  'water absorb':     { 'Water': 0 },
-  'dry skin':         { 'Water': 0 },
-  'sap sipper':       { 'Grass': 0 },
-  'earth eater':      { 'Ground': 0 },
-  'well-baked body':  { 'Fire': 0 },
-  'soundproof':       {},  // immune to sound moves (not type-based, skip)
-  'wind rider':       {},  // immune to wind moves (not type-based, skip)
+  'levitate':        {'Ground':0},
+  'flash fire':      {'Fire':0},
+  'volt absorb':     {'Electric':0},
+  'lightning rod':   {'Electric':0},
+  'motor drive':     {'Electric':0},
+  'water absorb':    {'Water':0},
+  'dry skin':        {'Water':0},
+  'sap sipper':      {'Grass':0},
+  'earth eater':     {'Ground':0},
+  'well-baked body': {'Fire':0},
+  'soundproof':      {},
+  'wind rider':      {},
 };
-
-// Return ability immunities for a pokemon as { TypeName: 0 }
 function getAbilityImmunities(p) {
   const result = {};
   [p.ability1, p.ability2, p.ability3].forEach(ab => {
@@ -256,42 +384,38 @@ function getAbilityImmunities(p) {
   });
   return result;
 }
-
-// MOVE CATEGORIES
 const MOVE_CATEGORIES = {
-  "Hazards":    ["Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Ceaseless Edge","Stone Axe"],
-  "Removal":    ["Rapid Spin","Defog","Court Change","Mortal Spin","Steel Roller"],
-  "Recovery":   ["Recover","Roost","Slack Off","Soft-Boiled","Shore Up","Heal Order","Moonlight","Synthesis","Morning Sun","Wish","Healing Wish","Jungle Healing","Milk Drink","Life Dew","Leech Seed","Aqua Ring","Ingrain","Pain Split","Rest"],
-  "Support":    ["Trick Room","Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Tailwind","Helping Hand","Follow Me","Rage Powder","Wide Guard","Quick Guard","Fake Out","Safeguard","Light Screen","Reflect","Aurora Veil","Aromatherapy","Heal Bell","Misty Terrain","Electric Terrain","Grassy Terrain","Psychic Terrain","Magic Coat","Encore","Disable","Taunt","Imprison","Embargo","Torment","Gravity","Ally Switch","After You","Me First","Baton Pass"],
-  "Status":     ["Thunder Wave","Will-O-Wisp","Toxic","Nuzzle","Stun Spore","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Lovely Kiss","Swagger","Flatter","Confuse Ray","Attract","Powder","Gastro Acid","Worry Seed","Entrainment","Skill Swap"],
-  "Momentum":   ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"],
-  "Priority":   ["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Baby-Doll Eyes","Jet Punch"],
-  "Phasing":    ["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song","Topsy-Turvy"],
-  "Trap":       ["Magnet Pull","Arena Trap","Shadow Tag","Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Clamp","Sand Tomb","Thunder Cage","Octolock","No Retreat"],
-  "Tactical":   ["Knock Off","Trick","Switcheroo","Skill Swap","Magic Room","Wonder Room","Poltergeist","Bestow","Fling","Natural Gift","Thief","Covet","Role Play"],
-  "Setup":      ["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Shell Smash","Quiver Dance","Belly Drum","Agility","Rock Polish","Autotomize","Bulk Up","Coil","Iron Defense","Curse","Cotton Guard","Amnesia","Stockpile","Work Up","Hone Claws","Shift Gear","Gear Up","Power-Up Punch","Charge","Charge Beam","Relic Song","Victory Dance","Clangorous Soul","No Retreat","Protosynthesis","Quark Drive"],
-  "Weather":    ["Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Drizzle","Drought","Sand Stream","Snow Warning","Cloud Nine","Air Lock","Primordial Sea","Desolate Land","Delta Stream"],
-  "Doubles":    ["Protect","Wide Guard","Quick Guard","Follow Me","Rage Powder","Helping Hand","Fake Out","Feint","Ally Switch","Tailwind","Beat Up","Coaching","Instruct","Life Dew","Heal Pulse","Healing Wish","Lunar Dance","Self-Destruct","Explosion","Final Gambit","Perish Song","Imprison","Trick Room","Magic Room","Wonder Room"],
+  "Hazards":  ["Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Ceaseless Edge","Stone Axe"],
+  "Removal":  ["Rapid Spin","Defog","Court Change","Mortal Spin","Steel Roller"],
+  "Recovery": ["Recover","Roost","Slack Off","Soft-Boiled","Shore Up","Heal Order","Moonlight","Synthesis","Morning Sun","Wish","Healing Wish","Jungle Healing","Milk Drink","Life Dew","Leech Seed","Aqua Ring","Ingrain","Pain Split","Rest"],
+  "Support":  ["Trick Room","Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Tailwind","Helping Hand","Follow Me","Rage Powder","Wide Guard","Quick Guard","Fake Out","Safeguard","Light Screen","Reflect","Aurora Veil","Aromatherapy","Heal Bell","Misty Terrain","Electric Terrain","Grassy Terrain","Psychic Terrain","Magic Coat","Encore","Disable","Taunt","Imprison","Embargo","Torment","Gravity","Ally Switch","After You","Me First","Baton Pass"],
+  "Status":   ["Thunder Wave","Will-O-Wisp","Toxic","Nuzzle","Stun Spore","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Lovely Kiss","Swagger","Flatter","Confuse Ray","Attract","Powder","Gastro Acid","Worry Seed","Entrainment","Skill Swap"],
+  "Momentum": ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"],
+  "Priority": ["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Baby-Doll Eyes","Jet Punch"],
+  "Phasing":  ["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song","Topsy-Turvy"],
+  "Trap":     ["Magnet Pull","Arena Trap","Shadow Tag","Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Clamp","Sand Tomb","Thunder Cage","Octolock","No Retreat"],
+  "Tactical": ["Knock Off","Trick","Switcheroo","Skill Swap","Magic Room","Wonder Room","Poltergeist","Bestow","Fling","Natural Gift","Thief","Covet","Role Play"],
+  "Setup":    ["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Shell Smash","Quiver Dance","Belly Drum","Agility","Rock Polish","Autotomize","Bulk Up","Coil","Iron Defense","Curse","Cotton Guard","Amnesia","Stockpile","Work Up","Hone Claws","Shift Gear","Gear Up","Power-Up Punch","Charge","Charge Beam","Relic Song","Victory Dance","Clangorous Soul","No Retreat","Protosynthesis","Quark Drive"],
+  "Weather":  ["Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Drizzle","Drought","Sand Stream","Snow Warning","Cloud Nine","Air Lock","Primordial Sea","Desolate Land","Delta Stream"],
+  "Doubles":  ["Protect","Wide Guard","Quick Guard","Follow Me","Rage Powder","Helping Hand","Fake Out","Feint","Ally Switch","Tailwind","Beat Up","Coaching","Instruct","Life Dew","Heal Pulse","Healing Wish","Lunar Dance","Self-Destruct","Explosion","Final Gambit","Perish Song","Imprison","Trick Room","Magic Room","Wonder Room"],
 };
-
-// ROLES with thresholds
 const ROLES = [
-  { label: "Stealth Rock Setters",  min: 3, moves: ["Stealth Rock"] },
-  { label: "Entry Hazard Removal",  min: 3, moves: ["Rapid Spin","Defog","Court Change","Mortal Spin"] },
-  { label: "T-Spike Absorber",      min: 1, moves: ["Toxic Spikes"], checkType: "Poison" },
-  { label: "Momentum Users",        min: 5, moves: ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"] },
-  { label: "Speed Control",         min: 3, moves: ["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electroweb","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash"] },
-  { label: "Wish Passers",          min: 1, moves: ["Wish"] },
-  { label: "Cleric",                min: 1, moves: ["Aromatherapy","Heal Bell"] },
-  { label: "Physical Sweeper",      min: 2, moves: ["Swords Dance","Dragon Dance","Belly Drum","Shift Gear","Coil","Victory Dance","Triple Arrows"] },
-  { label: "Special Sweeper",       min: 2, moves: ["Nasty Plot","Calm Mind","Quiver Dance","Clangorous Soul","Charge Beam"] },
-  { label: "Trick Room Setter",     min: 1, moves: ["Trick Room"] },
-  { label: "Weather Setter",        min: 1, moves: ["Rain Dance","Sunny Day","Sandstorm","Hail","Snow"] },
-  { label: "Priority User",         min: 2, moves: ["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock"] },
-  { label: "Phaser",                min: 2, moves: ["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song"] },
-  { label: "Trapper",               min: 1, moves: ["Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Magnet Pull","Arena Trap","Shadow Tag"] },
-  { label: "Pivot",                 min: 3, moves: ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot"] },
-  { label: "Knock Off User",        min: 3, moves: ["Knock Off"] },
+  { label:"Stealth Rock Setters", min:3, moves:["Stealth Rock"] },
+  { label:"Entry Hazard Removal", min:3, moves:["Rapid Spin","Defog","Court Change","Mortal Spin"] },
+  { label:"T-Spike Absorber",     min:1, moves:["Toxic Spikes"], checkType:"Poison" },
+  { label:"Momentum Users",       min:5, moves:["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"] },
+  { label:"Speed Control",        min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electroweb","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash"] },
+  { label:"Wish Passers",         min:1, moves:["Wish"] },
+  { label:"Cleric",               min:1, moves:["Aromatherapy","Heal Bell"] },
+  { label:"Physical Sweeper",     min:2, moves:["Swords Dance","Dragon Dance","Belly Drum","Shift Gear","Coil","Victory Dance","Triple Arrows"] },
+  { label:"Special Sweeper",      min:2, moves:["Nasty Plot","Calm Mind","Quiver Dance","Clangorous Soul","Charge Beam"] },
+  { label:"Trick Room Setter",    min:1, moves:["Trick Room"] },
+  { label:"Weather Setter",       min:1, moves:["Rain Dance","Sunny Day","Sandstorm","Hail","Snow"] },
+  { label:"Priority User",        min:2, moves:["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock"] },
+  { label:"Phaser",               min:2, moves:["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song"] },
+  { label:"Trapper",              min:1, moves:["Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Magnet Pull","Arena Trap","Shadow Tag"] },
+  { label:"Pivot",                min:3, moves:["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot"] },
+  { label:"Knock Off User",       min:3, moves:["Knock Off"] },
 ];
 
 const POKEMON_DB = {{ pokemon_json | safe }};
@@ -299,7 +423,6 @@ const BUDGET = {{ budget }};
 const MECHANIC_TERA  = {{ mechanic_tera|int }};
 const MECHANIC_ZMOVE = {{ mechanic_zmove|int }};
 
-// Slot types
 const SLOT_TYPES = [
   "Uber 1","Uber 2",
   "Tier 1 (Paid)","Tier 1 (Free)",
@@ -309,151 +432,120 @@ const SLOT_TYPES = [
   "Tier 5 (Paid)","Tier 5 (Free)",
   "Mega (Free)","Point Pick (Paid)","Point Pick (Free)",
 ];
-
-// Which slot types cost FP budget?
-function slotCostsFP(slotType) {
-  return slotType.includes("Paid") && slotType.includes("Point Pick") === false
-    ? false
-    : slotType === "Point Pick (Paid)";
-}
-// Does slot count toward budget?
-function slotUsesBudget(slotType) {
-  return slotType === "Point Pick (Paid)";
-}
+function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
 </script>
 
-<div id="dp-root">
-  <!-- Mobile panel toggle (hidden on desktop via CSS) -->
-  <div id="mobile-panel-tabs">
-    <div class="mobile-ptab active" id="mptab-picks" onclick="switchMobilePanel('picks')"><svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> Picks</div>
-    <div class="mobile-ptab" id="mptab-analysis" onclick="switchMobilePanel('analysis')"><svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg> Analysis</div>
+<div id="dp-root" class="dp-builder">
+
+  <!-- ── TopBar ── -->
+  <div id="dp-topbar">
+    <div class="dp-topbar-title">
+      <div class="dp-eyebrow">// DRAFT_PREP &middot; BUILDER</div>
+      <div class="dp-h2">Your Team</div>
+    </div>
+    <div id="dp-hud"><!-- filled by JS --></div>
+    <div class="dp-topbar-actions">
+      <input id="plan-name-input" type="text" placeholder="Plan name&hellip;" class="dp-plan-input">
+      <button onclick="saveCurrentPlan()" class="dp-btn primary">&#x25B8; SAVE</button>
+      <button onclick="clearAllSlots()" class="dp-btn ghost">&#x21BA; CLEAR</button>
+    </div>
   </div>
 
-  <!-- ═══════ LEFT PANEL: pick slots ═══════ -->
-  <div id="dp-left">
-    <div class="px-3 py-3 border-b border-gray-800/60">
-      <div class="text-xs font-bold uppercase tracking-wider mb-1" style="color:var(--cyan);">Draft Prep</div>
-      <div class="text-xs text-gray-500 mb-2">Build your team · explore coverage</div>
-      <!-- Budget tracker -->
-      <div class="bg-gray-900/60 rounded-lg p-2">
-        <div class="flex justify-between text-xs mb-1">
-          <span class="text-gray-400">FP Budget</span>
-          <span id="budget-label" class="font-bold" style="color:var(--cyan);">0 / {{ budget }}pts</span>
-        </div>
-        <div class="stat-bar-bg w-full">
-          <div id="budget-bar" style="width:0%"></div>
-        </div>
+  <!-- ── Body ── -->
+  <div id="dp-body">
+
+    <!-- Left: SlotList -->
+    <div id="dp-left">
+      <div class="dp-list-header">
+        <span class="dp-eyebrow">// YOUR_TEAM</span>
+        <span id="dp-fill-count" style="font-family:var(--fm);font-size:10px;color:var(--text-dim);">0 / 11 FILLED</span>
       </div>
-      <!-- Plan controls -->
-      <div class="mt-2 flex gap-1.5">
-        <input id="plan-name-input" type="text" placeholder="Plan name…"
-          style="flex:1;min-width:0;font-size:0.72rem;height:26px;padding:2px 6px;background:var(--panel-2);border:1px solid var(--hairline);color:#e5e7eb;border-radius:4px;outline:none">
-        <button onclick="saveCurrentPlan()"
-          style="font-size:0.68rem;height:26px;padding:0 8px;background:var(--magenta-soft);border:1px solid var(--magenta-dim);color:var(--magenta);border-radius:4px;cursor:pointer;flex-shrink:0;font-weight:700">
-          Save
-        </button>
-        <button onclick="clearAllSlots()"
-          style="font-size:0.68rem;height:26px;padding:0 8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:4px;cursor:pointer;flex-shrink:0;font-weight:700">
-          Clear
-        </button>
-      </div>
-      <!-- Saved plans list -->
-      <div id="plans-list" class="mt-1.5 space-y-0.5"></div>
-    </div>
+      <div id="slot-container"></div>
 
-    {% if mechanic_tera == '1' or mechanic_zmove == '1' %}
-    <!-- Captain summary -->
-    <div id="captain-summary" class="px-3 py-2 border-b border-gray-800/60" style="display:none;">
-      <!-- populated by JS -->
-    </div>
-    {% endif %}
-
-    <!-- Slot rows -->
-    <div id="slot-container">
-      <!-- JS generates these -->
-    </div>
-
-    <!-- Autocomplete dropdown (shared, positioned via JS) -->
-    <div id="ac-dropdown" class="ac-dropdown hidden"></div>
-  </div>
-
-  <!-- ═══════ RIGHT PANEL: tabs ═══════ -->
-  <div id="dp-right">
-    <!-- Tabs -->
-    <div class="flex gap-0 border-b border-gray-800/60 mb-4">
-      <div class="dp-tab active" onclick="switchTab('overview')" id="tab-overview">Overview</div>
-      <div class="dp-tab" onclick="switchTab('roles')" id="tab-roles">Roles &amp; Niches</div>
-      <div class="dp-tab" onclick="switchTab('moves')" id="tab-moves">Move Coverage</div>
-    </div>
-
-    <!-- OVERVIEW TAB -->
-    <div id="panel-overview">
-      <!-- Pokemon cards row -->
-      <div id="poke-row" class="flex gap-3 flex-wrap mb-5"></div>
-
-      <!-- Stat bars per pokemon -->
-      <div id="stats-cards" class="mb-6"></div>
-
-      <!-- Type coverage + type chart -->
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <!-- Team type checklist -->
-        <div>
-          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Team Types</div>
-          <div class="text-xs text-gray-600 mb-2">Which types are represented on your team</div>
-          <div id="type-coverage-grid" class="flex flex-wrap gap-1.5 mb-4"></div>
+      <!-- Saved plans -->
+      <div id="dp-plans-section">
+        <div class="dp-list-header" style="padding:7px 12px;">
+          <span class="dp-eyebrow" style="font-size:9px;">// SAVED_PLANS</span>
         </div>
-        <!-- Defensive type chart -->
-        <div>
-          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Defensive Type Matchups</div>
-          <div class="text-xs text-gray-600 mb-2">★ = ability immune &nbsp;·&nbsp; ✦ = purple cell</div>
-          <div class="overflow-x-auto">
-            <table id="type-chart-table" class="border-collapse text-center" style="min-width:560px">
-              <thead><tr>
-                <th class="text-gray-600 font-normal text-left pl-1" style="width:72px;font-size:0.5rem">Def ↓ / Atk →</th>
-              </tr></thead>
-              <tbody id="type-chart-body"></tbody>
-            </table>
+        <div id="plans-list"></div>
+      </div>
+    </div>
+
+    <!-- Right pane -->
+    <div id="dp-right-pane">
+
+      <!-- FocusedSlot -->
+      <div id="dp-focused">
+        <!-- filled by buildFocusedSlot() -->
+      </div>
+
+      <!-- Analysis panel -->
+      <div id="dp-analysis">
+        <div id="dp-tabs">
+          <div class="dp-tab active" onclick="switchTab('overview')"  id="tab-overview">Overview</div>
+          <div class="dp-tab"        onclick="switchTab('roles')"     id="tab-roles">Roles &amp; Niches</div>
+          <div class="dp-tab"        onclick="switchTab('moves')"     id="tab-moves">Move Coverage</div>
+        </div>
+        <div id="dp-analysis-body">
+
+          <!-- OVERVIEW -->
+          <div id="panel-overview">
+            <div id="poke-row" class="flex gap-3 flex-wrap mb-5"></div>
+            <div id="stats-cards" class="mb-6"></div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div>
+                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Team Types</div>
+                <div id="type-coverage-grid" class="flex flex-wrap gap-1.5 mb-4"></div>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Defensive Type Matchups</div>
+                <div class="text-xs text-gray-600 mb-2">&#9733; = ability immune &nbsp;&middot;&nbsp; &#10022; = purple cell</div>
+                <div class="overflow-x-auto">
+                  <table id="type-chart-table" class="border-collapse text-center" style="min-width:560px">
+                    <thead><tr><th class="text-gray-600 font-normal text-left pl-1" style="width:72px;font-size:0.5rem">Def &darr; / Atk &rarr;</th></tr></thead>
+                    <tbody id="type-chart-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+              <div>
+                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Moves Checklist</div>
+                <div id="moves-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Stats Checklist</div>
+                <div id="stats-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
+              </div>
+            </div>
           </div>
+
+          <!-- ROLES -->
+          <div id="panel-roles" class="hidden">
+            <div class="text-xs text-gray-500 mb-3">Green = at or above threshold &middot; Yellow = 1 below &middot; Red = below</div>
+            <div id="roles-body" class="rounded-lg overflow-hidden border border-gray-800/60"></div>
+          </div>
+
+          <!-- MOVES -->
+          <div id="panel-moves" class="hidden">
+            <div class="text-xs text-gray-500 mb-3">Highlights which categories your selected team provides coverage for</div>
+            <div id="moves-body" class="space-y-2"></div>
+          </div>
+
         </div>
       </div>
-
-      <!-- Moves + Stats checklists -->
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-        <div>
-          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Moves Checklist</div>
-          <div id="moves-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
-        </div>
-        <div>
-          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Stats Checklist</div>
-          <div id="stats-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
-        </div>
-      </div>
     </div>
-
-    <!-- ROLES TAB -->
-    <div id="panel-roles" class="hidden">
-      <div class="text-xs text-gray-500 mb-3">Green = at or above threshold · Yellow = 1 below · Red = below</div>
-      <div id="roles-body" class="rounded-lg overflow-hidden border border-gray-800/60"></div>
-    </div>
-
-    <!-- MOVES TAB -->
-    <div id="panel-moves" class="hidden">
-      <div class="text-xs text-gray-500 mb-3">Highlights which categories your selected team provides coverage for</div>
-      <div id="moves-body" class="space-y-2"></div>
-    </div>
-
   </div>
-</div>
 
-<!-- ── Hidden autocomplete input ref ── -->
-<input type="hidden" id="ac-active-slot" value="">
+  <!-- Shared AC dropdown -->
+  <div id="ac-dropdown" class="ac-dropdown hidden"></div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════
 //  State
 // ══════════════════════════════════════════════
 const NUM_SLOTS = 11;
-// slots[i] = { type, pokemon, tera_captain, zmove_captain, alts: [{pokemon}] }
 const slots = Array.from({length: NUM_SLOTS}, (_, i) => ({
   type: i === 0 ? "Uber 1" : i === 1 ? "Uber 2" : i < 7 ? `Tier ${i-1} (Paid)` : "Point Pick (Paid)",
   pokemon: null,
@@ -462,167 +554,518 @@ const slots = Array.from({length: NUM_SLOTS}, (_, i) => ({
   alts: [],
 }));
 
-let acActiveSlot = -1;
-let acResults = [];
-let acHighlight = 0;
-let acAltMode = null; // { slotIdx, altIdx } when editing an alt, else null
+let acActiveSlot    = -1;
+let acResults       = [];
+let acHighlight     = 0;
+let acAltMode       = null;
+let selectedSlotIdx = 0;
+let _acCloseTimer   = null;
+
+function scheduleCloseAC() {
+  _acCloseTimer = setTimeout(closeAC, 160);
+}
+function cancelCloseAC() {
+  if (_acCloseTimer) { clearTimeout(_acCloseTimer); _acCloseTimer = null; }
+}
 
 // ══════════════════════════════════════════════
-//  Init
+//  Slot tag helpers
+// ══════════════════════════════════════════════
+const TAG_MAP = {
+  'Uber 1':          { label:'U-1', color:'var(--uber-gold)' },
+  'Uber 2':          { label:'U-2', color:'var(--uber-silver)' },
+  'Tier 1 (Paid)':   { label:'T1',  color:'var(--tier-1)' },
+  'Tier 1 (Free)':   { label:'T1',  color:'var(--tier-1)' },
+  'Tier 2 (Paid)':   { label:'T2',  color:'var(--tier-2)' },
+  'Tier 2 (Free)':   { label:'T2',  color:'var(--tier-2)' },
+  'Tier 3 (Paid)':   { label:'T3',  color:'var(--tier-3)' },
+  'Tier 3 (Free)':   { label:'T3',  color:'var(--tier-3)' },
+  'Tier 4 (Paid)':   { label:'T4',  color:'var(--tier-4)' },
+  'Tier 4 (Free)':   { label:'T4',  color:'var(--tier-4)' },
+  'Tier 5 (Paid)':   { label:'T5',  color:'var(--tier-5)' },
+  'Tier 5 (Free)':   { label:'T5',  color:'var(--tier-5)' },
+  'Mega (Free)':     { label:'MEG', color:'var(--tier-3)' },
+  'Point Pick (Paid)':{ label:'PT', color:'var(--magenta)' },
+  'Point Pick (Free)':{ label:'PT', color:'var(--magenta)' },
+};
+function getSlotTag(t) { return TAG_MAP[t] || { label:'PT', color:'var(--magenta)' }; }
+
+const TYPE_NAME_MAP = {
+  'Uber 1':'UBER PICK · GLD','Uber 2':'UBER PICK · SLV',
+  'Tier 1 (Paid)':'TIER 1 PICK','Tier 1 (Free)':'TIER 1 FREE',
+  'Tier 2 (Paid)':'TIER 2 PICK','Tier 2 (Free)':'TIER 2 FREE',
+  'Tier 3 (Paid)':'TIER 3 PICK','Tier 3 (Free)':'TIER 3 FREE',
+  'Tier 4 (Paid)':'TIER 4 PICK','Tier 4 (Free)':'TIER 4 FREE',
+  'Tier 5 (Paid)':'TIER 5 PICK','Tier 5 (Free)':'TIER 5 FREE',
+  'Mega (Free)':'MEGA EVO','Point Pick (Paid)':'POINT PICK','Point Pick (Free)':'POINT FREE',
+};
+function getSlotTypeName(t) { return TYPE_NAME_MAP[t] || t.toUpperCase(); }
+
+// ══════════════════════════════════════════════
+//  Slot selection
+// ══════════════════════════════════════════════
+function selectSlot(idx) {
+  selectedSlotIdx = idx;
+  closeAC();
+  buildSlotRows();
+  buildFocusedSlot(idx);
+}
+
+// ══════════════════════════════════════════════
+//  Slot list (compact rows)
 // ══════════════════════════════════════════════
 function buildSlotRows() {
-  const container = document.getElementById("slot-container");
-  container.innerHTML = "";
+  const container = document.getElementById('slot-container');
+  container.innerHTML = '';
+  let filled = 0;
   slots.forEach((slot, i) => {
-    const row = document.createElement("div");
-    row.className = "slot-row";
+    const tag  = getSlotTag(slot.type);
+    const isSel = (i === selectedSlotIdx);
+    if (slot.pokemon) filled++;
+
+    const row = document.createElement('div');
+    row.className = 'dp-slot-row' + (isSel ? ' selected' : '');
     row.id = `slot-row-${i}`;
+    row.addEventListener('click', () => selectSlot(i));
 
-    const numEl = document.createElement("div");
-    numEl.className = "slot-num";
-    numEl.textContent = i + 1;
+    // Accent stripe
+    const stripe = document.createElement('div');
+    stripe.className = 'dp-slot-accent';
+    stripe.style.background = isSel ? 'var(--magenta)' : 'transparent';
+    if (isSel) stripe.style.boxShadow = '0 0 8px var(--magenta-dim)';
 
-    const typeSelect = document.createElement("select");
-    typeSelect.className = "slot-type-select";
-    SLOT_TYPES.forEach(t => {
-      const opt = document.createElement("option");
-      opt.value = t;
-      opt.textContent = t;
-      if (t === slot.type) opt.selected = true;
-      typeSelect.appendChild(opt);
-    });
-    typeSelect.addEventListener("change", () => {
-      slots[i].type = typeSelect.value;
-      updateBudget();
-      updatePanels();
-      saveCurrentToStorage();
-    });
+    // Slot number
+    const num = document.createElement('div');
+    num.className = 'dp-slot-num';
+    num.textContent = String(i + 1).padStart(2, '0');
+    num.style.color = isSel ? 'var(--magenta)' : 'var(--text-dim)';
 
-    const search = document.createElement("input");
-    search.type = "text";
-    search.className = "slot-search";
-    search.placeholder = "Search Pokemon…";
-    search.autocomplete = "off";
-    if (slot.pokemon) search.value = slot.pokemon.name;
-    search.addEventListener("input", () => openAC(i, search));
-    search.addEventListener("keydown", (e) => handleACKey(e, i, search));
-    search.addEventListener("blur", () => setTimeout(closeAC, 150));
-    search.id = `slot-search-${i}`;
+    // Info column
+    const info = document.createElement('div');
+    info.className = 'dp-slot-info';
 
-    const costEl = document.createElement("div");
-    costEl.className = "slot-cost";
-    costEl.id = `slot-cost-${i}`;
-    costEl.textContent = slot.pokemon ? slot.pokemon.points : "";
+    // Top line
+    const top = document.createElement('div');
+    top.className = 'dp-slot-top';
 
-    const clearBtn = document.createElement("span");
-    clearBtn.className = "slot-clear-btn";
-    clearBtn.textContent = "✕";
-    clearBtn.addEventListener("click", () => {
-      slots[i].pokemon = null;
-      slots[i].tera_captain = false;
-      slots[i].zmove_captain = false;
-      document.getElementById(`slot-search-${i}`).value = "";
-      document.getElementById(`slot-cost-${i}`).textContent = "";
-      updateBudget();
-      updateCaptainButtons();
-      updatePanels();
-      saveCurrentToStorage();
-    });
+    const chip = document.createElement('span');
+    chip.className = 'dp-tag-chip';
+    chip.textContent = tag.label;
+    chip.style.color = tag.color;
+    chip.style.borderColor = tag.color + '80';
+    chip.style.background = slot.pokemon ? tag.color + '1a' : 'transparent';
+    chip.style.borderStyle = slot.pokemon ? 'solid' : 'dashed';
+    top.appendChild(chip);
 
-    row.appendChild(numEl);
-    row.appendChild(typeSelect);
-    row.appendChild(search);
-    row.appendChild(costEl);
-
-    if (MECHANIC_TERA) {
-      const tBtn = document.createElement("button");
-      tBtn.type = "button";
-      tBtn.className = "captain-btn tera-btn";
-      tBtn.id = `slot-tera-${i}`;
-      tBtn.title = "Tera Captain (≤13pts, combined ≤18pts)";
-      tBtn.textContent = "T";
-      tBtn.disabled = true;
-      tBtn.addEventListener("click", () => toggleCaptain(i, "tera"));
-      row.appendChild(tBtn);
-    }
-    if (MECHANIC_ZMOVE) {
-      const zBtn = document.createElement("button");
-      zBtn.type = "button";
-      zBtn.className = "captain-btn zmove-btn";
-      zBtn.id = `slot-zmove-${i}`;
-      zBtn.title = "Z-Move Captain (≤13pts, combined ≤18pts)";
-      zBtn.textContent = "Z";
-      zBtn.disabled = true;
-      zBtn.addEventListener("click", () => toggleCaptain(i, "zmove"));
-      row.appendChild(zBtn);
+    const filledAlts = (slot.alts || []).filter(a => a && a.pokemon).length;
+    if (filledAlts > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'dp-alt-badge';
+      badge.textContent = `+${filledAlts} ALT`;
+      top.appendChild(badge);
     }
 
-    row.appendChild(clearBtn);
+    // Bottom line
+    const bot = document.createElement('div');
+    bot.className = 'dp-slot-bot';
+    if (slot.pokemon) {
+      const name = document.createElement('span');
+      name.className = 'dp-slot-poke';
+      name.textContent = slot.pokemon.name;
+      bot.appendChild(name);
+      [slot.pokemon.type1, slot.pokemon.type2].filter(Boolean).forEach(t => {
+        const tc = document.createElement('span');
+        tc.className = `dp-row-chip type-${t.toLowerCase()}`;
+        tc.textContent = t.slice(0, 3).toUpperCase();
+        bot.appendChild(tc);
+      });
+      if (slotUsesBudget(slot.type)) {
+        const cost = document.createElement('span');
+        cost.className = 'dp-slot-cost';
+        cost.innerHTML = `${slot.pokemon.points}<span style="color:var(--text-dim);font-size:8px;">pt</span>`;
+        bot.appendChild(cost);
+      }
+    } else {
+      const empty = document.createElement('span');
+      empty.className = 'dp-slot-empty';
+      empty.textContent = '— empty slot —';
+      bot.appendChild(empty);
+    }
 
-    const altToggle = document.createElement("span");
-    altToggle.className = "alt-toggle";
-    altToggle.id = `slot-alts-toggle-${i}`;
-    altToggle.textContent = "▸";
-    altToggle.title = "Alternatives";
-    altToggle.addEventListener("click", () => toggleAlts(i));
-    row.appendChild(altToggle);
-
+    info.appendChild(top);
+    info.appendChild(bot);
+    row.appendChild(stripe);
+    row.appendChild(num);
+    row.appendChild(info);
     container.appendChild(row);
-
-    const altsPanel = document.createElement("div");
-    altsPanel.className = "slot-alts";
-    altsPanel.id = `slot-alts-${i}`;
-    buildAltRows(i, altsPanel);
-    container.appendChild(altsPanel);
   });
+
+  const countEl = document.getElementById('dp-fill-count');
+  if (countEl) {
+    countEl.textContent = `${filled} / ${NUM_SLOTS} FILLED`;
+    countEl.style.color = filled < NUM_SLOTS ? 'var(--amber)' : 'var(--lime)';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  BudgetHUD
+// ══════════════════════════════════════════════
+function buildBudgetHUD() {
+  const hud = document.getElementById('dp-hud');
+  if (!hud) return;
+
+  // FP points
+  let fpSpent = 0;
+  slots.forEach(s => { if (s.pokemon && slotUsesBudget(s.type)) fpSpent += s.pokemon.points; });
+  const fpPct = Math.min(100, Math.round(fpSpent / BUDGET * 100));
+  const fpOver = fpSpent > BUDGET;
+
+  // Tiers
+  const tierFilled = {}, tierTotal = {};
+  ['T1','T2','T3','T4','T5'].forEach(t => { tierFilled[t] = 0; tierTotal[t] = 0; });
+  slots.forEach(s => {
+    const lbl = getSlotTag(s.type).label;
+    if (lbl && /^T[1-5]$/.test(lbl)) {
+      tierTotal[lbl] = (tierTotal[lbl] || 0) + 1;
+      if (s.pokemon) tierFilled[lbl] = (tierFilled[lbl] || 0) + 1;
+    }
+  });
+  const TIER_COLORS = {'T1':'var(--tier-1)','T2':'var(--tier-2)','T3':'var(--tier-3)','T4':'var(--tier-4)','T5':'var(--tier-5)'};
+
+  // Ubers
+  const uberSlots = slots.filter(s => s.type === 'Uber 1' || s.type === 'Uber 2');
+
+  let html = `
+    <div class="dp-hud-block">
+      <div class="dp-hud-label">POINTS</div>
+      <div class="dp-hud-val">
+        <span style="color:${fpOver?'var(--red)':'var(--magenta)'};">${fpSpent}</span>
+        <span class="dp-hud-denom">/ ${BUDGET}</span>
+        ${fpOver ? `<span style="font-family:var(--fm);font-size:10px;color:var(--red);">+${fpSpent-BUDGET}</span>` : ''}
+      </div>
+      <div class="dp-hud-bar">
+        <div class="dp-hud-bar-fill" style="width:${fpPct}%;background:${fpOver?'var(--red)':'var(--magenta)'};"></div>
+      </div>
+    </div>`;
+
+  const anyTier = Object.values(tierTotal).some(v => v > 0);
+  if (anyTier) {
+    html += `<div class="dp-hud-sep"></div><div class="dp-hud-block"><div class="dp-hud-label">TIERS</div><div style="display:flex;gap:10px;align-items:center;margin-top:2px;">`;
+    ['T1','T2','T3','T4','T5'].forEach(t => {
+      if (!tierTotal[t]) return;
+      const col = TIER_COLORS[t];
+      const dots = Array.from({length: tierTotal[t]}, (_, di) =>
+        `<div class="dp-tier-dot" style="border-color:${col};${di < tierFilled[t] ? `background:${col};box-shadow:0 0 4px ${col};` : ''}"></div>`
+      ).join('');
+      html += `<div class="dp-tier-group"><div class="dp-tier-dots">${dots}</div><div class="dp-tier-lbl" style="color:${col};">${t}</div></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (uberSlots.length > 0) {
+    html += `<div class="dp-hud-sep"></div><div class="dp-hud-block"><div class="dp-hud-label">UBERS</div><div class="dp-uber-slots" style="margin-top:4px;">`;
+    uberSlots.forEach(s => {
+      const col = s.type === 'Uber 1' ? 'var(--uber-gold)' : 'var(--uber-silver)';
+      const lbl = s.type === 'Uber 1' ? 'GLD' : 'SLV';
+      if (s.pokemon) {
+        html += `<div class="dp-uber-chip" style="border:1px solid ${col};background:rgba(0,0,0,.3);color:${col};">${lbl}</div>`;
+      } else {
+        html += `<div style="width:30px;height:18px;border:1px dashed var(--hairline-2);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--text-dim);">—</div>`;
+      }
+    });
+    html += `</div></div>`;
+  }
+
+  hud.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════
+//  FocusedSlot
+// ══════════════════════════════════════════════
+function buildFocusedSlot(idx) {
+  const panel = document.getElementById('dp-focused');
+  if (!panel) return;
+  closeAC();
+  const slot = slots[idx];
+  const tag  = getSlotTag(slot.type);
+
+  // Build header controls
+  const isUber = slot.type === 'Uber 1' || slot.type === 'Uber 2';
+  const isTier = !isUber && (slot.type.startsWith('Tier') || slot.type === 'Mega (Free)');
+
+  let modeCtrl;
+  if (isUber) {
+    const mc = slot.type === 'Uber 1' ? 'var(--uber-gold)' : 'var(--uber-silver)';
+    const ml = slot.type === 'Uber 1' ? 'GLD UBER' : 'SLV UBER';
+    modeCtrl = `<div style="padding:5px 12px;border:1px solid ${mc};background:rgba(0,0,0,.3);font-family:var(--fm);font-size:13px;font-weight:700;color:${mc};letter-spacing:.05em;">${ml}</div>`;
+  } else {
+    const subTypes = isTier
+      ? ['Tier 1 (Paid)','Tier 1 (Free)','Tier 2 (Paid)','Tier 2 (Free)','Tier 3 (Paid)','Tier 3 (Free)','Tier 4 (Paid)','Tier 4 (Free)','Tier 5 (Paid)','Tier 5 (Free)','Mega (Free)']
+      : ['Point Pick (Paid)','Point Pick (Free)'];
+    const subOpts = subTypes.map(t => `<option value="${t}"${t===slot.type?' selected':''}>${t}</option>`).join('');
+    modeCtrl = `
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+        <div class="dp-big-mode-toggle">
+          <button class="dp-mode-seg dp-mode-tier${isTier?' active':''}" onclick="setSlotMode(${idx},'tier')">TIER</button>
+          <button class="dp-mode-seg dp-mode-pt${!isTier?' active':''}" onclick="setSlotMode(${idx},'pt')">POINTS</button>
+        </div>
+        <select class="dp-type-select" onchange="onFocusedTypeChange(this.value)">${subOpts}</select>
+      </div>`;
+  }
+
+  panel.innerHTML = `
+    <div aria-hidden="true" style="position:absolute;top:-50px;right:-50px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,61,151,.14),transparent 60%);pointer-events:none;"></div>
+    <div class="dp-focused-hdr">
+      <div>
+        <div class="dp-focused-eyebrow">// SLOT_${String(idx+1).padStart(2,'0')}</div>
+        <div class="dp-focused-title">${getSlotTypeName(slot.type)}</div>
+      </div>
+      ${modeCtrl}
+    </div>
+    <div class="dp-focused-body">
+      <div id="dp-primary-card"></div>
+      <div id="dp-alts-panel"></div>
+    </div>
+  `;
+
+  buildPrimaryCard(idx);
+  buildAltCards(idx);
+}
+
+function buildPrimaryCard(idx) {
+  const slot = slots[idx];
+  const tag  = getSlotTag(slot.type);
+  const container = document.getElementById('dp-primary-card');
+  if (!container) return;
+
+  if (slot.pokemon) {
+    const p = slot.pokemon;
+    const isTera  = MECHANIC_TERA  && slot.tera_captain;
+    const isZMove = MECHANIC_ZMOVE && slot.zmove_captain;
+    const typeBadges = [p.type1, p.type2].filter(Boolean).map(t =>
+      `<span class="dp-type-chip-lg type-${t.toLowerCase()}">${t.slice(0,3).toUpperCase()}</span>`
+    ).join('');
+
+    container.innerHTML = `
+      <div class="dp-primary-filled" style="border-color:${tag.color};">
+        <div class="dp-primary-label" style="color:${tag.color};">PRIMARY</div>
+        <div class="dp-primary-sprite">
+          <img id="dp-primary-sprite-img" src="${p.sprite}"
+               style="width:72px;height:72px;image-rendering:pixelated;"
+               onerror="this.style.opacity=0.3" alt="${p.name}">
+        </div>
+        <div class="dp-primary-name">${p.name}</div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+          ${typeBadges}
+          <span class="dp-primary-cost" style="margin-left:auto;">${p.points}<span style="color:var(--text-dim);font-size:11px;">pt</span></span>
+        </div>
+        <div class="dp-capt-row" id="dp-capt-row-${idx}">
+          ${MECHANIC_TERA  ? `<button type="button" id="slot-tera-${idx}"  class="dp-capt-btn dp-tera-btn${isTera?' active':''}"  onclick="toggleCaptain(${idx},'tera')">T CAP</button>` : ''}
+          ${MECHANIC_ZMOVE ? `<button type="button" id="slot-zmove-${idx}" class="dp-capt-btn dp-zmove-btn${isZMove?' active':''}" onclick="toggleCaptain(${idx},'zmove')">Z CAP</button>` : ''}
+        </div>
+        <button class="dp-clear-btn" onclick="clearSlot(${idx})">&#x2715; CLEAR PICK</button>
+        <input type="hidden" id="slot-search-${idx}" value="${p.name}">
+        <span id="slot-cost-${idx}" style="display:none;">${p.points}</span>
+      </div>`;
+  } else {
+    container.innerHTML = `
+      <div class="dp-primary-empty" style="border-color:${tag.color};">
+        <div style="font-family:var(--fm);font-size:16px;font-weight:700;color:${tag.color};">${tag.label}</div>
+        <div style="font-family:var(--fm);font-size:10px;color:var(--text-dim);letter-spacing:0.08em;">NO PICK YET</div>
+        <input type="text" id="slot-search-${idx}" class="dp-primary-search" placeholder="Search Pok&eacute;mon&hellip;" autocomplete="off" style="margin-top:6px;">
+        <span id="slot-cost-${idx}" style="display:none;"></span>
+      </div>`;
+
+    const inp = document.getElementById(`slot-search-${idx}`);
+    if (inp) {
+      inp.addEventListener('input',   () => openAC(idx, inp));
+      inp.addEventListener('keydown', e  => handleACKey(e, idx, inp));
+      inp.addEventListener('blur',    scheduleCloseAC);
+      inp.focus();
+    }
+  }
+}
+
+function buildAltCards(idx) {
+  const container = document.getElementById('dp-alts-panel');
+  if (!container) return;
+  const slot = slots[idx];
+  const alts = slot.alts || [];
+  const filledCount = alts.filter(a => a && a.pokemon).length;
+
+  container.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'dp-alts-hdr';
+  hdr.innerHTML = `
+    <span class="dp-alts-eyebrow">// ALTERNATIVES &middot; BACKUP_PICKS</span>
+    <span style="font-family:var(--fm);font-size:10px;color:var(--text-mute);">${filledCount} / 3 RANKED</span>`;
+  container.appendChild(hdr);
+
+  const grid = document.createElement('div');
+  grid.className = 'dp-alts-grid';
+
+  for (let ai = 0; ai < 3; ai++) {
+    const alt = alts[ai];
+    const card = document.createElement('div');
+
+    if (alt && alt.pokemon) {
+      card.className = 'dp-alt-card';
+      const p = alt.pokemon;
+      const typeBadges = [p.type1, p.type2].filter(Boolean).map(t =>
+        `<span class="dp-row-chip type-${t.toLowerCase()}">${t.slice(0,3).toUpperCase()}</span>`
+      ).join('');
+      card.innerHTML = `
+        <div class="dp-alt-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="dp-alt-rank">ALT ${String(ai+1).padStart(2,'0')}</span>
+          <span class="dp-promote-btn" onclick="promoteAlt(${idx},${ai})">&#x2191; PROMOTE</span>
+        </div>
+        <div class="dp-alt-sprite-frame">
+          <img id="alt-sprite-${idx}-${ai}" src="${p.sprite}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.opacity=0.3">
+        </div>
+        <div style="font-family:var(--fm);font-size:10px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+        <div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">
+          ${typeBadges}
+          <span style="margin-left:auto;font-family:var(--fm);font-size:10px;font-weight:600;color:var(--magenta);">${p.points}pt</span>
+        </div>
+        <span class="dp-alt-remove" onclick="removeAltCard(${idx},${ai})">&#x2715;</span>
+        <input type="hidden" id="alt-search-${idx}-${ai}" value="${p.name}">`;
+    } else {
+      // Empty cell with inline search
+      card.className = 'dp-alt-empty-cell';
+      card.id = `alt-empty-${idx}-${ai}`;
+      card.innerHTML = `
+        <span style="font-family:var(--fm);font-size:18px;color:var(--text-dim);" class="alt-plus-icon">+</span>
+        <span style="font-family:var(--fm);font-size:9px;color:var(--text-dim);letter-spacing:0.06em;" class="alt-add-lbl">ADD ALT</span>
+        <div id="alt-input-wrap-${idx}-${ai}" style="display:none;width:100%;padding:4px 0;">
+          <input type="text" id="alt-search-${idx}-${ai}" class="dp-alt-search" placeholder="Search&hellip;" autocomplete="off">
+        </div>`;
+      card.addEventListener('click', (e) => {
+        const wrap = document.getElementById(`alt-input-wrap-${idx}-${ai}`);
+        if (!wrap || wrap.contains(e.target)) return;
+        wrap.style.display = 'block';
+        card.querySelector('.alt-plus-icon').style.display = 'none';
+        card.querySelector('.alt-add-lbl').style.display  = 'none';
+        const inp2 = document.getElementById(`alt-search-${idx}-${ai}`);
+        if (inp2) inp2.focus();
+      });
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+
+  // Wire alt search inputs
+  for (let ai = 0; ai < 3; ai++) {
+    const inp = document.getElementById(`alt-search-${idx}-${ai}`);
+    if (inp && inp.type === 'text') {
+      inp.addEventListener('input',   () => openAltAC(idx, ai, inp));
+      inp.addEventListener('keydown', e  => handleAltACKey(e, idx, ai, inp));
+      inp.addEventListener('blur',    scheduleCloseAC);
+    }
+  }
+}
+
+function clearSlot(idx) {
+  slots[idx].pokemon = null;
+  slots[idx].tera_captain = false;
+  slots[idx].zmove_captain = false;
+  buildPrimaryCard(idx);
+  buildSlotRows();
+  buildBudgetHUD();
+  updatePanels();
+  saveCurrentToStorage();
+}
+
+function promoteAlt(slotIdx, altIdx) {
+  const slot = slots[slotIdx];
+  const alt  = (slot.alts || [])[altIdx];
+  if (!alt || !alt.pokemon) return;
+  const oldPrimary = slot.pokemon;
+  slot.pokemon = alt.pokemon;
+  if (oldPrimary) slot.alts[altIdx] = { pokemon: oldPrimary };
+  else slot.alts.splice(altIdx, 1);
+  buildFocusedSlot(slotIdx);
+  buildSlotRows();
+  buildBudgetHUD();
+  updatePanels();
+  saveCurrentToStorage();
+}
+
+function removeAltCard(slotIdx, altIdx) {
+  (slots[slotIdx].alts || []).splice(altIdx, 1);
+  buildAltCards(slotIdx);
+  buildSlotRows();
+  saveCurrentToStorage();
+  updatePanels();
+}
+
+function onFocusedTypeChange(val) {
+  slots[selectedSlotIdx].type = val;
+  buildSlotRows();
+  buildFocusedSlot(selectedSlotIdx);
+  buildBudgetHUD();
+  updatePanels();
+  saveCurrentToStorage();
+}
+
+function setSlotMode(idx, mode) {
+  const slot = slots[idx];
+  const isTier = slot.type.startsWith('Tier') || slot.type === 'Mega (Free)';
+  if (mode === 'tier' && !isTier) slot.type = 'Tier 1 (Paid)';
+  else if (mode === 'pt' && isTier) slot.type = 'Point Pick (Paid)';
+  buildFocusedSlot(idx);
+  buildSlotRows();
+  buildBudgetHUD();
+  updatePanels();
+  saveCurrentToStorage();
 }
 
 // ══════════════════════════════════════════════
 //  Autocomplete
 // ══════════════════════════════════════════════
 function openAC(slotIdx, inputEl) {
+  cancelCloseAC();
   acAltMode = null;
   acActiveSlot = slotIdx;
   const q = inputEl.value.trim().toLowerCase();
   if (!q) { closeAC(); return; }
-
-  acResults = POKEMON_DB.filter(p =>
-    p.name.toLowerCase().includes(q)
-  ).slice(0, 20);
+  acResults = POKEMON_DB.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20);
   acHighlight = 0;
-
   if (!acResults.length) { closeAC(); return; }
-
-  const rect = inputEl.getBoundingClientRect();
-  const dropdown = document.getElementById("ac-dropdown");
-  dropdown.style.left   = rect.left + "px";
-  dropdown.style.top    = (rect.bottom + 2) + "px";
-  dropdown.style.width  = (rect.width + 50) + "px";
-  dropdown.classList.remove("hidden");
+  positionDropdown(inputEl);
+  document.getElementById('ac-dropdown').classList.remove('hidden');
   renderAC();
 }
 
+function positionDropdown(inputEl) {
+  const rect = inputEl.getBoundingClientRect();
+  const dd = document.getElementById('ac-dropdown');
+  dd.style.left  = rect.left + 'px';
+  dd.style.top   = (rect.bottom + 2) + 'px';
+  dd.style.width = (rect.width + 60) + 'px';
+}
+
 function renderAC() {
-  const dropdown = document.getElementById("ac-dropdown");
-  dropdown.innerHTML = "";
+  const dd = document.getElementById('ac-dropdown');
+  dd.innerHTML = '';
   acResults.forEach((p, i) => {
-    const item = document.createElement("div");
-    item.className = "ac-item" + (i === acHighlight ? " active" : "");
+    const item = document.createElement('div');
+    item.className = 'ac-item' + (i === acHighlight ? ' active' : '');
     item.innerHTML = `<img src="${p.sprite}" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
       <span>${p.name}</span>
-      <span class="ml-auto text-xs" style="color:var(--cyan);opacity:0.7;">${p.points}pt</span>
-      <span class="ml-1 text-xs text-gray-600">${p.tier}</span>`;
-    item.addEventListener("mousedown", () => selectAC(i));
-    dropdown.appendChild(item);
+      <span style="margin-left:auto;color:var(--magenta);opacity:0.8;">${p.points}pt</span>
+      <span style="margin-left:4px;color:var(--text-dim);font-size:9px;">${p.tier}</span>`;
+    item.addEventListener('mousedown', () => selectAC(i));
+    dd.appendChild(item);
   });
 }
 
 function handleACKey(e, slotIdx, inputEl) {
   if (!acResults.length) return;
-  if (e.key === "ArrowDown") { e.preventDefault(); acHighlight = Math.min(acHighlight+1, acResults.length-1); renderAC(); }
-  else if (e.key === "ArrowUp") { e.preventDefault(); acHighlight = Math.max(acHighlight-1, 0); renderAC(); }
-  else if (e.key === "Enter") { e.preventDefault(); if (acResults[acHighlight]) selectAC(acHighlight); }
-  else if (e.key === "Escape") closeAC();
+  if (e.key === 'ArrowDown')  { e.preventDefault(); acHighlight = Math.min(acHighlight+1, acResults.length-1); renderAC(); }
+  else if (e.key === 'ArrowUp')   { e.preventDefault(); acHighlight = Math.max(acHighlight-1, 0); renderAC(); }
+  else if (e.key === 'Enter')     { e.preventDefault(); if (acResults[acHighlight]) selectAC(acHighlight); }
+  else if (e.key === 'Escape')    closeAC();
 }
 
 function selectAC(idx) {
@@ -633,113 +1076,38 @@ function selectAC(idx) {
     const { slotIdx, altIdx } = acAltMode;
     if (!slots[slotIdx].alts) slots[slotIdx].alts = [];
     slots[slotIdx].alts[altIdx] = { pokemon: p };
-    const inp = document.getElementById(`alt-search-${slotIdx}-${altIdx}`);
-    if (inp) inp.value = p.name;
-    const sp = document.getElementById(`alt-sprite-${slotIdx}-${altIdx}`);
-    if (sp) { sp.src = p.sprite; sp.style.display = ""; }
     closeAC();
+    buildAltCards(slotIdx);
+    buildSlotRows();
     saveCurrentToStorage();
     updatePanels();
     return;
   }
 
   const slot = slots[acActiveSlot];
-  // If replacing a pokemon, clear captain flags if new pokemon doesn't qualify
   if (slot.tera_captain && p.points > 13) slot.tera_captain = false;
   if (slot.zmove_captain && p.points > 13) slot.zmove_captain = false;
   slot.pokemon = p;
-  document.getElementById(`slot-search-${acActiveSlot}`).value = p.name;
-  document.getElementById(`slot-cost-${acActiveSlot}`).textContent = p.points;
   closeAC();
-  updateBudget();
+  buildPrimaryCard(acActiveSlot);
+  buildSlotRows();
+  buildBudgetHUD();
   updateCaptainButtons();
   updatePanels();
   saveCurrentToStorage();
-  // On mobile, switch to analysis after picking so user can see the updated info
-  if (window.innerWidth < 768) switchMobilePanel('analysis');
 }
 
 function closeAC() {
-  document.getElementById("ac-dropdown").classList.add("hidden");
+  if (_acCloseTimer) { clearTimeout(_acCloseTimer); _acCloseTimer = null; }
+  document.getElementById('ac-dropdown').classList.add('hidden');
   acResults = [];
   acActiveSlot = -1;
   acAltMode = null;
 }
 
-// ══════════════════════════════════════════════
-//  Alternatives
-// ══════════════════════════════════════════════
-function toggleAlts(slotIdx) {
-  const panel = document.getElementById(`slot-alts-${slotIdx}`);
-  const btn   = document.getElementById(`slot-alts-toggle-${slotIdx}`);
-  if (!panel) return;
-  const opening = !panel.classList.contains("open");
-  panel.classList.toggle("open", opening);
-  if (btn) btn.textContent = opening ? "▾" : "▸";
-}
-
-function buildAltRows(slotIdx, container) {
-  container.innerHTML = "";
-  const slot = slots[slotIdx];
-  (slot.alts || []).forEach((alt, ai) => {
-    const row = document.createElement("div");
-    row.className = "alt-row";
-
-    const spriteEl = document.createElement("img");
-    spriteEl.className = "alt-sprite";
-    spriteEl.id = `alt-sprite-${slotIdx}-${ai}`;
-    if (alt && alt.pokemon) {
-      spriteEl.src = alt.pokemon.sprite;
-    } else {
-      spriteEl.style.display = "none";
-    }
-    spriteEl.onerror = function() { this.style.display = "none"; };
-
-    const inp = document.createElement("input");
-    inp.type = "text";
-    inp.className = "alt-search";
-    inp.id = `alt-search-${slotIdx}-${ai}`;
-    inp.placeholder = "Alt option…";
-    inp.autocomplete = "off";
-    if (alt && alt.pokemon) inp.value = alt.pokemon.name;
-    inp.addEventListener("input",   () => openAltAC(slotIdx, ai, inp));
-    inp.addEventListener("keydown", (e) => handleAltACKey(e, slotIdx, ai, inp));
-    inp.addEventListener("blur",    () => setTimeout(closeAC, 150));
-
-    const clearBtn = document.createElement("span");
-    clearBtn.className = "alt-clear";
-    clearBtn.textContent = "✕";
-    clearBtn.addEventListener("click", () => {
-      slots[slotIdx].alts.splice(ai, 1);
-      buildAltRows(slotIdx, container);
-      saveCurrentToStorage();
-      updatePanels();
-    });
-
-    row.appendChild(spriteEl);
-    row.appendChild(inp);
-    row.appendChild(clearBtn);
-    container.appendChild(row);
-  });
-
-  if ((slot.alts || []).length < 5) {
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.className = "add-alt-btn";
-    addBtn.textContent = "+ add alternative";
-    addBtn.addEventListener("click", () => {
-      if (!slot.alts) slot.alts = [];
-      slot.alts.push({ pokemon: null });
-      buildAltRows(slotIdx, container);
-      const newInp = document.getElementById(`alt-search-${slotIdx}-${slot.alts.length - 1}`);
-      if (newInp) newInp.focus();
-      saveCurrentToStorage();
-    });
-    container.appendChild(addBtn);
-  }
-}
-
+// ── Alt AC ──
 function openAltAC(slotIdx, altIdx, inputEl) {
+  cancelCloseAC();
   acAltMode = { slotIdx, altIdx };
   acActiveSlot = -1;
   const q = inputEl.value.trim().toLowerCase();
@@ -747,21 +1115,17 @@ function openAltAC(slotIdx, altIdx, inputEl) {
   acResults = POKEMON_DB.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20);
   acHighlight = 0;
   if (!acResults.length) { closeAC(); return; }
-  const rect = inputEl.getBoundingClientRect();
-  const dropdown = document.getElementById("ac-dropdown");
-  dropdown.style.left  = rect.left + "px";
-  dropdown.style.top   = (rect.bottom + 2) + "px";
-  dropdown.style.width = (rect.width + 50) + "px";
-  dropdown.classList.remove("hidden");
+  positionDropdown(inputEl);
+  document.getElementById('ac-dropdown').classList.remove('hidden');
   renderAC();
 }
 
 function handleAltACKey(e, slotIdx, altIdx, inputEl) {
   if (!acResults.length) return;
-  if (e.key === "ArrowDown")  { e.preventDefault(); acHighlight = Math.min(acHighlight + 1, acResults.length - 1); renderAC(); }
-  else if (e.key === "ArrowUp")   { e.preventDefault(); acHighlight = Math.max(acHighlight - 1, 0); renderAC(); }
-  else if (e.key === "Enter")     { e.preventDefault(); if (acResults[acHighlight]) selectAC(acHighlight); }
-  else if (e.key === "Escape")    closeAC();
+  if (e.key === 'ArrowDown')  { e.preventDefault(); acHighlight = Math.min(acHighlight+1, acResults.length-1); renderAC(); }
+  else if (e.key === 'ArrowUp')   { e.preventDefault(); acHighlight = Math.max(acHighlight-1, 0); renderAC(); }
+  else if (e.key === 'Enter')     { e.preventDefault(); if (acResults[acHighlight]) selectAC(acHighlight); }
+  else if (e.key === 'Escape')    closeAC();
 }
 
 // ══════════════════════════════════════════════
@@ -770,41 +1134,24 @@ function handleAltACKey(e, slotIdx, altIdx, inputEl) {
 function toggleCaptain(slotIdx, type) {
   const slot = slots[slotIdx];
   if (!slot.pokemon) return;
-  const pts = slot.pokemon.points;
+  const pts  = slot.pokemon.points;
   const isOn = type === 'tera' ? slot.tera_captain : slot.zmove_captain;
 
   if (!isOn) {
-    // Validate: max 13pts
-    if (pts > 13) {
-      alert(`${type === 'tera' ? 'Tera' : 'Z-Move'} Captain must be ≤13 pts (this Pokémon is ${pts}pts)`);
-      return;
-    }
-    // Validate: only 1 captain of this type
+    if (pts > 13) { alert(`${type === 'tera' ? 'Tera' : 'Z-Move'} Captain must be ≤13 pts`); return; }
     const existingIdx = slots.findIndex((s, j) => j !== slotIdx && (type === 'tera' ? s.tera_captain : s.zmove_captain));
-    if (existingIdx >= 0) {
-      alert(`Only 1 ${type === 'tera' ? 'Tera' : 'Z-Move'} Captain allowed`);
-      return;
-    }
-    // Validate: can't be both tera and z captain
-    if ((type === 'tera' && slot.zmove_captain) || (type === 'zmove' && slot.tera_captain)) {
-      alert(`A Pokémon can only be one type of captain`);
-      return;
-    }
-    // Validate: combined pts ≤ 18
+    if (existingIdx >= 0) { alert(`Only 1 ${type === 'tera' ? 'Tera' : 'Z-Move'} Captain allowed`); return; }
+    if ((type === 'tera' && slot.zmove_captain) || (type === 'zmove' && slot.tera_captain)) { alert('A Pokémon can only be one type of captain'); return; }
     const otherType = type === 'tera' ? 'zmove' : 'tera';
     const otherSlot = slots.find(s => s[otherType + '_captain'] && s.pokemon);
-    const otherPts = otherSlot ? otherSlot.pokemon.points : 0;
-    if (otherPts + pts > 18) {
-      alert(`Combined captain pts would be ${otherPts + pts} — max is 18`);
-      return;
-    }
+    const otherPts  = otherSlot ? otherSlot.pokemon.points : 0;
+    if (otherPts + pts > 18) { alert(`Combined captain pts would be ${otherPts + pts} — max is 18`); return; }
   }
 
   if (type === 'tera') slot.tera_captain = !slot.tera_captain;
   else slot.zmove_captain = !slot.zmove_captain;
 
   updateCaptainButtons();
-  updateCaptainSummary();
   updatePanels();
   saveCurrentToStorage();
 }
@@ -813,79 +1160,26 @@ function updateCaptainButtons() {
   slots.forEach((slot, i) => {
     const tBtn = document.getElementById(`slot-tera-${i}`);
     const zBtn = document.getElementById(`slot-zmove-${i}`);
-    if (tBtn) {
-      tBtn.disabled = !slot.pokemon;
-      tBtn.classList.toggle('active', slot.tera_captain);
-    }
-    if (zBtn) {
-      zBtn.disabled = !slot.pokemon;
-      zBtn.classList.toggle('active', slot.zmove_captain);
-    }
+    if (tBtn) { tBtn.disabled = !slot.pokemon; tBtn.classList.toggle('active', slot.tera_captain); }
+    if (zBtn) { zBtn.disabled = !slot.pokemon; zBtn.classList.toggle('active', slot.zmove_captain); }
   });
 }
 
-function updateCaptainSummary() {
-  const el = document.getElementById('captain-summary');
-  if (!el) return;
-  const teraSlot  = slots.find(s => s.tera_captain  && s.pokemon);
-  const zmoveSlot = slots.find(s => s.zmove_captain && s.pokemon);
-  if (!teraSlot && !zmoveSlot) { el.style.display = 'none'; return; }
-  el.style.display = '';
-  const parts = [];
-  if (MECHANIC_TERA)  parts.push(`<span style="color:#22d3ee;font-weight:700;">T:</span> ${teraSlot  ? teraSlot.pokemon.name  + ' (' + teraSlot.pokemon.points  + 'pts)' : '—'}`);
-  if (MECHANIC_ZMOVE) parts.push(`<span style="color:#a78bfa;font-weight:700;">Z:</span> ${zmoveSlot ? zmoveSlot.pokemon.name + ' (' + zmoveSlot.pokemon.points + 'pts)' : '—'}`);
-  const teraPts  = teraSlot  ? teraSlot.pokemon.points  : 0;
-  const zmovePts = zmoveSlot ? zmoveSlot.pokemon.points : 0;
-  const combined = teraPts + zmovePts;
-  const combColor = combined > 18 ? '#f87171' : combined > 0 ? '#4ade80' : '#6b7280';
-  parts.push(`<span style="color:${combColor};font-weight:700;">Combined: ${combined}/18pts</span>`);
-  el.innerHTML = `<div class="flex flex-wrap gap-x-3 gap-y-0.5" style="font-size:0.65rem;">${parts.join('')}</div>`;
-}
+function updateCaptainSummary() {} // captain info visible in FocusedSlot
 
 // ══════════════════════════════════════════════
-//  Budget
+//  Budget (delegates to HUD)
 // ══════════════════════════════════════════════
-function updateBudget() {
-  let spent = 0;
-  slots.forEach(slot => {
-    if (slot.pokemon && slotUsesBudget(slot.type)) {
-      spent += slot.pokemon.points;
-    }
-  });
-  const pct = Math.min(100, Math.round(spent / BUDGET * 100));
-  document.getElementById("budget-label").textContent = `${spent} / ${BUDGET}pts`;
-  const bar = document.getElementById("budget-bar");
-  bar.style.width = pct + "%";
-  bar.style.background = spent > BUDGET ? "#ef4444" : spent > BUDGET * 0.8 ? "var(--amber)" : "#22c55e";
-}
+function updateBudget() { buildBudgetHUD(); }
 
 // ══════════════════════════════════════════════
-//  Tabs
+//  Analysis tabs
 // ══════════════════════════════════════════════
 function switchTab(name) {
-  ["overview","roles","moves"].forEach(t => {
-    document.getElementById(`panel-${t}`).classList.toggle("hidden", t !== name);
-    document.getElementById(`tab-${t}`).classList.toggle("active", t === name);
+  ['overview','roles','moves'].forEach(t => {
+    document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== name);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
   });
-}
-
-// ── Mobile panel toggle ──
-function switchMobilePanel(panel) {
-  const left  = document.getElementById('dp-left');
-  const right = document.getElementById('dp-right');
-  const tPicks    = document.getElementById('mptab-picks');
-  const tAnalysis = document.getElementById('mptab-analysis');
-  if (panel === 'picks') {
-    left.classList.remove('mobile-hidden');
-    right.classList.add('mobile-hidden');
-    tPicks.classList.add('active');
-    tAnalysis.classList.remove('active');
-  } else {
-    right.classList.remove('mobile-hidden');
-    left.classList.add('mobile-hidden');
-    tAnalysis.classList.add('active');
-    tPicks.classList.remove('active');
-  }
 }
 
 // ══════════════════════════════════════════════
@@ -896,533 +1190,271 @@ function updatePanels() {
   updateOverview(picked);
   updateRoles(picked);
   updateMoveCoverage(picked);
-  updateCaptainSummary();
+  buildBudgetHUD();
 }
 
-// ── helpers ──
 function typeBadge(type) {
-  if (!type) return "";
-  const col = TYPE_COLORS[type] || "#4b5563";
+  if (!type) return '';
+  const col = TYPE_COLORS[type] || '#4b5563';
   return `<span class="type-badge" style="background:${col}">${type}</span>`;
 }
 
-
-// ══════════════════════════════════════════════
-//  Overview panel
-// ══════════════════════════════════════════════
+// ── Overview ──
 function updateOverview(picked) {
-  // Pokemon row
-  const pokeRow = document.getElementById("poke-row");
-  pokeRow.innerHTML = picked.length ? "" : `<div class="text-gray-600 text-sm">Add Pokemon in the left panel to see the overview.</div>`;
+  const pokeRow = document.getElementById('poke-row');
+  pokeRow.innerHTML = picked.length ? '' : `<div style="color:var(--text-dim);font-family:var(--fm);font-size:11px;">Add Pokémon to see the overview.</div>`;
   picked.forEach(p => {
-    const abilities = [p.ability1, p.ability2, p.ability3].filter(Boolean).join(" · ");
+    const abilities = [p.ability1, p.ability2, p.ability3].filter(Boolean).join(' · ');
     const isTera  = MECHANIC_TERA  && slots.some(s => s.pokemon?.name === p.name && s.tera_captain);
     const isZMove = MECHANIC_ZMOVE && slots.some(s => s.pokemon?.name === p.name && s.zmove_captain);
     const captBadges = [
-      isTera  ? `<span style="background:rgba(6,182,212,0.2);border:1px solid #06b6d4;color:#22d3ee;font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:3px;">TERA</span>` : '',
-      isZMove ? `<span style="background:rgba(139,92,246,0.2);border:1px solid #8b5cf6;color:#a78bfa;font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:3px;">Z</span>` : '',
+      isTera  ? `<span style="background:rgba(6,182,212,0.2);border:1px solid #06b6d4;color:#22d3ee;font-size:0.55rem;font-weight:800;padding:1px 5px;">TERA</span>` : '',
+      isZMove ? `<span style="background:rgba(139,92,246,0.2);border:1px solid #8b5cf6;color:#a78bfa;font-size:0.55rem;font-weight:800;padding:1px 5px;">Z</span>` : '',
     ].filter(Boolean).join('');
-    const slotForP = slots.find(s => s.pokemon && s.pokemon.name === p.name);
-    const altsForP = slotForP ? (slotForP.alts || []).filter(a => a && a.pokemon) : [];
+    const slotForP  = slots.find(s => s.pokemon && s.pokemon.name === p.name);
+    const altsForP  = slotForP ? (slotForP.alts || []).filter(a => a && a.pokemon) : [];
     const altSprites = altsForP.map(a =>
-      `<img src="${a.pokemon.sprite}" title="Alt: ${a.pokemon.name}" style="width:22px;height:22px;image-rendering:pixelated;opacity:0.55" onerror="this.style.display='none'">`
-    ).join("");
+      `<img src="${a.pokemon.sprite}" title="Alt: ${a.pokemon.name}" style="width:22px;height:22px;image-rendering:pixelated;opacity:0.5" onerror="this.style.display='none'">`
+    ).join('');
     pokeRow.innerHTML += `
       <div class="poke-card">
         <img src="${p.sprite}" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'" alt="${p.name}">
         <div class="poke-name">${p.name}</div>
-        <div class="flex gap-1 mt-1 flex-wrap justify-center">
+        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;justify-content:center;">
           ${typeBadge(p.type1)}${typeBadge(p.type2)}
         </div>
         <div class="poke-pts mt-1">${p.points}pt</div>
-        ${captBadges ? `<div class="flex gap-1 mt-1 justify-center">${captBadges}</div>` : ''}
-        ${abilities ? `<div class="text-gray-600 text-center mt-1" style="font-size:0.55rem;line-height:1.3">${abilities}</div>` : ""}
-        ${altSprites ? `<div class="flex gap-0.5 mt-2 justify-center flex-wrap" title="Alternatives">${altSprites}</div>` : ""}
+        ${captBadges ? `<div style="display:flex;gap:4px;margin-top:4px;">${captBadges}</div>` : ''}
+        ${abilities ? `<div style="color:var(--text-dim);text-align:center;margin-top:4px;font-size:0.55rem;font-family:var(--fm);">${abilities}</div>` : ''}
+        ${altSprites ? `<div style="display:flex;gap:2px;margin-top:6px;justify-content:center;flex-wrap:wrap;">${altSprites}</div>` : ''}
       </div>`;
   });
-
-  // Offensive coverage
   updateTypeCoverage(picked);
-
-  // Defensive chart
   updateTypeChart(picked);
-
-  // Stats
   updateStats(picked);
-
-  // Checklists
   updateChecklists(picked);
 }
 
 function updateTypeCoverage(picked) {
-  const container = document.getElementById("type-coverage-grid");
-  container.innerHTML = "";
+  const container = document.getElementById('type-coverage-grid');
+  container.innerHTML = '';
   if (!picked.length) return;
-
-  // Which types are represented on the team (type1 or type2 of any pokemon)
-  // typeCount[t] = number of pokemon on team that are that type
   const typeCount = {};
-  picked.forEach(p => {
-    [p.type1, p.type2].filter(Boolean).forEach(t => {
-      typeCount[t] = (typeCount[t] || 0) + 1;
-    });
-  });
-
+  picked.forEach(p => { [p.type1, p.type2].filter(Boolean).forEach(t => { typeCount[t] = (typeCount[t]||0)+1; }); });
   TYPES.forEach(t => {
     const count = typeCount[t] || 0;
-    const col = TYPE_COLORS[t] || "#4b5563";
+    const col = TYPE_COLORS[t] || '#4b5563';
     const present = count > 0;
     container.innerHTML += `
-      <div class="flex items-center gap-1 px-2 py-1 rounded" style="background:${present ? col+'22' : ''};border:1px solid ${present ? col+'55' : 'rgba(55,65,81,0.3)'}">
-        <span style="font-size:0.65rem;color:${present ? col : '#374151'}">${present ? "✓" : "✗"}</span>
-        <span style="color:${present ? col : '#4b5563'};font-size:0.65rem;font-weight:600">${t}</span>
-        ${present && count > 1 ? `<span style="font-size:0.55rem;color:${col};opacity:0.7">×${count}</span>` : ""}
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid ${present?col+'55':'rgba(55,65,81,0.3)'};background:${present?col+'22':''};">
+        <span style="font-size:0.65rem;color:${present?col:'#374151'};">${present?'✓':'✗'}</span>
+        <span style="color:${present?col:'#4b5563'};font-size:0.65rem;font-weight:600;">${t}</span>
+        ${present && count > 1 ? `<span style="font-size:0.55rem;color:${col};opacity:0.7;">×${count}</span>` : ''}
       </div>`;
   });
 }
 
 function updateTypeChart(picked) {
-  const tbody = document.getElementById("type-chart-body");
-  tbody.innerHTML = "";
-  if (!picked.length) {
-    tbody.innerHTML = `<tr><td colspan="19" class="text-gray-600 text-xs p-3">No Pokemon selected</td></tr>`;
-    return;
-  }
-
-  // Header row (attacking types)
-  const thead = document.querySelector("#type-chart-table thead tr");
-  thead.innerHTML = `<th class="text-gray-600 font-normal text-left pl-1" style="width:72px;font-size:0.5rem">Defender ↓ / Attacker →</th>`;
+  const tbody = document.getElementById('type-chart-body');
+  tbody.innerHTML = '';
+  if (!picked.length) { tbody.innerHTML = `<tr><td colspan="19" style="color:var(--text-dim);font-size:11px;padding:12px;">No Pokémon selected</td></tr>`; return; }
+  const thead = document.querySelector('#type-chart-table thead tr');
+  thead.innerHTML = `<th style="width:72px;font-size:0.5rem;color:var(--text-dim);text-align:left;padding-left:4px;">Def ↓ / Atk →</th>`;
   TYPES.forEach(t => {
-    const col = TYPE_COLORS[t] || "#4b5563";
-    thead.innerHTML += `<th style="background:${col}22;color:${col};writing-mode:vertical-lr;transform:rotate(180deg);height:52px;font-size:0.5rem;font-weight:700;padding:2px 0">${t}</th>`;
+    const col = TYPE_COLORS[t] || '#4b5563';
+    thead.innerHTML += `<th style="background:${col}22;color:${col};writing-mode:vertical-lr;transform:rotate(180deg);height:52px;font-size:0.5rem;font-weight:700;padding:2px 0;">${t}</th>`;
   });
-
-  // One row per selected pokemon
   picked.forEach(p => {
     const defTypes = [p.type1, p.type2].filter(Boolean);
-    const abilityImm = getAbilityImmunities(p);  // e.g. { Ground: 0 } for Levitate
-    const tr = document.createElement("tr");
-    const nameCell = document.createElement("td");
-    nameCell.style.cssText = "font-size:0.6rem;color:#9ca3af;text-align:left;padding:1px 4px;white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis";
-    // Show ability immunity icon if any
+    const abilityImm = getAbilityImmunities(p);
+    const tr = document.createElement('tr');
+    const nameCell = document.createElement('td');
     const immTypes = Object.keys(abilityImm);
-    nameCell.textContent = p.name + (immTypes.length ? " ★" : "");
-    if (immTypes.length) nameCell.title = `Ability immunity: ${immTypes.join(", ")}`;
+    nameCell.style.cssText = 'font-size:0.6rem;color:#9ca3af;text-align:left;padding:1px 4px;white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis;';
+    nameCell.textContent = p.name + (immTypes.length ? ' ★' : '');
+    if (immTypes.length) nameCell.title = `Ability immunity: ${immTypes.join(', ')}`;
     tr.appendChild(nameCell);
-
     TYPES.forEach((atkType, atkIdx) => {
-      // Check ability immunity first
       let mult;
-      if (abilityImm[atkType] === 0) {
-        mult = 0;
-      } else {
-        mult = 100;
-        defTypes.forEach(defType => {
-          const defIdx = TYPES.indexOf(defType);
-          if (defIdx >= 0) mult = mult * EFF_MATRIX[atkIdx][defIdx] / 100;
-        });
-      }
-
-      const td = document.createElement("td");
+      if (abilityImm[atkType] === 0) { mult = 0; }
+      else { mult = 100; defTypes.forEach(defType => { const di = TYPES.indexOf(defType); if (di >= 0) mult = mult * EFF_MATRIX[atkIdx][di] / 100; }); }
+      const td = document.createElement('td');
       const isAbImm = abilityImm[atkType] === 0;
-      if (isAbImm)           { td.className = "eff-0ab"; td.textContent = "✦"; td.title = "Ability immune"; }
-      else if (mult === 0)   { td.className = "eff-0";   td.textContent = "0"; }
-      else if (mult <= 25)   { td.className = "eff-25";  td.textContent = "¼"; }
-      else if (mult <= 50)   { td.className = "eff-50";  td.textContent = "½"; }
-      else if (mult === 100) { td.className = "eff-100"; td.textContent = "1"; }
-      else if (mult <= 200)  { td.className = "eff-200"; td.textContent = "2×"; }
-      else                   { td.className = "eff-400"; td.textContent = "4×"; }
+      if (isAbImm)         { td.className = 'eff-0ab'; td.textContent = '✦'; td.title = 'Ability immune'; }
+      else if (mult === 0) { td.className = 'eff-0';   td.textContent = '0'; }
+      else if (mult <= 25) { td.className = 'eff-25';  td.textContent = '¼'; }
+      else if (mult <= 50) { td.className = 'eff-50';  td.textContent = '½'; }
+      else if (mult === 100){ td.className = 'eff-100'; td.textContent = '1'; }
+      else if (mult <= 200){ td.className = 'eff-200'; td.textContent = '2×'; }
+      else                 { td.className = 'eff-400'; td.textContent = '4×'; }
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
-
-  // ── Summary row ──
-  // For each attacking type column, count weaknesses (>100) and immunities/resists (<=50 or 0)
-  if (picked.length > 1) {
-    // Build per-column multiplier lists
-    const colMults = TYPES.map(() => []);
-    picked.forEach(p => {
-      const defTypes = [p.type1, p.type2].filter(Boolean);
-      const abilityImm = getAbilityImmunities(p);
-      TYPES.forEach((atkType, atkIdx) => {
-        let mult;
-        if (abilityImm[atkType] === 0) {
-          mult = 0;
-        } else {
-          mult = 100;
-          defTypes.forEach(defType => {
-            const defIdx = TYPES.indexOf(defType);
-            if (defIdx >= 0) mult = mult * EFF_MATRIX[atkIdx][defIdx] / 100;
-          });
-        }
-        colMults[atkIdx].push(mult);
-      });
-    });
-
-    const summaryRow = document.createElement("tr");
-    summaryRow.style.borderTop = "2px solid rgba(55,65,81,0.6)";
-
-    const labelCell = document.createElement("td");
-    labelCell.style.cssText = "font-size:0.55rem;color:#6b7280;text-align:left;padding:2px 4px;font-weight:700;letter-spacing:0.03em";
-    labelCell.textContent = "Team";
-    summaryRow.appendChild(labelCell);
-
-    TYPES.forEach((_, atkIdx) => {
-      const mults = colMults[atkIdx];
-
-      // Score each pokemon's matchup on a log2-style step scale:
-      //   4× → +2,  2× → +1,  1× → 0,  0.5× → -1,  0.25× → -2,  immune → -2
-      // Total = sum of all steps (positive = net weak, negative = net resistant)
-      function multToStep(m) {
-        if (m === 0)   return -2;  // immune
-        if (m <= 25)   return -2;  // 0.25×
-        if (m <= 50)   return -1;  // 0.5×
-        if (m <= 100)  return  0;  // 1× neutral
-        if (m <= 200)  return  1;  // 2×
-        return 2;                  // 4×
-      }
-      const score = mults.reduce((acc, m) => acc + multToStep(m), 0);
-
-      // Breakdown for tooltip
-      const weak4  = mults.filter(m => m > 200).length;
-      const weak2  = mults.filter(m => m > 100 && m <= 200).length;
-      const immune = mults.filter(m => m === 0).length;
-      const resist25 = mults.filter(m => m > 0 && m <= 25).length;
-      const resist50 = mults.filter(m => m > 25 && m <= 50).length;
-
-      const td = document.createElement("td");
-      td.style.padding = "1px 0";
-
-      if (score === 0) {
-        td.style.cssText = "font-size:0.55rem;color:#6b7280;text-align:center";
-        td.textContent = "0";
-      } else if (score <= -3) {
-        td.style.cssText = "background:rgba(34,197,94,0.25);font-size:0.6rem;color:#4ade80;font-weight:700;text-align:center";
-        td.textContent = score;
-      } else if (score < 0) {
-        td.style.cssText = "background:rgba(34,197,94,0.1);font-size:0.6rem;color:#86efac;font-weight:600;text-align:center";
-        td.textContent = score;
-      } else if (score >= 3) {
-        td.style.cssText = "background:rgba(239,68,68,0.4);font-size:0.6rem;color:#fca5a5;font-weight:700;text-align:center";
-        td.textContent = score;
-      } else if (score === 2) {
-        td.style.cssText = "background:rgba(239,68,68,0.25);font-size:0.6rem;color:#f87171;font-weight:700;text-align:center";
-        td.textContent = score;
-      } else {
-        td.style.cssText = "background:rgba(251,146,60,0.2);font-size:0.6rem;color:#fb923c;font-weight:600;text-align:center";
-        td.textContent = score;
-      }
-
-      const parts = [];
-      if (weak4)    parts.push(`${weak4}×4`);
-      if (weak2)    parts.push(`${weak2}×2`);
-      if (resist50) parts.push(`${resist50}×0.5`);
-      if (resist25) parts.push(`${resist25}×0.25`);
-      if (immune)   parts.push(`${immune} immune`);
-      td.title = parts.join(", ") || "neutral";
-
-      summaryRow.appendChild(td);
-    });
-    tbody.appendChild(summaryRow);
-  }
 }
 
 const STAT_DEFS = [
-  { key: "hp",      label: "HP",  color: "#f87171", max: 255 },
-  { key: "atk",     label: "Atk", color: "#fb923c", max: 200 },
-  { key: "defense", label: "Def", color: "var(--amber)", max: 250 },
-  { key: "spa",     label: "SpA", color: "#60a5fa", max: 200 },
-  { key: "spd",     label: "SpD", color: "#a78bfa", max: 250 },
-  { key: "spe",     label: "Spe", color: "#4ade80", max: 200 },
+  {key:'hp',label:'HP',color:'#f87171',max:255},{key:'atk',label:'Atk',color:'#fb923c',max:200},
+  {key:'defense',label:'Def',color:'var(--amber)',max:250},{key:'spa',label:'SpA',color:'#60a5fa',max:200},
+  {key:'spd',label:'SpD',color:'#a78bfa',max:250},{key:'spe',label:'Spe',color:'#4ade80',max:200},
 ];
-
-function statColor(v) {
-  return v >= 120 ? "#4ade80" : v >= 90 ? "var(--amber)" : v >= 60 ? "#fb923c" : "#f87171";
-}
+function statColor(v) { return v >= 120 ? '#4ade80' : v >= 90 ? 'var(--amber)' : v >= 60 ? '#fb923c' : '#f87171'; }
 
 function updateStats(picked) {
-  const container = document.getElementById("stats-cards");
-  container.innerHTML = "";
+  const container = document.getElementById('stats-cards');
+  container.innerHTML = '';
   if (!picked.length) return;
-
-  // Section header
-  container.innerHTML = `<div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Team Stats</div>`;
-
-  // One card per pokemon, laid out in a responsive wrap
-  const grid = document.createElement("div");
-  grid.className = "grid gap-3";
-  grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(220px, 1fr))";
-
+  container.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Team Stats</div>`;
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));';
   picked.forEach(p => {
-    const card = document.createElement("div");
-    card.className = "rounded-lg border border-gray-800/60 p-3";
-    card.style.background = "#0d1526";
-
-    // Header: sprite + name + types + BST
-    const abilities = [p.ability1, p.ability2, p.ability3].filter(Boolean);
-    const typeBadges = [p.type1, p.type2].filter(Boolean).map(t =>
-      `<span class="type-badge" style="background:${TYPE_COLORS[t]||'#4b5563'}">${t}</span>`
-    ).join(" ");
-
+    const card = document.createElement('div');
+    card.style.cssText = 'border:1px solid var(--hairline-2);padding:10px;background:var(--panel-2);';
+    const typeBadges = [p.type1,p.type2].filter(Boolean).map(t => `<span class="type-badge" style="background:${TYPE_COLORS[t]||'#4b5563'}">${t}</span>`).join(' ');
     card.innerHTML = `
-      <div class="flex items-center gap-2 mb-3">
-        <img src="${p.sprite}" style="width:48px;height:48px;image-rendering:pixelated" onerror="this.style.opacity=0">
-        <div class="flex-1 min-w-0">
-          <div class="font-semibold text-gray-100 truncate" style="font-size:0.75rem">${p.name}</div>
-          <div class="flex gap-1 mt-0.5 flex-wrap">${typeBadges}</div>
-          ${abilities.length ? `<div class="text-gray-600 mt-0.5 truncate" style="font-size:0.6rem">${abilities.join(" · ")}</div>` : ""}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <img src="${p.sprite}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.opacity=0">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--fd);font-weight:700;color:var(--text);font-size:13px;text-transform:uppercase;">${p.name}</div>
+          <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap;">${typeBadges}</div>
         </div>
-        <div class="text-right flex-shrink-0">
-          <div class="font-bold" style="font-size:0.85rem;color:var(--cyan);">${p.bst || "—"}</div>
-          <div class="text-gray-600" style="font-size:0.55rem">BST</div>
-        </div>
+        <div style="text-align:right;"><div style="font-family:var(--fm);font-size:14px;font-weight:700;color:var(--cyan);">${p.bst||'—'}</div><div style="font-size:9px;color:var(--text-dim);">BST</div></div>
       </div>
-      <div class="space-y-1.5" id="statbars-${p.name.replace(/\s/g,'_')}"></div>`;
-
-    const barsContainer = card.querySelector(`#statbars-${p.name.replace(/\s/g,'_')}`);
+      <div class="space-y-1.5" id="sb-${p.name.replace(/\s/g,'_')}"></div>`;
+    const bars = card.querySelector(`#sb-${p.name.replace(/\s/g,'_')}`);
     STAT_DEFS.forEach(s => {
-      const val = p[s.key] || 0;
-      const pct = Math.min(100, Math.round(val / s.max * 100));
+      const val = p[s.key]||0;
+      const pct = Math.min(100, Math.round(val/s.max*100));
       const col = statColor(val);
-      const row = document.createElement("div");
-      row.className = "flex items-center gap-2";
-      row.innerHTML = `
-        <span style="width:26px;font-size:0.62rem;color:#6b7280;text-align:right;flex-shrink:0">${s.label}</span>
-        <div class="stat-bar-bg flex-1">
-          <div class="stat-bar-fill" style="width:${pct}%;background:${col}"></div>
-        </div>
-        <span style="width:28px;font-size:0.68rem;font-weight:600;color:${col};text-align:right;flex-shrink:0">${val || "—"}</span>`;
-      barsContainer.appendChild(row);
+      bars.innerHTML += `<div style="display:flex;align-items:center;gap:6px;">
+        <span style="width:24px;font-family:var(--fm);font-size:9px;color:var(--text-dim);text-align:right;">${s.label}</span>
+        <div class="stat-bar-bg" style="flex:1;"><div class="stat-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+        <span style="width:26px;font-family:var(--fm);font-size:10px;font-weight:600;color:${col};text-align:right;">${val||'—'}</span>
+      </div>`;
     });
-
     grid.appendChild(card);
   });
-
-  // Team average row
-  if (picked.length > 1) {
-    const avgCard = document.createElement("div");
-    avgCard.className = "p-3";
-    avgCard.style.cssText = "border-radius:2px;border:1px solid var(--hairline);";
-    avgCard.style.background = "#0d1526";
-    const avgs = STAT_DEFS.map(s => ({
-      ...s,
-      avg: Math.round(picked.reduce((sum, p) => sum + (p[s.key] || 0), 0) / picked.length),
-    }));
-    const avgBst = Math.round(picked.reduce((sum, p) => sum + (p.bst || 0), 0) / picked.length);
-
-    avgCard.innerHTML = `
-      <div class="flex items-center gap-2 mb-3">
-        <div class="flex-1">
-          <div class="font-semibold" style="font-size:0.75rem;color:var(--text-mute);">Team Average</div>
-          <div class="text-gray-600" style="font-size:0.6rem">${picked.length} Pokemon</div>
-        </div>
-        <div class="text-right">
-          <div class="font-bold" style="font-size:0.85rem;color:var(--cyan);">${avgBst}</div>
-          <div class="text-gray-600" style="font-size:0.55rem">avg BST</div>
-        </div>
-      </div>
-      <div class="space-y-1.5">
-        ${avgs.map(s => `
-          <div class="flex items-center gap-2">
-            <span style="width:26px;font-size:0.62rem;color:#6b7280;text-align:right;flex-shrink:0">${s.label}</span>
-            <div class="stat-bar-bg flex-1">
-              <div class="stat-bar-fill" style="width:${Math.min(100,Math.round(s.avg/s.max*100))}%;background:${statColor(s.avg)}"></div>
-            </div>
-            <span style="width:28px;font-size:0.68rem;font-weight:600;color:${statColor(s.avg)};text-align:right;flex-shrink:0">${s.avg}</span>
-          </div>`).join("")}
-      </div>`;
-    grid.appendChild(avgCard);
-  }
-
   container.appendChild(grid);
 }
 
-// ══════════════════════════════════════════════
-//  Moves + Stats Checklists
-// ══════════════════════════════════════════════
-const PIVOT_MOVES = ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"];
-const PSYCHIC_ATK = ["Psychic","Psyshock","Psystrike","Expanding Force","Psychic Noise","Future Sight","Zen Headbutt","Stored Power"];
-
+const PIVOT_MOVES   = ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"];
+const PSYCHIC_ATK   = ["Psychic","Psyshock","Psystrike","Expanding Force","Psychic Noise","Future Sight","Zen Headbutt","Stored Power"];
 function hasMoves(p, ...moves) { return moves.some(m => p.moves.includes(m)); }
 function hasPivot(p) { return PIVOT_MOVES.some(m => p.moves.includes(m)); }
 function sprites(pokemons) {
-  if (!pokemons.length) return "";
-  return pokemons.map(p =>
-    `<img class="cl-sprite" src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`
-  ).join("");
+  return pokemons.map(p => `<img class="cl-sprite" src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`).join('');
 }
-
 function clRow(label, cssClass, pokemons) {
-  const div = document.createElement("div");
-  div.className = "cl-row";
+  const div = document.createElement('div');
+  div.className = 'cl-row';
   div.innerHTML = `<span class="cl-label ${cssClass||''}">${label}</span><div class="cl-sprites">${sprites(pokemons)}</div>`;
   return div;
 }
-
 function updateChecklists(picked) {
-  const movesEl  = document.getElementById("moves-checklist");
-  const statsEl  = document.getElementById("stats-checklist");
-  movesEl.innerHTML = "";
-  statsEl.innerHTML = "";
+  const movesEl = document.getElementById('moves-checklist');
+  const statsEl = document.getElementById('stats-checklist');
+  movesEl.innerHTML = ''; statsEl.innerHTML = '';
   if (!picked.length) return;
-
-  // ── Moves Checklist ──
   const DEFS_MOVES = [
-    { label: "Rocks",         cls: "",       fn: p => hasMoves(p, "Stealth Rock") },
-    { label: "Spikes",        cls: "",       fn: p => hasMoves(p, "Spikes") },
-    { label: "Sticky Web",    cls: "",       fn: p => hasMoves(p, "Sticky Web") },
-    { label: "T-Spikes",      cls: "",       fn: p => hasMoves(p, "Toxic Spikes") },
-    { label: "Absorb T-Spikes",cls:"",       fn: p => (p.type1 === "Poison" || p.type2 === "Poison") },
-    { label: "Removal",       cls: "red",    fn: p => hasMoves(p, "Rapid Spin","Defog","Court Change","Mortal Spin") },
-    { label: "Momentum",      cls: "",       fn: p => hasPivot(p) },
-    { label: "Wish",          cls: "",       fn: p => hasMoves(p, "Wish") },
-    { label: "Cleric",        cls: "",       fn: p => hasMoves(p, "Aromatherapy","Heal Bell") },
-    { label: "Knock Off",     cls: "",       fn: p => hasMoves(p, "Knock Off") },
-    { label: "Knock Switch",  cls: "cyan",   fn: p => hasMoves(p, "Knock Off") && hasPivot(p) },
-    { label: "Scald Switch",  cls: "cyan",   fn: p => hasMoves(p, "Scald","Surf","Hydro Pump","Water Pulse") && hasPivot(p) },
-    { label: "Psychic Switch",cls: "cyan",   fn: p => PSYCHIC_ATK.some(m => p.moves.includes(m)) && hasPivot(p) },
-    { label: "SetUp Removal", cls: "red",    fn: p => hasMoves(p, "Haze","Topsy-Turvy","Whirlwind","Roar","Dragon Tail","Circle Throw","Spectral Thief") },
-    { label: "Trick-R Setter",cls: "orange", fn: p => hasMoves(p, "Trick Room") },
-    { label: "Trick-R Abuser",cls: "",       fn: p => (p.spe > 0 && p.spe <= 55) },
+    {label:'Rocks',fn:p=>hasMoves(p,'Stealth Rock')},{label:'Spikes',fn:p=>hasMoves(p,'Spikes')},
+    {label:'Sticky Web',fn:p=>hasMoves(p,'Sticky Web')},{label:'T-Spikes',fn:p=>hasMoves(p,'Toxic Spikes')},
+    {label:'Absorb T-Spikes',fn:p=>p.type1==='Poison'||p.type2==='Poison'},
+    {label:'Removal',cls:'red',fn:p=>hasMoves(p,'Rapid Spin','Defog','Court Change','Mortal Spin')},
+    {label:'Momentum',fn:p=>hasPivot(p)},{label:'Wish',fn:p=>hasMoves(p,'Wish')},
+    {label:'Cleric',fn:p=>hasMoves(p,'Aromatherapy','Heal Bell')},{label:'Knock Off',fn:p=>hasMoves(p,'Knock Off')},
+    {label:'Knock Switch',cls:'cyan',fn:p=>hasMoves(p,'Knock Off')&&hasPivot(p)},
+    {label:'Scald Switch',cls:'cyan',fn:p=>hasMoves(p,'Scald','Surf','Hydro Pump','Water Pulse')&&hasPivot(p)},
+    {label:'Psychic Switch',cls:'cyan',fn:p=>PSYCHIC_ATK.some(m=>p.moves.includes(m))&&hasPivot(p)},
+    {label:'SetUp Removal',cls:'red',fn:p=>hasMoves(p,'Haze','Topsy-Turvy','Whirlwind','Roar','Dragon Tail','Circle Throw','Spectral Thief')},
+    {label:'Trick-R Setter',cls:'orange',fn:p=>hasMoves(p,'Trick Room')},
+    {label:'Trick-R Abuser',fn:p=>p.spe>0&&p.spe<=55},
   ];
-
-  DEFS_MOVES.forEach(d => {
-    movesEl.appendChild(clRow(d.label, d.cls, picked.filter(d.fn)));
-  });
-
-  // ── Stats Checklist ──
+  DEFS_MOVES.forEach(d => movesEl.appendChild(clRow(d.label,d.cls,picked.filter(d.fn))));
   const DEFS_STATS = [
-    { label: "Good Phy Atk",    cls: "",       fn: p => p.atk >= 100 },
-    { label: "Good Spa Atk",    cls: "",       fn: p => p.spa >= 100 },
-    { label: "Def Frail",       cls: "red",    fn: p => p.defense > 0 && p.defense <= 65 },
-    { label: "Spd Frail",       cls: "red",    fn: p => p.spd > 0 && p.spd <= 65 },
-    { label: "Atk Wallbreaker", cls: "orange", fn: p => p.atk >= 130 },
-    { label: "Spa Wallbreaker", cls: "orange", fn: p => p.spa >= 130 },
-    { label: "Spe 100+",        cls: "green",  fn: p => p.spe >= 100 },
-    { label: "Reflect",         cls: "",       fn: p => hasMoves(p, "Reflect") },
-    { label: "Light Screen",    cls: "",       fn: p => hasMoves(p, "Light Screen") },
-    { label: "Dual Screens",    cls: "",       fn: p => hasMoves(p, "Reflect") && hasMoves(p, "Light Screen") },
-    { label: "50 or Less Spe",  cls: "",       fn: p => p.spe > 0 && p.spe <= 50 },
-    { label: "51–68 Spe",       cls: "",       fn: p => p.spe >= 51 && p.spe <= 68 },
-    { label: "69–80 Spe",       cls: "",       fn: p => p.spe >= 69 && p.spe <= 80 },
-    { label: "81–94 Spe",       cls: "",       fn: p => p.spe >= 81 && p.spe <= 94 },
-    { label: "95–110 Spe",      cls: "",       fn: p => p.spe >= 95 && p.spe <= 110 },
-    { label: "111–130 Spe",     cls: "",       fn: p => p.spe >= 111 && p.spe <= 130 },
-    { label: "131+ Spe",        cls: "green",  fn: p => p.spe >= 131 },
+    {label:'Good Phy Atk',fn:p=>p.atk>=100},{label:'Good Spa Atk',fn:p=>p.spa>=100},
+    {label:'Def Frail',cls:'red',fn:p=>p.defense>0&&p.defense<=65},{label:'Spd Frail',cls:'red',fn:p=>p.spd>0&&p.spd<=65},
+    {label:'Atk Wallbreaker',cls:'orange',fn:p=>p.atk>=130},{label:'Spa Wallbreaker',cls:'orange',fn:p=>p.spa>=130},
+    {label:'Spe 100+',cls:'green',fn:p=>p.spe>=100},{label:'Reflect',fn:p=>hasMoves(p,'Reflect')},
+    {label:'Light Screen',fn:p=>hasMoves(p,'Light Screen')},
+    {label:'Dual Screens',fn:p=>hasMoves(p,'Reflect')&&hasMoves(p,'Light Screen')},
+    {label:'50 or Less Spe',fn:p=>p.spe>0&&p.spe<=50},{label:'51–68 Spe',fn:p=>p.spe>=51&&p.spe<=68},
+    {label:'69–80 Spe',fn:p=>p.spe>=69&&p.spe<=80},{label:'81–94 Spe',fn:p=>p.spe>=81&&p.spe<=94},
+    {label:'95–110 Spe',fn:p=>p.spe>=95&&p.spe<=110},{label:'111–130 Spe',fn:p=>p.spe>=111&&p.spe<=130},
+    {label:'131+ Spe',cls:'green',fn:p=>p.spe>=131},
   ];
-
-  DEFS_STATS.forEach(d => {
-    statsEl.appendChild(clRow(d.label, d.cls, picked.filter(d.fn)));
-  });
+  DEFS_STATS.forEach(d => statsEl.appendChild(clRow(d.label,d.cls,picked.filter(d.fn))));
 }
 
-// ══════════════════════════════════════════════
-//  Roles panel
-// ══════════════════════════════════════════════
+// ── Roles ──
 function updateRoles(picked) {
-  const container = document.getElementById("roles-body");
-  container.innerHTML = "";
-
+  const container = document.getElementById('roles-body');
+  container.innerHTML = '';
   ROLES.forEach(role => {
-    let matching = [];
-    if (role.checkType) {
-      matching = picked.filter(p => p.type1 === role.checkType || p.type2 === role.checkType);
-    } else {
-      matching = picked.filter(p => p.moves.some(m => role.moves.includes(m)));
-    }
+    const matching = role.checkType
+      ? picked.filter(p => p.type1===role.checkType||p.type2===role.checkType)
+      : picked.filter(p => p.moves.some(m=>role.moves.includes(m)));
     const count = matching.length;
-    const cls = count >= role.min ? "ok" : count >= role.min - 1 ? "warn" : "bad";
-
-    const sprites = matching.map(p =>
-      `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`
-    ).join("");
-
+    const cls = count>=role.min?'ok':count>=role.min-1?'warn':'bad';
+    const spriteHtml = matching.map(p => `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`).join('');
     container.innerHTML += `
       <div class="role-row">
-        <span class="text-gray-300" style="min-width:160px">${role.label}</span>
-        <div class="role-sprites flex-1 mx-2">${sprites}</div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <span class="text-gray-600 text-xs">need ${role.min}</span>
+        <span style="min-width:160px;color:var(--text-mute);font-size:12px;">${role.label}</span>
+        <div class="role-sprites" style="flex:1;margin:0 8px;">${spriteHtml}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:10px;color:var(--text-dim);">need ${role.min}</span>
           <span class="role-count ${cls}">${count}</span>
         </div>
       </div>`;
   });
 }
 
-// ══════════════════════════════════════════════
-//  Move coverage panel
-// ══════════════════════════════════════════════
+// ── Move coverage ──
 function updateMoveCoverage(picked) {
-  const container = document.getElementById("moves-body");
-  container.innerHTML = "";
-  if (!picked.length) {
-    container.innerHTML = `<div class="text-gray-600 text-sm">Select Pokemon to see move coverage.</div>`;
-    return;
-  }
-
-  // Build {move: [pokemon]} index
+  const container = document.getElementById('moves-body');
+  container.innerHTML = '';
+  if (!picked.length) { container.innerHTML = `<div style="color:var(--text-dim);font-family:var(--fm);font-size:11px;">Select Pokémon to see move coverage.</div>`; return; }
   const moveToPokemons = {};
-  picked.forEach(p => {
-    p.moves.forEach(m => {
-      if (!moveToPokemons[m]) moveToPokemons[m] = [];
-      moveToPokemons[m].push(p);
-    });
-  });
-
+  picked.forEach(p => { p.moves.forEach(m => { if (!moveToPokemons[m]) moveToPokemons[m]=[]; moveToPokemons[m].push(p); }); });
   Object.entries(MOVE_CATEGORIES).forEach(([catName, catMoves]) => {
-    const hasMoves = catMoves.filter(m => moveToPokemons[m]);
-    const totalCoverage = hasMoves.length;
-    const pct = Math.round(totalCoverage / catMoves.length * 100);
-
-    const section = document.createElement("div");
-    section.className = "rounded-lg border border-gray-800/60 overflow-hidden";
-
-    // Header
-    const header = document.createElement("div");
-    header.className = "move-section-header";
-    const chevron = `<svg id="chev-${catName}" class="w-4 h-4 text-gray-600 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-    </svg>`;
+    const hasM = catMoves.filter(m => moveToPokemons[m]);
+    const pct = Math.round(hasM.length/catMoves.length*100);
+    const section = document.createElement('div');
+    section.style.cssText = 'border:1px solid var(--hairline-2);overflow:hidden;';
+    const header = document.createElement('div');
+    header.className = 'move-section-header';
     header.innerHTML = `
-      <div class="flex items-center gap-2">
-        <span class="font-semibold text-sm text-gray-200">${catName}</span>
-        <span class="text-xs text-gray-500">${totalCoverage}/${catMoves.length} moves covered</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--fd);font-size:13px;font-weight:600;color:var(--text);text-transform:uppercase;">${catName}</span>
+        <span style="font-family:var(--fm);font-size:10px;color:var(--text-dim);">${hasM.length}/${catMoves.length}</span>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="stat-bar-bg" style="width:60px"><div class="stat-bar-fill" style="width:${pct}%;background:${pct>66?'#22c55e':pct>33?'var(--amber)':'#4b5563'}"></div></div>
-        ${chevron}
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="stat-bar-bg" style="width:60px;"><div class="stat-bar-fill" style="width:${pct}%;background:${pct>66?'#22c55e':pct>33?'var(--amber)':'#4b5563'};"></div></div>
+        <svg id="chev-${catName.replace(/\s/g,'_')}" style="width:14px;height:14px;color:var(--text-dim);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
       </div>`;
-
-    const body = document.createElement("div");
+    const body = document.createElement('div');
     body.id = `cat-body-${catName.replace(/\s/g,'_')}`;
-    body.className = "hidden move-grid px-3 bg-gray-900/30";
-
+    body.className = 'hidden move-grid';
+    body.style.cssText = 'padding:6px 10px 10px;background:rgba(0,0,0,0.2);';
     catMoves.forEach(move => {
-      const pokemons = moveToPokemons[move] || [];
-      const chip = document.createElement("div");
-      chip.className = "move-chip" + (pokemons.length ? " has-coverage" : "");
-      let sprites = "";
-      pokemons.slice(0,4).forEach(p => {
-        sprites += `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`;
-      });
-      chip.innerHTML = `${sprites}<span>${move}</span>`;
+      const poks = moveToPokemons[move]||[];
+      const chip = document.createElement('div');
+      chip.className = 'move-chip'+(poks.length?' has-coverage':'');
+      let sprs = '';
+      poks.slice(0,4).forEach(p => { sprs += `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`; });
+      chip.innerHTML = `${sprs}<span>${move}</span>`;
       body.appendChild(chip);
     });
-
-    header.addEventListener("click", () => {
-      const isHidden = body.classList.contains("hidden");
-      body.classList.toggle("hidden", !isHidden);
-      const chev = document.getElementById(`chev-${catName}`);
-      if (chev) chev.style.transform = isHidden ? "rotate(180deg)" : "";
+    header.addEventListener('click', () => {
+      const isHid = body.classList.contains('hidden');
+      body.classList.toggle('hidden', !isHid);
+      const chev = document.getElementById(`chev-${catName.replace(/\s/g,'_')}`);
+      if (chev) chev.style.transform = isHid ? 'rotate(180deg)' : '';
     });
-
     section.appendChild(header);
     section.appendChild(body);
     container.appendChild(section);
   });
 }
-
 
 // ══════════════════════════════════════════════
 //  Persistence & Plans
@@ -1432,11 +1464,11 @@ const DP_PLANS_KEY   = 'dp_plans';
 
 function serializeSlots() {
   return slots.map(s => ({
-    type: s.type,
+    type:  s.type,
     pname: s.pokemon ? s.pokemon.name : null,
-    tera: s.tera_captain,
+    tera:  s.tera_captain,
     zmove: s.zmove_captain,
-    alts: (s.alts || []).map(a => a && a.pokemon ? a.pokemon.name : null).filter(Boolean),
+    alts:  (s.alts||[]).map(a => a&&a.pokemon ? a.pokemon.name : null).filter(Boolean),
   }));
 }
 
@@ -1444,12 +1476,12 @@ function applySlotData(data) {
   data.forEach((d, i) => {
     if (i >= slots.length) return;
     if (d.type) slots[i].type = d.type;
-    slots[i].pokemon = d.pname ? (POKEMON_DB.find(p => p.name === d.pname) || null) : null;
+    slots[i].pokemon = d.pname ? (POKEMON_DB.find(p => p.name===d.pname)||null) : null;
     slots[i].tera_captain  = !!d.tera;
     slots[i].zmove_captain = !!d.zmove;
-    slots[i].alts = (d.alts || []).map(name => {
-      const p = POKEMON_DB.find(p => p.name === name);
-      return p ? { pokemon: p } : null;
+    slots[i].alts = (d.alts||[]).map(name => {
+      const p = POKEMON_DB.find(p => p.name===name);
+      return p ? {pokemon:p} : null;
     }).filter(Boolean);
   });
 }
@@ -1457,54 +1489,45 @@ function applySlotData(data) {
 function saveCurrentToStorage() {
   try { localStorage.setItem(DP_CURRENT_KEY, JSON.stringify(serializeSlots())); } catch(e) {}
 }
-
 function loadCurrentFromStorage() {
-  try {
-    const raw = localStorage.getItem(DP_CURRENT_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (Array.isArray(data)) applySlotData(data);
-  } catch(e) {}
+  try { const raw = localStorage.getItem(DP_CURRENT_KEY); if (raw) { const data = JSON.parse(raw); if (Array.isArray(data)) applySlotData(data); } } catch(e) {}
 }
-
-function getPlans() {
-  try { return JSON.parse(localStorage.getItem(DP_PLANS_KEY) || '[]'); } catch(e) { return []; }
-}
+function getPlans() { try { return JSON.parse(localStorage.getItem(DP_PLANS_KEY)||'[]'); } catch(e) { return []; } }
 
 function saveCurrentPlan() {
   const name = document.getElementById('plan-name-input').value.trim();
   if (!name) { alert('Enter a plan name first.'); return; }
   const plans = getPlans();
-  const idx = plans.findIndex(p => p.name === name);
+  const idx   = plans.findIndex(p => p.name===name);
   const entry = { name, slots: serializeSlots() };
-  if (idx >= 0) plans[idx] = entry;
-  else plans.push(entry);
+  if (idx >= 0) plans[idx] = entry; else plans.push(entry);
   localStorage.setItem(DP_PLANS_KEY, JSON.stringify(plans));
   renderPlansList();
 }
 
 function loadPlan(name) {
-  const entry = getPlans().find(p => p.name === name);
+  const entry = getPlans().find(p => p.name===name);
   if (!entry) return;
   applySlotData(entry.slots);
   buildSlotRows();
-  updateBudget();
+  buildFocusedSlot(selectedSlotIdx);
+  buildBudgetHUD();
   updateCaptainButtons();
   updatePanels();
   saveCurrentToStorage();
 }
 
 function deletePlan(name) {
-  const plans = getPlans().filter(p => p.name !== name);
+  const plans = getPlans().filter(p => p.name!==name);
   localStorage.setItem(DP_PLANS_KEY, JSON.stringify(plans));
   renderPlansList();
 }
 
 function clearAllSlots() {
-  slots.forEach(s => { s.pokemon = null; s.tera_captain = false; s.zmove_captain = false; s.alts = []; });
+  slots.forEach(s => { s.pokemon=null; s.tera_captain=false; s.zmove_captain=false; s.alts=[]; });
   buildSlotRows();
-  updateBudget();
-  updateCaptainButtons();
+  buildFocusedSlot(selectedSlotIdx);
+  buildBudgetHUD();
   updatePanels();
   saveCurrentToStorage();
 }
@@ -1515,18 +1538,11 @@ function renderPlansList() {
   const plans = getPlans();
   if (!plans.length) { el.innerHTML = ''; return; }
   el.innerHTML = plans.map(p => {
-    const safe = JSON.stringify(p.name).replace(/"/g, '&quot;');
-    return `
-    <div style="display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.background='rgba(55,65,81,0.3)'" onmouseout="this.style.background=''">
-      <span style="flex:1;min-width:0;font-size:0.68rem;color:#d1d5db;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
-      <button onclick="loadPlan(${safe})"
-        style="font-size:0.6rem;padding:1px 6px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:3px;cursor:pointer;flex-shrink:0">
-        Load
-      </button>
-      <button onclick="deletePlan(${safe})"
-        style="font-size:0.6rem;padding:1px 5px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;border-radius:3px;cursor:pointer;flex-shrink:0">
-        ✕
-      </button>
+    const safe = JSON.stringify(p.name).replace(/"/g,'&quot;');
+    return `<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;">
+      <span style="flex:1;min-width:0;font-family:var(--fm);font-size:10px;color:var(--text-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <button onclick="loadPlan(${safe})" style="font-family:var(--fm);font-size:9px;padding:1px 6px;background:rgba(61,229,255,0.1);border:1px solid rgba(61,229,255,0.3);color:var(--cyan);cursor:pointer;">Load</button>
+      <button onclick="deletePlan(${safe})" style="font-family:var(--fm);font-size:9px;padding:1px 5px;background:rgba(255,88,120,0.1);border:1px solid rgba(255,88,120,0.25);color:var(--red);cursor:pointer;">✕</button>
     </div>`;
   }).join('');
 }
@@ -1536,15 +1552,16 @@ function renderPlansList() {
 // ══════════════════════════════════════════════
 loadCurrentFromStorage();
 buildSlotRows();
-updateBudget();
+buildFocusedSlot(selectedSlotIdx);
+buildBudgetHUD();
 updateCaptainButtons();
 updatePanels();
 renderPlansList();
 
 // Close AC on outside click
-document.addEventListener("click", (e) => {
-  if (!document.getElementById("ac-dropdown").contains(e.target) &&
-      !e.target.classList.contains("slot-search")) {
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('ac-dropdown');
+  if (!dd.contains(e.target) && !e.target.classList.contains('dp-primary-search') && !e.target.classList.contains('dp-alt-search')) {
     closeAC();
   }
 });
