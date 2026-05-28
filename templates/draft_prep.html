@@ -274,7 +274,7 @@
 .ac-item { display:flex; align-items:center; gap:8px; padding:5px 10px; font-family:var(--fm); font-size:11px; cursor:pointer; color:var(--text-mute); }
 .ac-item:hover, .ac-item.active { background:var(--cyan-s); color:var(--cyan); }
 .ac-item img { width:26px; height:26px; image-rendering:pixelated; }
-.hidden { display:none !important; }
+#dp-root .hidden { display:none !important; }
 
 /* ── Analysis content styles (kept from original) ── */
 .type-badge { display:inline-block; font-size:0.6rem; font-weight:700; letter-spacing:0.04em; padding:1px 6px; border-radius:3px; text-transform:uppercase; color:#fff; }
@@ -393,34 +393,38 @@ function getAbilityImmunities(p) {
 const MOVE_CATEGORIES = {
   "Hazards":  ["Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Ceaseless Edge","Stone Axe"],
   "Removal":  ["Rapid Spin","Defog","Court Change","Mortal Spin","Steel Roller"],
-  "Recovery": ["Recover","Roost","Slack Off","Soft-Boiled","Shore Up","Heal Order","Moonlight","Synthesis","Morning Sun","Wish","Healing Wish","Jungle Healing","Milk Drink","Life Dew","Leech Seed","Aqua Ring","Ingrain","Pain Split","Rest"],
-  "Support":  ["Trick Room","Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Tailwind","Helping Hand","Follow Me","Rage Powder","Wide Guard","Quick Guard","Fake Out","Safeguard","Light Screen","Reflect","Aurora Veil","Aromatherapy","Heal Bell","Misty Terrain","Electric Terrain","Grassy Terrain","Psychic Terrain","Magic Coat","Encore","Disable","Taunt","Imprison","Embargo","Torment","Gravity","Ally Switch","After You","Me First","Baton Pass"],
-  "Status":   ["Thunder Wave","Will-O-Wisp","Toxic","Nuzzle","Stun Spore","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Lovely Kiss","Swagger","Flatter","Confuse Ray","Attract","Powder","Gastro Acid","Worry Seed","Entrainment","Skill Swap"],
-  "Momentum": ["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"],
-  "Priority": ["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Baby-Doll Eyes","Jet Punch"],
-  "Phasing":  ["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song","Topsy-Turvy"],
+  "Recovery": ["Recover","Roost","Slack Off","Soft Boiled","Shore Up","Heal Order","Moonlight","Synthesis","Morning Sun","Wish","Healing Wish","Jungle Healing","Milk Drink","Life Dew","Leech Seed","Aqua Ring","Ingrain","Pain Split","Rest","Strength Sap"],
+  "Support":  ["Trick Room","Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Tailwind","Helping Hand","Follow Me","Rage Powder","Wide Guard","Quick Guard","Fake Out","Safeguard","Light Screen","Reflect","Aurora Veil","Aromatherapy","Heal Bell","Misty Terrain","Electric Terrain","Grassy Terrain","Psychic Terrain","Magic Coat","Encore","Disable","Taunt","Imprison","Embargo","Torment","Gravity","Ally Switch","After You","Me First","Baton Pass","Pollen Puff"],
+  "Status":   ["Thunder Wave","Will-O-Wisp","Toxic","Nuzzle","Stun Spore","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Lovely Kiss","Swagger","Flatter","Confuse Ray","Attract","Powder","Gastro Acid","Worry Seed","Entrainment","Skill Swap","Acid Spray","Snarl","Screech","Charm","Breaking Swipe","Eerie Impulse","Chilling Water","Alluring Voice"],
+  "Momentum": ["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilling Reception"],
+  "Priority": ["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Baby-Doll Eyes","Jet Punch","Vacuum Wave","Upper Hand"],
+  "Phasing":  ["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song","Topsy-Turvy","Clear Smog"],
   "Trap":     ["Magnet Pull","Arena Trap","Shadow Tag","Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Clamp","Sand Tomb","Thunder Cage","Octolock","No Retreat"],
-  "Tactical": ["Knock Off","Trick","Switcheroo","Skill Swap","Magic Room","Wonder Room","Poltergeist","Bestow","Fling","Natural Gift","Thief","Covet","Role Play"],
-  "Setup":    ["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Shell Smash","Quiver Dance","Belly Drum","Agility","Rock Polish","Autotomize","Bulk Up","Coil","Iron Defense","Curse","Cotton Guard","Amnesia","Stockpile","Work Up","Hone Claws","Shift Gear","Gear Up","Power-Up Punch","Charge","Charge Beam","Relic Song","Victory Dance","Clangorous Soul","No Retreat","Protosynthesis","Quark Drive"],
+  "Tactical": ["Knock Off","Trick","Switcheroo","Skill Swap","Magic Room","Wonder Room","Poltergeist","Bestow","Fling","Natural Gift","Thief","Covet","Role Play","Psychic Noise"],
+  "Setup":    ["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Shell Smash","Quiver Dance","Belly Drum","Agility","Rock Polish","Autotomize","Bulk Up","Coil","Iron Defense","Curse","Cotton Guard","Amnesia","Stockpile","Work Up","Hone Claws","Shift Gear","Gear Up","Power-Up Punch","Charge","Charge Beam","Relic Song","Victory Dance","Clangorous Soul","No Retreat","Protosynthesis","Quark Drive","Tail Glow","Trailblaze"],
   "Weather":  ["Rain Dance","Sunny Day","Sandstorm","Hail","Snow","Drizzle","Drought","Sand Stream","Snow Warning","Cloud Nine","Air Lock","Primordial Sea","Desolate Land","Delta Stream"],
-  "Doubles":  ["Protect","Wide Guard","Quick Guard","Follow Me","Rage Powder","Helping Hand","Fake Out","Feint","Ally Switch","Tailwind","Beat Up","Coaching","Instruct","Life Dew","Heal Pulse","Healing Wish","Lunar Dance","Self-Destruct","Explosion","Final Gambit","Perish Song","Imprison","Trick Room","Magic Room","Wonder Room"],
+  "Doubles":  ["Protect","Wide Guard","Quick Guard","Follow Me","Rage Powder","Helping Hand","Fake Out","Feint","Ally Switch","Tailwind","Beat Up","Coaching","Instruct","Life Dew","Heal Pulse","Healing Wish","Lunar Dance","Self-Destruct","Explosion","Final Gambit","Perish Song","Imprison","Trick Room","Magic Room","Wonder Room","Dragon Cheer","Pollen Puff"],
 };
 const ROLES = [
   { label:"Stealth Rock Setters", min:3, moves:["Stealth Rock"] },
+  { label:"Spikes Setter",        min:2, moves:["Spikes","Ceaseless Edge","Stone Axe"] },
   { label:"Entry Hazard Removal", min:3, moves:["Rapid Spin","Defog","Court Change","Mortal Spin"] },
   { label:"T-Spike Absorber",     min:1, moves:["Toxic Spikes"], checkType:"Poison" },
-  { label:"Momentum Users",       min:5, moves:["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilly Reception"] },
-  { label:"Speed Control",        min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electroweb","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash"] },
+  { label:"Momentum Users",       min:5, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilling Reception"] },
+  { label:"Speed Control",        min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electro Web","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash"] },
   { label:"Wish Passers",         min:1, moves:["Wish"] },
   { label:"Cleric",               min:1, moves:["Aromatherapy","Heal Bell"] },
+  { label:"Screens Setter",       min:2, moves:["Light Screen","Reflect","Aurora Veil"] },
+  { label:"Toxic User",           min:5, moves:["Toxic","Will-O-Wisp","Thunder Wave","Nuzzle"] },
+  { label:"Status Spreader",      min:3, moves:["Toxic","Thunder Wave","Will-O-Wisp","Nuzzle","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Stun Spore"] },
   { label:"Physical Sweeper",     min:2, moves:["Swords Dance","Dragon Dance","Belly Drum","Shift Gear","Coil","Victory Dance","Triple Arrows"] },
-  { label:"Special Sweeper",      min:2, moves:["Nasty Plot","Calm Mind","Quiver Dance","Clangorous Soul","Charge Beam"] },
+  { label:"Special Sweeper",      min:2, moves:["Nasty Plot","Calm Mind","Quiver Dance","Clangorous Soul","Charge Beam","Tail Glow"] },
   { label:"Trick Room Setter",    min:1, moves:["Trick Room"] },
   { label:"Weather Setter",       min:1, moves:["Rain Dance","Sunny Day","Sandstorm","Hail","Snow"] },
-  { label:"Priority User",        min:2, moves:["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock"] },
+  { label:"Priority User",        min:2, moves:["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Vacuum Wave","Upper Hand","Jet Punch"] },
   { label:"Phaser",               min:2, moves:["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song"] },
   { label:"Trapper",              min:1, moves:["Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Magnet Pull","Arena Trap","Shadow Tag"] },
-  { label:"Pivot",                min:3, moves:["U-turn","Volt Switch","Flip Turn","Teleport","Parting Shot"] },
+  { label:"Pivot",                min:3, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot"] },
   { label:"Knock Off User",       min:3, moves:["Knock Off"] },
 ];
 
@@ -1396,10 +1400,12 @@ function updateChecklists(picked) {
 function updateRoles(picked) {
   const container = document.getElementById('roles-body');
   container.innerHTML = '';
+  const roleMoveSet = role => new Set(role.moves.map(m => m.toLowerCase()));
   ROLES.forEach(role => {
+    const rSet = roleMoveSet(role);
     const matching = role.checkType
       ? picked.filter(p => p.type1===role.checkType||p.type2===role.checkType)
-      : picked.filter(p => p.moves.some(m=>role.moves.includes(m)));
+      : picked.filter(p => p.moves.some(m => rSet.has(m.toLowerCase())));
     const count = matching.length;
     const cls = count>=role.min?'ok':count>=role.min-1?'warn':'bad';
     const spriteHtml = matching.map(p => `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`).join('');
@@ -1421,9 +1427,9 @@ function updateMoveCoverage(picked) {
   container.innerHTML = '';
   if (!picked.length) { container.innerHTML = `<div style="color:var(--text-dim);font-family:var(--fm);font-size:11px;">Select Pokémon to see move coverage.</div>`; return; }
   const moveToPokemons = {};
-  picked.forEach(p => { p.moves.forEach(m => { if (!moveToPokemons[m]) moveToPokemons[m]=[]; moveToPokemons[m].push(p); }); });
+  picked.forEach(p => { p.moves.forEach(m => { const k=m.toLowerCase(); if (!moveToPokemons[k]) moveToPokemons[k]=[]; moveToPokemons[k].push(p); }); });
   Object.entries(MOVE_CATEGORIES).forEach(([catName, catMoves]) => {
-    const hasM = catMoves.filter(m => moveToPokemons[m]);
+    const hasM = catMoves.filter(m => moveToPokemons[m.toLowerCase()]);
     const pct = Math.round(hasM.length/catMoves.length*100);
     const section = document.createElement('div');
     section.style.cssText = 'border:1px solid var(--hairline-2);overflow:hidden;';
@@ -1443,7 +1449,7 @@ function updateMoveCoverage(picked) {
     body.className = 'hidden move-grid';
     body.style.cssText = 'padding:6px 10px 10px;background:rgba(0,0,0,0.2);';
     catMoves.forEach(move => {
-      const poks = moveToPokemons[move]||[];
+      const poks = moveToPokemons[move.toLowerCase()]||[];
       const chip = document.createElement('div');
       chip.className = 'move-chip'+(poks.length?' has-coverage':'');
       let sprs = '';
