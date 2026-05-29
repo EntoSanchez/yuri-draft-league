@@ -408,32 +408,56 @@ const MOVE_CATEGORIES = {
   "Doubles":  ["Protect","Wide Guard","Quick Guard","Follow Me","Rage Powder","Helping Hand","Fake Out","Feint","Ally Switch","Tailwind","Beat Up","Coaching","Instruct","Life Dew","Heal Pulse","Healing Wish","Lunar Dance","Self-Destruct","Explosion","Final Gambit","Perish Song","Imprison","Trick Room","Magic Room","Wonder Room","Dragon Cheer","Pollen Puff"],
 };
 const ROLES = [
-  { label:"Stealth Rock Setters", min:3, moves:["Stealth Rock"] },
-  { label:"Spikes Setter",        min:2, moves:["Spikes","Ceaseless Edge","Stone Axe"] },
-  { label:"Entry Hazard Removal", min:3, moves:["Rapid Spin","Defog","Court Change","Mortal Spin","Other Removal"] },
-  { label:"T-Spike Absorber",     min:1, moves:["Toxic Spikes"], checkType:"Poison" },
-  { label:"Redirectors",          min:1, moves:["Follow Me","Rage Powder"] },
+  { label:"Stealth Rock Setters", min:3, moves:["Stealth Rock"],
+    desc:"Pokémon that can set Stealth Rocks, chipping every switch-in for 1/8–1/2 HP based on type. One of the highest-value roles in the game." },
+  { label:"Spikes Setter",        min:2, moves:["Spikes","Ceaseless Edge","Stone Axe"],
+    desc:"Pokémon that layer Spikes (up to 3 layers), dealing 1/8, 1/6, or 1/4 HP to grounded switch-ins. Punishes bulky teams that rely on switching." },
+  { label:"Entry Hazard Removal", min:3, moves:["Rapid Spin","Defog","Court Change","Mortal Spin","Other Removal"],
+    desc:"Pokémon that can clear entry hazards from your side of the field. Essential if your team is weak to chip or relies on frequent switching." },
+  { label:"T-Spike Absorber",     min:1, moves:["Toxic Spikes"], checkType:"Poison",
+    desc:"Poison-type Pokémon that absorb Toxic Spikes on switch-in, removing them from your side entirely. A passive counter to T-Spikes without needing Defog." },
+  { label:"Redirectors",          min:1, moves:["Follow Me","Rage Powder"],
+    desc:"Pokémon that draw all single-target moves toward themselves with Follow Me or Rage Powder, shielding a fragile teammate from being KO'd in doubles." },
   { label:"Terrain Setters",      min:2, moves:["Misty Terrain","Electric Terrain","Grassy Terrain","Psychic Terrain"],
-                                         abilities:["Misty Surge","Electric Surge","Grassy Surge","Psychic Surge"] },
-  { label:"Momentum Users",       min:5, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilling Reception","Memento","Other Momentum"] },
-  { label:"Speed Controllers",    min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electro Web","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash","Bulldoze","Chilling Water"] },
-  { label:"Disruptors",           min:3, moves:["Taunt","Encore","Disable","Imprison","Embargo","Torment","Fake Out","Gravity","Confuse Ray","Yawn","After You","Instruct","Destiny Bond","Perish Song","Trick","Magic Coat"] },
+                                         abilities:["Misty Surge","Electric Surge","Grassy Surge","Psychic Surge"],
+    desc:"Pokémon that set a terrain via move or innate Surge ability. Terrains last 5 turns (8 with Terrain Extender) and boost certain move types or block status." },
+  { label:"Momentum Users",       min:5, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilling Reception","Memento","Other Momentum"],
+    desc:"Pokémon that deal damage or apply an effect and immediately switch out, keeping pressure on the opponent and safely bringing in a teammate." },
+  { label:"Speed Controllers",    min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electro Web","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash","Bulldoze","Chilling Water"],
+    desc:"Pokémon that manipulate the speed order — either slowing opponents (paralysis, Icy Wind, Sticky Web) or boosting their own speed (Agility, Dragon Dance, Tailwind)." },
+  { label:"Disruptors",           min:3, moves:["Taunt","Encore","Disable","Imprison","Embargo","Torment","Fake Out","Gravity","Confuse Ray","Yawn","After You","Instruct","Destiny Bond","Perish Song","Trick","Magic Coat"],
+    desc:"Pokémon that interfere with the opponent's strategy. Taunt blocks setup and recovery; Encore locks bad moves; Fake Out wastes a turn — all disrupt the game plan." },
   { label:"Stat Manipulators",    min:3, moves:["Parting Shot","Snarl","Charm","Breaking Swipe","Screech","Acid Spray","Fake Tears","Eerie Impulse","Growl","Feather Dance","Swagger","Flatter"],
-                                         abilities:["Intimidate","Download","Contrary","Defiant","Competitive"] },
-  { label:"Wish Passers",         min:1, moves:["Wish"] },
-  { label:"Cleric",               min:1, moves:["Aromatherapy","Heal Bell"] },
-  { label:"Screens Setter",       min:2, moves:["Light Screen","Reflect","Aurora Veil"] },
-  { label:"Toxic User",           min:5, moves:["Toxic","Will-O-Wisp","Thunder Wave","Nuzzle"] },
-  { label:"Status Spreader",      min:3, moves:["Toxic","Thunder Wave","Will-O-Wisp","Nuzzle","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Stun Spore"] },
-  { label:"Physical Sweeper",     min:2, moves:["Swords Dance","Dragon Dance","Belly Drum","Shift Gear","Coil","Victory Dance","Triple Arrows"] },
-  { label:"Special Sweeper",      min:2, moves:["Nasty Plot","Calm Mind","Quiver Dance","Clangorous Soul","Charge Beam","Tail Glow"] },
-  { label:"Trick Room Setter",    min:1, moves:["Trick Room"] },
-  { label:"Weather Setter",       min:1, moves:["Rain Dance","Sunny Day","Sandstorm","Hail","Snow"] },
-  { label:"Priority User",        min:2, moves:["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Vacuum Wave","Upper Hand","Jet Punch"] },
-  { label:"Phaser",               min:2, moves:["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song"] },
-  { label:"Trapper",              min:1, moves:["Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Magnet Pull","Arena Trap","Shadow Tag"] },
-  { label:"Pivot",                min:3, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot"] },
-  { label:"Knock Off User",       min:3, moves:["Knock Off"] },
+                                         abilities:["Intimidate","Download","Contrary","Defiant","Competitive"],
+    desc:"Pokémon that lower or exploit opponent stats. Intimidate drops Attack on entry; Parting Shot lowers Atk and SpA; Snarl/Charm/Screech wear down key threats." },
+  { label:"Wish Passers",         min:1, moves:["Wish"],
+    desc:"Pokémon that use Wish to bank healing for the next turn, which can then be passed to a teammate by switching. The primary team heal outside of Heal Bell." },
+  { label:"Cleric",               min:1, moves:["Aromatherapy","Heal Bell"],
+    desc:"Pokémon that cure all status conditions on your entire team with Aromatherapy or Heal Bell. Critical against burn, paralysis, and toxic-heavy opponents." },
+  { label:"Screens Setter",       min:2, moves:["Light Screen","Reflect","Aurora Veil"],
+    desc:"Pokémon that halve damage from Special (Light Screen), Physical (Reflect), or both (Aurora Veil, requires Hail/Snow) for 5 turns. Enables sweepers to set up safely." },
+  { label:"Toxic User",           min:5, moves:["Toxic","Will-O-Wisp","Thunder Wave","Nuzzle"],
+    desc:"Pokémon that inflict a major status condition — Toxic for passive damage, Will-O-Wisp to halve Atk, Thunder Wave/Nuzzle to cut Speed. Broad team coverage." },
+  { label:"Status Spreader",      min:3, moves:["Toxic","Thunder Wave","Will-O-Wisp","Nuzzle","Sleep Powder","Spore","Hypnosis","Yawn","Glare","Sing","Stun Spore"],
+    desc:"Pokémon with access to a wide variety of status moves across the whole team. More options means the right tool for any immunity or switch." },
+  { label:"Physical Sweeper",     min:2, moves:["Swords Dance","Dragon Dance","Belly Drum","Shift Gear","Coil","Victory Dance","Triple Arrows"],
+    desc:"Pokémon that boost their Attack stat and attempt to sweep. At +2 or higher these Pokémon often threaten to win the game outright if left unchecked." },
+  { label:"Special Sweeper",      min:2, moves:["Nasty Plot","Calm Mind","Quiver Dance","Clangorous Soul","Charge Beam","Tail Glow"],
+    desc:"Pokémon that boost their Sp. Atk (and sometimes SpD/Spe) to sweep. Tail Glow (+3) and Shell Smash-equivalent moves are especially threatening." },
+  { label:"Trick Room Setter",    min:1, moves:["Trick Room"],
+    desc:"Pokémon that can set Trick Room, reversing the speed order for 5 turns so the slowest Pokémon moves first. Enables otherwise unusable bulky attackers." },
+  { label:"Weather Setter",       min:1, moves:["Rain Dance","Sunny Day","Sandstorm","Hail","Snow"],
+    desc:"Pokémon that set a weather condition. Weather powers up certain move types, activates abilities (Swift Swim, Chlorophyll, Sand Rush), and can passively chip enemies." },
+  { label:"Priority User",        min:2, moves:["Extreme Speed","Quick Attack","Mach Punch","Ice Shard","Bullet Punch","Aqua Jet","Shadow Sneak","Sucker Punch","Fake Out","First Impression","Water Shuriken","Grassy Glide","Accelerock","Vacuum Wave","Upper Hand","Jet Punch"],
+    desc:"Pokémon with +1 (or higher) priority moves that go before any normal-speed attack. Essential for revenge killing or finishing off weakened, faster threats." },
+  { label:"Phaser",               min:2, moves:["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Perish Song"],
+    desc:"Pokémon that force opponents out of the field or reset their boosts. Dragon Tail and Circle Throw hit on the way out; Haze wipes all stat changes instantly." },
+  { label:"Trapper",              min:1, moves:["Mean Look","Block","Spider Web","Infestation","Wrap","Fire Spin","Whirlpool","Bind","Magnet Pull","Arena Trap","Shadow Tag"],
+    desc:"Pokémon that prevent the opponent from switching out. Trapping removes a key threat from the game — especially powerful against a team's win condition." },
+  { label:"Pivot",                min:3, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot"],
+    desc:"Pokémon that deal damage or apply pressure and immediately bring in a teammate, maintaining offensive pressure while keeping your best Pokémon healthy." },
+  { label:"Knock Off User",       min:3, moves:["Knock Off"],
+    desc:"Pokémon with Knock Off, which deals 50% bonus damage when the target holds an item and permanently removes that item. One of the most consistently useful moves." },
 ];
 
 const POKEMON_DB = {{ pokemon_json | safe }};
@@ -542,8 +566,14 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
           <!-- ROLES -->
           <div id="panel-roles">
             <div class="dp-section-head">// ROLES &amp; NICHES</div>
-            <div class="text-xs text-gray-500 mb-3">Green = at or above threshold &middot; Yellow = 1 below &middot; Red = below</div>
+            <div class="text-xs text-gray-500 mb-3">Green = at or above threshold &middot; Yellow = 1 below &middot; Red = below &middot; Hover a row for details</div>
             <div id="roles-body" class="rounded-lg overflow-hidden border border-gray-800/60"></div>
+          </div>
+
+          <!-- Role tooltip (shared, positioned by JS) -->
+          <div id="role-tooltip" style="display:none;position:fixed;z-index:9999;max-width:260px;padding:9px 12px;background:var(--panel-2);border:1px solid var(--cyan-dim);box-shadow:0 0 18px -4px var(--cyan-dim);pointer-events:none;">
+            <div id="role-tt-label" style="font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:5px;"></div>
+            <div id="role-tt-desc"  style="font-family:var(--fm);font-size:10px;line-height:1.5;color:var(--text-mute);"></div>
           </div>
 
           <!-- MOVES -->
@@ -1429,20 +1459,47 @@ function updateRoles(picked) {
     const count = matching.length;
     const cls = count>=role.min?'ok':count>=role.min-1?'warn':'bad';
     const spriteHtml = matching.map(p => `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`).join('');
-    const row = `
-      <div class="role-row">
-        <span style="min-width:120px;color:var(--text-mute);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${role.label}</span>
-        <div class="role-sprites" style="flex:1;margin:0 4px;">${spriteHtml}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-          <span style="font-size:10px;color:var(--text-dim);">${role.min}</span>
-          <span class="role-count ${cls}">${count}</span>
-        </div>
+    const rowEl = document.createElement('div');
+    rowEl.className = 'role-row';
+    rowEl.dataset.roleLabel = role.label;
+    rowEl.dataset.roleDesc  = role.desc || '';
+    rowEl.innerHTML = `
+      <span style="min-width:120px;color:var(--text-mute);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${role.label}</span>
+      <div class="role-sprites" style="flex:1;margin:0 4px;">${spriteHtml}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <span style="font-size:10px;color:var(--text-dim);">${role.min}</span>
+        <span class="role-count ${cls}">${count}</span>
       </div>`;
-    (idx < half ? col1 : col2).innerHTML += row;
+    (idx < half ? col1 : col2).appendChild(rowEl);
   });
 
   container.appendChild(col1);
   container.appendChild(col2);
+
+  // Tooltip wiring via delegation on the container
+  const tt = document.getElementById('role-tooltip');
+  const ttLabel = document.getElementById('role-tt-label');
+  const ttDesc  = document.getElementById('role-tt-desc');
+  container.addEventListener('mouseover', e => {
+    const row = e.target.closest('.role-row');
+    if (!row || !row.dataset.roleDesc) return;
+    ttLabel.textContent = row.dataset.roleLabel;
+    ttDesc.textContent  = row.dataset.roleDesc;
+    tt.style.display = 'block';
+  });
+  container.addEventListener('mousemove', e => {
+    if (tt.style.display === 'none') return;
+    const gap = 14;
+    let x = e.clientX + gap;
+    let y = e.clientY + gap;
+    if (x + 270 > window.innerWidth)  x = e.clientX - 270 - gap;
+    if (y + tt.offsetHeight > window.innerHeight) y = e.clientY - tt.offsetHeight - gap;
+    tt.style.left = x + 'px';
+    tt.style.top  = y + 'px';
+  });
+  container.addEventListener('mouseout', e => {
+    if (!e.relatedTarget || !e.relatedTarget.closest('#roles-body')) tt.style.display = 'none';
+  });
 }
 
 // ── Move coverage ──
