@@ -869,12 +869,12 @@ function buildFocusedSlot(idx) {
       : ['Point Pick (Paid)','Point Pick (Free)'];
     const subOpts = subTypes.map(t => `<option value="${t}"${t===slot.type?' selected':''}>${t}</option>`).join('');
     modeCtrl = `
-      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <select class="dp-type-select" style="font-size:9px;padding:1px 5px;max-width:110px;" onchange="onFocusedTypeChange(this.value)">${subOpts}</select>
         <div class="dp-big-mode-toggle">
           <button class="dp-mode-seg dp-mode-tier${isTier?' active':''}" onclick="setSlotMode(${idx},'tier')">TIER</button>
-          <button class="dp-mode-seg dp-mode-pt${!isTier?' active':''}" onclick="setSlotMode(${idx},'pt')">POINTS</button>
+          <button class="dp-mode-seg dp-mode-pt${!isTier?' active':''}" onclick="setSlotMode(${idx},'pt')">PT</button>
         </div>
-        <select class="dp-type-select" onchange="onFocusedTypeChange(this.value)">${subOpts}</select>
       </div>`;
   }
 
