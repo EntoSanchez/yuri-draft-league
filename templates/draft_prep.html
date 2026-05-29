@@ -149,13 +149,13 @@
 #dp-focused {
   background:var(--panel); border:1px solid var(--magenta-dim);
   box-shadow:0 0 24px -8px var(--magenta-dim);
-  padding:14px; position:relative; overflow-y:auto;
-  max-height:280px;
+  padding:10px; position:relative; overflow-y:auto;
+  max-height:230px;
 }
-.dp-focused-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.dp-focused-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
 .dp-focused-eyebrow { font-family:var(--fm); font-size:10px; font-weight:500; letter-spacing:0.16em; text-transform:uppercase; color:var(--magenta); }
-.dp-focused-title { font-family:var(--fd); font-size:18px; font-weight:700; text-transform:uppercase; color:var(--text); margin-top:3px; }
-.dp-focused-body { display:grid; grid-template-columns:210px 1fr; gap:14px; }
+.dp-focused-title { font-family:var(--fd); font-size:13px; font-weight:700; text-transform:uppercase; color:var(--text); margin-top:2px; }
+.dp-focused-body { display:grid; grid-template-columns:190px 1fr; gap:8px; }
 .dp-type-select {
   font-family:var(--fm); font-size:10px; background:var(--panel-2);
   border:1px solid var(--hairline-2); color:var(--text); padding:4px 8px;
@@ -166,8 +166,8 @@
 /* BigModeToggle */
 .dp-big-mode-toggle { display:inline-flex; }
 .dp-mode-seg {
-  padding:7px 16px; border-radius:0; cursor:pointer;
-  font-family:var(--fd); font-size:11px; font-weight:700;
+  padding:4px 10px; border-radius:0; cursor:pointer;
+  font-family:var(--fd); font-size:10px; font-weight:700;
   letter-spacing:.1em; text-transform:uppercase;
   background:transparent; color:var(--text-mute); border:none;
 }
@@ -177,7 +177,7 @@
 .dp-mode-pt.active { background:var(--magenta); color:var(--ink); box-shadow:0 0 12px -2px var(--magenta-dim); }
 
 /* Captain buttons */
-.dp-capt-row { display:flex; gap:6px; margin-top:8px; }
+.dp-capt-row { display:flex; gap:4px; margin-top:4px; }
 .dp-capt-btn { font-family:var(--fm); font-size:10px; font-weight:700; padding:3px 10px; border:1px solid; border-radius:0; cursor:pointer; }
 .dp-tera-btn  { color:var(--cyan); border-color:var(--cyan-dim); background:transparent; }
 .dp-tera-btn.active  { background:var(--cyan-s); border-color:var(--cyan); }
@@ -188,17 +188,17 @@
 /* PrimaryCard */
 .dp-primary-empty {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:8px; border:1px dashed; padding:14px; min-height:180px;
+  gap:5px; border:1px dashed; padding:8px; min-height:100px;
 }
 .dp-primary-filled {
-  border:1px solid; background:var(--panel-2); padding:14px; position:relative; min-height:180px;
+  border:1px solid; background:var(--panel-2); padding:8px; position:relative; min-height:100px;
 }
 .dp-primary-label {
   position:absolute; top:8px; right:10px; font-family:var(--fm); font-size:9px;
   font-weight:700; letter-spacing:0.15em;
 }
 .dp-primary-sprite {
-  height:80px; border:1px dashed var(--hairline-2); margin-bottom:10px;
+  height:56px; border:1px dashed var(--hairline-2); margin-bottom:4px;
   display:flex; align-items:center; justify-content:center;
   background:repeating-linear-gradient(45deg,transparent 0 10px,rgba(255,255,255,.015) 10px 11px);
 }
@@ -207,13 +207,13 @@
   background:var(--ink); border:1px solid var(--hairline-2); color:var(--text); outline:none;
 }
 .dp-primary-search:focus { border-color:var(--magenta-dim); }
-.dp-primary-name { font-family:var(--fd); font-size:16px; font-weight:700; text-transform:uppercase; color:var(--text); margin:4px 0 3px; }
+.dp-primary-name { font-family:var(--fd); font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text); margin:2px 0 2px; }
 .dp-type-chip-lg { font-family:var(--fm); font-size:9px; font-weight:700; padding:2px 5px; border-radius:2px; }
 .dp-primary-cost { font-family:var(--fm); font-size:14px; font-weight:600; color:var(--magenta); margin-left:auto; }
 .dp-clear-btn {
   font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:0.08em;
-  padding:3px 8px; border:1px solid var(--hairline-2); color:var(--text-dim);
-  background:transparent; cursor:pointer; margin-top:8px;
+  padding:2px 6px; border:1px solid var(--hairline-2); color:var(--text-dim);
+  background:transparent; cursor:pointer; margin-top:4px;
 }
 .dp-clear-btn:hover { border-color:var(--red); color:var(--red); }
 
@@ -229,12 +229,12 @@
 .dp-promote-btn { font-family:var(--fm); font-size:9px; font-weight:600; color:var(--cyan); cursor:pointer; letter-spacing:0.05em; }
 .dp-promote-btn:hover { color:var(--text); }
 .dp-alt-sprite-frame {
-  height:48px; border:1px dashed var(--hairline);
+  height:36px; border:1px dashed var(--hairline);
   display:flex; align-items:center; justify-content:center;
   background:repeating-linear-gradient(45deg,transparent 0 5px,rgba(255,255,255,.012) 5px 6px);
 }
 .dp-alt-empty-cell {
-  border:1px dashed var(--hairline-2); min-height:120px;
+  border:1px dashed var(--hairline-2); min-height:80px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:5px; cursor:pointer; transition:border-color 0.15s;
 }
@@ -458,6 +458,12 @@ const ROLES = [
     desc:"Pokémon that deal damage or apply pressure and immediately bring in a teammate, maintaining offensive pressure while keeping your best Pokémon healthy." },
   { label:"Knock Off User",       min:3, moves:["Knock Off"],
     desc:"Pokémon with Knock Off, which deals 50% bonus damage when the target holds an item and permanently removes that item. One of the most consistently useful moves." },
+  { label:"Sticky Web Setter",    min:1, moves:["Sticky Web"],
+    desc:"Pokémon that set Sticky Web on the foe's side, lowering the Speed of all grounded switch-ins by 1 stage. Strongest on hyper-offense teams that need guaranteed Speed control vs. faster threats." },
+  { label:"Knock+Pivot",          min:1, fn: p => { const mvs = p.moves.map(m=>m.toLowerCase()); return mvs.includes('knock off') && ["u-turn","volt switch","flip turn","teleport","parting shot"].some(m=>mvs.includes(m)); },
+    desc:"Pokémon that can both Knock Off items and use a pivot move. Remove their item, then immediately bring in a teammate — one of the strongest two-turn action sequences in the game." },
+  { label:"TR Abuser",            min:2, fn: p => p.spe > 0 && p.spe <= 55,
+    desc:"Pokémon with low enough Speed (≤55) to move first under Trick Room. A team with a TR setter benefits greatly from having multiple abusers to maximize the 5-turn window." },
 ];
 
 const POKEMON_DB = {{ pokemon_json | safe }};
@@ -551,22 +557,17 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
                 </div>
               </div>
             </div>
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-              <div>
-                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Moves Checklist</div>
-                <div id="moves-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
-              </div>
-              <div>
-                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Stats Checklist</div>
-                <div id="stats-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
-              </div>
+            <div id="moves-checklist" style="display:none"></div>
+            <div class="mt-6">
+              <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Stats Checklist</div>
+              <div id="stats-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
             </div>
           </div>
 
           <!-- ROLES -->
           <div id="panel-roles">
             <div class="dp-section-head">// ROLES &amp; NICHES</div>
-            <div class="text-xs text-gray-500 mb-3">Green = at or above threshold &middot; Yellow = 1 below &middot; Red = below &middot; Hover a row for details</div>
+            <div class="text-xs text-gray-500 mb-3">Green = at or above threshold &middot; Yellow = 1 below &middot; Red = below &middot; Min = target count &middot; Hover for details</div>
             <div id="roles-body" class="rounded-lg overflow-hidden border border-gray-800/60"></div>
           </div>
 
@@ -902,7 +903,7 @@ function buildPrimaryCard(idx) {
         <div class="dp-primary-label" style="color:${tag.color};">PRIMARY</div>
         <div class="dp-primary-sprite">
           <img id="dp-primary-sprite-img" src="${p.sprite}"
-               style="width:72px;height:72px;image-rendering:pixelated;"
+               style="width:50px;height:50px;image-rendering:pixelated;"
                onerror="this.style.opacity=0.3" alt="${p.name}">
         </div>
         <div class="dp-primary-name">${p.name}</div>
@@ -1448,7 +1449,9 @@ function updateRoles(picked) {
   ROLES.forEach((role, idx) => {
     const rSet = role.moves ? new Set(role.moves.map(m => m.toLowerCase())) : new Set();
     const rAbilSet = role.abilities ? new Set(role.abilities.map(a => a.toLowerCase())) : null;
-    const matching = role.checkType
+    const matching = role.fn
+      ? picked.filter(role.fn)
+      : role.checkType
       ? picked.filter(p => p.type1===role.checkType||p.type2===role.checkType)
       : picked.filter(p => {
           const moveOk = rSet.size > 0 && p.moves.some(m => rSet.has(m.toLowerCase()));
