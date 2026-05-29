@@ -1392,10 +1392,16 @@ def draft_board():
         tiers_by_pts[seen_pts[group_key]]["pokemon"].append(t)
 
     # Collect all unique move categories for the filter dropdown
+    # Seed with key moves that must always be present regardless of DB coverage
+    _seed = {
+        "Final Gambit", "Expanding Force", "Rising Voltage", "Misty Explosion",
+        "Grassy Glide", "Grassy Terrain", "Electric Terrain", "Misty Terrain",
+        "Psychic Terrain",
+    }
     all_moves = sorted({
         m for t in tiers
         for m in (t["moves"] or "").split("|") if m
-    })
+    } | _seed)
 
     return render_template("draftboard.html",
                            tiers=tiers,
