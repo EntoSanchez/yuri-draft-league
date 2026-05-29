@@ -290,7 +290,9 @@
 .move-chip { display:flex; align-items:center; gap:4px; background:rgba(10,10,20,0.9); border:1px solid var(--hairline); padding:3px 8px 3px 4px; font-size:0.65rem; color:var(--text-dim); }
 .move-chip.has-coverage { border-color:rgba(61,229,255,0.4); color:var(--cyan); background:rgba(61,229,255,0.06); }
 .move-chip img { width:22px; height:22px; image-rendering:pixelated; border-radius:50%; }
-.role-row { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; border-bottom:1px solid var(--hairline); font-size:0.75rem; min-height:34px; }
+.role-row { display:flex; align-items:center; justify-content:space-between; padding:5px 8px; border-bottom:1px solid var(--hairline); font-size:0.75rem; min-height:34px; }
+.role-col { flex:1; display:flex; flex-direction:column; min-width:0; }
+.role-col:first-child { border-right:1px solid var(--hairline-2); }
 .role-sprites { display:flex; align-items:center; gap:2px; flex-wrap:wrap; }
 .role-sprites img { width:26px; height:26px; object-fit:contain; }
 .role-count { font-weight:700; width:24px; text-align:right; }
@@ -1405,8 +1407,15 @@ function updateChecklists(picked) {
 // ── Roles ──
 function updateRoles(picked) {
   const container = document.getElementById('roles-body');
+  container.style.display = 'flex';
   container.innerHTML = '';
-  ROLES.forEach(role => {
+  const col1 = document.createElement('div');
+  col1.className = 'role-col';
+  const col2 = document.createElement('div');
+  col2.className = 'role-col';
+  const half = Math.ceil(ROLES.length / 2);
+
+  ROLES.forEach((role, idx) => {
     const rSet = role.moves ? new Set(role.moves.map(m => m.toLowerCase())) : new Set();
     const rAbilSet = role.abilities ? new Set(role.abilities.map(a => a.toLowerCase())) : null;
     const matching = role.checkType
@@ -1420,16 +1429,20 @@ function updateRoles(picked) {
     const count = matching.length;
     const cls = count>=role.min?'ok':count>=role.min-1?'warn':'bad';
     const spriteHtml = matching.map(p => `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`).join('');
-    container.innerHTML += `
+    const row = `
       <div class="role-row">
-        <span style="min-width:160px;color:var(--text-mute);font-size:12px;">${role.label}</span>
-        <div class="role-sprites" style="flex:1;margin:0 8px;">${spriteHtml}</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          <span style="font-size:10px;color:var(--text-dim);">need ${role.min}</span>
+        <span style="min-width:120px;color:var(--text-mute);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${role.label}</span>
+        <div class="role-sprites" style="flex:1;margin:0 4px;">${spriteHtml}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <span style="font-size:10px;color:var(--text-dim);">${role.min}</span>
           <span class="role-count ${cls}">${count}</span>
         </div>
       </div>`;
+    (idx < half ? col1 : col2).innerHTML += row;
   });
+
+  container.appendChild(col1);
+  container.appendChild(col2);
 }
 
 // ── Move coverage ──
