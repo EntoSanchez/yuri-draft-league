@@ -67,7 +67,14 @@ def add_move_to_types(conn, move, type1, type2=None):
 
 
 def main():
-    conn = sqlite3.connect(DB_PATH)
+    import sys
+    db_path = str(DB_PATH)
+    for i, arg in enumerate(sys.argv):
+        if arg == "--db" and i + 1 < len(sys.argv):
+            db_path = sys.argv[i + 1]
+    print("Using DB: " + db_path)
+
+    conn = sqlite3.connect(db_path)
 
     n = add_move_to_names(conn, "Final Gambit", FINAL_GAMBIT_LEARNERS)
     print("Final Gambit: added to %d pokemon" % n)

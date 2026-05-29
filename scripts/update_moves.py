@@ -274,8 +274,13 @@ def normalize(name: str) -> str:
 
 def main():
     apply = "--apply" in sys.argv
+    db_path = DB_PATH
+    for i, arg in enumerate(sys.argv):
+        if arg == "--db" and i + 1 < len(sys.argv):
+            db_path = sys.argv[i + 1]
+    print(f"Using DB: {db_path}")
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
