@@ -584,7 +584,7 @@ function filterBoard() {
 
     const nameOk    = !currentSearch  || name.includes(currentSearch);
     const statusOk  = !currentStatus  || status === currentStatus;
-    const moveOk    = !currentMove    || moves.split('|').includes(currentMove);
+    const moveOk    = !currentMove    || moves.toLowerCase().split('|').includes(currentMove.toLowerCase());
     const abilityOk = !currentAbility || abilities.split('|').some(a => a && a.includes(currentAbility));
     const typeOk    = !currentType    || type1 === currentType || type2 === currentType;
     const speedOk   = !currentSpeed   || (spe >= speedMin && spe <= speedMax);

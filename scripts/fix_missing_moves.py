@@ -1,8 +1,8 @@
 """
 One-time migration: add moves that update_moves.py misses due to scraper coverage gaps.
 
-  Final Gambit   → 18 known learners (pokemondb infocard approach catches only 2)
-  Rising Voltage → all Electric-type pokemon (TM move, pokemondb only shows Raging Bolt)
+  Final Gambit   -> 18 known learners (pokemondb infocard approach catches only 2)
+  Rising Voltage -> all Electric-type pokemon (TM move, pokemondb only shows Raging Bolt)
 
 Run:
     python scripts/fix_missing_moves.py
@@ -25,7 +25,7 @@ FINAL_GAMBIT_LEARNERS = [
 ]
 
 
-def add_move_to_names(conn, move: str, names: list[str]) -> int:
+def add_move_to_names(conn, move, names):
     updated = 0
     for name in names:
         row = conn.execute(
@@ -42,7 +42,7 @@ def add_move_to_names(conn, move: str, names: list[str]) -> int:
     return updated
 
 
-def add_move_to_types(conn, move: str, type1: str, type2: str | None = None) -> int:
+def add_move_to_types(conn, move, type1, type2=None):
     if type2:
         rows = conn.execute(
             "SELECT name, moves FROM draft_tiers WHERE is_banned != 1 "
@@ -70,10 +70,10 @@ def main():
     conn = sqlite3.connect(DB_PATH)
 
     n = add_move_to_names(conn, "Final Gambit", FINAL_GAMBIT_LEARNERS)
-    print(f"Final Gambit: added to {n} pokemon")
+    print("Final Gambit: added to %d pokemon" % n)
 
     n = add_move_to_types(conn, "Rising Voltage", "Electric")
-    print(f"Rising Voltage: added to {n} Electric-type pokemon")
+    print("Rising Voltage: added to %d Electric-type pokemon" % n)
 
     conn.commit()
     conn.close()
