@@ -898,6 +898,10 @@ function buildFocusedSlot(idx) {
 }
 
 function buildPrimaryCard(idx) {
+  if (slots[idx] === undefined) {
+    console.error('buildPrimaryCard: idx=' + idx + ' selectedSlotIdx=' + selectedSlotIdx + ' slots.length=' + slots.length + ' acActiveSlot=' + acActiveSlot);
+    return;
+  }
   const slot = slots[idx];
   const tag  = getSlotTag(slot.type);
   const container = document.getElementById('dp-primary-card');
