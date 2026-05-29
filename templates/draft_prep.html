@@ -410,8 +410,14 @@ const ROLES = [
   { label:"Spikes Setter",        min:2, moves:["Spikes","Ceaseless Edge","Stone Axe"] },
   { label:"Entry Hazard Removal", min:3, moves:["Rapid Spin","Defog","Court Change","Mortal Spin","Other Removal"] },
   { label:"T-Spike Absorber",     min:1, moves:["Toxic Spikes"], checkType:"Poison" },
+  { label:"Redirectors",          min:1, moves:["Follow Me","Rage Powder"] },
+  { label:"Terrain Setters",      min:2, moves:["Misty Terrain","Electric Terrain","Grassy Terrain","Psychic Terrain"],
+                                         abilities:["Misty Surge","Electric Surge","Grassy Surge","Psychic Surge"] },
   { label:"Momentum Users",       min:5, moves:["U-Turn","Volt Switch","Flip Turn","Teleport","Parting Shot","Shed Tail","Chilling Reception","Memento","Other Momentum"] },
-  { label:"Speed Control",        min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electro Web","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash"] },
+  { label:"Speed Controllers",    min:3, moves:["Thunder Wave","Tailwind","Trick Room","Icy Wind","Electro Web","Glaciate","Cotton Spore","Sticky Web","Agility","Rock Polish","Autotomize","Shift Gear","Dragon Dance","Quiver Dance","Shell Smash","Bulldoze","Chilling Water"] },
+  { label:"Disruptors",           min:3, moves:["Taunt","Encore","Disable","Imprison","Embargo","Torment","Fake Out","Gravity","Confuse Ray","Yawn","After You","Instruct","Destiny Bond","Perish Song","Trick","Magic Coat"] },
+  { label:"Stat Manipulators",    min:3, moves:["Parting Shot","Snarl","Charm","Breaking Swipe","Screech","Acid Spray","Fake Tears","Eerie Impulse","Growl","Feather Dance","Swagger","Flatter"],
+                                         abilities:["Intimidate","Download","Contrary","Defiant","Competitive"] },
   { label:"Wish Passers",         min:1, moves:["Wish"] },
   { label:"Cleric",               min:1, moves:["Aromatherapy","Heal Bell"] },
   { label:"Screens Setter",       min:2, moves:["Light Screen","Reflect","Aurora Veil"] },
@@ -1400,12 +1406,17 @@ function updateChecklists(picked) {
 function updateRoles(picked) {
   const container = document.getElementById('roles-body');
   container.innerHTML = '';
-  const roleMoveSet = role => new Set(role.moves.map(m => m.toLowerCase()));
   ROLES.forEach(role => {
-    const rSet = roleMoveSet(role);
+    const rSet = role.moves ? new Set(role.moves.map(m => m.toLowerCase())) : new Set();
+    const rAbilSet = role.abilities ? new Set(role.abilities.map(a => a.toLowerCase())) : null;
     const matching = role.checkType
       ? picked.filter(p => p.type1===role.checkType||p.type2===role.checkType)
-      : picked.filter(p => p.moves.some(m => rSet.has(m.toLowerCase())));
+      : picked.filter(p => {
+          const moveOk = rSet.size > 0 && p.moves.some(m => rSet.has(m.toLowerCase()));
+          const abilOk = rAbilSet && [p.ability1, p.ability2, p.ability3]
+            .some(a => a && rAbilSet.has(a.toLowerCase()));
+          return moveOk || abilOk;
+        });
     const count = matching.length;
     const cls = count>=role.min?'ok':count>=role.min-1?'warn':'bad';
     const spriteHtml = matching.map(p => `<img src="${p.sprite}" title="${p.name}" onerror="this.style.display='none'">`).join('');
