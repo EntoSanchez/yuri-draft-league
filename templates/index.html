@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Standings — {{ league_name }}{% endblock %}
 {% block content %}
+<style>
+@media (max-width: 479px) {
+  /* Tighten standings rows on very small phones */
+  .cp-card { gap: 10px !important; padding-left: 12px !important; padding-right: 12px !important; }
+  /* Shrink record column so team name has more room */
+  .yc-record-col { min-width: 78px !important; }
+  /* Scale down podium bars so they fit without overflow */
+  .yc-bar-1  { width: 98px !important; height: 76px !important; font-size: 1.5rem !important; }
+  .yc-bar-23 { width: 82px !important; }
+  /* Tighter podium gap */
+  .yc-podium { gap: 8px !important; }
+}
+</style>
 
 <!-- ── Hero Banner ── -->
 <div class="yc-page-hero hero-pattern">
@@ -61,7 +74,7 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
   <p class="yc-eyebrow mb-6">// LEAGUE.STANDINGS</p>
   {% set top3 = standings_all[:3] %}
-  <div class="flex items-end justify-center gap-3 mb-10">
+  <div class="yc-podium flex items-end justify-center gap-3 mb-10">
     {# 2nd place (left) #}
     {% if top3 | length >= 2 %}
     {% set row = top3[1] %}
@@ -75,7 +88,7 @@
       </div>
       <div class="text-sm font-bold text-white truncate mb-0.5" style="max-width:130px;">{{ row.coach.team_name }}</div>
       <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L</div>
-      <div class="rounded-t-lg flex items-center justify-center font-black text-2xl" style="width:110px;height:70px;background:rgba(192,192,192,0.15);border:1px solid rgba(192,192,192,0.25);color:#C0C0C0;">2</div>
+      <div class="yc-bar-23 rounded-t-lg flex items-center justify-center font-black text-2xl" style="width:110px;height:70px;background:rgba(192,192,192,0.15);border:1px solid rgba(192,192,192,0.25);color:#C0C0C0;">2</div>
     </a>
     {% endif %}
     {# 1st place (center, taller) #}
@@ -92,7 +105,7 @@
       </div>
       <div class="text-base font-black text-white truncate mb-0.5" style="max-width:150px;">{{ row.coach.team_name }}</div>
       <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L · +{{ row.diff | abs | int }}</div>
-      <div class="rounded-t-lg flex items-center justify-center font-black text-3xl" style="width:130px;height:92px;background:var(--magenta-soft);border:1px solid var(--magenta-dim);color:var(--magenta);box-shadow:0 0 28px rgba(255,42,138,0.12);">1</div>
+      <div class="yc-bar-1 rounded-t-lg flex items-center justify-center font-black text-3xl" style="width:130px;height:92px;background:var(--magenta-soft);border:1px solid var(--magenta-dim);color:var(--magenta);box-shadow:0 0 28px rgba(255,42,138,0.12);">1</div>
     </a>
     {% endif %}
     {# 3rd place (right) #}
@@ -108,7 +121,7 @@
       </div>
       <div class="text-sm font-bold text-white truncate mb-0.5" style="max-width:130px;">{{ row.coach.team_name }}</div>
       <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L</div>
-      <div class="rounded-t-lg flex items-center justify-center font-black text-2xl" style="width:110px;height:56px;background:rgba(205,127,50,0.12);border:1px solid rgba(205,127,50,0.25);color:#CD7F32;">3</div>
+      <div class="yc-bar-23 rounded-t-lg flex items-center justify-center font-black text-2xl" style="width:110px;height:56px;background:rgba(205,127,50,0.12);border:1px solid rgba(205,127,50,0.25);color:#CD7F32;">3</div>
     </a>
     {% endif %}
   </div>
@@ -203,7 +216,7 @@
         {% endif %}
 
         {# Record + win-rate bar #}
-        <div class="flex-shrink-0 text-right" style="min-width:110px;">
+        <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
           <div class="font-black text-base font-mono text-white leading-tight">
             <span class="text-green-400">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
             <span class="mx-0.5 text-gray-600">·</span>
@@ -300,7 +313,7 @@
           </svg>
         </div>
         {% endif %}
-        <div class="flex-shrink-0 text-right" style="min-width:110px;">
+        <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
           <div class="font-black text-base font-mono text-white leading-tight">
             <span class="text-green-400">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
             <span class="mx-0.5 text-gray-600">·</span>
