@@ -558,9 +558,20 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
               </div>
             </div>
             <div id="moves-checklist" style="display:none"></div>
-            <div class="mt-6">
-              <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Stats Checklist</div>
-              <div id="stats-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
+            <div class="mt-6" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;">
+              <div>
+                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Stats Checklist</div>
+                <div id="stats-checklist" class="rounded-lg border border-gray-800/60 overflow-hidden"></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Stat Matrix</div>
+                  <select id="stat-matrix-sel" class="dp-type-select" style="font-size:9px;padding:2px 6px;" onchange="renderStatMatrix()">
+                    <option value="team">Team Composite</option>
+                  </select>
+                </div>
+                <div id="stat-matrix" style="border:1px solid rgba(55,65,81,0.6);overflow:hidden;background:var(--panel-2);"></div>
+              </div>
             </div>
           </div>
 
@@ -1471,15 +1482,143 @@ function updateChecklists(picked) {
     {label:'Good Phy Atk',fn:p=>p.atk>=100},{label:'Good Spa Atk',fn:p=>p.spa>=100},
     {label:'Def Frail',cls:'red',fn:p=>p.defense>0&&p.defense<=65},{label:'Spd Frail',cls:'red',fn:p=>p.spd>0&&p.spd<=65},
     {label:'Atk Wallbreaker',cls:'orange',fn:p=>p.atk>=130},{label:'Spa Wallbreaker',cls:'orange',fn:p=>p.spa>=130},
-    {label:'Spe 100+',cls:'green',fn:p=>p.spe>=100},{label:'Reflect',fn:p=>hasMoves(p,'Reflect')},
-    {label:'Light Screen',fn:p=>hasMoves(p,'Light Screen')},
-    {label:'Dual Screens',fn:p=>hasMoves(p,'Reflect')&&hasMoves(p,'Light Screen')},
+    {label:'Spe 100+',cls:'green',fn:p=>p.spe>=100},
     {label:'50 or Less Spe',fn:p=>p.spe>0&&p.spe<=50},{label:'51–68 Spe',fn:p=>p.spe>=51&&p.spe<=68},
     {label:'69–80 Spe',fn:p=>p.spe>=69&&p.spe<=80},{label:'81–94 Spe',fn:p=>p.spe>=81&&p.spe<=94},
     {label:'95–110 Spe',fn:p=>p.spe>=95&&p.spe<=110},{label:'111–130 Spe',fn:p=>p.spe>=111&&p.spe<=130},
     {label:'131+ Spe',cls:'green',fn:p=>p.spe>=131},
   ];
   DEFS_STATS.forEach(d => statsEl.appendChild(clRow(d.label,d.cls,picked.filter(d.fn))));
+  buildStatMatrix(picked);
+}
+
+// ── Stat Matrix ──
+let _smPicked = [];
+
+function buildStatMatrix(picked) {
+  _smPicked = picked;
+  const sel = document.getElementById('stat-matrix-sel');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="team">Team Composite</option>';
+  picked.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  // Restore selection if still valid
+  if (prev !== 'team' && parseInt(prev) < picked.length) sel.value = prev;
+  else sel.value = 'team';
+  renderStatMatrix();
+}
+
+function renderStatMatrix() {
+  const sel = document.getElementById('stat-matrix-sel');
+  const box = document.getElementById('stat-matrix');
+  if (!sel || !box) return;
+  box.innerHTML = '';
+  if (!_smPicked.length) {
+    box.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-family:var(--fm);font-size:11px;">No Pokémon selected.</div>';
+    return;
+  }
+  if (sel.value === 'team') smRenderTeam(_smPicked, box);
+  else smRenderSingle(_smPicked[parseInt(sel.value)], box);
+}
+
+function smRenderTeam(picked, box) {
+  const table = document.createElement('table');
+  table.style.cssText = 'width:100%;border-collapse:collapse;font-family:var(--fm);font-size:0.6rem;';
+
+  // Header: stat | AVG | MAX | MIN | SPREAD
+  const thead = document.createElement('thead');
+  thead.innerHTML = `<tr>
+    <th style="text-align:left;padding:4px 8px;color:var(--text-dim);font-weight:700;letter-spacing:.06em;font-size:0.5rem;">STAT</th>
+    <th style="text-align:center;padding:4px 6px;color:var(--cyan);font-weight:700;letter-spacing:.06em;font-size:0.5rem;border-left:1px solid var(--hairline-2);">AVG</th>
+    <th style="text-align:center;padding:4px 6px;color:#86efac;font-weight:700;letter-spacing:.06em;font-size:0.5rem;">MAX</th>
+    <th style="text-align:center;padding:4px 6px;color:#f87171;font-weight:700;letter-spacing:.06em;font-size:0.5rem;">MIN</th>
+    <th style="text-align:center;padding:4px 6px;color:var(--text-dim);font-weight:700;letter-spacing:.06em;font-size:0.5rem;">±</th>
+  </tr>`;
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  STAT_DEFS.forEach(s => {
+    const vals = picked.map(p => p[s.key] || 0).filter(v => v > 0);
+    if (!vals.length) return;
+    const avg = Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
+    const max = Math.max(...vals);
+    const min = Math.min(...vals);
+    const spread = max - min;
+    const maxMon = picked.find(p => (p[s.key]||0) === max);
+    const minMon = picked.find(p => (p[s.key]||0) === min);
+    const pct = Math.min(100, Math.round(avg / s.max * 100));
+
+    const tr = document.createElement('tr');
+    tr.style.borderTop = '1px solid var(--hairline)';
+    tr.innerHTML = `
+      <td style="padding:4px 8px;">
+        <div style="font-weight:700;color:${s.color};margin-bottom:2px;">${s.label}</div>
+        <div class="stat-bar-bg" style="width:100%;height:3px;"><div class="stat-bar-fill" style="width:${pct}%;background:${s.color};"></div></div>
+      </td>
+      <td style="text-align:center;padding:3px 6px;font-weight:700;color:var(--cyan);border-left:1px solid var(--hairline-2);">${avg}</td>
+      <td style="text-align:center;padding:3px 6px;font-weight:700;color:${statColor(max)};" title="${maxMon?maxMon.name:''}">${max}</td>
+      <td style="text-align:center;padding:3px 6px;font-weight:700;color:${statColor(min)};" title="${minMon?minMon.name:''}">${min}</td>
+      <td style="text-align:center;padding:3px 6px;color:var(--text-dim);">${spread}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // BST row
+  const bsts = picked.map(p => p.bst || 0).filter(v => v > 0);
+  if (bsts.length) {
+    const avg = Math.round(bsts.reduce((a,b)=>a+b,0)/bsts.length);
+    const max = Math.max(...bsts); const min = Math.min(...bsts);
+    const maxMon = picked.find(p => (p.bst||0) === max);
+    const minMon = picked.find(p => (p.bst||0) === min);
+    const tr = document.createElement('tr');
+    tr.style.cssText = 'border-top:2px solid var(--hairline-2);';
+    tr.innerHTML = `
+      <td style="padding:4px 8px;font-weight:700;color:var(--text-mute);font-size:0.55rem;letter-spacing:.05em;">BST</td>
+      <td style="text-align:center;padding:3px 6px;font-weight:700;color:var(--cyan);border-left:1px solid var(--hairline-2);">${avg}</td>
+      <td style="text-align:center;padding:3px 6px;font-weight:700;color:#86efac;" title="${maxMon?maxMon.name:''}">${max}</td>
+      <td style="text-align:center;padding:3px 6px;font-weight:700;color:#f87171;" title="${minMon?minMon.name:''}">${min}</td>
+      <td style="text-align:center;padding:3px 6px;color:var(--text-dim);">${max-min}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  box.appendChild(table);
+}
+
+function smRenderSingle(p, box) {
+  if (!p) return;
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--hairline);background:var(--ink);';
+  hdr.innerHTML = `
+    <img src="${p.sprite}" style="width:30px;height:30px;image-rendering:pixelated;" onerror="this.style.opacity=0.3">
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:var(--fd);font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+      <div style="display:flex;gap:3px;margin-top:2px;">${[p.type1,p.type2].filter(Boolean).map(t=>`<span class="type-badge" style="background:${TYPE_COLORS[t]||'#4b5563'}">${t}</span>`).join('')}</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-family:var(--fm);font-size:15px;font-weight:700;color:var(--cyan);">${p.bst||'—'}</div>
+      <div style="font-size:9px;color:var(--text-dim);font-family:var(--fm);">BST</div>
+    </div>`;
+  box.appendChild(hdr);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:8px 10px;';
+  STAT_DEFS.forEach(s => {
+    const v = p[s.key] || 0;
+    const pct = Math.min(100, Math.round(v / s.max * 100));
+    body.innerHTML += `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+        <span style="width:26px;font-family:var(--fm);font-size:9px;font-weight:700;color:${s.color};text-align:right;">${s.label}</span>
+        <div class="stat-bar-bg" style="flex:1;height:5px;"><div class="stat-bar-fill" style="width:${pct}%;background:${s.color};height:5px;"></div></div>
+        <span style="width:26px;font-family:var(--fm);font-size:10px;font-weight:700;color:${statColor(v)};text-align:right;">${v||'—'}</span>
+      </div>`;
+  });
+  box.appendChild(body);
 }
 
 // ── Roles ──
