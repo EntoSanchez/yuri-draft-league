@@ -91,6 +91,19 @@
       <option value="drafted">Drafted</option>
     </select>
 
+    <!-- Speed tier filter -->
+    <select id="db-speed" onchange="filterBoard()"
+            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
+            style="background-color:#0f1623;">
+      <option value="">Speed Tier</option>
+      <option value="0-60">Slow (≤60)</option>
+      <option value="61-80">Mid-Slow (61–80)</option>
+      <option value="81-100">Average (81–100)</option>
+      <option value="101-110">Fast (101–110)</option>
+      <option value="111-125">Very Fast (111–125)</option>
+      <option value="126-999">Elite (126+)</option>
+    </select>
+
     <!-- Clear -->
     <button onclick="clearFilters()"
             class="px-4 py-2 rounded-xl border border-gray-700 text-sm text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all"
@@ -512,6 +525,7 @@ let currentStatus = '';
 let currentAbility = '';
 let currentMove = '';
 let currentType = '';
+let currentSpeed = '';
 
 function setPool(pool) {
   currentPool = pool;
@@ -528,11 +542,13 @@ function clearFilters() {
   document.getElementById('db-move').value = '';
   document.getElementById('db-ability').value = '';
   document.getElementById('db-type').value = '';
+  document.getElementById('db-speed').value = '';
   currentSearch = '';
   currentStatus = '';
   currentMove = '';
   currentAbility = '';
   currentType = '';
+  currentSpeed = '';
   hideSuggestions();
   setPool('');
 }
@@ -543,6 +559,13 @@ function filterBoard() {
   currentMove    = document.getElementById('db-move').value;
   currentAbility = document.getElementById('db-ability').value.toLowerCase().trim();
   currentType    = document.getElementById('db-type').value.toLowerCase();
+  currentSpeed   = document.getElementById('db-speed').value;
+
+  let speedMin = 0, speedMax = 9999;
+  if (currentSpeed) {
+    const [lo, hi] = currentSpeed.split('-').map(Number);
+    speedMin = lo; speedMax = hi;
+  }
 
   let visible = 0;
   const colVisible = {};
@@ -555,6 +578,7 @@ function filterBoard() {
     const moves    = poke.dataset.moves    || '';
     const type1    = poke.dataset.type1    || '';
     const type2    = poke.dataset.type2    || '';
+    const spe      = parseInt(poke.dataset.spe || '0', 10);
     const col    = poke.closest('.board-col');
     const colKey = col ? col.dataset.col : '';
 
@@ -563,13 +587,14 @@ function filterBoard() {
     const moveOk    = !currentMove    || moves.split('|').includes(currentMove);
     const abilityOk = !currentAbility || abilities.split('|').some(a => a && a.includes(currentAbility));
     const typeOk    = !currentType    || type1 === currentType || type2 === currentType;
+    const speedOk   = !currentSpeed   || (spe >= speedMin && spe <= speedMax);
 
     let poolDim = false;
     if (currentPool && status === 'drafted') {
       poolDim = (pool !== currentPool);
     }
 
-    const show = nameOk && statusOk && moveOk && abilityOk && typeOk;
+    const show = nameOk && statusOk && moveOk && abilityOk && typeOk && speedOk;
     poke.style.display = show ? '' : 'none';
     if (show) {
       poke.classList.toggle('pool-dim', poolDim);
