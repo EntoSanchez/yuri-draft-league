@@ -607,7 +607,6 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
 </div>
 
 <script>
-console.log('DP_VERSION_CHECK: 2026-05-29-v5');
 // ══════════════════════════════════════════════
 //  State
 // ══════════════════════════════════════════════
@@ -899,10 +898,7 @@ function buildFocusedSlot(idx) {
 }
 
 function buildPrimaryCard(idx) {
-  if (slots[idx] === undefined) {
-    console.error('buildPrimaryCard: idx=' + idx + ' selectedSlotIdx=' + selectedSlotIdx + ' slots.length=' + slots.length + ' acActiveSlot=' + acActiveSlot);
-    return;
-  }
+  if (slots[idx] === undefined) return;
   const slot = slots[idx];
   const tag  = getSlotTag(slot.type);
   const container = document.getElementById('dp-primary-card');
