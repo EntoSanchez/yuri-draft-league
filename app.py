@@ -1422,6 +1422,9 @@ def debug_moves(name):
         return "not found"
     moves = row["moves"] or ""
     lines = ["<pre>"]
+    lines.append("DB_PATH env var: " + repr(os.environ.get("DB_PATH", "(not set)")))
+    lines.append("Resolved DB_PATH: " + repr(DB_PATH))
+    lines.append("")
     lines.append("RAW: " + repr(moves))
     lines.append("")
     for i, m in enumerate(moves.split("|")):
