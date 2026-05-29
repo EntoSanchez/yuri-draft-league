@@ -337,6 +337,95 @@
 .type-steel    { background:#B8B8D0; color:#333; }
 .type-fairy    { background:#EE99AC; color:#333; }
 .type-stellar  { background:#40B5A5; color:#fff; }
+
+/* ══ Mobile responsive ══ */
+.dp-mobile-tab-bar { display: none; }
+.dp-mobile-hidden  { display: none !important; }
+
+@media (max-width: 767px) {
+  /* Root: allow natural page scroll */
+  #dp-root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  /* TopBar: flex-wrap so HUD wraps to its own row */
+  #dp-topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    align-items: center;
+  }
+  .dp-topbar-title  { flex: 1 1 auto; }
+  .dp-topbar-actions { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+  .dp-plan-input    { width: 80px; min-width: 0; }
+  #dp-hud {
+    flex: 0 0 100%;
+    order: 3;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 4px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #dp-hud::-webkit-scrollbar { display: none; }
+
+  /* Tab bar */
+  .dp-mobile-tab-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex-shrink: 0;
+    border: 1px solid var(--hairline-2);
+  }
+  .dp-mobile-tab-btn {
+    font-family: var(--fd);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 11px;
+    border: none;
+    background: var(--panel);
+    color: var(--text-mute);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+  }
+  .dp-mobile-tab-btn.active {
+    color: var(--magenta);
+    border-bottom-color: var(--magenta);
+    background: var(--magenta-s);
+  }
+  .dp-mobile-tab-btn:first-child { border-right: 1px solid var(--hairline-2); }
+
+  /* Body: single column */
+  #dp-body {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  /* Left panel */
+  #dp-left { min-height: 0; overflow: visible; height: auto; }
+  #slot-container { overflow: visible; flex: none; }
+  #dp-plans-section { flex-shrink: unset; }
+  #plans-list { max-height: none; }
+
+  /* Right pane */
+  #dp-right-pane { height: auto; grid-template-rows: auto auto; overflow: visible; }
+  #dp-focused    { max-height: none; overflow: visible; }
+  .dp-focused-body { grid-template-columns: 1fr; }
+  #dp-analysis      { overflow: visible; height: auto; min-height: 0; }
+  #dp-analysis-body { overflow: visible; height: auto; }
+
+  /* Alts: 2-col on mobile instead of 3 */
+  .dp-alts-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 
 <!-- JS constants (same as before) -->
@@ -499,6 +588,12 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
       <button onclick="saveCurrentPlan()" class="dp-btn primary">&#x25B8; SAVE</button>
       <button onclick="clearAllSlots()" class="dp-btn ghost">&#x21BA; CLEAR</button>
     </div>
+  </div>
+
+  <!-- Mobile tab bar (hidden on desktop) -->
+  <div class="dp-mobile-tab-bar">
+    <button class="dp-mobile-tab-btn active" id="mob-tab-team" onclick="switchMobileTab('team')">&#9776; TEAM</button>
+    <button class="dp-mobile-tab-btn" id="mob-tab-build" onclick="switchMobileTab('build')">&#x25C6; BUILD</button>
   </div>
 
   <!-- ── Body ── -->
@@ -674,6 +769,31 @@ function selectSlot(idx) {
   closeAC();
   buildSlotRows();
   buildFocusedSlot(idx);
+  if (isMobile()) switchMobileTab('build');
+}
+
+// ══════════════════════════════════════════════
+//  Mobile tabs
+// ══════════════════════════════════════════════
+function isMobile() { return window.matchMedia('(max-width: 767px)').matches; }
+
+function switchMobileTab(tab) {
+  const left     = document.getElementById('dp-left');
+  const right    = document.getElementById('dp-right-pane');
+  const btnTeam  = document.getElementById('mob-tab-team');
+  const btnBuild = document.getElementById('mob-tab-build');
+  if (!btnTeam) return;
+  if (tab === 'team') {
+    left.classList.remove('dp-mobile-hidden');
+    right.classList.add('dp-mobile-hidden');
+    btnTeam.classList.add('active');
+    btnBuild.classList.remove('active');
+  } else {
+    left.classList.add('dp-mobile-hidden');
+    right.classList.remove('dp-mobile-hidden');
+    btnBuild.classList.add('active');
+    btnTeam.classList.remove('active');
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1949,6 +2069,7 @@ buildBudgetHUD();
 updateCaptainButtons();
 updatePanels();
 renderPlansList();
+if (isMobile()) switchMobileTab('team');
 
 // Close AC on outside click
 document.addEventListener('click', (e) => {
