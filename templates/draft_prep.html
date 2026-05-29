@@ -1537,9 +1537,10 @@ function renderStatMatrix() {
   else smRenderSingle(_smPicked[parseInt(sel.value)], box);
 }
 
-function smBuildRadarSVG(datasets, labelVals) {
+function smBuildRadarSVG(datasets, labelVals, tooltipData) {
   // datasets: [{vals:[6 nums 0-255], color, fill, sw, showDots}]
   // labelVals: [6 nums] displayed beside axes (from the "main" dataset)
+  // tooltipData: [{avg,max,min,maxMon,minMon}] for team or [{value}] for single
   const NS = 'http://www.w3.org/2000/svg';
   const VW = 260, VH = 256, cx = 130, cy = 132, r = 72;
 
@@ -1558,7 +1559,7 @@ function smBuildRadarSVG(datasets, labelVals) {
     return e;
   }
 
-  const svg = el('svg', {viewBox:`0 0 ${VW} ${VH}`, width:'100%', height:'240'});
+  const svg = el('svg', {viewBox:`0 0 ${VW} ${VH}`, width:'100%'});
   svg.style.display = 'block'; svg.style.margin = '0 auto';
 
   // Dark background hex
@@ -1621,6 +1622,45 @@ function smBuildRadarSVG(datasets, labelVals) {
     svg.appendChild(valEl);
   });
 
+  // Transparent hit areas for tooltips
+  if (tooltipData) {
+    let tip = document.getElementById('sm-tooltip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'sm-tooltip';
+      tip.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;display:none;' +
+        'background:#0c0c18;border:1px solid rgba(61,229,255,0.3);border-radius:6px;' +
+        'padding:7px 11px;font-family:JetBrains Mono,monospace;font-size:11px;line-height:1.6;' +
+        'box-shadow:0 4px 20px rgba(0,0,0,0.75);min-width:150px;';
+      document.body.appendChild(tip);
+    }
+
+    RADAR_STATS.forEach((s, i) => {
+      const [hx, hy] = pt(i, 1.35);
+      const hit = el('circle', {cx:hx, cy:hy, r:'22', fill:'transparent', style:'cursor:pointer'});
+      const td = tooltipData[i];
+
+      hit.addEventListener('mouseenter', () => {
+        let html = `<div style="font-weight:700;color:${s.color};letter-spacing:.05em;margin-bottom:3px;">${s.label}</div>`;
+        if (td.avg != null) {
+          html += `<div style="color:#3de5ff;">Avg: <strong>${Math.round(td.avg)}</strong></div>`;
+          html += `<div style="color:#86efac;">&#9650; ${td.max} &mdash; ${td.maxMon}</div>`;
+          html += `<div style="color:#f87171;">&#9660; ${td.min} &mdash; ${td.minMon}</div>`;
+        } else {
+          html += `<div style="color:#eaeaf2;font-size:14px;font-weight:700;">${td.value || '—'}</div>`;
+        }
+        tip.innerHTML = html;
+        tip.style.display = 'block';
+      });
+      hit.addEventListener('mousemove', e => {
+        tip.style.left = (e.clientX + 14) + 'px';
+        tip.style.top  = (e.clientY - 10) + 'px';
+      });
+      hit.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+      svg.appendChild(hit);
+    });
+  }
+
   return svg;
 }
 
@@ -1647,34 +1687,17 @@ function smRenderTeam(picked, box) {
     showDots: true,
   });
 
-  box.appendChild(smBuildRadarSVG(datasets, avgVals));
-
-  // Compact AVG/MAX/MIN table below chart
-  const table = document.createElement('table');
-  table.style.cssText = 'width:100%;border-collapse:collapse;font-family:var(--fm);font-size:0.55rem;border-top:1px solid var(--hairline-2);';
-  table.innerHTML = `<thead><tr>
-    <th style="text-align:left;padding:3px 7px;color:var(--text-dim);font-size:0.5rem;letter-spacing:.06em;">STAT</th>
-    <th style="text-align:center;padding:3px 5px;color:var(--cyan);font-size:0.5rem;letter-spacing:.06em;border-left:1px solid var(--hairline-2);">AVG</th>
-    <th style="text-align:center;padding:3px 5px;color:#86efac;font-size:0.5rem;letter-spacing:.06em;">MAX</th>
-    <th style="text-align:center;padding:3px 5px;color:#f87171;font-size:0.5rem;letter-spacing:.06em;">MIN</th>
-  </tr></thead>`;
-  const tbody = document.createElement('tbody');
-  RADAR_STATS.forEach((s, i) => {
+  const tooltipData = RADAR_STATS.map(s => {
     const vs = picked.map(p => p[s.key]||0).filter(v=>v>0);
-    if (!vs.length) return;
-    const avg = Math.round(vs.reduce((a,b)=>a+b,0)/vs.length);
+    if (!vs.length) return {avg:0, max:0, min:0, maxMon:'—', minMon:'—'};
+    const avg = vs.reduce((a,b)=>a+b,0)/vs.length;
     const max = Math.max(...vs), min = Math.min(...vs);
     const maxMon = picked.find(p=>(p[s.key]||0)===max);
     const minMon = picked.find(p=>(p[s.key]||0)===min);
-    tbody.innerHTML += `<tr style="border-top:1px solid var(--hairline);">
-      <td style="padding:2px 7px;font-weight:700;color:${s.color};">${s.label}</td>
-      <td style="text-align:center;padding:2px 5px;font-weight:700;color:${statColor(avg)};border-left:1px solid var(--hairline-2);">${avg}</td>
-      <td style="text-align:center;padding:2px 5px;color:#86efac;" title="${maxMon?maxMon.name:''}">${max}</td>
-      <td style="text-align:center;padding:2px 5px;color:#f87171;" title="${minMon?minMon.name:''}">${min}</td>
-    </tr>`;
+    return {avg, max, min, maxMon: maxMon?maxMon.name:'—', minMon: minMon?minMon.name:'—'};
   });
-  table.appendChild(tbody);
-  box.appendChild(table);
+
+  box.appendChild(smBuildRadarSVG(datasets, avgVals, tooltipData));
 }
 
 function smRenderSingle(p, box) {
@@ -1695,13 +1718,14 @@ function smRenderSingle(p, box) {
   box.appendChild(hdr);
 
   const vals = RADAR_STATS.map(s => p[s.key] || 0);
+  const tooltipData = RADAR_STATS.map((s, i) => ({value: vals[i] || 0}));
   box.appendChild(smBuildRadarSVG([{
     vals,
     color: '#3de5ff',
     fill: 'rgba(61,229,255,0.12)',
     sw: '2',
     showDots: true,
-  }], vals));
+  }], vals, tooltipData));
 }
 
 // ── Roles ──
