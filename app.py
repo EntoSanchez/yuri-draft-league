@@ -1414,25 +1414,6 @@ def draft_board():
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
-@app.route("/debug/moves/<name>")
-def debug_moves(name):
-    with get_db() as db:
-        row = db.execute("SELECT moves FROM draft_tiers WHERE name=?", (name,)).fetchone()
-    if not row:
-        return "not found"
-    moves = row["moves"] or ""
-    lines = ["<pre>"]
-    lines.append("DB_PATH env var: " + repr(os.environ.get("DB_PATH", "(not set)")))
-    lines.append("Resolved DB_PATH: " + repr(DB_PATH))
-    lines.append("")
-    lines.append("RAW: " + repr(moves))
-    lines.append("")
-    for i, m in enumerate(moves.split("|")):
-        lines.append(f"{i}: {repr(m)}")
-    lines.append("</pre>")
-    return "\n".join(lines)
-
-
 # ─── Admin Routes ─────────────────────────────────────────────────────────────
 
 @app.route("/admin")

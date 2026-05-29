@@ -1149,12 +1149,13 @@ function selectAC(idx) {
     return;
   }
 
-  const slot = slots[acActiveSlot];
+  const pickedSlotIdx = acActiveSlot;
+  const slot = slots[pickedSlotIdx];
   if (slot.tera_captain && p.points > 13) slot.tera_captain = false;
   if (slot.zmove_captain && p.points > 13) slot.zmove_captain = false;
   slot.pokemon = p;
   closeAC();
-  buildPrimaryCard(acActiveSlot);
+  buildPrimaryCard(pickedSlotIdx);
   buildSlotRows();
   buildBudgetHUD();
   updateCaptainButtons();
