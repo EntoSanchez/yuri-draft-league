@@ -1464,6 +1464,7 @@ function updateChecklists(picked) {
   const movesEl = document.getElementById('moves-checklist');
   const statsEl = document.getElementById('stats-checklist');
   movesEl.innerHTML = ''; statsEl.innerHTML = '';
+  buildStatMatrix(picked);
   if (!picked.length) return;
   const DEFS_MOVES = [
     {label:'Rocks',fn:p=>hasMoves(p,'Stealth Rock')},{label:'Spikes',fn:p=>hasMoves(p,'Spikes')},
@@ -1491,7 +1492,6 @@ function updateChecklists(picked) {
     {label:'131+ Spe',cls:'green',fn:p=>p.spe>=131},
   ];
   DEFS_STATS.forEach(d => statsEl.appendChild(clRow(d.label,d.cls,picked.filter(d.fn))));
-  buildStatMatrix(picked);
 }
 
 // ── Stat Matrix ──
