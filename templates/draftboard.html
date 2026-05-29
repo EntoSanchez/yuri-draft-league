@@ -1,426 +1,1226 @@
 {% extends "base.html" %}
 {% block title %}Draft Board – {{ league_name }}{% endblock %}
+
+{% block head_extra %}
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Lock viewport — board manages its own height via calc(100dvh - 64px) */
+  body { overflow: hidden; }
+
+  /* ── Draftboard tier accent tokens ── */
+  :root {
+    --tier-1-a: #5a9bff;
+    --tier-2-a: #b07dff;
+    --tier-3-a: #3dd9c2;
+    --tier-4-a: #7ddc6a;
+    --tier-5-a: #9a9aa8;
+    --uber-gold-a:     #ffc94d;
+    --uber-silver-a:   #d2d2dc;
+    --uber-bronze-a:   #d08552;
+    --uber-platinum-a: #a8d4e6;
+    --banned-a:        #ff4d6b;
+    --free-a:          rgba(234,234,242,0.28);
+  }
+
+  /* ── Full-height wrapper ── */
+  .dbl-wrapper {
+    height: calc(100dvh - 64px);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    background: var(--ink);
+  }
+
+  /* ── Controls strip ── */
+  .dbl-controls {
+    flex: 0 0 auto;
+    background: var(--panel);
+    border-bottom: 1px solid var(--hairline-2);
+    padding: 10px 18px 9px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .dbl-ctrl-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+
+  .dbl-title-block { display: flex; flex-direction: column; gap: 1px; }
+  .dbl-eyebrow {
+    font: 700 9px/1 var(--font-mono);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--cyan-dim);
+  }
+  .dbl-title {
+    font: 700 20px/1 var(--font-display);
+    letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--text);
+  }
+
+  /* Drafted HUD */
+  .dbl-hud {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+    flex-shrink: 0;
+  }
+  .dbl-hud-eye {
+    font: 700 8px/1 var(--font-mono);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--magenta-dim);
+  }
+  .dbl-hud-num {
+    font: 700 20px/1 var(--font-display);
+    color: var(--magenta);
+  }
+  .dbl-hud-num span { font-size: 12px; color: var(--cyan); margin-left: 3px; }
+  .dbl-hud-bar {
+    width: 96px; height: 3px;
+    background: var(--hairline-2); border-radius: 2px; overflow: hidden;
+  }
+  .dbl-hud-bar-fill {
+    height: 100%; background: var(--magenta);
+    box-shadow: 0 0 6px var(--magenta-dim);
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  /* Team rail */
+  .dbl-team-rail {
+    display: flex; gap: 8px;
+  }
+  .dbl-pool-panel {
+    flex: 1; background: var(--panel-2);
+    border: 1px solid var(--hairline);
+    padding: 7px 10px 6px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .dbl-pool-label {
+    font: 700 8px/1 var(--font-mono);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .pool-a-label { color: var(--cyan); }
+  .pool-b-label { color: var(--magenta); }
+  .dbl-logo-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .dbl-tlogo {
+    width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+    border: 1px solid var(--hairline-2);
+    background: var(--panel-2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.18s, border-color 0.18s;
+  }
+  .dbl-tlogo:hover { transform: scale(1.12); border-color: var(--magenta-dim); }
+  .dbl-tlogo img { width: 100%; height: 100%; object-fit: contain; }
+  .dbl-tlogo-placeholder {
+    font: 700 8px/1 var(--font-mono);
+    color: var(--text-dim);
+  }
+
+  /* ── Filter row ── */
+  .dbl-filters {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  }
+
+  /* Segmented pool control */
+  .dbl-seg {
+    display: flex; border: 1px solid var(--hairline-2);
+    background: var(--panel-2); overflow: hidden;
+  }
+  .dbl-seg-btn {
+    padding: 4px 12px;
+    font: 700 9px/1.2 var(--font-mono);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-dim);
+    background: transparent; border: none; cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    border-right: 1px solid var(--hairline);
+  }
+  .dbl-seg-btn:last-child { border-right: none; }
+  .dbl-seg-btn:hover { color: var(--text); background: var(--hairline); }
+  .dbl-seg-btn.active { color: var(--ink); background: var(--cyan); }
+
+  /* Inputs / selects */
+  .dbl-input, .dbl-select {
+    background: var(--panel-2);
+    border: 1px solid var(--hairline-2);
+    color: var(--text);
+    font: 500 10px/1 var(--font-mono);
+    letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 5px 8px;
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none; -webkit-appearance: none;
+  }
+  .dbl-input:focus, .dbl-select:focus { border-color: var(--cyan-dim); }
+  .dbl-input::placeholder { color: var(--text-dim); text-transform: none; }
+
+  .dbl-input-wrap { position: relative; }
+  .dbl-input-wrap svg {
+    position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
+    width: 10px; height: 10px; color: var(--text-dim); pointer-events: none;
+  }
+  .dbl-input-wrap .dbl-input { padding-left: 22px; }
+
+  .dbl-clear {
+    background: none; border: none; cursor: pointer;
+    font: 600 9px/1 var(--font-mono);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-dim); padding: 4px 6px;
+    transition: color 0.15s;
+  }
+  .dbl-clear:hover { color: var(--red); }
+
+  .dbl-view-btn {
+    background: var(--panel-2); border: 1px solid var(--hairline-2);
+    color: var(--text-dim); cursor: pointer;
+    font: 700 9px/1 var(--font-mono);
+    padding: 5px 9px; display: flex; align-items: center; gap: 4px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .dbl-view-btn:hover { color: var(--cyan); border-color: var(--cyan-dim); }
+  .dbl-view-btn svg { width: 10px; height: 10px; }
+
+  /* Legend */
+  .dbl-legend {
+    margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  }
+  .dbl-leg-item {
+    display: flex; align-items: center; gap: 4px;
+    font: 500 9px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .dbl-leg-swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 1px solid transparent; flex-shrink: 0;
+  }
+
+  /* Ability autocomplete */
+  #ability-suggestions {
+    position: absolute; z-index: 50; top: 100%; left: 0; margin-top: 2px;
+    background: var(--panel-2); border: 1px solid var(--hairline-2);
+    max-height: 160px; overflow-y: auto; width: 200px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    display: none;
+  }
+  .ability-sug {
+    padding: 5px 10px;
+    font: 500 10px/1.3 var(--font-mono);
+    color: var(--text-mute);
+    cursor: pointer; text-transform: capitalize;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .ability-sug:last-child { border-bottom: none; }
+  .ability-sug:hover { background: var(--cyan-soft); color: var(--cyan); }
+
+  /* ── 2-axis scroll plane ── */
+  .dbl-board {
+    flex: 1; min-height: 0; overflow: auto;
+    padding: 0 20px 28px;
+    background-image:
+      linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+    background-size: 48px 48px;
+    scrollbar-color: var(--hairline-2) transparent;
+  }
+  .dbl-board::-webkit-scrollbar { width: 10px; height: 10px; }
+  .dbl-board::-webkit-scrollbar-thumb {
+    background: var(--hairline-2); border: 3px solid var(--ink); border-radius: 6px;
+  }
+  .dbl-board::-webkit-scrollbar-track { background: transparent; }
+
+  .dbl-strip {
+    display: flex; gap: 20px; align-items: flex-start; width: max-content;
+    padding-top: 12px;
+  }
+
+  .dbl-group { display: flex; flex-direction: column; flex: 0 0 auto; }
+
+  /* Sticky tier-band label */
+  .dbl-band {
+    position: sticky; top: 0; z-index: 3;
+    height: 38px; background: var(--ink);
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 6px; box-sizing: border-box;
+  }
+  .dbl-band-label {
+    font: 700 11px/1 var(--font-display);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--band-accent, var(--text-dim));
+    white-space: nowrap;
+  }
+  .dbl-band-count {
+    font: 600 9px/1 var(--font-mono);
+    color: var(--text-dim); white-space: nowrap;
+  }
+  .dbl-band-rule { flex: 1; height: 1px; background: var(--hairline); min-width: 20px; }
+
+  .dbl-cols { display: flex; gap: 10px; align-items: flex-start; }
+
+  /* ── Cost column ── */
+  .board-col {
+    width: 178px; flex: 0 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    /* border-top set inline per col accent */
+    position: relative;
+    flex-direction: column; display: flex;
+  }
+
+  /* Sticky cost header */
+  .board-col-header {
+    position: sticky; top: 38px; z-index: 2;
+    background: var(--panel);
+    border-bottom: 1px solid var(--hairline);
+    padding: 10px 12px 8px;
+    flex-shrink: 0;
+  }
+
+  .col-pts-num {
+    font: 700 28px/1 var(--font-display);
+    letter-spacing: 0.03em;
+  }
+  .col-sub-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 3px;
+  }
+  .col-label {
+    font: 700 8.5px/1 var(--font-mono);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .col-count {
+    font: 600 9px/1 var(--font-mono);
+    color: var(--text-dim);
+  }
+
+  /* ── Pokemon entry (board-poke) ── */
+  .board-col-body { display: flex; flex-direction: column; }
+
+  .board-poke {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--hairline);
+    cursor: pointer; position: relative;
+    transition: background 0.1s;
+  }
+  .board-poke:last-child { border-bottom: none; }
+
+  /* Entry states */
+  .avail-poke  { background: var(--panel); }
+  .drafted-poke { background: rgba(255,42,138,.05); opacity: 0.75; }
+  .banned-poke  { background: rgba(255,77,107,.05); opacity: 0.64; }
+
+  .avail-poke:hover  { background: rgba(34,225,255,.05); }
+  .drafted-poke:hover { background: rgba(255,42,138,.1); opacity: 1; }
+  .banned-poke:hover  { background: rgba(255,77,107,.1); opacity: 0.8; }
+
+  /* Orb (sprite wrapper) */
+  .poke-orb {
+    width: 24px; height: 24px; flex-shrink: 0;
+    border-radius: 50%; border: 1px solid transparent;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel-2);
+  }
+  .poke-orb img { width: 20px; height: 20px; object-fit: contain; }
+
+  .avail-poke  .poke-orb { border-color: var(--cyan-dim); }
+  .drafted-poke .poke-orb { border-color: var(--magenta-dim); }
+  .banned-poke  .poke-orb { border-radius: 3px; border-color: var(--red); }
+
+  /* Name */
+  .poke-name {
+    font: 500 10px/1.3 var(--font-mono);
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0;
+  }
+  .avail-poke  .poke-name { color: var(--text); }
+  .drafted-poke .poke-name { color: var(--magenta-dim); }
+  .banned-poke  .poke-name { color: var(--red); text-decoration: line-through; }
+  .tera-banned .poke-name  { text-decoration: line-through; opacity: 0.6; }
+
+  /* State marks */
+  .state-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--magenta); flex-shrink: 0;
+    box-shadow: 0 0 4px var(--magenta-dim);
+  }
+  .state-tera {
+    font: 700 9px/1 var(--font-mono);
+    color: var(--lime); flex-shrink: 0;
+    text-shadow: 0 0 6px rgba(193,255,61,.5);
+  }
+  .state-captain {
+    font: 700 9px/1 var(--font-mono);
+    color: var(--amber); flex-shrink: 0;
+    text-shadow: 0 0 6px rgba(255,184,77,.5);
+  }
+
+  /* Type swatches */
+  .type-swatch {
+    width: 3px; height: 14px;
+    border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* Team badge */
+  .board-badge {
+    display: flex; align-items: center; gap: 2px;
+    padding: 2px 4px;
+    font: 800 8px/1 var(--font-mono);
+    color: #fff; text-decoration: none; flex-shrink: 0;
+    max-width: 48px; overflow: hidden;
+    white-space: nowrap;
+  }
+  .board-badge img { width: 12px; height: 12px; object-fit: contain; flex-shrink: 0; }
+  .board-badge span { overflow: hidden; text-overflow: ellipsis; }
+
+  /* Admin edit btn */
+  .edit-pts-btn {
+    opacity: 0;
+    color: rgba(255,184,77,.6);
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0; background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .edit-pts-btn:hover { color: var(--amber); }
+  .board-poke:hover .edit-pts-btn { opacity: 1; }
+
+  /* Pool dim */
+  .board-poke.pool-dim { opacity: 0.2; }
+  .board-poke.pool-dim .board-badge { display: none; }
+
+  /* ── Segmented pool buttons (legacy .pool-btn for JS) ── */
+  .pool-btn { color: var(--text-dim); }
+  .pool-btn.active { color: var(--ink); }
+
+  /* ── Points edit popover ── */
+  #pts-popover {
+    position: fixed; z-index: 9999;
+    background: var(--panel-2);
+    border: 1px solid var(--amber);
+    padding: 10px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    display: none;
+  }
+  #pts-popover.open { display: block; }
+
+  /* ── Stat tooltip ── */
+  #poke-tooltip {
+    display: none; position: fixed; z-index: 9990;
+    pointer-events: none; width: 230px;
+    padding: 10px 12px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--hairline-2);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(34,225,255,.04) inset;
+  }
+
+  /* ── List view ── */
+  #boardListView {
+    background: var(--panel);
+    border: 1px solid var(--hairline-2);
+    overflow: hidden;
+  }
+
+  /* No results */
+  #db-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 200px;
+    color: var(--text-dim);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 
-<!-- ── Page Header ── -->
-<div class="border-b border-gray-800/60" style="background: linear-gradient(135deg, #0f1623 0%, #080c14 100%);">
-  <div class="max-w-full px-4 sm:px-6 lg:px-8 py-10">
-    <p class="text-xs font-bold uppercase tracking-widest font-mono mb-1" style="color:rgba(0,245,255,0.4);">// DRAFT.BOARD</p>
-    <h1 class="text-3xl font-black gradient-heading">Draft Board</h1>
-    <p class="text-sm text-gray-500 mt-1">
-      {% set total_drafted = drafted | length %}
-      {% set total_tiers = tiers | rejectattr('is_banned') | list | length %}
-      {{ total_drafted }} / {{ total_tiers }} drafted
-    </p>
-  </div>
-</div>
+{%- set banned_list = tiers | selectattr('is_banned') | list -%}
+{%- set non_banned_all = tiers | rejectattr('is_banned') | list -%}
+{%- set total_tiers = non_banned_all | length -%}
+{%- set total_drafted = drafted | length -%}
+{%- set pool_a_coaches = coaches | selectattr('pool', 'equalto', 'A') | list -%}
+{%- set pool_b_coaches = coaches | selectattr('pool', 'equalto', 'B') | list -%}
+{%- set pct_drafted = ((total_drafted / total_tiers * 100) if total_tiers > 0 else 0) | int -%}
 
-<div class="px-4 sm:px-6 lg:px-8 py-6">
+{# ── Group tiers_by_pts into bands ── #}
+{%- set uber_cols = [] -%}
+{%- set t1_cols   = [] -%}
+{%- set t2_cols   = [] -%}
+{%- set t3_cols   = [] -%}
+{%- set t4_cols   = [] -%}
+{%- set t5_cols   = [] -%}
+{%- set free_cols = [] -%}
+{% for group in tiers_by_pts %}
+  {%- set lbl = (group.label or '') | lower -%}
+  {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+  {%- if nb -%}
+    {%- if 'uber' in lbl -%}
+      {%- if uber_cols.append(group) -%}{%- endif -%}
+    {%- elif 'tier 1' in lbl -%}
+      {%- if t1_cols.append(group) -%}{%- endif -%}
+    {%- elif 'tier 2' in lbl -%}
+      {%- if t2_cols.append(group) -%}{%- endif -%}
+    {%- elif 'tier 3' in lbl -%}
+      {%- if t3_cols.append(group) -%}{%- endif -%}
+    {%- elif 'tier 4' in lbl -%}
+      {%- if t4_cols.append(group) -%}{%- endif -%}
+    {%- elif 'tier 5' in lbl -%}
+      {%- if t5_cols.append(group) -%}{%- endif -%}
+    {%- elif group.points == 0 -%}
+      {%- if free_cols.append(group) -%}{%- endif -%}
+    {%- elif group.points >= 17 -%}
+      {%- if t1_cols.append(group) -%}{%- endif -%}
+    {%- elif group.points >= 13 -%}
+      {%- if t2_cols.append(group) -%}{%- endif -%}
+    {%- elif group.points >= 9 -%}
+      {%- if t3_cols.append(group) -%}{%- endif -%}
+    {%- elif group.points >= 5 -%}
+      {%- if t4_cols.append(group) -%}{%- endif -%}
+    {%- else -%}
+      {%- if t5_cols.append(group) -%}{%- endif -%}
+    {%- endif -%}
+  {%- endif -%}
+{% endfor %}
 
-  <!-- ── Controls Row ── -->
-  <div class="flex flex-wrap items-center gap-3 mb-6">
+{# ── Type color map ── #}
+{% set TYPE_COLORS = {
+  'normal':'#9ca3af','fire':'#f97316','water':'#3b82f6','electric':'#eab308',
+  'grass':'#22c55e','ice':'#67e8f9','fighting':'#dc2626','poison':'#a855f7',
+  'ground':'#d97706','flying':'#818cf8','psychic':'#ec4899','bug':'#84cc16',
+  'rock':'#92400e','ghost':'#6d28d9','dragon':'#1d4ed8','dark':'#374151',
+  'steel':'#6b7280','fairy':'#f9a8d4'
+} %}
 
-    <!-- Pool filter -->
-    <div class="flex rounded-xl overflow-hidden border border-gray-700" style="background-color:#0f1623;">
-      <button onclick="setPool('')"  id="pool-all" class="pool-btn px-4 py-2 text-xs font-bold transition-all">All Pools</button>
-      <button onclick="setPool('A')" id="pool-A"   class="pool-btn px-4 py-2 text-xs font-bold transition-all border-l border-gray-700">Pool A</button>
-      <button onclick="setPool('B')" id="pool-B"   class="pool-btn px-4 py-2 text-xs font-bold transition-all border-l border-gray-700">Pool B</button>
+<div class="dbl-wrapper">
+
+  <!-- ══════════ CONTROLS ══════════ -->
+  <div class="dbl-controls">
+
+    <!-- Title row -->
+    <div class="dbl-ctrl-top">
+      <div class="dbl-title-block">
+        <span class="dbl-eyebrow">// draft.board</span>
+        <span class="dbl-title">Draft Board</span>
+      </div>
+
+      <!-- Drafted HUD -->
+      <div class="dbl-hud">
+        <span class="dbl-hud-eye">// drafted</span>
+        <div class="dbl-hud-num">
+          {{ total_drafted }}<span>/ {{ total_tiers }}</span>
+        </div>
+        <div class="dbl-hud-bar">
+          <div class="dbl-hud-bar-fill" style="width: {{ pct_drafted }}%;"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Search -->
-    <div class="relative">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
-      <input id="db-search" type="text" placeholder="Search Pokémon..."
-             oninput="filterBoard()"
-             class="pl-9 pr-4 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none w-48"
-             style="background-color:#0f1623;">
+    <!-- Team rail -->
+    {% if pool_a_coaches or pool_b_coaches %}
+    <div class="dbl-team-rail">
+      {% if pool_a_coaches %}
+      <div class="dbl-pool-panel">
+        <span class="dbl-pool-label pool-a-label">Pool A</span>
+        <div class="dbl-logo-row">
+          {% for c in pool_a_coaches %}
+          <a href="/team/{{ c.id }}" class="dbl-tlogo" title="{{ c.team_name }} — {{ c.coach_name }}">
+            {% if c.logo_url %}
+              <img src="{{ c.logo_url }}" alt="{{ c.team_name }}" onerror="this.style.opacity='0.2'">
+            {% else %}
+              <span class="dbl-tlogo-placeholder">{{ c.team_name[:2] | upper }}</span>
+            {% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if pool_b_coaches %}
+      <div class="dbl-pool-panel">
+        <span class="dbl-pool-label pool-b-label">Pool B</span>
+        <div class="dbl-logo-row">
+          {% for c in pool_b_coaches %}
+          <a href="/team/{{ c.id }}" class="dbl-tlogo" title="{{ c.team_name }} — {{ c.coach_name }}">
+            {% if c.logo_url %}
+              <img src="{{ c.logo_url }}" alt="{{ c.team_name }}" onerror="this.style.opacity='0.2'">
+            {% else %}
+              <span class="dbl-tlogo-placeholder">{{ c.team_name[:2] | upper }}</span>
+            {% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Ability filter -->
-    <div class="relative">
-      <input id="db-ability" type="text" placeholder="Filter by ability..."
-             oninput="filterBoard()"
-             class="pl-3 pr-4 py-2 rounded-xl border border-gray-700 text-sm text-white focus:border-yellow-500/60 focus:outline-none w-44"
-             style="background-color:#0f1623;" autocomplete="off">
-      <div id="ability-suggestions" class="hidden absolute z-50 top-full left-0 mt-1 rounded-xl border border-gray-700 shadow-xl overflow-y-auto max-h-48 w-56" style="background-color:#1a2233;"></div>
-    </div>
+    <!-- Filter row -->
+    <div class="dbl-filters">
 
-    <!-- Move coverage filter -->
-    <select id="db-move" onchange="filterBoard()"
-            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
-            style="background-color:#0f1623;">
-      <option value="">All Moves</option>
-      {% for move in all_moves %}
-      <option value="{{ move }}">{{ move }}</option>
-      {% endfor %}
-    </select>
+      <!-- Pool segmented -->
+      <div class="dbl-seg">
+        <button onclick="setPool('')"  id="pool-all" class="dbl-seg-btn pool-btn active">All</button>
+        <button onclick="setPool('A')" id="pool-A"   class="dbl-seg-btn pool-btn">Pool A</button>
+        <button onclick="setPool('B')" id="pool-B"   class="dbl-seg-btn pool-btn">Pool B</button>
+      </div>
 
-    <!-- Type filter -->
-    <select id="db-type" onchange="filterBoard()"
-            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
-            style="background-color:#0f1623;">
-      <option value="">All Types</option>
-      <option value="Normal">Normal</option>
-      <option value="Fire">Fire</option>
-      <option value="Water">Water</option>
-      <option value="Electric">Electric</option>
-      <option value="Grass">Grass</option>
-      <option value="Ice">Ice</option>
-      <option value="Fighting">Fighting</option>
-      <option value="Poison">Poison</option>
-      <option value="Ground">Ground</option>
-      <option value="Flying">Flying</option>
-      <option value="Psychic">Psychic</option>
-      <option value="Bug">Bug</option>
-      <option value="Rock">Rock</option>
-      <option value="Ghost">Ghost</option>
-      <option value="Dragon">Dragon</option>
-      <option value="Dark">Dark</option>
-      <option value="Steel">Steel</option>
-      <option value="Fairy">Fairy</option>
-    </select>
+      <!-- Search -->
+      <div class="dbl-input-wrap" style="position:relative;">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input id="db-search" type="text" placeholder="Search…"
+               oninput="filterBoard()"
+               class="dbl-input" style="width:130px;">
+      </div>
 
-    <!-- Status filter -->
-    <select id="db-status" onchange="filterBoard()"
-            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
-            style="background-color:#0f1623;">
-      <option value="">All Status</option>
-      <option value="available">Available</option>
-      <option value="drafted">Drafted</option>
-    </select>
+      <!-- Ability -->
+      <div class="dbl-input-wrap" style="position:relative;">
+        <input id="db-ability" type="text" placeholder="Ability…"
+               oninput="filterBoard()"
+               class="dbl-input" style="width:120px;" autocomplete="off">
+        <div id="ability-suggestions"></div>
+      </div>
 
-    <!-- Speed tier filter -->
-    <select id="db-speed" onchange="filterBoard()"
-            class="px-3 py-2 rounded-xl border border-gray-700 text-sm text-white focus:outline-none"
-            style="background-color:#0f1623;">
-      <option value="">Speed Tier</option>
-      <option value="0-60">Slow (≤60)</option>
-      <option value="61-80">Mid-Slow (61–80)</option>
-      <option value="81-100">Average (81–100)</option>
-      <option value="101-110">Fast (101–110)</option>
-      <option value="111-125">Very Fast (111–125)</option>
-      <option value="126-999">Elite (126+)</option>
-    </select>
+      <!-- Moves -->
+      <select id="db-move" onchange="filterBoard()" class="dbl-select" style="width:120px;">
+        <option value="">Moves</option>
+        {% for move in all_moves %}
+        <option value="{{ move }}">{{ move }}</option>
+        {% endfor %}
+      </select>
 
-    <!-- Clear -->
-    <button onclick="clearFilters()"
-            class="px-4 py-2 rounded-xl border border-gray-700 text-sm text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all"
-            style="background-color:#0f1623;">Clear</button>
+      <!-- Type -->
+      <select id="db-type" onchange="filterBoard()" class="dbl-select" style="width:100px;">
+        <option value="">Type</option>
+        <option value="Normal">Normal</option><option value="Fire">Fire</option>
+        <option value="Water">Water</option><option value="Electric">Electric</option>
+        <option value="Grass">Grass</option><option value="Ice">Ice</option>
+        <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+        <option value="Ground">Ground</option><option value="Flying">Flying</option>
+        <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+        <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+        <option value="Dragon">Dragon</option><option value="Dark">Dark</option>
+        <option value="Steel">Steel</option><option value="Fairy">Fairy</option>
+      </select>
 
-    <!-- View toggle -->
-    <button id="view-toggle" onclick="toggleBoardView()"
-            class="px-3 py-2 rounded-xl border border-gray-700 text-gray-400 hover:border-yellow-500/40 hover:text-yellow-400 transition-all flex items-center gap-1.5 text-xs font-bold"
-            style="background-color:#0f1623;" title="Toggle list view">
-      <svg id="vt-icon-col" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-      </svg>
-      <svg id="vt-icon-list" class="w-3.5 h-3.5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-      </svg>
-      <span id="vt-label">List</span>
-    </button>
+      <!-- Status -->
+      <select id="db-status" onchange="filterBoard()" class="dbl-select" style="width:105px;">
+        <option value="">Status</option>
+        <option value="available">Available</option>
+        <option value="drafted">Drafted</option>
+      </select>
 
-    <!-- Legend -->
-    <div class="ml-auto flex flex-wrap items-center gap-4">
-      <span class="flex items-center gap-1.5 text-xs text-gray-500">
-        <span class="w-2.5 h-2.5 rounded-sm border border-gray-600" style="background:#0f1623;"></span>Available
-      </span>
-      <span class="flex items-center gap-1.5 text-xs text-gray-500">
-        <span class="w-2.5 h-2.5 rounded-sm" style="background:rgba(21,128,61,0.4);border:1px solid rgba(34,197,94,0.3);"></span>Drafted
-      </span>
-      <span class="flex items-center gap-1.5 text-xs text-gray-500">
-        <span class="w-2.5 h-2.5 rounded-sm" style="background:rgba(127,29,29,0.4);border:1px solid rgba(239,68,68,0.3);"></span>Banned
-      </span>
-      <span class="flex items-center gap-1.5 text-xs text-purple-400">
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-        Tera Captain
-      </span>
-    </div>
-  </div>
+      <!-- Speed tier -->
+      <select id="db-speed" onchange="filterBoard()" class="dbl-select" style="width:115px;">
+        <option value="">Speed Tier</option>
+        <option value="0-60">Slow (≤60)</option>
+        <option value="61-80">Mid-Slow (61–80)</option>
+        <option value="81-100">Average (81–100)</option>
+        <option value="101-110">Fast (101–110)</option>
+        <option value="111-125">Very Fast (111–125)</option>
+        <option value="126-999">Elite (126+)</option>
+      </select>
 
+      <!-- Clear -->
+      <button onclick="clearFilters()" class="dbl-clear">Clear</button>
+
+      <!-- View toggle -->
+      <button id="view-toggle" onclick="toggleBoardView()" class="dbl-view-btn" title="Toggle list view">
+        <svg id="vt-icon-col" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+        </svg>
+        <svg id="vt-icon-list" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+        <span id="vt-label">List</span>
+      </button>
+
+      <!-- Legend -->
+      <div class="dbl-legend">
+        <span class="dbl-leg-item">
+          <span class="dbl-leg-swatch" style="border-color: var(--cyan-dim);"></span>Available
+        </span>
+        <span class="dbl-leg-item">
+          <span class="dbl-leg-swatch" style="background: var(--magenta); border-color: var(--magenta);"></span>Drafted
+        </span>
+        <span class="dbl-leg-item">
+          <span class="dbl-leg-swatch" style="background: var(--red); border-color: var(--red);"></span>Banned
+        </span>
+        <span class="dbl-leg-item" style="color: var(--lime);">
+          ◆ Tera Capt
+        </span>
+        <span class="dbl-leg-item" style="color: var(--amber);">
+          ★ Captain
+        </span>
+      </div>
+
+    </div><!-- /dbl-filters -->
+  </div><!-- /dbl-controls -->
+
+
+  <!-- ══════════ BOARD ══════════ -->
   {% if tiers %}
 
-  <!-- ── Column Board ── -->
-  <div class="overflow-x-auto pb-6" id="boardScrollArea">
-    <div class="flex gap-1 min-w-max items-start" id="boardContainer">
+  <div class="dbl-board" id="boardScrollArea">
+    <div class="dbl-strip" id="boardContainer">
 
-      <!-- ── BANNED column ── -->
-      {% set banned_list = tiers | selectattr('is_banned') | list %}
+      <!-- ── BANNED band ── -->
       {% if banned_list %}
-      <div class="board-col" data-col="banned">
-        <div class="board-col-header" style="background:linear-gradient(135deg,#7f1d1d,#991b1b);border-bottom:2px solid rgba(239,68,68,0.5);">
-          <div class="text-sm font-black text-red-200" style="font-family:var(--font-display);letter-spacing:0.06em;">Banned</div>
-          <div class="text-xs mt-0.5 opacity-60" style="font-family:var(--font-mono);color:#ff4d6b;">{{ banned_list | length }} Pokémon</div>
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--banned-a);">
+          <span class="dbl-band-label">Banned</span>
+          <span class="dbl-band-count">{{ banned_list | length }}</span>
+          <span class="dbl-band-rule"></span>
         </div>
-        <div class="board-col-body">
-          {% for t in banned_list %}
-          <div class="board-poke banned-poke"
-               data-name="{{ t.name.lower() }}"
-               data-status="banned"
-               data-pool=""
-               data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
-               data-moves="{{ t.moves or '' }}"
-               data-type1="{{ (t.type1 or '').lower() }}"
-               data-type2="{{ (t.type2 or '').lower() }}"
-               data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
-               data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-               data-bst="{{ t.bst or 0 }}">
-            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
-                 class="w-6 h-6 object-contain flex-shrink-0 opacity-40">
-            <span class="text-red-500/60 line-through text-xs truncate flex-1">{{ t.name }}</span>
+        <div class="dbl-cols">
+          <div class="board-col" data-col="banned" style="border-top: 2px solid var(--banned-a);">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: var(--banned-a); font-size: 22px;">BAN</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: var(--banned-a);">Banned</span>
+                <span class="col-count">{{ banned_list | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {% for t in banned_list %}
+              <div class="board-poke banned-poke"
+                   data-name="{{ t.name.lower() }}"
+                   data-status="banned"
+                   data-pool=""
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}"
+                   data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb">
+                  <img src="{{ pokemon_static_sprite_url(t.name) }}"
+                       onerror="this.style.opacity='0.1'"
+                       style="opacity:0.3;">
+                </span>
+                <span class="poke-name" style="color: var(--red); text-decoration: line-through;">{{ t.name }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ── UBERS band ── -->
+      {% if uber_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--uber-gold-a);">
+          <span class="dbl-band-label">Ubers</span>
+          <span class="dbl-band-count">
+            {% set uber_total = namespace(n=0) %}
+            {% for g in uber_cols %}{% set uber_total.n = uber_total.n + (g.pokemon | rejectattr('is_banned') | list | length) %}{% endfor %}
+            {{ uber_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
+        </div>
+        <div class="dbl-cols">
+          {% for group in uber_cols %}
+          {%- set lbl = (group.label or '') | lower -%}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- if 'gold' in lbl -%}     {%- set acc = '#ffc94d' -%}
+          {%- elif 'silver' in lbl -%} {%- set acc = '#d2d2dc' -%}
+          {%- elif 'bronze' in lbl -%} {%- set acc = '#d08552' -%}
+          {%- else -%}                 {%- set acc = '#a8d4e6' -%}
+          {%- endif -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }};">{{ group.points }}</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">{{ group.label or 'Uber' }}</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb">
+                  <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">
+                </span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
           </div>
           {% endfor %}
         </div>
       </div>
       {% endif %}
 
-      <!-- ── One column per point tier ── -->
-      {% for group in tiers_by_pts %}
-      {% set non_banned = group.pokemon | rejectattr('is_banned') | list %}
-      {% if non_banned %}
-        {%- set lbl = group.label | lower -%}
-        {%- if 'uber' in lbl %}
-          {%- if 'platinum' in lbl %}
-            {% set hdr_bg = 'linear-gradient(135deg,#3d5a6e,#6a94a8)' %}
-            {% set hdr_border = 'rgba(160,205,220,0.55)' %}
-            {% set hdr_pts_color = '#d0eaf5' %}
-            {% set hdr_lbl_color = '#a8d4e6' %}
-            {% set hdr_body_bg = 'rgba(106,148,168,0.06)' %}
-          {%- elif 'gold' in lbl %}
-            {% set hdr_bg = 'linear-gradient(135deg,#6b5000,#b08800)' %}
-            {% set hdr_border = 'rgba(220,175,0,0.6)' %}
-            {% set hdr_pts_color = '#ffe766' %}
-            {% set hdr_lbl_color = '#ffd500' %}
-            {% set hdr_body_bg = 'rgba(176,136,0,0.06)' %}
-          {%- elif 'silver' in lbl %}
-            {% set hdr_bg = 'linear-gradient(135deg,#3a4050,#686e80)' %}
-            {% set hdr_border = 'rgba(180,186,200,0.5)' %}
-            {% set hdr_pts_color = '#d0d4e0' %}
-            {% set hdr_lbl_color = '#b0b8c8' %}
-            {% set hdr_body_bg = 'rgba(104,110,128,0.06)' %}
-          {%- elif 'bronze' in lbl %}
-            {% set hdr_bg = 'linear-gradient(135deg,#4a2208,#8c4a1c)' %}
-            {% set hdr_border = 'rgba(200,118,48,0.6)' %}
-            {% set hdr_pts_color = '#e8a05e' %}
-            {% set hdr_lbl_color = '#c87830' %}
-            {% set hdr_body_bg = 'rgba(140,74,28,0.06)' %}
-          {%- elif group.points >= 30 %}
-            {% set hdr_bg = 'linear-gradient(135deg,#3d5a6e,#6a94a8)' %}
-            {% set hdr_border = 'rgba(160,205,220,0.55)' %}
-            {% set hdr_pts_color = '#d0eaf5' %}
-            {% set hdr_lbl_color = '#a8d4e6' %}
-            {% set hdr_body_bg = 'rgba(106,148,168,0.06)' %}
-          {%- elif group.points >= 29 %}
-            {% set hdr_bg = 'linear-gradient(135deg,#6b5000,#b08800)' %}
-            {% set hdr_border = 'rgba(220,175,0,0.6)' %}
-            {% set hdr_pts_color = '#ffe766' %}
-            {% set hdr_lbl_color = '#ffd500' %}
-            {% set hdr_body_bg = 'rgba(176,136,0,0.06)' %}
-          {%- elif group.points >= 28 %}
-            {% set hdr_bg = 'linear-gradient(135deg,#3a4050,#686e80)' %}
-            {% set hdr_border = 'rgba(180,186,200,0.5)' %}
-            {% set hdr_pts_color = '#d0d4e0' %}
-            {% set hdr_lbl_color = '#b0b8c8' %}
-            {% set hdr_body_bg = 'rgba(104,110,128,0.06)' %}
-          {%- else %}
-            {% set hdr_bg = 'linear-gradient(135deg,#4a2208,#8c4a1c)' %}
-            {% set hdr_border = 'rgba(200,118,48,0.6)' %}
-            {% set hdr_pts_color = '#e8a05e' %}
-            {% set hdr_lbl_color = '#c87830' %}
-            {% set hdr_body_bg = 'rgba(140,74,28,0.06)' %}
-          {%- endif %}
-        {% elif 'tier 1' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#1e3a8a,#1d4ed8)' %}
-          {% set hdr_border = 'rgba(29,78,216,0.5)' %}
-          {% set hdr_pts_color = '#93c5fd' %}
-          {% set hdr_lbl_color = '#93c5fd' %}
-          {% set hdr_body_bg = 'rgba(30,58,138,0.06)' %}
-        {% elif 'tier 2' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#3b0764,#7e22ce)' %}
-          {% set hdr_border = 'rgba(126,34,206,0.5)' %}
-          {% set hdr_pts_color = '#d8b4fe' %}
-          {% set hdr_lbl_color = '#d8b4fe' %}
-          {% set hdr_body_bg = 'rgba(59,7,100,0.06)' %}
-        {% elif 'tier 3' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#134e4a,#0f766e)' %}
-          {% set hdr_border = 'rgba(15,118,110,0.5)' %}
-          {% set hdr_pts_color = '#5eead4' %}
-          {% set hdr_lbl_color = '#5eead4' %}
-          {% set hdr_body_bg = 'rgba(19,78,74,0.06)' %}
-        {% elif 'tier 4' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#14532d,#15803d)' %}
-          {% set hdr_border = 'rgba(21,128,61,0.5)' %}
-          {% set hdr_pts_color = '#86efac' %}
-          {% set hdr_lbl_color = '#86efac' %}
-          {% set hdr_body_bg = 'rgba(20,83,45,0.06)' %}
-        {% elif 'tier 5' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#1f2937,#374151)' %}
-          {% set hdr_border = 'rgba(55,65,81,0.6)' %}
-          {% set hdr_pts_color = '#9ca3af' %}
-          {% set hdr_lbl_color = '#9ca3af' %}
-          {% set hdr_body_bg = 'rgba(31,41,55,0.06)' %}
-        {% elif 'platinum' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#3d5a6e,#6a94a8)' %}
-          {% set hdr_border = 'rgba(160,205,220,0.55)' %}
-          {% set hdr_pts_color = '#d0eaf5' %}
-          {% set hdr_lbl_color = '#a8d4e6' %}
-          {% set hdr_body_bg = 'rgba(106,148,168,0.05)' %}
-        {% elif 'gold' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#6b5000,#b08800)' %}
-          {% set hdr_border = 'rgba(220,175,0,0.6)' %}
-          {% set hdr_pts_color = '#ffe766' %}
-          {% set hdr_lbl_color = '#ffd500' %}
-          {% set hdr_body_bg = 'rgba(176,136,0,0.05)' %}
-        {% elif 'silver' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#3a4050,#686e80)' %}
-          {% set hdr_border = 'rgba(180,186,200,0.5)' %}
-          {% set hdr_pts_color = '#d0d4e0' %}
-          {% set hdr_lbl_color = '#b0b8c8' %}
-          {% set hdr_body_bg = 'rgba(104,110,128,0.05)' %}
-        {% elif 'bronze' in lbl %}
-          {% set hdr_bg = 'linear-gradient(135deg,#4a2208,#8c4a1c)' %}
-          {% set hdr_border = 'rgba(200,118,48,0.6)' %}
-          {% set hdr_pts_color = '#e8a05e' %}
-          {% set hdr_lbl_color = '#c87830' %}
-          {% set hdr_body_bg = 'rgba(140,74,28,0.05)' %}
-        {% else %}
-          {%- set hdr_bg = 'linear-gradient(135deg,#1a1a1a,#111)' -%}
-          {%- set hdr_border = 'rgba(107,114,128,0.3)' -%}
-          {%- set hdr_pts_color = '#9ca3af' -%}
-          {%- set hdr_lbl_color = '#6b7280' -%}
-          {%- set hdr_body_bg = 'rgba(0,0,0,0)' -%}
-        {%- endif %}
-      <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}" style="border-color:{{ hdr_border }};">
-
-        <!-- Column header -->
-        <div class="board-col-header" style="background:{{ hdr_bg }};border-bottom:2px solid {{ hdr_border }};">
-          <div class="text-lg font-black leading-none" style="color:{{ hdr_pts_color }};font-family:var(--font-display);letter-spacing:0.04em;">{{ group.points }}</div>
-          <div class="text-xs font-bold mt-0.5" style="color:{{ hdr_lbl_color }};font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;">
-            {% if group.label %}{{ group.label }}{% else %}pts{% endif %}
-          </div>
-          <div class="text-xs mt-0.5 opacity-40" style="color:{{ hdr_pts_color }};font-family:var(--font-mono);">{{ non_banned | length }}</div>
+      <!-- ── TIER 1 band ── -->
+      {% if t1_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--tier-1-a);">
+          <span class="dbl-band-label">Tier 1</span>
+          <span class="dbl-band-count">
+            {%- set t1_total = namespace(n=0) -%}
+            {%- for g in t1_cols -%}{%- set t1_total.n = t1_total.n + (g.pokemon | rejectattr('is_banned') | list | length) -%}{%- endfor -%}
+            {{ t1_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
         </div>
-
-        <!-- Pokemon list -->
-        <div class="board-col-body" style="background-color:{{ hdr_body_bg }};">
-          {% for t in non_banned %}
-          {% set d_info = drafted.get(t.name) %}
-          {% set is_drafted = d_info is not none %}
-          {% set coach_pool = d_info.pool if is_drafted else '' %}
-
-          <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
-               data-name="{{ t.name.lower() }}"
-               data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-               data-pool="{{ coach_pool }}"
-               data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
-               data-moves="{{ t.moves or '' }}"
-               data-type1="{{ (t.type1 or '').lower() }}"
-               data-type2="{{ (t.type2 or '').lower() }}"
-               data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
-               data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-               data-bst="{{ t.bst or 0 }}">
-
-            <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';"
-                 class="w-6 h-6 object-contain flex-shrink-0 {% if not is_drafted %}opacity-75{% endif %}">
-
-            <span class="text-xs truncate flex-1 {% if is_drafted %}text-green-300{% else %}text-gray-300{% endif %} {% if t.is_tera_banned %}line-through opacity-60{% endif %}">
-              {{ t.name }}
-            </span>
-
-            {% if session.get('role') == 'admin' %}
-            <button onclick="editPts(event,{{ t.id }},{{ t.points }})"
-                    class="edit-pts-btn opacity-0 text-yellow-500/60 hover:text-yellow-400 flex-shrink-0 transition-opacity"
-                    title="Edit points">
-              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-              </svg>
-            </button>
-            {% endif %}
-
-            {% if is_drafted and d_info.is_tera_captain %}
-            <svg class="w-2.5 h-2.5 text-purple-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-            </svg>
-            {% endif %}
-
-            {% if is_drafted %}
-            <a href="/team/{{ d_info.coach_id }}"
-               class="board-badge flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-white no-underline"
-               style="background-color:{{ d_info.color or '#374151' }}; font-size:0.6rem; font-weight:800; max-width:52px; overflow:hidden;"
-               title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
-              {% if d_info.logo_url %}
-                <img src="{{ d_info.logo_url }}" class="w-3 h-3 object-contain rounded flex-shrink-0" onerror="this.onerror=function(){this.style.opacity='0.15';};this.src='https://play.pokemonshowdown.com/sprites/gen5/'+this.closest('[data-name]').dataset.name.replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')+'.png';">
-              {% endif %}
-              <span class="truncate">{{ d_info.team_name }}</span>
-            </a>
-            {% endif %}
-
+        <div class="dbl-cols">
+          {% for group in t1_cols %}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- set acc = '#5a9bff' -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }};">{{ group.points }}</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">{{ group.label or 'T1' }}</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
           </div>
           {% endfor %}
         </div>
       </div>
       {% endif %}
-      {% endfor %}
 
-    </div>
-  </div>
+      <!-- ── TIER 2 band ── -->
+      {% if t2_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--tier-2-a);">
+          <span class="dbl-band-label">Tier 2</span>
+          <span class="dbl-band-count">
+            {%- set t2_total = namespace(n=0) -%}
+            {%- for g in t2_cols -%}{%- set t2_total.n = t2_total.n + (g.pokemon | rejectattr('is_banned') | list | length) -%}{%- endfor -%}
+            {{ t2_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
+        </div>
+        <div class="dbl-cols">
+          {% for group in t2_cols %}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- set acc = '#b07dff' -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }};">{{ group.points }}</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">{{ group.label or 'T2' }}</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
 
-  <!-- List view (populated by JS) -->
-  <div id="boardListView" class="hidden rounded-xl border border-gray-800 overflow-hidden" style="background:#0f1623;"></div>
+      <!-- ── TIER 3 band ── -->
+      {% if t3_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--tier-3-a);">
+          <span class="dbl-band-label">Tier 3</span>
+          <span class="dbl-band-count">
+            {%- set t3_total = namespace(n=0) -%}
+            {%- for g in t3_cols -%}{%- set t3_total.n = t3_total.n + (g.pokemon | rejectattr('is_banned') | list | length) -%}{%- endfor -%}
+            {{ t3_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
+        </div>
+        <div class="dbl-cols">
+          {% for group in t3_cols %}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- set acc = '#3dd9c2' -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }};">{{ group.points }}</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">{{ group.label or 'T3' }}</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ── TIER 4 band ── -->
+      {% if t4_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--tier-4-a);">
+          <span class="dbl-band-label">Tier 4</span>
+          <span class="dbl-band-count">
+            {%- set t4_total = namespace(n=0) -%}
+            {%- for g in t4_cols -%}{%- set t4_total.n = t4_total.n + (g.pokemon | rejectattr('is_banned') | list | length) -%}{%- endfor -%}
+            {{ t4_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
+        </div>
+        <div class="dbl-cols">
+          {% for group in t4_cols %}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- set acc = '#7ddc6a' -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }};">{{ group.points }}</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">{{ group.label or 'T4' }}</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ── TIER 5 band ── -->
+      {% if t5_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--tier-5-a);">
+          <span class="dbl-band-label">Tier 5</span>
+          <span class="dbl-band-count">
+            {%- set t5_total = namespace(n=0) -%}
+            {%- for g in t5_cols -%}{%- set t5_total.n = t5_total.n + (g.pokemon | rejectattr('is_banned') | list | length) -%}{%- endfor -%}
+            {{ t5_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
+        </div>
+        <div class="dbl-cols">
+          {% for group in t5_cols %}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- set acc = '#9a9aa8' -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }};">{{ group.points }}</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">{{ group.label or 'T5' }}</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ── FREE band ── -->
+      {% if free_cols %}
+      <div class="dbl-group">
+        <div class="dbl-band" style="--band-accent: var(--free-a);">
+          <span class="dbl-band-label">Free</span>
+          <span class="dbl-band-count">
+            {%- set fr_total = namespace(n=0) -%}
+            {%- for g in free_cols -%}{%- set fr_total.n = fr_total.n + (g.pokemon | rejectattr('is_banned') | list | length) -%}{%- endfor -%}
+            {{ fr_total.n }}
+          </span>
+          <span class="dbl-band-rule"></span>
+        </div>
+        <div class="dbl-cols">
+          {% for group in free_cols %}
+          {%- set nb = group.pokemon | rejectattr('is_banned') | list -%}
+          {%- set acc = 'rgba(234,234,242,0.28)' -%}
+          <div class="board-col" data-col="{{ group.points }}" data-pts="{{ group.points }}"
+               style="border-top: 2px solid {{ acc }};">
+            <div class="board-col-header">
+              <div class="col-pts-num" style="color: {{ acc }}; font-size: 22px;">FREE</div>
+              <div class="col-sub-row">
+                <span class="text-xs font-bold col-label" style="color: {{ acc }};">0 pts</span>
+                <span class="col-count">{{ nb | length }}</span>
+              </div>
+            </div>
+            <div class="board-col-body">
+              {%- for t in nb -%}
+              {%- set d_info = drafted.get(t.name) -%}
+              {%- set is_drafted = d_info is not none -%}
+              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
+                   data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
+                   data-pool="{{ coach_pool }}"
+                   data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
+                   data-moves="{{ t.moves or '' }}"
+                   data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
+                   data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
+                   data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
+                   data-bst="{{ t.bst or 0 }}">
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {% if session.get('role') == 'admin' %}
+                <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
+                  <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                {% endif %}
+                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
+                <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
+                {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
+                {%- if is_drafted -%}
+                <a href="/team/{{ d_info.coach_id }}" class="board-badge" style="background-color:{{ d_info.color or '#374151' }};"
+                   title="{{ d_info.team_name }} ({{ d_info.coach_name }}) · Pool {{ coach_pool }}">
+                  {%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.display='none'">{%- endif -%}
+                  <span>{{ d_info.team_name }}</span>
+                </a>
+                {%- endif -%}
+              </div>
+              {%- endfor -%}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /dbl-strip -->
+  </div><!-- /dbl-board -->
+
+  <!-- List view -->
+  <div id="boardListView" class="hidden" style="flex:1;overflow:auto;margin:12px 18px;"></div>
 
   <!-- No results -->
-  <div id="db-empty" class="hidden text-center py-16">
-    <svg class="w-10 h-10 text-gray-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div id="db-empty" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;">
+    <svg style="width:36px;height:36px;color:var(--text-dim);margin-bottom:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
     </svg>
-    <p class="text-gray-600 text-sm">No Pokémon match your filters.</p>
-    <button onclick="clearFilters()" class="mt-3 px-4 py-1.5 rounded-lg border border-gray-700 text-xs text-yellow-500 hover:text-yellow-400 hover:border-yellow-500/40 transition-all" style="background:#0f1623;">Clear filters</button>
+    <p style="font:600 12px/1 var(--font-mono);color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;">No Pokémon match your filters.</p>
+    <button onclick="clearFilters()" style="margin-top:10px;padding:5px 14px;background:var(--panel-2);border:1px solid var(--hairline-2);color:var(--cyan);font:600 9px/1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Clear filters</button>
   </div>
 
   {% else %}
-  <div class="text-center py-24">
-    <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border border-gray-800 mb-6" style="background-color:#0f1623;">
-      <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-      </svg>
-    </div>
-    <h2 class="text-xl font-bold text-gray-600 mb-2">No tier list yet</h2>
-    <p class="text-sm text-gray-700 mb-6">Build your draft tier list in the admin panel.</p>
+  <!-- No tiers -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+    <p style="font:700 13px/1 var(--font-display);letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">No tier list yet</p>
     {% if session.get('role') == 'admin' %}
-      <a href="/admin/tiers" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold text-sm hover:bg-yellow-300 transition-colors">
-        Add tiers &rarr;
-      </a>
+    <a href="/admin/tiers" style="padding:7px 18px;background:var(--amber);color:var(--ink);font:700 10px/1 var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;">Add tiers →</a>
     {% endif %}
   </div>
   {% endif %}
 
-</div>
+</div><!-- /dbl-wrapper -->
 
-<!-- ── Base stat tooltip ── -->
-<div id="poke-tooltip" style="display:none;position:fixed;z-index:9990;pointer-events:none;width:230px;padding:10px 12px 8px;border-radius:10px;background:#0b1120;border:1px solid rgba(0,245,255,0.2);box-shadow:0 8px 32px rgba(0,0,0,0.75),0 0 0 1px rgba(0,245,255,0.04) inset;">
+
+<!-- ── Stat tooltip ── -->
+<div id="poke-tooltip">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-    <span id="ptt-name" style="font-size:0.75rem;font-weight:800;color:#e5e7eb;text-transform:capitalize;letter-spacing:0.01em;"></span>
-    <span id="ptt-bst"  style="font-size:0.62rem;font-weight:700;color:rgba(0,245,255,0.55);font-family:monospace;"></span>
+    <span id="ptt-name" style="font:700 11px/1 var(--font-mono);color:var(--text);text-transform:capitalize;letter-spacing:0.02em;"></span>
+    <span id="ptt-bst"  style="font:600 9px/1 var(--font-mono);color:var(--cyan-dim);"></span>
   </div>
   <div id="ptt-types" style="display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap;"></div>
   <div id="ptt-abilities" style="margin-bottom:6px;display:flex;flex-direction:column;gap:1px;"></div>
   <div style="display:flex;flex-direction:column;gap:4px;">
     {% for stat_key, stat_label, stat_color in [
-        ('hp',  'HP',  '#f87171'),
-        ('atk', 'Atk', '#fb923c'),
-        ('def', 'Def', '#facc15'),
-        ('spa', 'SpA', '#60a5fa'),
-        ('spd', 'SpD', '#4ade80'),
-        ('spe', 'Spe', '#c084fc')
+        ('hp',  'HP',  '#f87171'),('atk', 'Atk', '#fb923c'),('def', 'Def', '#facc15'),
+        ('spa', 'SpA', '#60a5fa'),('spd', 'SpD', '#4ade80'),('spe', 'Spe', '#c084fc')
     ] %}
     <div style="display:flex;align-items:center;gap:6px;">
-      <span style="font-size:0.6rem;font-weight:700;color:{{ stat_color }};width:24px;text-align:right;font-family:monospace;flex-shrink:0;">{{ stat_label }}</span>
+      <span style="font:700 9px/1 var(--font-mono);color:{{ stat_color }};width:24px;text-align:right;flex-shrink:0;">{{ stat_label }}</span>
       <div style="flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;">
         <div id="ptt-{{ stat_key }}-bar" style="height:100%;background:{{ stat_color }};border-radius:2px;width:0%;transition:width 0.1s;"></div>
       </div>
-      <span id="ptt-{{ stat_key }}-val" style="font-size:0.6rem;font-weight:700;color:{{ stat_color }};width:24px;text-align:right;font-family:monospace;flex-shrink:0;"></span>
+      <span id="ptt-{{ stat_key }}-val" style="font:700 9px/1 var(--font-mono);color:{{ stat_color }};width:24px;text-align:right;flex-shrink:0;"></span>
     </div>
     {% endfor %}
   </div>
@@ -429,94 +1229,17 @@
 <!-- Admin: Points edit popover -->
 {% if session.get('role') == 'admin' %}
 <div id="pts-popover">
-  <div class="text-xs text-yellow-400 font-bold mb-2">Edit Points</div>
-  <div class="flex items-center gap-2">
+  <div style="font:700 10px/1 var(--font-mono);color:var(--amber);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Edit Points</div>
+  <div style="display:flex;align-items:center;gap:6px;">
     <input id="pts-input" type="number" min="0" max="99"
-           class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-sm text-center focus:border-yellow-500 focus:outline-none"
+           style="width:52px;background:var(--panel);border:1px solid var(--hairline-2);color:var(--text);font:600 12px/1 var(--font-mono);padding:4px 6px;text-align:center;outline:none;"
            onkeydown="if(event.key==='Enter') savePts()">
-    <button onclick="savePts()"
-            class="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded text-xs font-bold">Save</button>
-    <button onclick="closePtsPopover()"
-            class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-xs">✕</button>
+    <button onclick="savePts()" style="padding:4px 10px;background:var(--amber);color:var(--ink);font:700 9px/1 var(--font-mono);letter-spacing:0.06em;text-transform:uppercase;border:none;cursor:pointer;">Save</button>
+    <button onclick="closePtsPopover()" style="padding:4px 7px;background:var(--panel);border:1px solid var(--hairline-2);color:var(--text-dim);font:600 9px/1 var(--font-mono);cursor:pointer;">✕</button>
   </div>
 </div>
 {% endif %}
 
-<style>
-/* ── Column layout ── */
-.board-col {
-  display: flex;
-  flex-direction: column;
-  width: 175px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(55,65,81,0.6);
-}
-
-.board-col-header {
-  padding: 8px 10px 6px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  background: transparent;
-  flex-shrink: 0;
-}
-
-.board-col-body {
-  display: flex;
-  flex-direction: column;
-  background-color: #0f1623;
-  flex: 1;
-}
-
-/* ── Pokemon row ── */
-.board-poke {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  border-bottom: 1px solid rgba(55,65,81,0.2);
-  transition: background 0.1s;
-  cursor: default;
-}
-.board-poke:last-child { border-bottom: none; }
-
-.avail-poke { background-color: #0f1623; }
-.avail-poke:hover { background: rgba(250,204,21,0.04); }
-
-.drafted-poke { background: rgba(21,128,61,0.12); }
-.drafted-poke:hover { background: rgba(21,128,61,0.2); }
-
-.banned-poke { background: rgba(127,29,29,0.15); }
-.banned-poke:hover { background: rgba(127,29,29,0.22); }
-
-/* ── Pool filter buttons ── */
-.pool-btn { color: #6b7280; }
-.pool-btn:hover { color: #facc15; }
-.pool-btn.active { color: #facc15; background: rgba(250,204,21,0.1); }
-
-/* ── Dimmed (filtered out pool) ── */
-.board-poke.pool-dim {
-  opacity: 0.25;
-}
-.board-poke.pool-dim .board-badge { display: none; }
-
-/* ── Admin edit button ── */
-.board-poke:hover .edit-pts-btn { opacity: 1; }
-
-/* ── Points edit popover ── */
-#pts-popover {
-  position: fixed;
-  z-index: 9999;
-  background: #1e2535;
-  border: 1px solid #facc15;
-  border-radius: 8px;
-  padding: 10px 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  display: none;
-}
-#pts-popover.open { display: block; }
-</style>
 
 <script>
 let currentPool = '';
@@ -529,7 +1252,7 @@ let currentSpeed = '';
 
 function setPool(pool) {
   currentPool = pool;
-  document.querySelectorAll('.pool-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.dbl-seg-btn.pool-btn').forEach(b => b.classList.remove('active'));
   const id = pool === '' ? 'pool-all' : 'pool-' + pool;
   const btn = document.getElementById(id);
   if (btn) btn.classList.add('active');
@@ -543,12 +1266,7 @@ function clearFilters() {
   document.getElementById('db-ability').value = '';
   document.getElementById('db-type').value = '';
   document.getElementById('db-speed').value = '';
-  currentSearch = '';
-  currentStatus = '';
-  currentMove = '';
-  currentAbility = '';
-  currentType = '';
-  currentSpeed = '';
+  currentSearch = currentStatus = currentMove = currentAbility = currentType = currentSpeed = '';
   hideSuggestions();
   setPool('');
 }
@@ -567,7 +1285,6 @@ function filterBoard() {
     speedMin = lo; speedMax = hi;
   }
 
-  let visible = 0;
   const colVisible = {};
 
   document.querySelectorAll('.board-poke').forEach(poke => {
@@ -598,31 +1315,33 @@ function filterBoard() {
     poke.style.display = show ? '' : 'none';
     if (show) {
       poke.classList.toggle('pool-dim', poolDim);
-      if (!poolDim) {
-        visible++;
-        colVisible[colKey] = (colVisible[colKey] || 0) + 1;
-      } else {
-        colVisible[colKey] = colVisible[colKey] || 0;
-      }
+      colVisible[colKey] = (colVisible[colKey] || 0) + (poolDim ? 0 : 1);
     }
   });
 
   document.querySelectorAll('.board-col').forEach(col => {
     const key = col.dataset.col;
-    const hasVisible = document.querySelector(`.board-col[data-col="${key}"] .board-poke:not([style*="display: none"])`);
+    const hasVisible = col.querySelector('.board-poke:not([style*="display: none"])');
     col.style.display = hasVisible ? '' : 'none';
   });
 
+  // Hide empty band groups
+  document.querySelectorAll('.dbl-group').forEach(group => {
+    const hasCols = group.querySelector('.board-col:not([style*="display: none"])');
+    group.style.display = hasCols ? '' : 'none';
+  });
+
   const anyColShown = !!document.querySelector('.board-col:not([style*="display: none"])');
+  const boardEl = document.getElementById('boardScrollArea');
   const emptyEl = document.getElementById('db-empty');
-  const scrollArea = document.getElementById('boardScrollArea');
-  if (!_listMode && scrollArea) scrollArea.style.display = anyColShown ? '' : 'none';
-  if (emptyEl) emptyEl.classList.toggle('hidden', anyColShown || _listMode);
+
+  if (!_listMode && boardEl) boardEl.style.display = anyColShown ? '' : 'none';
+  if (emptyEl) emptyEl.style.display = (!anyColShown && !_listMode) ? 'flex' : 'none';
 
   if (_listMode) buildListView();
 }
 
-// ── Ability autocomplete ──────────────────────────────────────────────────────
+// ── Ability autocomplete ─────────────────────────────────────────────────────
 function buildAbilityList() {
   const set = new Set();
   document.querySelectorAll('.board-poke').forEach(poke => {
@@ -630,7 +1349,6 @@ function buildAbilityList() {
   });
   return Array.from(set).sort();
 }
-
 let _abilityList = null;
 
 function showSuggestions(val) {
@@ -640,22 +1358,21 @@ function showSuggestions(val) {
   const matches = _abilityList.filter(a => a.includes(val.toLowerCase())).slice(0, 12);
   if (!matches.length) { hideSuggestions(); return; }
   box.innerHTML = matches.map(a =>
-    `<div class="ability-sug px-3 py-1.5 text-xs text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-300 cursor-pointer capitalize"
-          onclick="selectAbility('${a}')">${a}</div>`
+    `<div class="ability-sug" onclick="selectAbility('${a}')">${a}</div>`
   ).join('');
-  box.classList.remove('hidden');
+  box.style.display = 'block';
 }
-
 function hideSuggestions() {
-  document.getElementById('ability-suggestions').classList.add('hidden');
+  const box = document.getElementById('ability-suggestions');
+  if (box) box.style.display = 'none';
 }
-
 function selectAbility(a) {
   document.getElementById('db-ability').value = a;
   hideSuggestions();
   filterBoard();
 }
 
+// ── List view ────────────────────────────────────────────────────────────────
 let _listMode = false;
 
 const _typeColors = {
@@ -667,8 +1384,10 @@ const _typeColors = {
 
 function toggleBoardView() {
   _listMode = !_listMode;
-  document.getElementById('boardScrollArea').classList.toggle('hidden', _listMode);
-  document.getElementById('boardListView').classList.toggle('hidden', !_listMode);
+  const boardEl = document.getElementById('boardScrollArea');
+  const listEl  = document.getElementById('boardListView');
+  if (boardEl) boardEl.classList.toggle('hidden', _listMode);
+  if (listEl)  listEl.classList.toggle('hidden', !_listMode);
   document.getElementById('vt-icon-col').classList.toggle('hidden', _listMode);
   document.getElementById('vt-icon-list').classList.toggle('hidden', !_listMode);
   document.getElementById('vt-label').textContent = _listMode ? 'Columns' : 'List';
@@ -678,7 +1397,6 @@ function toggleBoardView() {
 function buildListView() {
   const lv = document.getElementById('boardListView');
   if (!lv) return;
-  // Collect visible pokemon from columns in order
   const groups = [];
   document.querySelectorAll('.board-col:not([style*="display: none"])').forEach(col => {
     const pts = col.dataset.pts || '';
@@ -688,9 +1406,9 @@ function buildListView() {
     const pokes = [];
     col.querySelectorAll('.board-poke:not([style*="display: none"])').forEach(poke => {
       const img = poke.querySelector('img');
-      const nameEl = poke.querySelector('span.truncate');
+      const nameEl = poke.querySelector('.poke-name');
       const badge = poke.querySelector('.board-badge');
-      const isTera = !!poke.querySelector('svg.text-purple-400');
+      const isTera = !!poke.querySelector('.tera-mark');
       const isDrafted = poke.classList.contains('drafted-poke');
       const isBanned = poke.classList.contains('banned-poke');
       const type1 = poke.dataset.type1 || '';
@@ -703,33 +1421,34 @@ function buildListView() {
   if (!groups.length) {
     lv.innerHTML = '';
     const emptyEl = document.getElementById('db-empty');
-    if (emptyEl) emptyEl.classList.remove('hidden');
+    if (emptyEl) emptyEl.style.display = 'flex';
     return;
   }
-  const emptyEl = document.getElementById('db-empty');
-  if (emptyEl) emptyEl.classList.add('hidden');
+  const emptyEl2 = document.getElementById('db-empty');
+  if (emptyEl2) emptyEl2.style.display = 'none';
 
-  const typeColors = _typeColors;
-
+  const tc = _typeColors;
   lv.innerHTML = groups.map(g => `
-    <div class="border-b border-gray-800/60 last:border-0">
-      <div class="px-3 py-1.5 text-xs font-black uppercase tracking-wider text-gray-500" style="background:#080c14;">
-        ${g.pts ? `<span class="text-yellow-400">${g.pts}pts</span>` : ''} ${g.label}
+    <div style="border-bottom: 1px solid var(--hairline);">
+      <div style="padding: 5px 12px; background: var(--panel-2);">
+        <span style="font: 700 9px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim);">
+          ${g.pts ? `<span style="color: var(--cyan);">${g.pts}pt</span> ` : ''}${g.label}
+        </span>
       </div>
       <div>
         ${g.pokes.map(p => `
-          <div class="flex items-center gap-2.5 px-3 py-2 border-b border-gray-800/30 last:border-0
-               ${p.isDrafted ? 'bg-green-900/10' : p.isBanned ? 'bg-red-900/10' : ''}"
-               style="transition:background 0.1s;">
-            <img src="${p.img}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;${p.isDrafted ? '' : 'opacity:0.75;'}${p.isBanned ? 'opacity:0.3;' : ''}">
-            <span class="text-sm flex-1 min-w-0 truncate
-                  ${p.isDrafted ? 'text-green-300' : p.isBanned ? 'text-red-500/60 line-through' : 'text-gray-200'}">
+          <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid var(--hairline);
+               background:${p.isDrafted ? 'rgba(255,42,138,.04)' : p.isBanned ? 'rgba(255,77,107,.04)' : 'transparent'};">
+            <img src="${p.img}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;${p.isBanned ? 'opacity:0.3;' : ''}">
+            <span style="font:500 11px/1.2 var(--font-mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                  color:${p.isDrafted ? 'var(--magenta-dim)' : p.isBanned ? 'var(--red)' : 'var(--text)'};
+                  ${p.isBanned ? 'text-decoration:line-through;' : ''}">
               ${p.name}
             </span>
-            <div class="flex items-center gap-1 flex-shrink-0">
-              ${p.type1 ? `<span style="font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;background:${typeColors[p.type1]||'#374151'}22;border:1px solid ${typeColors[p.type1]||'#374151'}55;color:${typeColors[p.type1]||'#9ca3af'};">${p.type1}</span>` : ''}
-              ${p.type2 ? `<span style="font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;background:${typeColors[p.type2]||'#374151'}22;border:1px solid ${typeColors[p.type2]||'#374151'}55;color:${typeColors[p.type2]||'#9ca3af'};">${p.type2}</span>` : ''}
-              ${p.isTera ? '<svg style="width:10px;height:10px;color:#a78bfa;flex-shrink:0;" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>' : ''}
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              ${p.type1 ? `<span style="font:700 8px/1 var(--font-mono);padding:2px 5px;background:${tc[p.type1]||'#374151'}22;border:1px solid ${tc[p.type1]||'#374151'}55;color:${tc[p.type1]||'#9ca3af'};text-transform:capitalize;">${p.type1}</span>` : ''}
+              ${p.type2 ? `<span style="font:700 8px/1 var(--font-mono);padding:2px 5px;background:${tc[p.type2]||'#374151'}22;border:1px solid ${tc[p.type2]||'#374151'}55;color:${tc[p.type2]||'#9ca3af'};text-transform:capitalize;">${p.type2}</span>` : ''}
+              ${p.isTera ? '<span style="font:700 9px/1 var(--font-mono);color:var(--lime);text-shadow:0 0 5px rgba(193,255,61,.4);">◆</span>' : ''}
               ${p.badge}
             </div>
           </div>`).join('')}
@@ -737,14 +1456,15 @@ function buildListView() {
     </div>`).join('');
 }
 
+// ── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Pre-fill search from ?q= URL param (used by Pokédex "view on board" link)
   const urlQ = new URLSearchParams(window.location.search).get('q');
   if (urlQ) {
     const searchEl = document.getElementById('db-search');
     if (searchEl) searchEl.value = urlQ;
   }
   setPool('');
+
   const inp = document.getElementById('db-ability');
   inp.addEventListener('input', () => showSuggestions(inp.value));
   inp.addEventListener('focus', () => { if (inp.value) showSuggestions(inp.value); });
@@ -753,9 +1473,6 @@ document.addEventListener('DOMContentLoaded', () => {
       hideSuggestions();
   });
 });
-
-// Init — called at end of DOMContentLoaded above
-// (setPool('') is called there after ability input setup)
 
 // ── Admin: inline point editing ──────────────────────────────────────────────
 let _editTierId = null;
@@ -766,14 +1483,12 @@ function editPts(e, tierId, currentPts) {
   const pop = document.getElementById('pts-popover');
   const inp = document.getElementById('pts-input');
   inp.value = currentPts;
-  // Position near the click
   const x = Math.min(e.clientX, window.innerWidth - 180);
   const y = Math.min(e.clientY + 8, window.innerHeight - 80);
   pop.style.left = x + 'px';
   pop.style.top  = y + 'px';
   pop.classList.add('open');
-  inp.focus();
-  inp.select();
+  inp.focus(); inp.select();
 }
 
 function savePts() {
@@ -787,7 +1502,6 @@ function savePts() {
     body: `tier_id=${tierId}&points=${pts}`
   }).then(r => {
     if (!r.ok) { alert('Error saving points.'); return; }
-    // Find the card and try to move it to the target column
     const btn = document.querySelector(`.board-poke button[onclick^="editPts(event,${tierId},"]`);
     const card = btn ? btn.closest('.board-poke') : null;
     const targetCol = document.querySelector(`.board-col[data-pts="${pts}"]`);
@@ -796,11 +1510,10 @@ function savePts() {
       if (targetBody) {
         targetBody.appendChild(card);
         btn.setAttribute('onclick', `editPts(event,${tierId},${pts})`);
-        // Update column header counts
         document.querySelectorAll('.board-col').forEach(col => {
           const body = col.querySelector('.board-col-body');
           const cnt = body ? body.querySelectorAll('.board-poke').length : 0;
-          const countEl = col.querySelector('.board-col-header .opacity-50');
+          const countEl = col.querySelector('.col-count');
           if (countEl) countEl.textContent = cnt;
           col.style.display = cnt > 0 ? '' : 'none';
         });
@@ -813,13 +1526,11 @@ function savePts() {
 }
 
 function closePtsPopover() {
-  document.getElementById('pts-popover').classList.remove('open');
+  document.getElementById('pts-popover')?.classList.remove('open');
   _editTierId = null;
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closePtsPopover();
-});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePtsPopover(); });
 document.addEventListener('click', e => {
   const pop = document.getElementById('pts-popover');
   if (pop && !pop.contains(e.target)) closePtsPopover();
@@ -844,23 +1555,21 @@ function _showStatTip(poke, e) {
   if (nameEl) nameEl.textContent = raw.replace(/\b\w/g, c => c.toUpperCase());
   if (bstEl)  bstEl.textContent  = 'BST ' + bst;
 
-  // Types
   const typesEl = document.getElementById('ptt-types');
   if (typesEl) {
     const t1 = (poke.dataset.type1 || '').trim();
     const t2 = (poke.dataset.type2 || '').trim();
     typesEl.innerHTML = [t1, t2].filter(Boolean).map(t => {
       const c = _typeColors[t] || '#6b7280';
-      return `<span style="font-size:0.58rem;padding:1px 6px;border-radius:3px;font-weight:700;background:${c}28;border:1px solid ${c}55;color:${c};text-transform:capitalize;">${t}</span>`;
+      return `<span style="font:700 8px/1 var(--font-mono);padding:1px 6px;background:${c}28;border:1px solid ${c}55;color:${c};text-transform:capitalize;">${t}</span>`;
     }).join('');
   }
 
-  // Abilities
   const abilitiesEl = document.getElementById('ptt-abilities');
   if (abilitiesEl) {
     const abilities = (poke.dataset.abilities || '').split('|').filter(a => a.trim());
     abilitiesEl.innerHTML = abilities.map(a =>
-      `<span style="font-size:0.6rem;color:rgba(200,200,220,0.55);text-transform:capitalize;">${a.replace(/-/g,' ')}</span>`
+      `<span style="font:500 9px/1.3 var(--font-mono);color:var(--text-dim);text-transform:capitalize;">${a.replace(/-/g,' ')}</span>`
     ).join('');
     abilitiesEl.style.display = abilities.length ? 'flex' : 'none';
   }
@@ -884,7 +1593,6 @@ function _posTip(e) {
   _tt.style.top  = y + 'px';
 }
 
-// Event delegation — works on both column cards and dynamically built list rows
 document.addEventListener('mouseover', e => {
   const poke = e.target.closest('.board-poke');
   if (poke) _showStatTip(poke, e);
