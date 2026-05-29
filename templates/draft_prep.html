@@ -1341,6 +1341,53 @@ function updateTypeChart(picked) {
     });
     tbody.appendChild(tr);
   });
+
+  // Totals row: net score per attack type across all team members
+  // Score: 4x=+2, 2x=+1, neutral=0, ½=-1, ¼=-2, 0=-3
+  const SCORE = {400:2, 200:1, 100:0, 50:-1, 25:-2, 0:-3};
+  const tfootRow = document.createElement('tr');
+  const tfootLabel = document.createElement('td');
+  tfootLabel.style.cssText = 'font-size:0.55rem;color:var(--cyan);text-align:left;padding:2px 4px;font-weight:700;letter-spacing:0.06em;border-top:2px solid var(--hairline-2);';
+  tfootLabel.textContent = 'TOTAL';
+  tfootRow.appendChild(tfootLabel);
+
+  TYPES.forEach((atkType, atkIdx) => {
+    let score = 0, wk = 0, res = 0, imm = 0;
+    picked.forEach(p => {
+      const defTypes = [p.type1, p.type2].filter(Boolean);
+      const abilityImm = getAbilityImmunities(p);
+      let mult;
+      if (abilityImm[atkType] === 0) { mult = 0; }
+      else { mult = 100; defTypes.forEach(dt => { const di = TYPES.indexOf(dt); if (di >= 0) mult = mult * EFF_MATRIX[atkIdx][di] / 100; }); }
+      score += SCORE[mult] ?? 0;
+      if (mult >= 200) wk++;
+      else if (mult === 0) imm++;
+      else if (mult <= 50) res++;
+    });
+    const td = document.createElement('td');
+    td.style.cssText = 'font-family:var(--fm);font-size:0.6rem;font-weight:700;text-align:center;padding:2px 0;border:1px solid var(--hairline);border-top:2px solid var(--hairline-2);';
+    if (score > 0) {
+      const intensity = Math.min(0.65, score * 0.12);
+      td.style.background = `rgba(239,68,68,${intensity})`;
+      td.style.color = '#fca5a5';
+      td.textContent = `+${score}`;
+    } else if (score < 0) {
+      const intensity = Math.min(0.5, Math.abs(score) * 0.08);
+      td.style.background = `rgba(61,229,255,${intensity})`;
+      td.style.color = '#86efac';
+      td.textContent = score;
+    } else {
+      td.style.color = 'var(--text-dim)';
+      td.textContent = '·';
+    }
+    td.title = `${wk} weak · ${imm} immune · ${res} resist`;
+    tfootRow.appendChild(td);
+  });
+
+  let tfoot = document.querySelector('#type-chart-table tfoot');
+  if (!tfoot) { tfoot = document.createElement('tfoot'); document.getElementById('type-chart-table').appendChild(tfoot); }
+  tfoot.innerHTML = '';
+  tfoot.appendChild(tfootRow);
 }
 
 const STAT_DEFS = [
