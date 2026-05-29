@@ -16,6 +16,7 @@ print(f"App DB path: {DB_PATH}")
 print()
 
 conn = sqlite3.connect(DB_PATH)
+conn.row_factory = sqlite3.Row  # required for column-name access, same as app.py
 
 # Replicate all_moves logic exactly as app.py does it
 tiers = conn.execute("SELECT * FROM draft_tiers ORDER BY points DESC, name").fetchall()
