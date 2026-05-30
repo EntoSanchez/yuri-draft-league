@@ -133,40 +133,36 @@
 
   {% macro rank_badge(rank) %}
     {% if rank == 1 %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:linear-gradient(135deg,#ffd700,#b8860b);color:#1a1200;">1</span>
-    {% elif rank == 2 %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:linear-gradient(135deg,#c0c0c0,#808080);color:#111;">2</span>
-    {% elif rank == 3 %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:linear-gradient(135deg,#cd7f32,#8b4513);color:#fff;">3</span>
+      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:rgba(255,42,138,.15);color:var(--magenta);border:1px solid rgba(255,42,138,.3);">1</span>
+    {% elif rank == 2 or rank == 3 %}
+      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:rgba(34,225,255,.1);color:var(--cyan);border:1px solid rgba(34,225,255,.25);">{{ rank }}</span>
     {% else %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold text-gray-500 border border-gray-700">{{ rank }}</span>
+      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold" style="color:var(--text-dim);border:1px solid var(--hairline);">{{ rank }}</span>
     {% endif %}
   {% endmacro %}
 
-  {% macro standings_table(standings, pool_label) %}
+  {% macro standings_table(standings, pool_label, pool_color='var(--cyan)') %}
   <div class="mb-10">
-    <div class="flex items-center gap-3 mb-4">
-      <div class="w-1.5 h-7 rounded-full" style="background: linear-gradient(to bottom, var(--cyan), var(--magenta));"></div>
-      <h2 class="text-xl font-bold text-white">Pool {{ pool_label }}</h2>
-      <span class="text-sm text-gray-600 font-medium">{{ standings | length }} team{% if standings | length != 1 %}s{% endif %}</span>
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-1.5 h-7 rounded-full" style="background: {{ pool_color }};"></div>
+      <h2 class="text-xl font-black" style="font-family:var(--font-display);color: {{ pool_color }};">POOL {{ pool_label }}</h2>
+      <span class="text-xs font-mono" style="color:var(--text-dim);letter-spacing:.08em;">{{ standings | length }} TEAMS</span>
       <span class="glint-rule"></span>
+    </div>
+    {# Column headers #}
+    <div class="flex items-center gap-4 px-5 py-1.5 mb-1" style="border-bottom:1px solid var(--hairline);">
+      <div class="flex-shrink-0" style="width:36px;"></div>
+      <div class="flex-shrink-0" style="width:44px;"></div>
+      <div class="flex-1 min-w-0" style="font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">TEAM</div>
+      <div class="flex-shrink-0 hidden sm:block text-right" style="width:110px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">FORM</div>
+      <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">W · L</div>
+      <div class="flex-shrink-0 text-right w-12 hidden sm:block" style="font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">DIFF</div>
     </div>
 
     <div class="space-y-2">
       {% for row in standings %}
       {% set total_games = row.W + row.L + row.T %}
       {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
-      {# Build sparkline data from weekly results #}
-      {% set spark_ns = namespace(pts=[]) %}
-      {% for w in all_weeks %}
-        {% set res = row.weeks.get(w, '') %}
-        {% if res %}
-          {% if res[0] == 'W' %}{% set spark_ns.pts = spark_ns.pts + [100] %}
-          {% elif res[0] == 'T' %}{% set spark_ns.pts = spark_ns.pts + [50] %}
-          {% else %}{% set spark_ns.pts = spark_ns.pts + [0] %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
       <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
         {# Rank #}
         <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
@@ -186,41 +182,37 @@
           {% endif %}
         </div>
 
-        {# Team + coach + weekly results #}
+        {# Team + coach name #}
         <div class="flex-1 min-w-0">
-          <div class="font-black text-white text-sm leading-tight truncate">
+          <div class="font-black text-white text-sm leading-tight truncate" style="font-family:var(--font-display);letter-spacing:.03em;">
             {{ row.coach.team_name }}
             {% if row.coach.is_defending_champ %}<span class="champ-chip champ-chip-sm"><span class="champ-chip-icon">★</span>DEF CHAMP</span>{% endif %}
           </div>
-          <div class="text-xs text-gray-500 mb-1">{{ row.coach.coach_name }}</div>
-          <div class="flex gap-0.5 flex-wrap">
-            {% for w in all_weeks %}
-              {% set res = row.weeks.get(w, '') %}
-              {% if res %}
-                <span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold wk-{{ res }}">{{ res[0] }}</span>
-              {% else %}
-                <span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] text-gray-700">–</span>
-              {% endif %}
-            {% endfor %}
-          </div>
+          <div class="text-xs text-gray-500" style="font-family:var(--font-mono);">{{ row.coach.coach_name }}</div>
         </div>
 
-        {# Sparkline #}
-        {% if spark_ns.pts | length >= 2 %}
-        <div class="flex-shrink-0 hidden sm:block" style="width:80px;">
-          <svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none"
-               data-pts="{{ spark_ns.pts | join(',') }}">
-            <path class="spark-path" fill="none" stroke="var(--cyan)" stroke-width="2" vector-effect="non-scaling-stroke" d=""/>
-          </svg>
+        {# FORM strip: last 5 weeks #}
+        <div class="flex-shrink-0 hidden sm:flex gap-1 items-center justify-end" style="width:110px;">
+          {% for w in all_weeks[-5:] %}
+            {% set res = row.weeks.get(w, '') %}
+            {% if res == 'W' %}
+              <div title="WK{{ '%02d'|format(w) }}: Win" style="width:18px;height:14px;border-radius:2px;background:var(--lime);border:1px solid var(--hairline);"></div>
+            {% elif res == 'L' %}
+              <div title="WK{{ '%02d'|format(w) }}: Loss" style="width:18px;height:14px;border-radius:2px;background:var(--red);border:1px solid var(--hairline);"></div>
+            {% elif res == 'T' %}
+              <div title="WK{{ '%02d'|format(w) }}: Tie" style="width:18px;height:14px;border-radius:2px;background:rgba(250,204,21,0.7);border:1px solid var(--hairline);"></div>
+            {% else %}
+              <div title="WK{{ '%02d'|format(w) }}: Upcoming" style="width:18px;height:14px;border-radius:2px;background:transparent;border:1px solid var(--hairline);"></div>
+            {% endif %}
+          {% endfor %}
         </div>
-        {% endif %}
 
         {# Record + win-rate bar #}
         <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
           <div class="font-black text-base font-mono text-white leading-tight">
-            <span class="text-green-400">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
+            <span style="color:var(--lime);">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
             <span class="mx-0.5 text-gray-600">·</span>
-            <span class="text-red-400">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
+            <span style="color:var(--red);">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
             {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
           </div>
           {% if total_games > 0 %}
@@ -233,7 +225,7 @@
 
         {# Diff #}
         <div class="flex-shrink-0 text-right w-12 hidden sm:block">
-          <div class="text-sm font-bold font-mono {% if row.diff > 0 %}text-green-400{% elif row.diff < 0 %}text-red-400{% else %}text-gray-600{% endif %}">
+          <div class="text-sm font-bold font-mono" style="color:{% if row.diff > 0 %}var(--cyan){% elif row.diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
             {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
           </div>
           <div class="text-xs font-mono text-gray-700">DIFF</div>
@@ -251,107 +243,14 @@
   </div>
   {% endmacro %}
 
-  {% if standings_all %}
-  <div class="flex items-center gap-3 mb-6">
-    <p class="yc-eyebrow">// THE REST · RANKS 04–{{ standings_all | length }}</p>
-    <div class="flex-1 h-px" style="background:linear-gradient(90deg,rgba(34,225,255,0.1),transparent);"></div>
-  </div>
-  {# ── Overall standings card-list ── #}
-  <div class="mb-10">
-    <div class="flex items-center gap-3 mb-4">
-      <div class="w-1.5 h-7 rounded-full" style="background:linear-gradient(to bottom,var(--cyan),var(--magenta));"></div>
-      <h2 class="text-xl font-bold text-white">Overall Standings</h2>
-      <span class="text-sm text-gray-600 font-medium">All pools combined</span>
-      <span class="glint-rule"></span>
-    </div>
-    <div class="space-y-2">
-      {% for row in standings_all %}
-      {% set total_games = row.W + row.L + row.T %}
-      {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
-      {# Build sparkline data #}
-      {% set spark_ns = namespace(pts=[]) %}
-      {% for w in all_weeks %}
-        {% set res = row.weeks.get(w, '') %}
-        {% if res %}
-          {% if res[0] == 'W' %}{% set spark_ns.pts = spark_ns.pts + [100] %}
-          {% elif res[0] == 'T' %}{% set spark_ns.pts = spark_ns.pts + [50] %}
-          {% else %}{% set spark_ns.pts = spark_ns.pts + [0] %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
-        <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
-        <div class="flex-shrink-0 {% if row.coach.is_defending_champ %}champ-logo{% endif %}" style="margin-top:{% if row.coach.is_defending_champ %}8px{% else %}0{% endif %};" {% if row.coach.is_defending_champ %}aria-label="Defending champion"{% endif %}>
-          {% if row.coach.logo_url %}
-            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg tlogo" alt="">
-          {% else %}
-            <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white tlogo" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-          {% endif %}
-          {% if row.coach.is_defending_champ %}
-          <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-            <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-          </svg>
-          {% endif %}
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="font-black text-white text-sm leading-tight truncate">
-            {{ row.coach.team_name }}
-            {% if row.coach.is_defending_champ %}<span class="champ-chip champ-chip-sm"><span class="champ-chip-icon">★</span>DEF CHAMP</span>{% endif %}
-          </div>
-          <div class="flex items-center gap-2 mt-0.5">
-            <span class="text-xs text-gray-500">{{ row.coach.coach_name }}</span>
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:var(--cyan-soft);color:var(--cyan);">{{ row.coach.pool }}</span>
-          </div>
-        </div>
-        {# Sparkline #}
-        {% if spark_ns.pts | length >= 2 %}
-        <div class="flex-shrink-0 hidden sm:block" style="width:80px;">
-          <svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none"
-               data-pts="{{ spark_ns.pts | join(',') }}">
-            <path class="spark-path" fill="none" stroke="var(--cyan)" stroke-width="2" vector-effect="non-scaling-stroke" d=""/>
-          </svg>
-        </div>
-        {% endif %}
-        <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
-          <div class="font-black text-base font-mono text-white leading-tight">
-            <span class="text-green-400">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
-            <span class="mx-0.5 text-gray-600">·</span>
-            <span class="text-red-400">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
-            {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
-          </div>
-          {% if total_games > 0 %}
-          <div class="mt-1.5 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
-            <div class="h-full rounded-full" style="width:{{ win_pct }}%;background:{{ row.coach.color or '#facc15' }};"></div>
-          </div>
-          {% endif %}
-        </div>
-        <div class="flex-shrink-0 text-right w-12 hidden sm:block">
-          <div class="text-sm font-bold font-mono {% if row.diff > 0 %}text-green-400{% elif row.diff < 0 %}text-red-400{% else %}text-gray-600{% endif %}">
-            {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
-          </div>
-          <div class="text-xs font-mono text-gray-700">DIFF</div>
-        </div>
-      </a>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
   {% if standings_a or standings_b %}
-    {# ── Per-pool standings ── #}
-    <div class="mb-2">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-1 h-6 rounded-full bg-gray-700"></div>
-        <h2 class="text-base font-bold text-gray-500">Pool Standings</h2>
-      </div>
-    </div>
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+    {# ── Per-pool standings (primary view) ── #}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
       {% if standings_a %}
-        <div>{{ standings_table(standings_a, 'A') }}</div>
+        <div>{{ standings_table(standings_a, 'A', 'var(--cyan)') }}</div>
       {% endif %}
       {% if standings_b %}
-        <div>{{ standings_table(standings_b, 'B') }}</div>
+        <div>{{ standings_table(standings_b, 'B', 'var(--magenta)') }}</div>
       {% endif %}
     </div>
   {% else %}
@@ -369,6 +268,84 @@
         </a>
       {% endif %}
     </div>
+  {% endif %}
+
+  {% if standings_all %}
+  {# ── Overall standings (secondary) ── #}
+  <div class="flex items-center gap-3 mb-4 mt-2">
+    <div class="w-1 h-6 rounded-full bg-gray-700"></div>
+    <h2 class="text-base font-bold text-gray-500">Overall Standings</h2>
+    <span class="text-sm text-gray-600 font-medium">All pools combined</span>
+    <span class="glint-rule"></span>
+  </div>
+  <div class="mb-10">
+    <div class="space-y-2">
+      {% for row in standings_all %}
+      {% set total_games = row.W + row.L + row.T %}
+      {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
+      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
+        <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
+        <div class="flex-shrink-0 {% if row.coach.is_defending_champ %}champ-logo{% endif %}" style="margin-top:{% if row.coach.is_defending_champ %}8px{% else %}0{% endif %};" {% if row.coach.is_defending_champ %}aria-label="Defending champion"{% endif %}>
+          {% if row.coach.logo_url %}
+            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg tlogo" alt="">
+          {% else %}
+            <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white tlogo" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
+          {% endif %}
+          {% if row.coach.is_defending_champ %}
+          <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
+            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
+            <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
+          </svg>
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-black text-white text-sm leading-tight truncate" style="font-family:var(--font-display);letter-spacing:.03em;">
+            {{ row.coach.team_name }}
+            {% if row.coach.is_defending_champ %}<span class="champ-chip champ-chip-sm"><span class="champ-chip-icon">★</span>DEF CHAMP</span>{% endif %}
+          </div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-xs text-gray-500" style="font-family:var(--font-mono);">{{ row.coach.coach_name }}</span>
+            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:var(--cyan-soft);color:var(--cyan);">{{ row.coach.pool }}</span>
+          </div>
+        </div>
+        {# FORM strip: last 5 weeks #}
+        <div class="flex-shrink-0 hidden sm:flex gap-1 items-center justify-end" style="width:110px;">
+          {% for w in all_weeks[-5:] %}
+            {% set res = row.weeks.get(w, '') %}
+            {% if res == 'W' %}
+              <div title="WK{{ '%02d'|format(w) }}: Win" style="width:18px;height:14px;border-radius:2px;background:var(--lime);border:1px solid var(--hairline);"></div>
+            {% elif res == 'L' %}
+              <div title="WK{{ '%02d'|format(w) }}: Loss" style="width:18px;height:14px;border-radius:2px;background:var(--red);border:1px solid var(--hairline);"></div>
+            {% elif res == 'T' %}
+              <div title="WK{{ '%02d'|format(w) }}: Tie" style="width:18px;height:14px;border-radius:2px;background:rgba(250,204,21,0.7);border:1px solid var(--hairline);"></div>
+            {% else %}
+              <div title="WK{{ '%02d'|format(w) }}: Upcoming" style="width:18px;height:14px;border-radius:2px;background:transparent;border:1px solid var(--hairline);"></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
+          <div class="font-black text-base font-mono text-white leading-tight">
+            <span style="color:var(--lime);">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
+            <span class="mx-0.5 text-gray-600">·</span>
+            <span style="color:var(--red);">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
+            {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
+          </div>
+          {% if total_games > 0 %}
+          <div class="mt-1.5 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
+            <div class="h-full rounded-full" style="width:{{ win_pct }}%;background:{{ row.coach.color or '#facc15' }};"></div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="flex-shrink-0 text-right w-12 hidden sm:block">
+          <div class="text-sm font-bold font-mono" style="color:{% if row.diff > 0 %}var(--cyan){% elif row.diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
+            {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
+          </div>
+          <div class="text-xs font-mono text-gray-700">DIFF</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
   {% endif %}
 
 </div>

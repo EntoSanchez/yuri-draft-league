@@ -1131,9 +1131,14 @@ def schedule():
         md["c1_pokemon"] = match_pokemon.get(sid, {}).get(md["coach1_id"], [])
         md["c2_pokemon"] = match_pokemon.get(sid, {}).get(md["coach2_id"], [])
         by_week[w].append(md)
+    all_weeks = [w["week"] for w in weeks]
+    with get_db() as db:
+        cw_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
+    current_week = int(cw_row["value"]) if cw_row else (all_weeks[-1] if all_weeks else 1)
     return render_template("schedule.html",
                            by_week=by_week,
-                           weeks=[w["week"] for w in weeks],
+                           weeks=all_weeks,
+                           current_week=current_week,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 

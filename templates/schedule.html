@@ -1,5 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Schedule – {{ league_name }}{% endblock %}
+{% block head_extra %}
+<style>
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.8); }
+}
+.chip-live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: live-pulse 1.4s ease-in-out infinite;
+  vertical-align: middle;
+  margin-right: 5px;
+  margin-bottom: 1px;
+}
+.cp-card.live-match {
+  background: rgba(255, 77, 107, .05) !important;
+  border-color: rgba(255, 88, 120, .22) !important;
+}
+</style>
+{% endblock %}
 {% block content %}
 
 <!-- ── Page Header ── -->
@@ -63,7 +85,7 @@
             {% endif %}
 
             {# ── Broadcast-style horizontal match row ── #}
-            <div class="cp-card" style="border-radius:14px;">
+            <div class="cp-card {% if not has_result and week == current_week %}live-match{% endif %}" style="border-radius:14px;">
 
               {# Top color bar #}
               <div class="h-1 overflow-hidden flex" style="border-radius:14px 14px 0 0;">
@@ -163,6 +185,10 @@
                     {% if session.get('role') == 'admin' %}
                     <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:var(--cyan-dim);">Stats →</a></div>
                     {% endif %}
+                  {% elif week == current_week %}
+                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md" style="color:var(--red);background:rgba(255,77,107,.08);border:1px solid rgba(255,77,107,.2);"><span class="chip-live-dot"></span>LIVE</span>
+                  {% else %}
+                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md" style="color:var(--cyan);background:rgba(34,225,255,.05);border:1px solid rgba(34,225,255,.2);">UPCOMING</span>
                   {% endif %}
                 </div>
 
