@@ -180,13 +180,19 @@ def _name_to_slug(name):
             break
 
     # Mega forms: "Mega X" → "x-mega", "Mega Charizard X" → "charizard-megax"
-    # Note: Showdown omits the hyphen before the variant letter (megax not mega-x)
+    # Note: Showdown omits the hyphen before the variant letter (megax not mega-x).
+    # For X/Y/Z variants also include the PokeAPI-format slug (with hyphen) so the
+    # ID map can resolve canonical sprites: "charizard-mega-x" → ID 10034.
     mega_slug = None
+    mega_slug_pokeapi = None
     if base.startswith("mega "):
         rest = base[5:]
         parts = rest.split()
         if len(parts) >= 2 and parts[-1].lower() in ("x", "y", "z"):
-            mega_slug = "-".join(parts[:-1]) + "-mega" + parts[-1]
+            pokemon_part = "-".join(parts[:-1])
+            variant = parts[-1].lower()
+            mega_slug = pokemon_part + "-mega" + variant         # Showdown: "charizard-megax"
+            mega_slug_pokeapi = pokemon_part + "-mega-" + variant  # PokeAPI:  "charizard-mega-x"
         else:
             mega_slug = rest.replace(" ", "-") + "-mega"
 
@@ -196,7 +202,7 @@ def _name_to_slug(name):
         primal_slug = base[7:].replace(" ", "-") + "-primal"
 
     # showdown_slug first so slugs[0] is always the correct Showdown CDN slug
-    return [s for s in [showdown_slug, xy_mega_slug, regional_slug, mega_slug, primal_slug, alias, naive] if s]
+    return [s for s in [showdown_slug, xy_mega_slug, regional_slug, mega_slug, mega_slug_pokeapi, primal_slug, alias, naive] if s]
 
 
 def pokemon_sprite_url(name, shiny=False):
