@@ -254,29 +254,29 @@ def pokemon_static_sprite_url(name):
     slugs = _name_to_slug(name)
     primary_slug = slugs[0]
 
-    # 1. Canonical PokeAPI IDs have sprites; custom league IDs (>= 10200) do not
+    # 1. Canonical PokeAPI IDs have sprites; custom league IDs (>= 10278) do not.
+    # Real alternate-form IDs up to 10277 (e.g. Hisuian forms 10229-10244,
+    # Enamorus-Therian 10249) are valid PokeAPI sprites.
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
-        if pid and pid < 10200:
+        if pid and pid < 10278:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
 
-    # 2. Custom mega/primal: fall back to base Pokémon sprite.
-    # Use the naive slug (last in list) for regex extraction — the primary slug may have
-    # already been transformed by xy_mega_slug ("raichu-mega-x" → "raichu-megax"),
-    # making the mega suffix unparseable.
-    naive_slug = slugs[-1]
-    base_slug = re.sub(r'(-mega(-[xyz])?|-original-mega|-primal)$', '', naive_slug)
-    if base_slug != naive_slug:
-        pid = _pokemon_id_map.get(base_slug)
-        if pid and pid < 10200:
-            return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-
-    # 3. Explicit base-form overrides for non-obvious slug mappings
-    override = _MEGA_BASE_OVERRIDES.get(naive_slug)
-    if override:
-        pid = _pokemon_id_map.get(override)
-        if pid and pid < 10200:
-            return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+    # 2 & 3. Custom mega/primal: fall back to the base Pokémon sprite.
+    # Iterate ALL candidate slugs rather than only the naive one — the mega-suffixed
+    # slug (e.g. "meowstic-mega") strips cleanly with the regex, whereas the naive
+    # slug ("mega-meowstic") has "mega" as a prefix and won't match.
+    for candidate in slugs:
+        stripped = re.sub(r'(-mega(-[xyz])?|-original-mega|-primal)$', '', candidate)
+        if stripped != candidate:
+            pid = _pokemon_id_map.get(stripped)
+            if pid and pid < 10278:
+                return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+            override = _MEGA_BASE_OVERRIDES.get(candidate)
+            if override:
+                pid = _pokemon_id_map.get(override)
+                if pid and pid < 10278:
+                    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
 
     # 4. Showdown DEX (covers some fan-game custom megas)
     return f"{SHOWDOWN_DEX}/{primary_slug}.png"
