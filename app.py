@@ -262,10 +262,15 @@ def pokemon_static_sprite_url(name):
         if pid and pid < 10278:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
 
-    # 2 & 3. Custom mega/primal: fall back to the base Pokémon sprite.
-    # Iterate ALL candidate slugs rather than only the naive one — the mega-suffixed
-    # slug (e.g. "meowstic-mega") strips cleanly with the regex, whereas the naive
-    # slug ("mega-meowstic") has "mega" as a prefix and won't match.
+    # 2. Custom league ID (>= 10278) found — no PokeAPI sprite exists.
+    # Go straight to Showdown DEX so the client-side onerror can handle a 404
+    # gracefully (fading the image) rather than showing the wrong base-form sprite.
+    if any(_pokemon_id_map.get(s, 0) >= 10278 for s in slugs):
+        return f"{SHOWDOWN_DEX}/{primary_slug}.png"
+
+    # 3. No recognized ID — try base form extraction.
+    # Iterate ALL candidate slugs: the mega-suffixed slug (e.g. "meowstic-mega")
+    # strips cleanly, whereas the naive slug ("mega-meowstic") has "mega" as a prefix.
     for candidate in slugs:
         stripped = re.sub(r'(-mega(-[xyz])?|-original-mega|-primal)$', '', candidate)
         if stripped != candidate:
@@ -278,7 +283,7 @@ def pokemon_static_sprite_url(name):
                 if pid and pid < 10278:
                     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
 
-    # 4. Showdown DEX (covers some fan-game custom megas)
+    # 4. Showdown DEX (last resort for fully unrecognized forms)
     return f"{SHOWDOWN_DEX}/{primary_slug}.png"
 
 
