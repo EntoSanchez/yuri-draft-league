@@ -153,8 +153,8 @@
             <td class="px-4 py-2 text-xs text-gray-600 font-mono">{{ p.pokeapi_id }}</td>
             <td class="px-4 py-2">
               <div class="flex items-center gap-2.5">
-                <img src="{{ pokemon_sprite_url(p.pokeapi_name) }}"
-                     onerror="this.onerror=function(){this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_fallback_sprite_url(p.pokeapi_name) }}';};this.src='{{ pokemon_static_sprite_url(p.pokeapi_name) }}';"
+                <img src="{{ pokemon_pokedex_sprite_url(p.pokeapi_name) }}"
+                     onerror="this.style.display='none'"
                      class="w-8 h-8 object-contain flex-shrink-0" alt="">
                 <span class="font-semibold text-white text-sm">{{ p.display_name }}</span>
               </div>

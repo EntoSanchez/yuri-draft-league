@@ -287,12 +287,16 @@ def pokemon_static_sprite_url(name):
     return f"{SHOWDOWN_DEX}/{primary_slug}.png"
 
 
-def pokemon_fallback_sprite_url(name):
-    """Return a base-form PokeAPI sprite by stripping mega/Z-variant suffixes.
+def pokemon_pokedex_sprite_url(name):
+    """Return a guaranteed-valid PokeAPI sprite URL for the pokedex page.
 
-    Used as the final onerror fallback (3rd level) on the pokedex page when
-    both the animated and Showdown DEX sprites return 404. Handles both
-    PokeAPI format ("raichu-mega-x") and Showdown format ("raichu-megax").
+    Unlike pokemon_static_sprite_url (which routes custom-league megas through
+    Showdown DEX, causing a second 404), this function resolves everything to a
+    real PokeAPI URL server-side so no JS fallback chain is needed.
+
+    - Canonical forms (ID < 10278): exact PokeAPI sprite (correct mega form).
+    - Custom league megas (ID >= 10278): base-form PokeAPI sprite via suffix strip.
+    - Handles both PokeAPI ("raichu-mega-x") and Showdown ("raichu-megax") slugs.
     """
     _OVERRIDES = {
         "meowstic-mega":          "meowstic-male",
@@ -303,24 +307,33 @@ def pokemon_fallback_sprite_url(name):
         "tatsugiri-stretchy-mega":"tatsugiri-curly",
     }
     slugs = _name_to_slug(name)
+    primary_slug = slugs[0]
+
+    # 1. Canonical PokeAPI ID — return the exact form sprite
+    for slug in slugs:
+        pid = _pokemon_id_map.get(slug)
+        if pid and pid < 10278:
+            return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+
+    # 2. Custom league ID (>= 10278) — strip suffix to get base form
     for slug in slugs:
         override = _OVERRIDES.get(slug)
         if override:
             pid = _pokemon_id_map.get(override)
             if pid and pid < 10278:
                 return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-        # Strip mega/primal/Z-variant suffix in both PokeAPI ("-mega-z") and
-        # Showdown ("-megaz") formats, plus base "-mega".
         stripped = re.sub(r'(-mega(-[xyz])?|-mega[xyz]|-original-mega|-primal)$', '', slug)
         if stripped != slug:
             pid = _pokemon_id_map.get(stripped)
             if pid and pid < 10278:
                 return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-    return f"{SHOWDOWN_DEX}/{slugs[0]}.png"
+
+    # 3. Last resort: Showdown DEX
+    return f"{SHOWDOWN_DEX}/{primary_slug}.png"
 
 
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
-app.jinja_env.globals["pokemon_fallback_sprite_url"] = pokemon_fallback_sprite_url
+app.jinja_env.globals["pokemon_pokedex_sprite_url"] = pokemon_pokedex_sprite_url
 
 
 def _extract_youtube_id(url):
