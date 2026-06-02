@@ -287,7 +287,40 @@ def pokemon_static_sprite_url(name):
     return f"{SHOWDOWN_DEX}/{primary_slug}.png"
 
 
+def pokemon_fallback_sprite_url(name):
+    """Return a base-form PokeAPI sprite by stripping mega/Z-variant suffixes.
+
+    Used as the final onerror fallback (3rd level) on the pokedex page when
+    both the animated and Showdown DEX sprites return 404. Handles both
+    PokeAPI format ("raichu-mega-x") and Showdown format ("raichu-megax").
+    """
+    _OVERRIDES = {
+        "meowstic-mega":          "meowstic-male",
+        "pyroar-mega":            "pyroar-male",
+        "zygarde-mega":           "zygarde-50",
+        "tatsugiri-mega":         "tatsugiri-curly",
+        "tatsugiri-droopy-mega":  "tatsugiri-curly",
+        "tatsugiri-stretchy-mega":"tatsugiri-curly",
+    }
+    slugs = _name_to_slug(name)
+    for slug in slugs:
+        override = _OVERRIDES.get(slug)
+        if override:
+            pid = _pokemon_id_map.get(override)
+            if pid and pid < 10278:
+                return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+        # Strip mega/primal/Z-variant suffix in both PokeAPI ("-mega-z") and
+        # Showdown ("-megaz") formats, plus base "-mega".
+        stripped = re.sub(r'(-mega(-[xyz])?|-mega[xyz]|-original-mega|-primal)$', '', slug)
+        if stripped != slug:
+            pid = _pokemon_id_map.get(stripped)
+            if pid and pid < 10278:
+                return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+    return f"{SHOWDOWN_DEX}/{slugs[0]}.png"
+
+
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
+app.jinja_env.globals["pokemon_fallback_sprite_url"] = pokemon_fallback_sprite_url
 
 
 def _extract_youtube_id(url):
