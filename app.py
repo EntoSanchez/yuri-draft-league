@@ -3,6 +3,7 @@ import hashlib
 import os
 import json
 import math
+import re
 import uuid
 import urllib.request
 from datetime import datetime
@@ -157,6 +158,11 @@ def _name_to_slug(name):
     }
     showdown_slug = _SHOWDOWN_OVERRIDES.get(base)
 
+    # PokeAPI-format mega-X/Y/Z slugs need Showdown adjustment: Showdown omits the
+    # hyphen before the variant letter. e.g. "charizard-mega-x" → "charizard-megax"
+    _xy = re.match(r'^(.+)-mega-([xyz])$', base)
+    xy_mega_slug = f"{_xy.group(1)}-mega{_xy.group(2)}" if _xy and not showdown_slug else None
+
     # Try the naive slug first
     naive = base.replace(" ", "-").replace(":", "")
 
@@ -190,7 +196,7 @@ def _name_to_slug(name):
         primal_slug = base[7:].replace(" ", "-") + "-primal"
 
     # showdown_slug first so slugs[0] is always the correct Showdown CDN slug
-    return [s for s in [showdown_slug, regional_slug, mega_slug, primal_slug, alias, naive] if s]
+    return [s for s in [showdown_slug, xy_mega_slug, regional_slug, mega_slug, primal_slug, alias, naive] if s]
 
 
 def pokemon_sprite_url(name, shiny=False):
@@ -224,15 +230,50 @@ def pokemon_static_sprite_url(name):
     """Return static PNG sprite URL for a Pokemon name.
 
     Priority:
-    1. PokeAPI numeric sprite (IDs 1–9999, reliable, covers all gens)
-    2. Showdown dex sprite by slug (official HOME artwork, covers all gens)
+    1. PokeAPI numeric sprite for canonical IDs (IDs < 10200; custom league megas
+       use IDs >= 10200 which do not exist in PokeAPI's sprite repo)
+    2. Base-form PokeAPI sprite for custom mega/primal forms (strips the mega suffix)
+    3. Explicit overrides for megas whose base form has a non-obvious DB slug
+    4. Showdown DEX sprite by slug (covers many custom megas from fan games)
     """
+    # Megas whose base form uses a suffixed slug in pokemon_db rather than the bare name
+    _MEGA_BASE_OVERRIDES = {
+        "pyroar-mega":           "pyroar-male",
+        "zygarde-mega":          "zygarde-50",
+        "meowstic-mega":         "meowstic-male",
+        "tatsugiri-droopy-mega": "tatsugiri-curly",
+        "tatsugiri-stretchy-mega":"tatsugiri-curly",
+    }
+
     slugs = _name_to_slug(name)
+    primary_slug = slugs[0]
+
+    # 1. Canonical PokeAPI IDs have sprites; custom league IDs (>= 10200) do not
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
-        if pid:
+        if pid and pid < 10200:
             return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
-    return f"{SHOWDOWN_DEX}/{slugs[0]}.png"
+
+    # 2. Custom mega/primal: fall back to base Pokémon sprite.
+    # Use the naive slug (last in list) for regex extraction — the primary slug may have
+    # already been transformed by xy_mega_slug ("raichu-mega-x" → "raichu-megax"),
+    # making the mega suffix unparseable.
+    naive_slug = slugs[-1]
+    base_slug = re.sub(r'(-mega(-[xyz])?|-original-mega|-primal)$', '', naive_slug)
+    if base_slug != naive_slug:
+        pid = _pokemon_id_map.get(base_slug)
+        if pid and pid < 10200:
+            return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+
+    # 3. Explicit base-form overrides for non-obvious slug mappings
+    override = _MEGA_BASE_OVERRIDES.get(naive_slug)
+    if override:
+        pid = _pokemon_id_map.get(override)
+        if pid and pid < 10200:
+            return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pid}.png"
+
+    # 4. Showdown DEX (covers some fan-game custom megas)
+    return f"{SHOWDOWN_DEX}/{primary_slug}.png"
 
 
 app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
