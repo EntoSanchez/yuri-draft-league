@@ -241,10 +241,10 @@
 
     <!-- Move coverage panel -->
     <div class="vd-panel" style="padding:14px;display:flex;flex-direction:column;min-height:0">
-      <div class="vd-head">
+      <div class="vd-head" style="flex-shrink:0">
         <span class="vd-eyebrow">// MOVE_COVERAGE</span>
-        <div id="mv-filter" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end"></div>
       </div>
+      <div id="mv-filter" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:6px;flex-shrink:0;margin-bottom:4px;border-bottom:1px solid var(--hairline)"></div>
       <div style="flex:1;overflow:auto;min-height:0" id="mv-content"></div>
     </div>
 
@@ -790,9 +790,9 @@ function buildMoveMap(team){
 
 function initMvFilter(){
   document.getElementById("mv-filter").innerHTML=
-    [["all","ALL"],...BP_MOVE_CATS.map(c=>[c.label,c.label.slice(0,5).toUpperCase()])].map(([v,l])=>{
+    [["all","ALL"],...BP_MOVE_CATS.map(c=>[c.label,c.label])].map(([v,l])=>{
       const on=S.mvCat===v;
-      return `<button class="vd-chip" onclick="setMvCat(${JSON.stringify(v)})" style="border:1px solid ${on?"var(--cyan-dim)":"var(--hairline-2)"};background:${on?"var(--cyan-soft)":"transparent"};color:${on?"var(--cyan)":"var(--text-dim)"}">${l}</button>`;
+      return `<button class="vd-chip" onclick="setMvCat(${JSON.stringify(v)})" style="white-space:nowrap;flex-shrink:0;border:1px solid ${on?"var(--cyan-dim)":"var(--hairline-2)"};background:${on?"var(--cyan-soft)":"transparent"};color:${on?"var(--cyan)":"var(--text-dim)"}">${l}</button>`;
     }).join("");
 }
 function setMvCat(v){ S.mvCat=v; initMvFilter(); renderMoveCoverage(); }
