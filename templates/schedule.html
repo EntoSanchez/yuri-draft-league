@@ -142,9 +142,13 @@
 .sr-coach { font-family:var(--font-mono); font-size:9px; color:var(--text-dim); }
 .sr-logo {
   width:30px; height:30px; border-radius:50%; flex:0 0 auto;
-  background:var(--panel-2) center/contain no-repeat; border:1px solid var(--hairline);
+  background-color:var(--panel-2); border:1px solid var(--hairline);
+  object-fit:contain; display:inline-flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-dim);
+  flex-shrink:0;
 }
-.sr-logo.xl { width:84px; height:84px; }
+img.sr-logo { display:block; }
+.sr-logo.xl { width:84px; height:84px; font-size:28px; }
 .sr-score {
   position:relative; overflow:hidden;
   font-family:var(--font-mono); font-size:17px; font-weight:600;
@@ -235,11 +239,16 @@ let S = {
 
 // ── helpers ────────────────────────────────────────────────────────
 function weekData(w) { return SCHEDULE.find(x => x.week === w) || SCHEDULE[0]; }
-function logo(url) {
-  return url ? `background-image:url(${CSS.escape ? url : url})` : "";
-}
 function pad2(n) { return String(n).padStart(2,"0"); }
 function motwMatch(wk) { return wk.matches.find(m => m.id === wk.motwId) || wk.matches[0]; }
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;"); }
+function initials(name) { return (name||"").replace(/[^a-zA-Z0-9 ]/g,"").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "??"; }
+function logoEl(url, team, cls) {
+  cls = "sr-logo" + (cls ? " "+cls : "");
+  const ini = initials(team);
+  if (url) return `<img src="${esc(url)}" class="${cls}" alt="${esc(ini)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'${cls}',textContent:'${ini.replace(/'/g,"")}'}))">`;
+  return `<span class="${cls}">${ini}</span>`;
+}
 
 // ── team filter population ─────────────────────────────────────────
 (function populateTeams() {
@@ -299,8 +308,6 @@ function renderSpotlight() {
   const chipTxt = final ? (isUpset ? "UPSET · FINAL" : "FINAL") : "TOSS-UP";
   const poolMeta = m.pool && m.pool !== "X" ? ` · POOL ${m.pool}` : "";
 
-  const logoBg = (url) => url ? `background-image:url('${url.replace(/'/g,"\\'")}')` : "";
-
   el.innerHTML = `
     <div class="sr-spotlight">
       <div class="sr-spot-sweep"></div>
@@ -311,12 +318,10 @@ function renderSpotlight() {
       <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px">
         <div style="display:flex;align-items:center;gap:14px;justify-content:flex-end;opacity:${winB?.5:1}">
           <div style="text-align:right">
-            <div style="font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;">${m.c1_team}</div>
-            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">COACH · ${m.c1_name.toUpperCase()}</div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;">${esc(m.c1_team)}</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">COACH · ${esc(m.c1_name.toUpperCase())}</div>
           </div>
-          <a href="/team/${m.c1_id}" style="flex-shrink:0">
-            <span class="sr-logo xl" style="${logoBg(m.c1_logo)}"></span>
-          </a>
+          <a href="/team/${m.c1_id}" style="flex-shrink:0">${logoEl(m.c1_logo, m.c1_team, "xl")}</a>
         </div>
         <div style="text-align:center;min-width:150px">
           ${showScore && final
@@ -325,12 +330,10 @@ function renderSpotlight() {
           <div style="margin-top:6px"><span class="sr-chip ${chipCls}">${chipTxt}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:14px;opacity:${winA?.5:1}">
-          <a href="/team/${m.c2_id}" style="flex-shrink:0">
-            <span class="sr-logo xl" style="${logoBg(m.c2_logo)}"></span>
-          </a>
+          <a href="/team/${m.c2_id}" style="flex-shrink:0">${logoEl(m.c2_logo, m.c2_team, "xl")}</a>
           <div>
-            <div style="font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;">${m.c2_team}</div>
-            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">COACH · ${m.c2_name.toUpperCase()}</div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;">${esc(m.c2_team)}</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">COACH · ${esc(m.c2_name.toUpperCase())}</div>
           </div>
         </div>
       </div>
@@ -369,7 +372,6 @@ function renderList() {
     const showScore = S.spoilers || S.revealed[m.id] || !final;
     const winA = final && m.score1 > m.score2;
     const winB = final && m.score2 > m.score1;
-    const logoBg = (url) => url ? `background-image:url('${url.replace(/'/g,"\\'")}')` : "";
     const poolTag = m.pool ? ` · ${m.pool}` : "";
 
     let scoreHtml;
@@ -385,17 +387,17 @@ function renderList() {
       <div class="sr-wktag">WK${pad2(m.week||S.week)}${poolTag}${m.motw ? `<span style="color:var(--magenta);margin-left:4px">★</span>` : ""}</div>
       <div class="sr-side right${winB ? " lose" : ""}">
         <div style="text-align:right;min-width:0">
-          <div class="sr-name">${m.c1_team}</div>
-          <div class="sr-coach">${m.c1_name}</div>
+          <div class="sr-name">${esc(m.c1_team)}</div>
+          <div class="sr-coach">${esc(m.c1_name)}</div>
         </div>
-        <a href="/team/${m.c1_id}"><span class="sr-logo" style="${logoBg(m.c1_logo)}"></span></a>
+        <a href="/team/${m.c1_id}" style="flex-shrink:0">${logoEl(m.c1_logo, m.c1_team)}</a>
       </div>
       ${scoreHtml}
       <div class="sr-side${winA ? " lose" : ""}">
-        <a href="/team/${m.c2_id}"><span class="sr-logo" style="${logoBg(m.c2_logo)}"></span></a>
+        <a href="/team/${m.c2_id}" style="flex-shrink:0">${logoEl(m.c2_logo, m.c2_team)}</a>
         <div style="min-width:0">
-          <div class="sr-name">${m.c2_team}</div>
-          <div class="sr-coach">${m.c2_name}</div>
+          <div class="sr-name">${esc(m.c2_team)}</div>
+          <div class="sr-coach">${esc(m.c2_name)}</div>
         </div>
       </div>
       <div class="sr-status">
