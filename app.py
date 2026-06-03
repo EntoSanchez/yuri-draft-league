@@ -1186,8 +1186,36 @@ def team_detail(coach_id):
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
+def _schedule_motw(matches, state):
+    """Return the match id for Match of the Week given the week state."""
+    motw_id = None
+    if state == "DONE":
+        best_gap = -1
+        for m in matches:
+            if m["status"] != "FINAL" or m["fav_id"] is None:
+                continue
+            tie = m["score1"] == m["score2"]
+            if tie:
+                continue
+            fav_won = (m["fav_id"] == m["c1_id"] and m["score1"] > m["score2"]) or \
+                      (m["fav_id"] == m["c2_id"] and m["score2"] > m["score1"])
+            gap = abs(m["vote1"] - 50)
+            if not fav_won and gap > best_gap:
+                best_gap = gap
+                motw_id = m["id"]
+    if motw_id is None:
+        best_d = float("inf")
+        for m in matches:
+            d = abs(m["vote1"] - 50)
+            if d < best_d:
+                best_d = d
+                motw_id = m["id"]
+    return motw_id
+
+
 @app.route("/schedule")
 def schedule():
+    import json as _json
     with get_db() as db:
         matches = db.execute("""
             SELECT s.*,
@@ -1200,43 +1228,82 @@ def schedule():
             JOIN coaches c2 ON s.coach2_id = c2.id
             ORDER BY s.week, s.pool, s.id
         """).fetchall()
-        weeks = db.execute("SELECT DISTINCT week FROM schedule ORDER BY week").fetchall()
-        # Fetch pokemon used per match per coach
-        used_rows = db.execute("""
-            SELECT schedule_id, coach_id, pokemon_name
-            FROM match_stats
-            WHERE schedule_id IS NOT NULL AND playoff_match_id IS NULL
-            GROUP BY schedule_id, coach_id, pokemon_name
-            ORDER BY schedule_id, coach_id
-        """).fetchall()
-    # Build lookup: {schedule_id: {coach_id: [pokemon_name, ...]}}
-    match_pokemon = {}
-    for row in used_rows:
-        sid = row["schedule_id"]
-        cid = row["coach_id"]
-        if sid not in match_pokemon:
-            match_pokemon[sid] = {}
-        if cid not in match_pokemon[sid]:
-            match_pokemon[sid][cid] = []
-        match_pokemon[sid][cid].append(row["pokemon_name"])
-    by_week = {}
-    for m in matches:
-        w = m["week"]
-        if w not in by_week:
-            by_week[w] = []
-        md = dict(m)
-        sid = md["id"]
-        md["c1_pokemon"] = match_pokemon.get(sid, {}).get(md["coach1_id"], [])
-        md["c2_pokemon"] = match_pokemon.get(sid, {}).get(md["coach2_id"], [])
-        by_week[w].append(md)
-    all_weeks = [w["week"] for w in weeks]
-    with get_db() as db:
+        weeks_rows = db.execute("SELECT DISTINCT week FROM schedule ORDER BY week").fetchall()
+        vote_rows = db.execute(
+            "SELECT match_id, picked_coach_id FROM pickem_votes"
+        ).fetchall()
+        coaches = db.execute(
+            "SELECT id, coach_name, team_name, pool, logo_url FROM coaches ORDER BY pool, team_name"
+        ).fetchall()
         cw_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
+
+    all_weeks = [r["week"] for r in weeks_rows]
     current_week = int(cw_row["value"]) if cw_row else (all_weeks[-1] if all_weeks else 1)
+
+    # Vote counts per match: {match_id: {coach_id: n}}
+    vote_counts = {}
+    for v in vote_rows:
+        vote_counts.setdefault(v["match_id"], {})
+        vote_counts[v["match_id"]][v["picked_coach_id"]] = \
+            vote_counts[v["match_id"]].get(v["picked_coach_id"], 0) + 1
+
+    # Group matches by week
+    by_week_raw = {}
+    for m in matches:
+        by_week_raw.setdefault(m["week"], []).append(dict(m))
+
+    # Build structured JSON weeks array
+    schedule_weeks = []
+    total_matches = 0
+    for w in all_weeks:
+        raw = by_week_raw.get(w, [])
+        match_list = []
+        for m in raw:
+            s1 = int(m.get("score1") or 0)
+            s2 = int(m.get("score2") or 0)
+            has_result = s1 > 0 or s2 > 0
+            status = "FINAL" if has_result else "UPCOMING"
+            mv = vote_counts.get(m["id"], {})
+            v1 = mv.get(m["coach1_id"], 0)
+            v2 = mv.get(m["coach2_id"], 0)
+            total_v = v1 + v2
+            vote1 = round(v1 / total_v * 100) if total_v else 50
+            vote2 = 100 - vote1
+            fav_id = (m["coach1_id"] if vote1 > vote2 else m["coach2_id"]) if vote1 != vote2 else None
+            match_list.append({
+                "id": m["id"],
+                "pool": m.get("pool", ""),
+                "status": status,
+                "c1_id": m["coach1_id"],
+                "c1_team": m.get("c1_team") or "",
+                "c1_name": m.get("c1_name") or "",
+                "c1_logo": m.get("c1_logo") or "",
+                "c2_id": m["coach2_id"],
+                "c2_team": m.get("c2_team") or "",
+                "c2_name": m.get("c2_name") or "",
+                "c2_logo": m.get("c2_logo") or "",
+                "score1": s1, "score2": s2,
+                "vote1": vote1, "vote2": vote2,
+                "fav_id": fav_id,
+                "motw": False,
+            })
+        total_matches += len(match_list)
+        all_done = all(m["status"] == "FINAL" for m in match_list) and bool(match_list)
+        state = "DONE" if all_done else "UPCOMING"
+        motw_id = _schedule_motw(match_list, state)
+        for md in match_list:
+            md["motw"] = (md["id"] == motw_id)
+        schedule_weeks.append({"week": w, "state": state, "motwId": motw_id, "matches": match_list})
+
+    coaches_list = [{"id": r["id"], "name": r["team_name"] or r["coach_name"], "pool": r["pool"] or ""} for r in coaches]
+    num_teams = len(coaches_list)
+
     return render_template("schedule.html",
-                           by_week=by_week,
-                           weeks=all_weeks,
+                           schedule_json=_json.dumps(schedule_weeks),
+                           coaches_json=_json.dumps(coaches_list),
                            current_week=current_week,
+                           num_teams=num_teams,
+                           total_matches=total_matches,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 

@@ -1,247 +1,456 @@
 {% extends "base.html" %}
 {% block title %}Schedule – {{ league_name }}{% endblock %}
 {% block head_extra %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: .35; transform: scale(.8); }
+/* ── neon-noir tokens ── */
+:root {
+  --ink:#04040a; --panel:#0b0b12; --panel-2:#10101a;
+  --hairline:rgba(232,232,248,.10); --hairline-2:rgba(232,232,248,.18);
+  --magenta:#ff3d97; --magenta-dim:rgba(255,61,151,.5); --magenta-soft:rgba(255,61,151,.12);
+  --cyan:#3de5ff; --cyan-dim:rgba(61,229,255,.55); --cyan-soft:rgba(61,229,255,.12);
+  --lime:#c7ff52; --lime-soft:rgba(199,255,82,.10); --red:#ff5878; --amber:#ffc257;
+  --text:#eaeaf2; --text-mute:rgba(234,234,242,.68); --text-dim:rgba(234,234,242,.46);
+  --font-display:"Chakra Petch","Rajdhani",system-ui,sans-serif;
+  --font-body:"Space Grotesk",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono","Fira Code",ui-monospace,monospace;
+  --ease-out-cubic:cubic-bezier(.2,.7,.2,1);
+  --ease-back-out:cubic-bezier(.34,1.56,.64,1);
 }
-.chip-live-dot {
-  display: inline-block;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  animation: live-pulse 1.4s ease-in-out infinite;
-  vertical-align: middle;
-  margin-right: 5px;
-  margin-bottom: 1px;
+
+/* ── page scaffold ── */
+.sr-page {
+  padding:24px 28px 28px; display:flex; flex-direction:column; gap:16px;
+  font-family:var(--font-body); color:var(--text); background:var(--ink);
+  min-height:calc(100vh - 56px); box-sizing:border-box;
 }
-.cp-card.live-match {
-  background: rgba(255, 77, 107, .05) !important;
-  border-color: rgba(255, 88, 120, .22) !important;
+.sr-scroll { flex:1; min-height:0; overflow-y:auto; }
+.sr-scroll::-webkit-scrollbar { width:0; }
+
+/* ── spotlight ── */
+.sr-spotlight {
+  position:relative; overflow:hidden;
+  border:1px solid var(--magenta-dim);
+  background:radial-gradient(120% 140% at 0% 0%,rgba(255,61,151,.10),transparent 55%),
+             radial-gradient(120% 140% at 100% 100%,rgba(61,229,255,.08),transparent 55%),
+             var(--panel);
+  box-shadow:0 0 30px -12px var(--magenta-dim);
+  padding:16px 22px;
 }
+.sr-spot-sweep {
+  position:absolute; top:0; bottom:0; left:-30%; width:25%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);
+  animation:sr-sweep 5.5s linear infinite; pointer-events:none;
+}
+@keyframes sr-sweep { to { left:130%; } }
+@media (prefers-reduced-motion:reduce) { .sr-spot-sweep { animation:none; } }
+
+/* ── vote bar ── */
+.sr-wp-track { position:relative; height:12px; border:1px solid var(--hairline); display:flex; overflow:hidden; background:rgba(255,255,255,.04); }
+.sr-wp-l { height:100%; background:var(--magenta); box-shadow:inset 0 0 10px rgba(255,61,151,.5); transition:width .8s var(--ease-back-out); }
+.sr-wp-r { height:100%; background:var(--cyan); box-shadow:inset 0 0 10px rgba(61,229,255,.5); transition:width .8s var(--ease-back-out); }
+
+/* ── week tabs ── */
+.sr-tabs { position:relative; display:flex; border-bottom:1px solid var(--hairline); overflow-x:auto; }
+.sr-tabs::-webkit-scrollbar { height:0; }
+.sr-tab {
+  background:transparent; border:0; border-right:1px solid var(--hairline);
+  padding:9px 16px 8px; cursor:pointer; text-align:left; flex-shrink:0;
+  transition:background .2s;
+}
+.sr-tab:hover { background:rgba(255,255,255,.025); }
+.sr-tab.active { background:var(--magenta-soft); }
+.sr-tab-k { font-family:var(--font-mono); font-size:8px; letter-spacing:.14em; color:var(--text-dim); }
+.sr-tab-n {
+  font-family:var(--font-display); font-weight:600; font-size:18px; line-height:1.05;
+  color:var(--text-mute); transition:color .2s, text-shadow .2s;
+}
+.sr-tab.active .sr-tab-n { color:var(--magenta); text-shadow:0 0 16px var(--magenta-dim); }
+.sr-tab-s { display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-size:8px; color:var(--text-dim); }
+.sr-tab-dot { width:5px; height:5px; border-radius:50%; background:var(--text-dim); }
+.sr-tab-dot.done { background:var(--lime); }
+.sr-tab-dot.up { background:var(--cyan-dim); }
+.sr-tab-underline {
+  position:absolute; bottom:-1px; height:2px;
+  background:var(--magenta); box-shadow:0 0 10px var(--magenta);
+  transition:left .34s var(--ease-out-cubic), width .34s var(--ease-out-cubic);
+  z-index:2; pointer-events:none;
+}
+
+/* ── controls ── */
+.sr-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.sr-seg { display:inline-flex; border:1px solid var(--hairline-2); }
+.sr-seg button {
+  background:transparent; border:0; border-right:1px solid var(--hairline);
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-mute); padding:6px 12px; cursor:pointer; transition:all .15s;
+}
+.sr-seg button:last-child { border-right:0; }
+.sr-seg button:hover { color:var(--text); }
+.sr-seg button.on { color:var(--ink); background:var(--cyan); }
+.sr-select {
+  font-family:var(--font-mono); font-size:11px; color:var(--text);
+  background:var(--panel-2) url("data:image/svg+xml,%3Csvg width='8' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%233de5ff'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border:1px solid var(--hairline-2); padding:6px 26px 6px 10px;
+  appearance:none; -webkit-appearance:none; cursor:pointer;
+}
+.sr-select:focus { outline:none; border-color:var(--cyan-dim); }
+.sr-spacer { flex:1; }
+.sr-toggle {
+  display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text-mute); user-select:none;
+}
+.sr-switch {
+  width:30px; height:16px; border-radius:999px; position:relative;
+  border:1px solid var(--hairline-2); background:rgba(255,255,255,.04); transition:all .2s;
+  flex-shrink:0;
+}
+.sr-switch::after {
+  content:""; position:absolute; top:1px; left:1px;
+  width:12px; height:12px; border-radius:50%; background:var(--text-mute);
+  transition:transform .2s, background .2s;
+}
+.sr-toggle.on .sr-switch { background:var(--magenta-soft); border-color:var(--magenta-dim); }
+.sr-toggle.on .sr-switch::after { transform:translateX(14px); background:var(--magenta); }
+
+/* ── match rows ── */
+.sr-list { display:flex; flex-direction:column; }
+.sr-row {
+  display:grid; grid-template-columns:70px 1fr 92px 1fr 70px;
+  align-items:center; gap:14px; padding:11px 14px;
+  border-bottom:1px solid var(--hairline);
+  transition:background .18s, box-shadow .18s;
+  text-decoration:none; color:inherit;
+}
+.sr-row:hover { background:rgba(61,229,255,.04); box-shadow:inset 2px 0 0 var(--cyan); }
+.sr-row .sr-logo { transition:transform .18s var(--ease-out-cubic); }
+.sr-row:hover .sr-logo { transform:scale(1.12); }
+.sr-reveal { opacity:1; transform:none; animation:sr-fade-up .45s var(--ease-out-cubic) backwards; }
+@keyframes sr-fade-up { from { opacity:0; transform:translateY(8px); } }
+@media (prefers-reduced-motion:reduce) { .sr-reveal { animation:none; } }
+
+.sr-side { display:flex; align-items:center; gap:10px; min-width:0; }
+.sr-side.right { justify-content:flex-end; }
+.sr-side.lose .sr-name, .sr-side.lose .sr-logo { opacity:.5; }
+.sr-name {
+  font-family:var(--font-display); font-weight:600; font-size:13px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase;
+}
+.sr-coach { font-family:var(--font-mono); font-size:9px; color:var(--text-dim); }
+.sr-logo {
+  width:30px; height:30px; border-radius:50%; flex:0 0 auto;
+  background:var(--panel-2) center/contain no-repeat; border:1px solid var(--hairline);
+}
+.sr-logo.xl { width:84px; height:84px; }
+.sr-score {
+  position:relative; overflow:hidden;
+  font-family:var(--font-mono); font-size:17px; font-weight:600;
+  text-align:center; padding:5px 8px;
+  border:1px solid var(--hairline); min-width:76px;
+  font-variant-numeric:tabular-nums;
+}
+.sr-score.up { color:var(--cyan); font-size:11px; letter-spacing:.06em; padding:8px; }
+.sr-score.hidden { cursor:pointer; color:var(--text-dim); }
+.sr-score.hidden:hover { border-color:var(--cyan-dim); }
+.sr-score-wipe {
+  position:absolute; inset:0; width:36px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  animation:sr-wipe .42s ease-out; pointer-events:none;
+}
+@keyframes sr-wipe { from { left:-36px; } to { left:100%; } }
+.sr-score .dim { color:var(--text-dim); }
+.sr-wktag { font-family:var(--font-mono); font-size:9px; color:var(--text-dim); letter-spacing:.04em; }
+.sr-status { text-align:right; }
+.sr-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border:1px solid var(--hairline-2); color:var(--text-mute);
+}
+.sr-chip.cyan { color:var(--cyan); border-color:var(--cyan-dim); background:var(--cyan-soft); }
+.sr-chip.lime { color:var(--lime); border-color:rgba(199,255,82,.35); background:var(--lime-soft); }
+.sr-chip.mag  { color:var(--magenta); border-color:var(--magenta-dim); background:var(--magenta-soft); }
+.sr-empty { padding:40px; text-align:center; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); letter-spacing:.1em; }
 </style>
 {% endblock %}
 {% block content %}
 
-<!-- ── Page Header ── -->
-<div class="yc-page-hero hero-pattern">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <p class="yc-eyebrow">// MATCH.GRID</p>
-    <h1 class="yc-page-title">Schedule — {{ league_name }}</h1>
+<div class="sr-page">
+
+  <!-- 1. Header row -->
+  <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+    <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;color:var(--magenta);">// MATCH.GRID</span>
+    <span style="font-family:var(--font-display);font-weight:600;font-size:24px;">Schedule</span>
+    <span style="flex:1;height:1px;background:var(--hairline);align-self:center;min-width:20px"></span>
+    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);" id="sr-meta">{{ league_name|upper }} · {{ num_teams }} TEAMS · {{ total_matches }} MATCHES</span>
   </div>
-</div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-{% set current_week = current_week if current_week is defined else (weeks[0] if weeks else 1) %}
+  <!-- 2. Match of the Week spotlight -->
+  <div id="sr-spotlight"></div>
 
-  {% if by_week %}
+  <!-- 3. Week tabs -->
+  <div class="sr-tabs" id="sr-tabs">
+    <div style="flex:1;border-bottom:0"></div>
+    <div class="sr-tab-underline" id="sr-underline" style="left:0;width:0"></div>
+  </div>
 
-    <!-- Week tab bar -->
-    {% if weeks | length > 1 %}
-    <div id="week-tabs" style="display:flex;border-bottom:1px solid var(--hairline);margin-bottom:24px;overflow-x:auto;">
-      {% for week in weeks %}
-        {% set wmatches = by_week.get(week, []) %}
-        {% set has_result = wmatches | selectattr('score1', 'defined') | selectattr('score1', 'ne', none) | list | length %}
-        {% set is_complete = has_result == wmatches | length and wmatches | length > 0 %}
-        {% set is_active = loop.first %}
-        <button onclick="switchWeek({{ week }})"
-                id="tab-{{ week }}"
-                class="week-tab"
-                style="padding:12px 20px;border:none;border-right:1px solid var(--hairline);border-bottom:2px solid {% if is_active %}var(--magenta){% else %}transparent{% endif %};margin-bottom:-1px;background:{% if is_active %}var(--magenta-soft){% else %}transparent{% endif %};cursor:pointer;flex-shrink:0;text-align:center;">
-          <div style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;">WEEK</div>
-          <div class="tab-num" style="font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1;color:{% if is_active %}var(--magenta){% else %}var(--text-mute){% endif %};">{{ '%02d'|format(week) }}</div>
-          <div class="tab-status" style="font-family:var(--font-mono);font-size:9px;font-weight:700;margin-top:2px;color:{% if is_complete %}rgba(74,222,128,.7){% elif week == current_week %}rgba(74,222,128,.7){% else %}var(--text-dim){% endif %};">
-            {% if is_complete %}DONE{% elif week == current_week %}LIVE{% else %}UPCOMING{% endif %}
-          </div>
-        </button>
-      {% endfor %}
-      <div style="flex:1;"></div>
+  <!-- 4. Controls -->
+  <div class="sr-controls" id="sr-controls">
+    <div class="sr-seg" id="sr-seg">
+      <button onclick="setSt('ALL')" id="seg-ALL" class="on">ALL</button>
+      <button onclick="setSt('FINAL')" id="seg-FINAL">FINAL</button>
+      <button onclick="setSt('UPCOMING')" id="seg-UPCOMING">UPCOMING</button>
     </div>
-    {% endif %}
+    <select class="sr-select" id="sr-team-sel" onchange="setTeam(this.value)">
+      <option value="all">ALL TEAMS</option>
+    </select>
+    <div class="sr-spacer"></div>
+    <div class="sr-toggle" id="sr-toggle" onclick="toggleSpoilers()">
+      <span class="sr-switch"></span><span id="sr-toggle-label">SPOILERS OFF</span>
+    </div>
+  </div>
 
-    <!-- Week Sections -->
-    {% for week in weeks %}
-      {% set matches = by_week.get(week, []) %}
-      {% if matches %}
-      <div id="week-section-{{ week }}" class="week-section mb-12" {% if not loop.first %}style="display:none"{% endif %}>
+  <!-- 5. Match list -->
+  <div class="sr-scroll">
+    <div class="sr-list" id="sr-list"></div>
+  </div>
 
-        <!-- Week Header -->
-        <div class="flex items-center gap-3 mb-5">
-          <p class="text-xs font-bold font-mono" style="color:rgba(0,245,255,0.4);">// WEEK_{{ '%02d'|format(week) }}</p>
-          <div class="flex-1 section-line ml-2"></div>
-          <span class="text-xs text-gray-700 font-medium">{{ matches | length }} match{% if matches | length != 1 %}es{% endif %}</span>
-        </div>
-
-        <!-- Match Rows -->
-        <div class="space-y-2">
-          {% for m in matches %}
-            {% set s1 = m.score1 %}
-            {% set s2 = m.score2 %}
-            {% set has_result = s1 is not none and s2 is not none and (s1 > 0 or s2 > 0) %}
-            {% if has_result %}
-              {% set c1_win = s1 > s2 %}
-              {% set is_tie = s1 == s2 %}
-            {% endif %}
-
-            {# ── Broadcast-style horizontal match row ── #}
-            <div class="cp-card {% if not has_result and week == current_week %}live-match{% endif %}" style="border-radius:14px;">
-
-              {# Top color bar #}
-              <div class="h-1 overflow-hidden flex" style="border-radius:14px 14px 0 0;">
-                <div class="flex-1" style="background:{{ m.c1_color or '#374151' }};opacity:0.75;"></div>
-                <div class="flex-1" style="background:{{ m.c2_color or '#374151' }};opacity:0.75;"></div>
-              </div>
-
-              {# Row body
-                 Layout: [WK:68px] [Team1:flex-1] [VS:abs@50%] [Team2:flex-1] [right:68px]
-                 Both side elements are the same width so the two flex-1 columns are
-                 perfectly symmetric around the 50% midpoint, matching the color bar split. #}
-              <div class="flex items-center px-4 py-3" style="position:relative;min-height:68px;">
-
-                {# Left anchor — WK / Pool label, fixed 68px #}
-                <div class="flex-shrink-0 text-left" style="width:68px;">
-                  <div class="text-xs font-black font-mono" style="color:rgba(0,245,255,0.35);">WK{{ '%02d'|format(week) }}</div>
-                  <div class="text-xs font-mono text-gray-700">{{ m.pool }}</div>
-                </div>
-
-                {# Team 1 — right-aligned toward center; inner padding clears the abs VS box #}
-                <a href="/team/{{ m.coach1_id }}"
-                   class="flex items-center gap-3 flex-1 min-w-0 justify-end hover:opacity-90 transition-opacity
-                     {% if has_result and not c1_win and not is_tie %}opacity-35{% endif %}"
-                   style="text-decoration:none;padding-right:52px;">
-                  <div class="text-right min-w-0">
-                    <div class="font-black text-sm leading-tight truncate
-                      {% if has_result %}{% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}{% else %}text-white{% endif %}">{{ m.c1_team }}</div>
-                    <div class="text-xs text-gray-600 truncate">{{ m.c1_name }}</div>
-                    {% if has_result and c1_win %}<div class="text-xs font-bold text-green-400">▲ WIN</div>{% endif %}
-                  </div>
-                  <span class="{% if m.c1_is_champ %}champ-logo sm{% endif %} flex-shrink-0" style="{% if m.c1_is_champ %}margin-top:8px;{% endif %}">
-                    {% if m.c1_logo %}
-                      <img src="{{ m.c1_logo }}" class="w-11 h-11 object-contain rounded-lg" alt="" onerror="this.style.display='none'">
-                    {% else %}
-                      <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white" style="background:{{ m.c1_color or '#374151' }};">{{ m.c1_team[:2].upper() }}</div>
-                    {% endif %}
-                    {% if m.c1_is_champ %}
-                    <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-                      <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-                      <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-                    </svg>
-                    {% endif %}
-                  </span>
-                </a>
-
-                {# Center — absolutely at 50% so it always lands on the color bar split #}
-                <div style="position:absolute;left:50%;transform:translateX(-50%);width:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
-                  {% if has_result %}
-                    <div class="flex items-center gap-1.5">
-                      <span class="font-black text-2xl tabular-nums {% if c1_win %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">{{ s1 | int }}</span>
-                      <span class="text-gray-700 font-bold">:</span>
-                      <span class="font-black text-2xl tabular-nums {% if not c1_win and not is_tie %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-600{% endif %}">{{ s2 | int }}</span>
-                    </div>
-                    {% if is_tie %}<div class="text-xs text-yellow-600 font-bold mt-0.5">TIE</div>{% endif %}
-                  {% else %}
-                    <div class="font-black text-xl text-gray-700 tracking-widest">VS</div>
-                  {% endif %}
-                  {% if m.c1_pokemon or m.c2_pokemon %}
-                  <div class="mt-1 flex gap-0.5 flex-wrap justify-center">
-                    {% for pname in (m.c1_pokemon + m.c2_pokemon)[:6] %}
-                    <img src="{{ pokemon_sprite_url(pname) }}" onerror="this.src='{{ pokemon_static_sprite_url(pname) }}';this.onerror=null;" title="{{ pname }}" class="w-5 h-5 object-contain" style="image-rendering:pixelated;">
-                    {% endfor %}
-                  </div>
-                  {% endif %}
-                </div>
-
-                {# Team 2 — left-aligned from center; inner padding clears the abs VS box #}
-                <a href="/team/{{ m.coach2_id }}"
-                   class="flex items-center gap-3 flex-1 min-w-0 hover:opacity-90 transition-opacity
-                     {% if has_result and c1_win and not is_tie %}opacity-35{% endif %}"
-                   style="text-decoration:none;padding-left:52px;">
-                  <span class="{% if m.c2_is_champ %}champ-logo sm{% endif %} flex-shrink-0" style="{% if m.c2_is_champ %}margin-top:8px;{% endif %}">
-                    {% if m.c2_logo %}
-                      <img src="{{ m.c2_logo }}" class="w-11 h-11 object-contain rounded-lg" alt="" onerror="this.style.display='none'">
-                    {% else %}
-                      <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white" style="background:{{ m.c2_color or '#374151' }};">{{ m.c2_team[:2].upper() }}</div>
-                    {% endif %}
-                    {% if m.c2_is_champ %}
-                    <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-                      <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-                      <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-                    </svg>
-                    {% endif %}
-                  </span>
-                  <div class="min-w-0">
-                    <div class="font-black text-sm leading-tight truncate
-                      {% if has_result %}{% if not c1_win and not is_tie %}text-white{% elif is_tie %}text-yellow-300{% else %}text-gray-500{% endif %}{% else %}text-white{% endif %}">{{ m.c2_team }}</div>
-                    <div class="text-xs text-gray-600 truncate">{{ m.c2_name }}</div>
-                    {% if has_result and not c1_win and not is_tie %}<div class="text-xs font-bold text-green-400">▲ WIN</div>{% endif %}
-                  </div>
-                </a>
-
-                {# Right anchor — same 68px as WK label to balance both flex-1 columns #}
-                <div class="flex-shrink-0 text-right" style="width:68px;">
-                  {% if has_result %}
-                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md {% if is_tie %}text-yellow-400 bg-yellow-400/10 border border-yellow-400/20{% else %}text-green-400 bg-green-400/10 border border-green-400/20{% endif %}">FINAL</span>
-                    {% if session.get('role') == 'admin' %}
-                    <div class="mt-1"><a href="/admin/match_stats/{{ m.id }}" class="text-xs transition-colors" style="color:var(--cyan-dim);">Stats →</a></div>
-                    {% endif %}
-                  {% elif week == current_week %}
-                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md" style="color:var(--red);background:rgba(255,77,107,.08);border:1px solid rgba(255,77,107,.2);"><span class="chip-live-dot"></span>LIVE</span>
-                  {% else %}
-                    <span class="inline-block text-xs font-black px-2 py-1 rounded-md" style="color:var(--cyan);background:rgba(34,225,255,.05);border:1px solid rgba(34,225,255,.2);">UPCOMING</span>
-                  {% endif %}
-                </div>
-
-              </div>
-            </div>
-
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-    {% endfor %}
+</div>
 
 <script>
-const CURRENT_WEEK = {{ current_week if current_week else 1 }};
+const SCHEDULE = {{ schedule_json | safe }};
+const COACHES  = {{ coaches_json | safe }};
+const CURRENT_WEEK = {{ current_week }};
 
-function switchWeek(week) {
-  document.querySelectorAll('.week-section').forEach(s => s.style.display = 'none');
-  document.querySelectorAll('.week-tab').forEach(t => {
-    t.style.background   = 'transparent';
-    t.style.borderBottom = '2px solid transparent';
-    const num = t.querySelector('.tab-num');
-    if (num) num.style.color = 'var(--text-mute)';
+// ── state ──────────────────────────────────────────────────────────
+let S = {
+  week: CURRENT_WEEK,
+  status: "ALL",
+  team: "all",
+  spoilers: false,
+  revealed: {},
+};
+
+// ── helpers ────────────────────────────────────────────────────────
+function weekData(w) { return SCHEDULE.find(x => x.week === w) || SCHEDULE[0]; }
+function logo(url) {
+  return url ? `background-image:url(${CSS.escape ? url : url})` : "";
+}
+function pad2(n) { return String(n).padStart(2,"0"); }
+function motwMatch(wk) { return wk.matches.find(m => m.id === wk.motwId) || wk.matches[0]; }
+
+// ── team filter population ─────────────────────────────────────────
+(function populateTeams() {
+  const sel = document.getElementById("sr-team-sel");
+  [...COACHES].sort((a,b) => a.name.localeCompare(b.name)).forEach(t => {
+    const o = document.createElement("option");
+    o.value = t.id; o.textContent = t.name.toUpperCase();
+    sel.appendChild(o);
   });
-  const section = document.getElementById('week-section-' + week);
-  if (section) section.style.display = '';
-  const tab = document.getElementById('tab-' + week);
-  if (tab) {
-    tab.style.background   = 'var(--magenta-soft)';
-    tab.style.borderBottom = '2px solid var(--magenta)';
-    const num = tab.querySelector('.tab-num');
-    if (num) num.style.color = 'var(--magenta)';
-  }
+})();
+
+// ── tab underline ──────────────────────────────────────────────────
+function measureUnderline() {
+  const el = document.querySelector(`[data-wk="${S.week}"]`);
+  if (!el) return;
+  const ul = document.getElementById("sr-underline");
+  ul.style.left  = el.offsetLeft + "px";
+  ul.style.width = el.offsetWidth + "px";
+}
+window.addEventListener("resize", measureUnderline);
+
+// ── render tabs ────────────────────────────────────────────────────
+function renderTabs() {
+  const tabsEl = document.getElementById("sr-tabs");
+  // Clear existing tabs but keep the spacer and underline
+  tabsEl.querySelectorAll(".sr-tab").forEach(e => e.remove());
+  const spacer = tabsEl.querySelector("div");
+  SCHEDULE.forEach(wk => {
+    const btn = document.createElement("button");
+    btn.className = "sr-tab" + (wk.week === S.week ? " active" : "");
+    btn.dataset.wk = wk.week;
+    btn.onclick = () => setWeek(wk.week);
+    const dotCls = wk.state === "DONE" ? "done" : "up";
+    btn.innerHTML = `
+      <div class="sr-tab-k">WEEK</div>
+      <div class="sr-tab-n">${pad2(wk.week)}</div>
+      <div class="sr-tab-s"><span class="sr-tab-dot ${dotCls}"></span>${wk.state}</div>`;
+    tabsEl.insertBefore(btn, spacer);
+  });
+  measureUnderline();
 }
 
-document.addEventListener('turbo:load', () => {
-  if (document.querySelectorAll('.week-tab').length > 0) {
-    switchWeek(CURRENT_WEEK);
+// ── render spotlight ───────────────────────────────────────────────
+function renderSpotlight() {
+  const el = document.getElementById("sr-spotlight");
+  const wk = weekData(S.week);
+  if (!wk || !wk.matches.length) { el.innerHTML = ""; return; }
+  const m = motwMatch(wk);
+  const final = m.status === "FINAL";
+  const showScore = S.spoilers || S.revealed[m.id] || !final;
+  const winA = final && m.score1 > m.score2;
+  const winB = final && m.score2 > m.score1;
+  const isUpset = m.motw && wk.state === "DONE" && m.fav_id !== null &&
+    ((m.fav_id === m.c1_id && m.score2 > m.score1) || (m.fav_id === m.c2_id && m.score1 > m.score2));
+  const motwKind = isUpset ? "BIGGEST UPSET" : "CLOSEST PICK'EM";
+  const chipCls = isUpset ? "mag" : final ? "lime" : "cyan";
+  const chipTxt = final ? (isUpset ? "UPSET · FINAL" : "FINAL") : "TOSS-UP";
+  const poolMeta = m.pool && m.pool !== "X" ? ` · POOL ${m.pool}` : "";
+
+  const logoBg = (url) => url ? `background-image:url('${url.replace(/'/g,"\\'")}')` : "";
+
+  el.innerHTML = `
+    <div class="sr-spotlight">
+      <div class="sr-spot-sweep"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;color:var(--magenta);">★ MATCH OF THE WEEK</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">WK${pad2(m.week||S.week)}${poolMeta} · ${motwKind}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px">
+        <div style="display:flex;align-items:center;gap:14px;justify-content:flex-end;opacity:${winB?.5:1}">
+          <div style="text-align:right">
+            <div style="font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;">${m.c1_team}</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">COACH · ${m.c1_name.toUpperCase()}</div>
+          </div>
+          <a href="/team/${m.c1_id}" style="flex-shrink:0">
+            <span class="sr-logo xl" style="${logoBg(m.c1_logo)}"></span>
+          </a>
+        </div>
+        <div style="text-align:center;min-width:150px">
+          ${showScore && final
+            ? `<div style="font-family:var(--font-display);font-weight:700;font-size:56px;line-height:1;font-variant-numeric:tabular-nums">${m.score1}<span style="opacity:.35;padding:0 6px;font-size:36px">:</span>${m.score2}</div>`
+            : `<div style="font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--cyan)">VS</div>`}
+          <div style="margin-top:6px"><span class="sr-chip ${chipCls}">${chipTxt}</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;opacity:${winA?.5:1}">
+          <a href="/team/${m.c2_id}" style="flex-shrink:0">
+            <span class="sr-logo xl" style="${logoBg(m.c2_logo)}"></span>
+          </a>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;">${m.c2_team}</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">COACH · ${m.c2_name.toUpperCase()}</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="sr-wp-track">
+          <div class="sr-wp-l" style="width:${m.vote1}%"></div>
+          <div class="sr-wp-r" style="width:${m.vote2}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--magenta);">${m.vote1}%</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">PICK'EMS VOTE</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--cyan);">${m.vote2}%</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── render match list ──────────────────────────────────────────────
+function renderList() {
+  const listEl = document.getElementById("sr-list");
+  const wk = weekData(S.week);
+  if (!wk) { listEl.innerHTML = `<div class="sr-empty">NO SCHEDULE DATA</div>`; return; }
+
+  let rows = wk.matches;
+  if (S.status !== "ALL") rows = rows.filter(m => m.status === S.status);
+  if (S.team !== "all") rows = rows.filter(m => m.c1_id == S.team || m.c2_id == S.team);
+
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="sr-empty">NO MATCHES MATCH THESE FILTERS</div>`;
+    return;
   }
-});
+
+  const wipeId = `wipe-${Date.now()}`;
+  listEl.innerHTML = rows.map((m, i) => {
+    const final = m.status === "FINAL";
+    const showScore = S.spoilers || S.revealed[m.id] || !final;
+    const winA = final && m.score1 > m.score2;
+    const winB = final && m.score2 > m.score1;
+    const logoBg = (url) => url ? `background-image:url('${url.replace(/'/g,"\\'")}')` : "";
+    const poolTag = m.pool ? ` · ${m.pool}` : "";
+
+    let scoreHtml;
+    if (final && !showScore) {
+      scoreHtml = `<div class="sr-score hidden" onclick="revealScore(${m.id})" title="Click to reveal">• : •</div>`;
+    } else if (final) {
+      scoreHtml = `<div class="sr-score">${m.score1}<span class="dim"> : </span>${m.score2}<span class="sr-score-wipe"></span></div>`;
+    } else {
+      scoreHtml = `<div class="sr-score up">VS</div>`;
+    }
+
+    return `<div class="sr-row sr-reveal" style="animation-delay:${i*45}ms">
+      <div class="sr-wktag">WK${pad2(m.week||S.week)}${poolTag}${m.motw ? `<span style="color:var(--magenta);margin-left:4px">★</span>` : ""}</div>
+      <div class="sr-side right${winB ? " lose" : ""}">
+        <div style="text-align:right;min-width:0">
+          <div class="sr-name">${m.c1_team}</div>
+          <div class="sr-coach">${m.c1_name}</div>
+        </div>
+        <a href="/team/${m.c1_id}"><span class="sr-logo" style="${logoBg(m.c1_logo)}"></span></a>
+      </div>
+      ${scoreHtml}
+      <div class="sr-side${winA ? " lose" : ""}">
+        <a href="/team/${m.c2_id}"><span class="sr-logo" style="${logoBg(m.c2_logo)}"></span></a>
+        <div style="min-width:0">
+          <div class="sr-name">${m.c2_team}</div>
+          <div class="sr-coach">${m.c2_name}</div>
+        </div>
+      </div>
+      <div class="sr-status">
+        <span class="sr-chip${final ? "" : " cyan"}">${m.status}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── state setters ──────────────────────────────────────────────────
+function setWeek(w) {
+  S.week = w;
+  renderTabs();
+  renderSpotlight();
+  renderList();
+}
+
+function setSt(v) {
+  S.status = v;
+  document.querySelectorAll(".sr-seg button").forEach(b => b.classList.toggle("on", b.id === "seg-" + v));
+  renderList();
+}
+
+function setTeam(v) {
+  S.team = v;
+  renderList();
+}
+
+function toggleSpoilers() {
+  S.spoilers = !S.spoilers;
+  const tog = document.getElementById("sr-toggle");
+  tog.classList.toggle("on", S.spoilers);
+  document.getElementById("sr-toggle-label").textContent = "SPOILERS " + (S.spoilers ? "ON" : "OFF");
+  renderSpotlight();
+  renderList();
+}
+
+function revealScore(matchId) {
+  S.revealed[matchId] = true;
+  renderSpotlight();
+  renderList();
+}
+
+// ── boot ───────────────────────────────────────────────────────────
+// Default to first upcoming week; fall back to last week
+(function initWeek() {
+  const first_upcoming = SCHEDULE.find(w => w.state === "UPCOMING");
+  S.week = first_upcoming ? first_upcoming.week : (SCHEDULE.length ? SCHEDULE[SCHEDULE.length-1].week : CURRENT_WEEK);
+})();
+
+renderTabs();
+renderSpotlight();
+renderList();
+
+// Measure underline after layout
+requestAnimationFrame(() => requestAnimationFrame(measureUnderline));
 </script>
-
-  {% else %}
-    <div class="text-center py-24">
-      <div class="pokeball-empty mx-auto mb-6"><div class="pokeball-empty-dot"></div></div>
-      <h2 class="text-xl font-bold text-gray-600 mb-2">No schedule yet</h2>
-      <p class="text-sm text-gray-700 mb-6">Matches will appear here once they're scheduled.</p>
-      {% if session.get('role') == 'admin' %}
-        <a href="/admin/schedule" class="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-bold text-sm transition-colors" style="background:var(--magenta);color:#000;">
-          Add matches &rarr;
-        </a>
-      {% endif %}
-    </div>
-  {% endif %}
-
-</div>
 {% endblock %}
