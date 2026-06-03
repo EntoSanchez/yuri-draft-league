@@ -1428,7 +1428,7 @@ def _regular_tier_label(pts):
     if pts >= 13: return "Tier 2"
     if pts >= 9:  return "Tier 3"
     if pts >= 5:  return "Tier 4"
-    if pts >= 1:  return "Tier 5"
+    if pts >= 0:  return "Tier 5"
     return ""
 
 
@@ -1486,7 +1486,7 @@ def draft_board():
             # Mega (or any unlabeled) pokemon at an uber point value → same column
             label = uber_label_by_pts[pts]
         else:
-            label = _regular_tier_label(pts) if pts > 0 else raw_label
+            label = _regular_tier_label(pts)
 
         group_key = (pts, label)
         if group_key not in seen_pts:
