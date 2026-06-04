@@ -1531,7 +1531,7 @@ def admin_tiers_quick_pts():
 
 def _regular_tier_label(pts):
     """Map point value to Tier 1–5 label for regular (non-Mega) Pokemon."""
-    if pts >= 17: return "Tier 1"
+    if pts >= 16: return "Tier 1"
     if pts >= 13: return "Tier 2"
     if pts >= 9:  return "Tier 3"
     if pts >= 5:  return "Tier 4"

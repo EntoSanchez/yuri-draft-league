@@ -473,7 +473,7 @@ function renderStats() {
   if (S.statView==="avg") { el.innerHTML=buildDivBars(); return; }
 
   const hl=S.statHL;
-  function col(team, accent, lbl, isOpp) {
+  function col(team, accent, lbl, isOpp, coach) {
     if (!team.length) return `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);padding:8px 0">No team.</div>`;
     const sorted=[...team].sort((a,b) => hl==="none"
       ? STAT_KEYS.reduce((s,k)=>s+(b[k]||0),0)-STAT_KEYS.reduce((s,k)=>s+(a[k]||0),0)
@@ -491,8 +491,9 @@ function renderStats() {
       }).join("");
       const tcs=[p.type1,p.type2].filter(Boolean).map(t=>`<span style="font-size:6.5px;font-weight:700;font-family:var(--font-mono);background:${(TYPE_COLORS[t]||"#374151")}20;color:${TYPE_COLORS[t]||"#9ca3af"};border:1px solid ${(TYPE_COLORS[t]||"#374151")}30;padding:1px 4px;border-radius:1px">${t}</span>`).join("");
       const bst=STAT_KEYS.reduce((s,k)=>s+(p[k]||0),0);
-      const sprSrc=p.sprite_anim||p.sprite||"";
-      const spr=sprSrc?`<img src="${sprSrc}" alt="" width="48" height="48" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:`<div style="width:48px;height:48px;flex-shrink:0"></div>`;
+      const sprAnim=p.sprite_anim||""; const sprStatic=p.sprite||"";
+      const sprSrc=sprAnim||sprStatic;
+      const spr=sprSrc?`<img src="${sprSrc}" alt="" width="48" height="48" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="if(this.dataset.fb)this.style.display='none';else{this.dataset.fb=1;this.src='${sprStatic}'}">`:`<div style="width:48px;height:48px;flex-shrink:0"></div>`;
       const statCell=`<div style="text-align:${isOpp?"left":"right"}"><div style="font-family:var(--font-mono);font-size:7px;color:var(--text-dim)">${hl==="none"?"BST":STAT_LABEL[hl]}</div><span style="font-family:var(--font-mono);font-size:${hl==="none"?11:13}px;font-weight:${hl==="none"?600:700};color:${accent}">${hl==="none"?bst:(p[hl]||0)}</span></div>`;
       const nameCell=`<div style="display:flex;align-items:center;gap:6px;${isOpp?"flex-direction:row-reverse":""}">${spr}<div style="min-width:0;${isOpp?"text-align:right":""}"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap;${isOpp?"justify-content:flex-end":""}">${tcs}</div></div></div>`;
       const barsCell=`<div style="display:flex;align-items:flex-end;gap:2px;height:${BH+12}px">${bars}</div>`;
@@ -500,13 +501,17 @@ function renderStats() {
         ? `<div style="display:grid;grid-template-columns:38px 1fr 112px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">${statCell}${barsCell}${nameCell}</div>`
         : `<div style="display:grid;grid-template-columns:112px 1fr 38px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">${nameCell}${barsCell}${statCell}</div>`;
     }).join("");
-    return `<div style="font-family:var(--font-mono);font-size:8.5px;color:${accent};letter-spacing:.1em;margin-bottom:8px;${isOpp?"text-align:right":""}">${lbl}</div>${rows}`;
+    const logoEl=coach?.logo_url
+      ?`<img src="${coach.logo_url}" alt="" width="30" height="30" style="object-fit:contain;border-radius:50%;border:1px solid ${accent};flex-shrink:0" onerror="this.style.display='none'">`
+      :`<div style="width:30px;height:30px;border-radius:50%;background:${coach?.color||accent};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:700;color:#000;flex-shrink:0">${(coach?.team_name||"??").slice(0,2).toUpperCase()}</div>`;
+    const hdr=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--hairline);${isOpp?"flex-direction:row-reverse":""}">${logoEl}<div style="${isOpp?"text-align:right":""}"><div style="font-family:var(--font-display);font-size:12px;font-weight:700;color:${accent};letter-spacing:.04em;text-transform:uppercase">${coach?.team_name||lbl}</div>${coach?.name?`<div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim)">${coach.name}</div>`:""}</div></div>`;
+    return hdr+rows;
   }
   const myN=(S.myCoach?.team_name||S.myCoach?.name||"MY TEAM").toUpperCase();
   const opN=(S.oppCoach?.team_name||S.oppCoach?.name||"OPPONENT").toUpperCase();
   el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <div>${col(S.myTeam,"var(--cyan)","// "+myN,false)}</div>
-    <div>${col(S.oppTeam,"var(--magenta)",opN+" //",true)}</div>
+    <div>${col(S.myTeam,"var(--cyan)","// "+myN,false,S.myCoach)}</div>
+    <div>${col(S.oppTeam,"var(--magenta)",opN+" //",true,S.oppCoach)}</div>
   </div>`;
 }
 
@@ -716,8 +721,9 @@ function renderSpeed() {
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:3px">
     ${all.map((m,i)=>{
       const c=m.side==="me"?"var(--cyan)":"var(--magenta)";
-      const spd_spr=m.sprite_anim||m.sprite||"";
-      const spd_img=spd_spr?`<img src="${spd_spr}" alt="" width="28" height="28" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:"";
+      const spd_anim=m.sprite_anim||""; const spd_static=m.sprite||"";
+      const spd_spr=spd_anim||spd_static;
+      const spd_img=spd_spr?`<img src="${spd_spr}" alt="" width="28" height="28" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="if(this.dataset.fb)this.style.display='none';else{this.dataset.fb=1;this.src='${spd_static}'}">`:"";
       return `<div style="display:grid;grid-template-columns:18px 1fr 1fr 28px;align-items:center;gap:8px">
         <span style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);text-align:right">${String(i+1).padStart(2,"0")}</span>
         <div style="display:flex;align-items:center;gap:4px">
@@ -762,7 +768,7 @@ function renderCreep(el) {
 
   const tgtBtns=S.oppTeam.map(p=>{
     const on=p.name===S.speedTarget;
-    return `<button onclick="sST(${JSON.stringify(p.name)})" style="font-family:var(--font-mono);font-size:8px;font-weight:700;cursor:pointer;padding:2px 7px;border:1px solid ${on?"var(--magenta-dim)":"var(--hairline-2)"};background:${on?"var(--magenta-soft)":"transparent"};color:${on?"var(--magenta)":"var(--text-dim)"}">${p.name.slice(0,9)}</button>`;
+    return `<button onclick='sST(${JSON.stringify(p.name)})' style="font-family:var(--font-mono);font-size:8px;font-weight:700;cursor:pointer;padding:2px 7px;border:1px solid ${on?"var(--magenta-dim)":"var(--hairline-2)"};background:${on?"var(--magenta-soft)":"transparent"};color:${on?"var(--magenta)":"var(--text-dim)"}">${p.name.slice(0,9)}</button>`;
   }).join("");
 
   const benchBtns=[["max","MAX"],["fast","FAST"],["base","BASE"]].map(([v,l])=>{
@@ -883,7 +889,7 @@ function initMvFilter(){
   document.getElementById("mv-filter").innerHTML=
     [["all","ALL"],...BP_MOVE_CATS.map(c=>[c.label,c.label])].map(([v,l])=>{
       const on=S.mvCat===v;
-      return `<button class="vd-chip" onclick="setMvCat(${JSON.stringify(v)})" style="white-space:nowrap;flex-shrink:0;border:1px solid ${on?"var(--cyan-dim)":"var(--hairline-2)"};background:${on?"var(--cyan-soft)":"transparent"};color:${on?"var(--cyan)":"var(--text-dim)"}">${l}</button>`;
+      return `<button class="vd-chip" onclick='setMvCat(${JSON.stringify(v)})' style="white-space:nowrap;flex-shrink:0;border:1px solid ${on?"var(--cyan-dim)":"var(--hairline-2)"};background:${on?"var(--cyan-soft)":"transparent"};color:${on?"var(--cyan)":"var(--text-dim)"}">${l}</button>`;
     }).join("");
 }
 function setMvCat(v){ S.mvCat=v; initMvFilter(); renderMoveCoverage(); }
