@@ -3,8 +3,9 @@
 
 {% block content %}
 {# ── Design tokens ── #}
-{% set TC = {"Tier 1":"#5a9bff","Tier 2":"#b07dff","Tier 3":"#3dd9c2","Tier 4":"#7ddc6a","Tier 5":"#9a9aa8","Uber 1":"#ffc94d","Uber 2":"#ffc94d","Free Pick":"#ffb84d"} %}
-{% set TS = {"Tier 1":"T1","Tier 2":"T2","Tier 3":"T3","Tier 4":"T4","Tier 5":"T5","Free Pick":"FP"} %}
+{% set TC = {"Tier 1":"#5a9bff","Tier 2":"#b07dff","Tier 3":"#3dd9c2","Tier 4":"#7ddc6a","Tier 5":"#9a9aa8","Uber 1":"#ffc94d","Uber 2":"#ffc94d","Free Pick":"#ffb84d","Gold":"#ffc94d","Silver":"#c0c0dc","Bronze":"#cd7f32","Platinum":"#e5e4e2"} %}
+{% set TS = {"Tier 1":"T1","Tier 2":"T2","Tier 3":"T3","Tier 4":"T4","Tier 5":"T5","Free Pick":"FP","Gold":"GLD","Silver":"SLV","Bronze":"BRZ","Platinum":"PLT"} %}
+{% set UBER_NAMED_LIST = ["Gold","Silver","Bronze","Platinum"] %}
 {% set MAIN_TIERS = ["Tier 1","Tier 2","Tier 3","Tier 4","Tier 5"] %}
 {% set MAIN_COUNTS = {"Tier 1":1,"Tier 2":1,"Tier 3":2,"Tier 4":2,"Tier 5":2} %}
 
@@ -167,9 +168,10 @@
       {% endfor %}
     {% endif %}
 
-    {# Collect uber picks #}
+    {# Collect uber picks, sort Gold(29)>Silver(28)>Bronze(27) #}
     {% set uber_list = [] %}
     {% for tn in tier_order %}{% if 'Uber' in tn %}{% for p in grid_pool.get(tn, {}).get(coach.id, []) %}{% if uber_list.append(p) %}{% endif %}{% endfor %}{% endif %}{% endfor %}
+    {% set uber_list = uber_list | sort(attribute='points', reverse=True) %}
 
     <div class="dl-row" style="background:{% if is_on_clock %}rgba(255,61,151,.045){% else %}transparent{% endif %};">
 
@@ -234,9 +236,12 @@
         <div style="display:flex;gap:2px;flex-shrink:0;">
           {% for i in range(2) %}
           {% if i < uber_list|length %}{% set pick = uber_list[i] %}
-          <div class="dl-cell dl-cell-filled" style="border:1px solid #ffc94d;background:var(--panel-2);" title="{{ pick.pokemon_name }}">
+          {% set ut = pick.tier_label if pick.tier_label in UBER_NAMED_LIST else ({27:'Bronze',28:'Silver',29:'Gold'}.get(pick.points, '')) %}
+          {% set uc = TC.get(ut, '#ffc94d') %}
+          {% set ul = TS.get(ut, 'UBR') %}
+          <div class="dl-cell dl-cell-filled" style="border:1px solid {{ uc }};background:var(--panel-2);" title="{{ pick.pokemon_name }} ({{ ut or 'Uber' }})">
             <div style="display:flex;justify-content:space-between;align-items:baseline;line-height:1;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#ffc94d;letter-spacing:.04em;">UBR</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:{{ uc }};letter-spacing:.04em;">{{ ul }}</span>
               <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>
             </div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;">
@@ -351,14 +356,28 @@
     {# Pokemon grid #}
     <div id="pg-{{ pool_label }}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:5px;max-height:200px;overflow-y:auto;">
       {% for poke in avail %}
-      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="pg-card-{{ pool_label }}">
+      {% set ut = poke.tier_label if poke.tier_label in UBER_NAMED_LIST else "" %}
+      {% set uc = TC.get(ut, '') %}
+      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="pg-card-{{ pool_label }}" data-name="{{ poke.name|lower }}" data-uber="{{ ut }}">
         <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
         <input type="hidden" name="pick_pool" value="{{ pool_label }}">
+        {% if ut %}
+        <div class="dl-poke-btn" style="border-color:{{ uc }};gap:2px;padding-bottom:3px;">
+          <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(poke.name) }}';" style="width:34px;height:34px;object-fit:contain;" alt="">
+          <span style="font-size:9px;color:#d1d5db;text-align:center;line-height:1.2;word-break:break-word;">{{ poke.name }}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:{{ uc }};">{{ poke.points }}pt · {{ ut }}</span>
+          <div style="display:flex;gap:2px;width:100%;margin-top:1px;">
+            <button type="submit" name="use_uber_slot" value="0" data-name="{{ poke.name|lower }}" style="flex:1;padding:2px 1px;border:1px solid var(--hairline);background:var(--panel);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:var(--text-mute);cursor:pointer;line-height:1;">PICK</button>
+            <button type="submit" name="use_uber_slot" value="1" style="flex:1;padding:2px 1px;border:1px solid {{ uc }};background:rgba(0,0,0,.3);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:{{ uc }};cursor:pointer;line-height:1;">UBER</button>
+          </div>
+        </div>
+        {% else %}
         <button type="submit" class="dl-poke-btn" data-name="{{ poke.name|lower }}">
           <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(poke.name) }}';" style="width:34px;height:34px;object-fit:contain;" alt="">
           <span style="font-size:9px;color:#d1d5db;text-align:center;line-height:1.2;word-break:break-word;">{{ poke.name }}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--cyan);">{{ poke.points }}pt</span>
         </button>
+        {% endif %}
       </form>
       {% else %}
       <div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--text-mute);font-size:11px;font-family:'JetBrains Mono',monospace;">ALL PICKED</div>
@@ -375,8 +394,8 @@
 function filterPool(pool, q) {
   q = q.toLowerCase().trim();
   document.querySelectorAll('.pg-card-' + pool).forEach(function(card) {
-    var btn = card.querySelector('button');
-    card.style.display = (!q || (btn && btn.dataset.name.includes(q))) ? '' : 'none';
+    var name = card.dataset.name || (card.querySelector('button') && card.querySelector('button').dataset.name) || '';
+    card.style.display = (!q || name.includes(q)) ? '' : 'none';
   });
 }
 </script>
@@ -419,15 +438,31 @@ function filterPool(pool, q) {
     <input type="text" id="poke-search" class="dl-search" placeholder="Search Pokémon name…" oninput="filterPokes(this.value)" style="margin-bottom:10px;">
     <div id="poke-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:7px;max-height:260px;overflow-y:auto;padding-right:2px;">
       {% for poke in avail_pokemon %}
-      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card">
+      {% set ut = poke.tier_label if poke.tier_label in UBER_NAMED_LIST else "" %}
+      {% set uc = TC.get(ut, '') %}
+      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card" data-name="{{ poke.name|lower }}" data-uber="{{ ut }}">
         <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
         <input type="hidden" name="pick_pool" value="{{ my_pool or 'A' }}">
+        {% if ut %}
+        {# Uber-tier card: two submit buttons #}
+        <div class="dl-poke-btn" style="border-color:{{ uc }};padding-bottom:4px;gap:2px;">
+          <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(poke.name) }}';" style="width:40px;height:40px;object-fit:contain;" alt="">
+          <span style="font-size:11px;color:#d1d5db;text-align:center;line-height:1.2;word-break:break-word;">{{ poke.name }}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--cyan);">{{ poke.points }}pt</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:{{ uc }};">{{ ut }}</span>
+          <div style="display:flex;gap:3px;width:100%;margin-top:2px;">
+            <button type="submit" name="use_uber_slot" value="0" data-name="{{ poke.name|lower }}" style="flex:1;padding:3px 2px;border:1px solid var(--hairline);background:var(--panel);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:var(--text-mute);cursor:pointer;line-height:1;">PICK</button>
+            <button type="submit" name="use_uber_slot" value="1" style="flex:1;padding:3px 2px;border:1px solid {{ uc }};background:rgba(0,0,0,.3);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:{{ uc }};cursor:pointer;line-height:1;">UBER</button>
+          </div>
+        </div>
+        {% else %}
         <button type="submit" class="dl-poke-btn" data-name="{{ poke.name|lower }}">
           <img src="{{ pokemon_sprite_url(poke.name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(poke.name) }}';" style="width:40px;height:40px;object-fit:contain;" alt="">
           <span style="font-size:11px;color:#d1d5db;text-align:center;line-height:1.2;word-break:break-word;">{{ poke.name }}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--cyan);">{{ poke.points }}pt</span>
           {% if poke.tier_label %}<span style="font-size:9px;color:var(--text-mute);">{{ poke.tier_label }}</span>{% endif %}
         </button>
+        {% endif %}
       </form>
       {% else %}
       <div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--text-mute);font-size:12px;font-family:'JetBrains Mono',monospace;">No Pokémon available.</div>
@@ -439,8 +474,8 @@ function filterPool(pool, q) {
 function filterPokes(q) {
   q = q.toLowerCase().trim();
   document.querySelectorAll('#poke-grid .poke-card').forEach(function(c){
-    var btn = c.querySelector('button');
-    c.style.display = (!q || (btn && btn.dataset.name.includes(q))) ? '' : 'none';
+    var name = c.dataset.name || (c.querySelector('button') && c.querySelector('button').dataset.name) || '';
+    c.style.display = (!q || name.includes(q)) ? '' : 'none';
   });
 }
 var ticketSel = document.getElementById('ticket-override');

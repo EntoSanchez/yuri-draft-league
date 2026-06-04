@@ -3005,6 +3005,7 @@ TIER_ORDER = ["Uber 1", "Uber 2", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 
 
 # Plan Griffin draft system
 UBER_NAMED_TIERS = {"Platinum", "Gold", "Silver", "Bronze"}
+UBER_POINTS = {27: "Bronze", 28: "Silver", 29: "Gold"}
 TICKET_ALLOC   = {"T1": 1, "T2": 1, "T3": 2, "T4": 2, "T5": 2}
 TICKET_RANK    = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "T5": 5}
 TIER_TO_TICKET = {"Tier 1": "T1", "Tier 2": "T2", "Tier 3": "T3", "Tier 4": "T4", "Tier 5": "T5"}
@@ -3130,14 +3131,21 @@ def _valid_uber_second_choices(existing_named):
 
 
 def _get_coach_uber_named_tiers(db, coach_id, session_id):
-    """Named tier labels for a coach's uber picks in a session (e.g. ['Gold'])."""
+    """Named tier labels for a coach's uber picks in a session (e.g. ['Gold']).
+    Detects by tier_label first, falls back to points for picks made via UBER_POINTS."""
     rows = db.execute("""
-        SELECT dt.tier_label
+        SELECT dt.tier_label, dt.points
         FROM draft_picks dp
         JOIN draft_tiers dt ON dp.pokemon_name = dt.name
         WHERE dp.session_id=? AND dp.coach_id=? AND dp.slot_name IN ('Uber 1','Uber 2')
     """, (session_id, coach_id)).fetchall()
-    return [r["tier_label"] for r in rows if r["tier_label"] in UBER_NAMED_TIERS]
+    result = []
+    for r in rows:
+        if r["tier_label"] in UBER_NAMED_TIERS:
+            result.append(r["tier_label"])
+        elif (r["points"] or 0) in UBER_POINTS:
+            result.append(UBER_POINTS[r["points"]])
+    return result
 
 
 def _get_coach_draft_state(db, coach_id, session_id):
@@ -3397,8 +3405,15 @@ def draft_live():
                     continue
                 if is_first and p["name"] in mega_names_set:
                     continue
-                computed_tier = _regular_tier_label(p["points"] or 0)
-                result.append(dict(p, tier_label=computed_tier or p["tier_label"] or ""))
+                db_label = p["tier_label"] or ""
+                pts = p["points"] or 0
+                if db_label in UBER_NAMED_TIERS:
+                    tier_label = db_label
+                elif pts in UBER_POINTS:
+                    tier_label = UBER_POINTS[pts]
+                else:
+                    tier_label = _regular_tier_label(pts) or db_label
+                result.append(dict(p, tier_label=tier_label))
             return result
 
         avail_pokemon_a = _make_avail(picked_names_a, current_pick_a == 1)
@@ -3613,7 +3628,16 @@ def draft_live_pick():
 
         points = poke_row["points"] or 0
         poke_tier_label = poke_row["tier_label"] or ""
-        is_uber = poke_tier_label in UBER_NAMED_TIERS
+        use_uber_slot = request.form.get("use_uber_slot") == "1"
+        if poke_tier_label in UBER_NAMED_TIERS:
+            is_uber = True
+            effective_uber_tier = poke_tier_label
+        elif use_uber_slot and points in UBER_POINTS:
+            is_uber = True
+            effective_uber_tier = UBER_POINTS[points]
+        else:
+            is_uber = False
+            effective_uber_tier = ""
 
         mega_names_set = {r["name"] for r in db.execute(
             "SELECT name FROM draft_tiers WHERE is_mega=1"
@@ -3642,7 +3666,7 @@ def draft_live_pick():
 
         if is_uber:
             existing_uber = _get_coach_uber_named_tiers(db, coach_id, session_row["id"])
-            if not _can_add_uber(existing_uber, poke_tier_label):
+            if not _can_add_uber(existing_uber, effective_uber_tier):
                 valid_next = _valid_uber_second_choices(existing_uber)
                 if not valid_next:
                     flash("You have already used both uber picks.", "warning")
@@ -4080,10 +4104,16 @@ def admin_draft():
             all_draft = db.execute(
                 "SELECT * FROM draft_tiers WHERE is_banned != 1 ORDER BY points DESC, name"
             ).fetchall()
-            avail_pokemon_a = [dict(p, tier_label=_regular_tier_label(p["points"] or 0) or p["tier_label"] or "")
-                               for p in all_draft if p["name"] not in picked_names_a]
-            avail_pokemon_b = [dict(p, tier_label=_regular_tier_label(p["points"] or 0) or p["tier_label"] or "")
-                               for p in all_draft if p["name"] not in picked_names_b]
+            def _tl(p):
+                db_lbl = p["tier_label"] or ""
+                pts = p["points"] or 0
+                if db_lbl in UBER_NAMED_TIERS:
+                    return db_lbl
+                if pts in UBER_POINTS:
+                    return UBER_POINTS[pts]
+                return _regular_tier_label(pts) or db_lbl
+            avail_pokemon_a = [dict(p, tier_label=_tl(p)) for p in all_draft if p["name"] not in picked_names_a]
+            avail_pokemon_b = [dict(p, tier_label=_tl(p)) for p in all_draft if p["name"] not in picked_names_b]
 
             # Build roster grid
             try:
