@@ -26,9 +26,6 @@
   --tier-3:       #3dd9c2;
   --tier-4:       #7ddc6a;
   --tier-5:       #9a9aa8;
-  --uber-gold:    #ffc94d;
-  --uber-silver:  #d2d2dc;
-  --uber-bronze:  #d08552;
   --text:         #eaeaf2;
   --text-mute:    rgba(234,234,242,0.68);
   --text-dim:     rgba(234,234,242,0.46);
@@ -87,8 +84,6 @@
 .dp-tier-dots  { display:flex; gap:3px; }
 .dp-tier-dot   { width:8px; height:8px; border-radius:50%; border:1px solid; }
 .dp-tier-lbl   { font-family:var(--fm); font-size:9px; font-weight:700; }
-.dp-uber-slots { display:flex; gap:4px; align-items:center; }
-.dp-uber-chip  { font-family:var(--fm); font-size:10px; font-weight:700; padding:2px 6px; letter-spacing:0.05em; }
 
 /* ── Body grid ── */
 #dp-body {
@@ -732,8 +727,8 @@ function cancelCloseAC() {
 //  Slot tag helpers
 // ══════════════════════════════════════════════
 const TAG_MAP = {
-  'Uber 1':          { label:'U-1', color:'var(--uber-gold)' },
-  'Uber 2':          { label:'U-2', color:'var(--uber-silver)' },
+  'Uber 1':          { label:'U1',  color:'var(--tier-1)' },
+  'Uber 2':          { label:'U2',  color:'var(--tier-1)' },
   'Tier 1 (Paid)':   { label:'T1',  color:'var(--tier-1)' },
   'Tier 1 (Free)':   { label:'T1',  color:'var(--tier-1)' },
   'Tier 2 (Paid)':   { label:'T2',  color:'var(--tier-2)' },
@@ -751,7 +746,7 @@ const TAG_MAP = {
 function getSlotTag(t) { return TAG_MAP[t] || { label:'PT', color:'var(--magenta)' }; }
 
 const TYPE_NAME_MAP = {
-  'Uber 1':'UBER PICK · GLD','Uber 2':'UBER PICK · SLV',
+  'Uber 1':'UBER PICK','Uber 2':'UBER PICK',
   'Tier 1 (Paid)':'TIER 1 PICK','Tier 1 (Free)':'TIER 1 FREE',
   'Tier 2 (Paid)':'TIER 2 PICK','Tier 2 (Free)':'TIER 2 FREE',
   'Tier 3 (Paid)':'TIER 3 PICK','Tier 3 (Free)':'TIER 3 FREE',
@@ -905,20 +900,19 @@ function buildBudgetHUD() {
   const fpPct = Math.min(100, Math.round(fpSpent / BUDGET * 100));
   const fpOver = fpSpent > BUDGET;
 
-  // Tiers
+  // Tiers (U1/U2 count toward T1 display)
   const tierFilled = {}, tierTotal = {};
   ['T1','T2','T3','T4','T5'].forEach(t => { tierFilled[t] = 0; tierTotal[t] = 0; });
   slots.forEach(s => {
     const lbl = getSlotTag(s.type).label;
-    if (lbl && /^T[1-5]$/.test(lbl)) {
-      tierTotal[lbl] = (tierTotal[lbl] || 0) + 1;
-      if (s.pokemon) tierFilled[lbl] = (tierFilled[lbl] || 0) + 1;
+    const bucket = (lbl === 'U1' || lbl === 'U2') ? 'T1' : lbl;
+    if (bucket && /^T[1-5]$/.test(bucket)) {
+      tierTotal[bucket] = (tierTotal[bucket] || 0) + 1;
+      if (s.pokemon) tierFilled[bucket] = (tierFilled[bucket] || 0) + 1;
     }
   });
   const TIER_COLORS = {'T1':'var(--tier-1)','T2':'var(--tier-2)','T3':'var(--tier-3)','T4':'var(--tier-4)','T5':'var(--tier-5)'};
 
-  // Ubers
-  const uberSlots = slots.filter(s => s.type === 'Uber 1' || s.type === 'Uber 2');
 
   let html = `
     <div class="dp-hud-block">
@@ -947,20 +941,6 @@ function buildBudgetHUD() {
     html += `</div></div>`;
   }
 
-  if (uberSlots.length > 0) {
-    html += `<div class="dp-hud-sep"></div><div class="dp-hud-block"><div class="dp-hud-label">UBERS</div><div class="dp-uber-slots" style="margin-top:4px;">`;
-    uberSlots.forEach(s => {
-      const col = s.type === 'Uber 1' ? 'var(--uber-gold)' : 'var(--uber-silver)';
-      const lbl = s.type === 'Uber 1' ? 'GLD' : 'SLV';
-      if (s.pokemon) {
-        html += `<div class="dp-uber-chip" style="border:1px solid ${col};background:rgba(0,0,0,.3);color:${col};">${lbl}</div>`;
-      } else {
-        html += `<div style="width:30px;height:18px;border:1px dashed var(--hairline-2);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--text-dim);">—</div>`;
-      }
-    });
-    html += `</div></div>`;
-  }
-
   hud.innerHTML = html;
 }
 
@@ -976,27 +956,20 @@ function buildFocusedSlot(idx) {
 
   // Build header controls
   const isUber = slot.type === 'Uber 1' || slot.type === 'Uber 2';
-  const isTier = !isUber && (slot.type.startsWith('Tier') || slot.type === 'Mega (Free)');
+  const isTier = isUber || slot.type.startsWith('Tier') || slot.type === 'Mega (Free)';
 
-  let modeCtrl;
-  if (isUber) {
-    const mc = slot.type === 'Uber 1' ? 'var(--uber-gold)' : 'var(--uber-silver)';
-    const ml = slot.type === 'Uber 1' ? 'GLD UBER' : 'SLV UBER';
-    modeCtrl = `<div style="padding:5px 12px;border:1px solid ${mc};background:rgba(0,0,0,.3);font-family:var(--fm);font-size:13px;font-weight:700;color:${mc};letter-spacing:.05em;">${ml}</div>`;
-  } else {
-    const subTypes = isTier
-      ? ['Tier 1 (Paid)','Tier 1 (Free)','Tier 2 (Paid)','Tier 2 (Free)','Tier 3 (Paid)','Tier 3 (Free)','Tier 4 (Paid)','Tier 4 (Free)','Tier 5 (Paid)','Tier 5 (Free)','Mega (Free)']
-      : ['Point Pick (Paid)','Point Pick (Free)'];
-    const subOpts = subTypes.map(t => `<option value="${t}"${t===slot.type?' selected':''}>${t}</option>`).join('');
-    modeCtrl = `
-      <div style="display:flex;align-items:center;gap:6px;">
-        <select class="dp-type-select" style="font-size:9px;padding:1px 5px;max-width:110px;" onchange="onFocusedTypeChange(this.value)">${subOpts}</select>
-        <div class="dp-big-mode-toggle">
-          <button class="dp-mode-seg dp-mode-tier${isTier?' active':''}" onclick="setSlotMode(${idx},'tier')">TIER</button>
-          <button class="dp-mode-seg dp-mode-pt${!isTier?' active':''}" onclick="setSlotMode(${idx},'pt')">PT</button>
-        </div>
-      </div>`;
-  }
+  const subTypes = isTier
+    ? ['Uber 1','Uber 2','Tier 1 (Paid)','Tier 1 (Free)','Tier 2 (Paid)','Tier 2 (Free)','Tier 3 (Paid)','Tier 3 (Free)','Tier 4 (Paid)','Tier 4 (Free)','Tier 5 (Paid)','Tier 5 (Free)','Mega (Free)']
+    : ['Point Pick (Paid)','Point Pick (Free)'];
+  const subOpts = subTypes.map(t => `<option value="${t}"${t===slot.type?' selected':''}>${t}</option>`).join('');
+  const modeCtrl = `
+    <div style="display:flex;align-items:center;gap:6px;">
+      <select class="dp-type-select" style="font-size:9px;padding:1px 5px;max-width:110px;" onchange="onFocusedTypeChange(this.value)">${subOpts}</select>
+      <div class="dp-big-mode-toggle">
+        <button class="dp-mode-seg dp-mode-tier${isTier?' active':''}" onclick="setSlotMode(${idx},'tier')">TIER</button>
+        <button class="dp-mode-seg dp-mode-pt${!isTier?' active':''}" onclick="setSlotMode(${idx},'pt')">PT</button>
+      </div>
+    </div>`;
 
   panel.innerHTML = `
     <div aria-hidden="true" style="position:absolute;top:-50px;right:-50px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,61,151,.14),transparent 60%);pointer-events:none;"></div>
@@ -1196,7 +1169,7 @@ function onFocusedTypeChange(val) {
 
 function setSlotMode(idx, mode) {
   const slot = slots[idx];
-  const isTier = slot.type.startsWith('Tier') || slot.type === 'Mega (Free)';
+  const isTier = slot.type.startsWith('Tier') || slot.type === 'Mega (Free)' || slot.type === 'Uber 1' || slot.type === 'Uber 2';
   if (mode === 'tier' && !isTier) slot.type = 'Tier 1 (Paid)';
   else if (mode === 'pt' && isTier) slot.type = 'Point Pick (Paid)';
   buildFocusedSlot(idx);

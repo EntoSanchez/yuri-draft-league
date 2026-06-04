@@ -4250,7 +4250,7 @@ def draft_prep():
 def battle_prep():
     with get_db() as db:
         coaches = db.execute(
-            "SELECT id, coach_name, team_name, color FROM coaches ORDER BY coach_name"
+            "SELECT id, coach_name, team_name, color, logo_url FROM coaches ORDER BY coach_name"
         ).fetchall()
         roster_rows = db.execute(
             """SELECT pr.coach_id, pr.pokemon_name, pr.points, pr.tier,
@@ -4273,6 +4273,7 @@ def battle_prep():
             "name": c["coach_name"],
             "team_name": c["team_name"] or c["coach_name"],
             "color": c["color"] or "#6b7280",
+            "logo_url": c["logo_url"] or "",
             "pokemon": [],
         }
 
@@ -4306,6 +4307,7 @@ def battle_prep():
             "spa": spa or 0, "spd": spd or 0, "spe": spe or 0,
             "bst": (hp + atk + defense + spa + spd + spe) if pd else 0,
             "sprite": pokemon_static_sprite_url(r["pokemon_name"]),
+            "sprite_anim": pokemon_sprite_url(r["pokemon_name"]),
         })
 
     return render_template(

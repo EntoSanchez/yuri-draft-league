@@ -94,11 +94,16 @@
   padding: 2px 7px; border-radius: 0;
 }
 /* ── heatmap table ─────────────────────────────────────────── */
-.vd-hm td, .vd-hm th {
-  padding: 4px 0; text-align: center;
-  border: 1px solid rgba(55,65,81,.2);
-}
-.vd-hm td:first-child { text-align: left; padding: 4px 8px; }
+#bp-type-chart td, #bp-type-chart th { width:28px; height:22px; text-align:center; font-size:0.55rem; border:1px solid var(--hairline); padding:0; }
+#bp-type-chart td:first-child { text-align:left; width:80px; padding:1px 4px; font-size:0.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bp-type-chart th:first-child { text-align:left; width:80px; padding:1px 4px; }
+.eff-0   { background:rgba(20,20,40,0.9);        color:#6b7280; }
+.eff-0ab { background:rgba(139,92,246,0.3);       color:#c4b5fd; }
+.eff-25  { background:rgba(239,68,68,0.3);        color:#fca5a5; }
+.eff-50  { background:rgba(239,68,68,0.2);        color:#fca5a5; }
+.eff-100 { background:transparent;               color:var(--text-dim); }
+.eff-200 { background:rgba(61,229,255,0.15);      color:#86efac; }
+.eff-400 { background:rgba(61,229,255,0.35);      color:var(--lime); }
 /* ── move row ──────────────────────────────────────────────── */
 .vd-mv-row {
   display: grid;
@@ -390,23 +395,30 @@ function onSelectChange() {
   renderAll();
 }
 
+function setLogoEl(el, coach) {
+  if (coach.logo_url) {
+    el.innerHTML = `<img src="${coach.logo_url}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:50%">`;
+    el.style.background = "var(--panel-2)";
+    el.style.borderColor = coach.color || "var(--hairline)";
+  } else {
+    el.innerHTML = (coach.team_name||coach.name).slice(0,2).toUpperCase();
+    el.style.background = coach.color || "#6b7280";
+    el.style.borderColor = coach.color || "#6b7280";
+  }
+}
 function updateHeader() {
   const la = document.getElementById("logo-a");
   const lb = document.getElementById("logo-b");
   const ma = document.getElementById("meta-a");
   const mb = document.getElementById("meta-b");
   if (S.myCoach) {
-    la.style.background = S.myCoach.color;
-    la.style.borderColor = S.myCoach.color;
-    la.textContent = (S.myCoach.team_name||S.myCoach.name).slice(0,2).toUpperCase();
+    setLogoEl(la, S.myCoach);
     ma.innerHTML = `<span>${S.myCoach.name.toUpperCase()}</span><span style="color:var(--hairline-2)">·</span><span>${S.myTeam.length} MON</span>`;
-  } else { la.style.background="var(--panel-2)"; la.style.borderColor="var(--hairline)"; la.textContent="–"; ma.innerHTML=""; }
+  } else { la.style.background="var(--panel-2)"; la.style.borderColor="var(--hairline)"; la.innerHTML="–"; ma.innerHTML=""; }
   if (S.oppCoach) {
-    lb.style.background = S.oppCoach.color;
-    lb.style.borderColor = S.oppCoach.color;
-    lb.textContent = (S.oppCoach.team_name||S.oppCoach.name).slice(0,2).toUpperCase();
+    setLogoEl(lb, S.oppCoach);
     mb.innerHTML = `<span>${S.oppCoach.name.toUpperCase()}</span><span style="color:var(--hairline-2)">·</span><span>${S.oppTeam.length} MON</span>`;
-  } else { lb.style.background="var(--panel-2)"; lb.style.borderColor="var(--hairline)"; lb.textContent="–"; mb.innerHTML=""; }
+  } else { lb.style.background="var(--panel-2)"; lb.style.borderColor="var(--hairline)"; lb.innerHTML="–"; mb.innerHTML=""; }
   refreshVerdict();
 }
 
@@ -479,8 +491,13 @@ function renderStats() {
       }).join("");
       const tcs=[p.type1,p.type2].filter(Boolean).map(t=>`<span style="font-size:6.5px;font-weight:700;font-family:var(--font-mono);background:${(TYPE_COLORS[t]||"#374151")}20;color:${TYPE_COLORS[t]||"#9ca3af"};border:1px solid ${(TYPE_COLORS[t]||"#374151")}30;padding:1px 4px;border-radius:1px">${t}</span>`).join("");
       const bst=STAT_KEYS.reduce((s,k)=>s+(p[k]||0),0);
-      return `<div style="display:grid;grid-template-columns:96px 1fr 38px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">
-        <div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap">${tcs}</div></div>
+      const sprSrc=p.sprite_anim||p.sprite||"";
+      const spr=sprSrc?`<img src="${sprSrc}" alt="" width="48" height="48" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:`<div style="width:48px;height:48px;flex-shrink:0"></div>`;
+      return `<div style="display:grid;grid-template-columns:112px 1fr 38px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">
+        <div style="display:flex;align-items:center;gap:6px">
+          ${spr}
+          <div style="min-width:0"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap">${tcs}</div></div>
+        </div>
         <div style="display:flex;align-items:flex-end;gap:2px;height:${BH+12}px">${bars}</div>
         <div style="text-align:right"><div style="font-family:var(--font-mono);font-size:7px;color:var(--text-dim)">${hl==="none"?"BST":STAT_LABEL[hl]}</div><span style="font-family:var(--font-mono);font-size:${hl==="none"?11:13}px;font-weight:${hl==="none"?600:700};color:${accent}">${hl==="none"?bst:(p[hl]||0)}</span></div>
       </div>`;
@@ -551,28 +568,101 @@ function renderHeatmap() {
     el.innerHTML=`<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);padding:12px 0">Select your team to see defense.</div>`;
     return;
   }
-  const hdrs = BPV_ATK.map(a=>`<th style="text-align:center;padding:4px 2px;border:1px solid rgba(232,232,248,.1)"><div style="display:inline-flex;width:26px;height:14px;align-items:center;justify-content:center;background:${a.col}18;border:1px solid ${a.col}40;font-family:var(--font-mono);font-size:7px;font-weight:700;color:${a.col};border-radius:1px">${a.code}</div></th>`).join("");
-  const rows = S.myTeam.map(p=>{
-    const imm=S.abilities?getAbilImm(p):{};
-    const dts=[p.type1,p.type2].filter(Boolean);
-    const cells=BPV_ATK.map(a=>{
+
+  const table = document.createElement('table');
+  table.id = 'bp-type-chart';
+  table.style.borderCollapse = 'collapse';
+
+  // Header: all 18 type columns with vertical colored labels
+  const thead = document.createElement('thead');
+  const hdrRow = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.style.cssText = 'font-size:0.5rem;color:var(--text-dim);text-align:left;';
+  corner.textContent = 'Def / Atk';
+  hdrRow.appendChild(corner);
+  TYPES.forEach(t => {
+    const th = document.createElement('th');
+    const col = TYPE_COLORS[t] || '#4b5563';
+    th.style.cssText = `background:${col}22;color:${col};writing-mode:vertical-lr;transform:rotate(180deg);height:52px;font-size:0.5rem;font-weight:700;padding:2px 0;`;
+    th.textContent = t;
+    hdrRow.appendChild(th);
+  });
+  thead.appendChild(hdrRow);
+  table.appendChild(thead);
+
+  // Body: one row per pokemon
+  const tbody = document.createElement('tbody');
+  S.myTeam.forEach(p => {
+    const defTypes = [p.type1, p.type2].filter(Boolean);
+    const abilityImm = S.abilities ? getAbilImm(p) : {};
+    const hasImm = Object.keys(abilityImm).length > 0;
+    const tr = document.createElement('tr');
+    const nameCell = document.createElement('td');
+    nameCell.style.color = 'var(--cyan)';
+    nameCell.textContent = (p.name.length > 9 ? p.name.slice(0,8)+'…' : p.name) + (hasImm ? ' ★' : '');
+    if (hasImm) nameCell.title = 'Ability immunity: ' + Object.keys(abilityImm).join(', ');
+    tr.appendChild(nameCell);
+    TYPES.forEach((atkType, atkIdx) => {
       let mult;
-      if (imm[a.name]===0) { mult=0; }
-      else {
-        mult=100;
-        dts.forEach(dt=>{const di=TYPES.indexOf(dt);if(di>=0)mult=mult*EFF_MATRIX[a.idx][di]/100;});
-        mult/=100;
-      }
-      const f=mFmt(mult);
-      const str=mult>=2||mult===0||mult<=.5;
-      return `<td style="text-align:center;padding:5px 0;border:1px solid rgba(232,232,248,.08);font-family:var(--font-mono);font-size:11px;font-weight:${str?700:400};color:${f.col};background:${f.bg}">${f.sym}</td>`;
-    }).join("");
-    const nm=p.name.length>11?p.name.slice(0,10)+"…":p.name;
-    return `<tr><td style="text-align:left;padding:4px 8px;border:1px solid rgba(232,232,248,.08);font-family:var(--font-mono);font-size:9px;color:var(--cyan);white-space:nowrap">${nm}</td>${cells}</tr>`;
-  }).join("");
-  el.innerHTML=`<table class="vd-hm" style="border-collapse:collapse;width:100%"><thead><tr>
-    <th style="text-align:left;padding:4px 8px;border:1px solid rgba(232,232,248,.1);font-family:var(--font-mono);font-size:8px;color:var(--text-dim)">MON</th>${hdrs}
-  </tr></thead><tbody>${rows}</tbody></table>`;
+      if (abilityImm[atkType] === 0) { mult = 0; }
+      else { mult = 100; defTypes.forEach(dt => { const di = TYPES.indexOf(dt); if (di >= 0) mult = mult * EFF_MATRIX[atkIdx][di] / 100; }); }
+      const td = document.createElement('td');
+      if (abilityImm[atkType] === 0) { td.className='eff-0ab'; td.textContent='❆'; td.title='Ability immune'; }
+      else if (mult === 0)           { td.className='eff-0';   td.textContent='0'; }
+      else if (mult <= 25)           { td.className='eff-25';  td.textContent='¼'; }
+      else if (mult <= 50)           { td.className='eff-50';  td.textContent='½'; }
+      else if (mult === 100)         { td.className='eff-100'; td.textContent='1'; }
+      else if (mult <= 200)          { td.className='eff-200'; td.textContent='2×'; }
+      else                           { td.className='eff-400'; td.textContent='4×'; }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  // Totals footer: net score per attack type (4x=+2, 2x=+1, 1=0, 1/2=-1, 1/4=-2, 0=-3)
+  const SCORE = {400:2, 200:1, 100:0, 50:-1, 25:-2, 0:-3};
+  const tfoot = document.createElement('tfoot');
+  const totRow = document.createElement('tr');
+  const totLabel = document.createElement('td');
+  totLabel.style.cssText = 'font-size:0.55rem;color:var(--cyan);font-weight:700;letter-spacing:0.06em;border-top:2px solid var(--hairline-2);';
+  totLabel.textContent = 'TOTAL';
+  totRow.appendChild(totLabel);
+  TYPES.forEach((atkType, atkIdx) => {
+    let score = 0, wk = 0, imm = 0, res = 0;
+    S.myTeam.forEach(p => {
+      const defTypes = [p.type1, p.type2].filter(Boolean);
+      const abilityImm = S.abilities ? getAbilImm(p) : {};
+      let mult;
+      if (abilityImm[atkType] === 0) { mult = 0; }
+      else { mult = 100; defTypes.forEach(dt => { const di = TYPES.indexOf(dt); if (di >= 0) mult = mult * EFF_MATRIX[atkIdx][di] / 100; }); }
+      score += SCORE[mult] ?? 0;
+      if (mult >= 200) wk++;
+      else if (mult === 0) imm++;
+      else if (mult <= 50) res++;
+    });
+    const td = document.createElement('td');
+    td.style.cssText = 'font-family:var(--font-mono);font-size:0.6rem;font-weight:700;text-align:center;padding:2px 0;border:1px solid var(--hairline);border-top:2px solid var(--hairline-2);';
+    if (score > 0) {
+      td.style.background = `rgba(239,68,68,${Math.min(0.65,score*0.12)})`;
+      td.style.color = '#fca5a5';
+      td.textContent = '+' + score;
+    } else if (score < 0) {
+      td.style.background = `rgba(61,229,255,${Math.min(0.5,Math.abs(score)*0.08)})`;
+      td.style.color = '#86efac';
+      td.textContent = score;
+    } else {
+      td.style.color = 'var(--text-dim)';
+      td.textContent = '·';
+    }
+    td.title = `${wk} weak · ${imm} immune · ${res} resist`;
+    totRow.appendChild(td);
+  });
+  tfoot.appendChild(totRow);
+  table.appendChild(tfoot);
+
+  el.innerHTML = '<div style="font-size:9px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px;letter-spacing:.06em">DEF ↓ / ATK →  ·  ★ = ABILITY IMMUNE</div><div style="overflow-x:auto"></div>';
+  el.querySelector('div:last-child').appendChild(table);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -594,8 +684,8 @@ function renderSpeed() {
   if (S.speedStyle==="creep") { renderCreep(el); return; }
 
   const all=[
-    ...S.myTeam.map(p=>({name:p.name,spe:p.spe||0,side:"me"})),
-    ...S.oppTeam.map(p=>({name:p.name,spe:p.spe||0,side:"opp"})),
+    ...S.myTeam.map(p=>({name:p.name,spe:p.spe||0,side:"me",sprite:p.sprite,sprite_anim:p.sprite_anim})),
+    ...S.oppTeam.map(p=>({name:p.name,spe:p.spe||0,side:"opp",sprite:p.sprite,sprite_anim:p.sprite_anim})),
   ].sort((a,b)=>b.spe-a.spe);
 
   if (!all.length) { el.innerHTML=`<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">Select teams to see speed.</div>`; return; }
@@ -628,9 +718,12 @@ function renderSpeed() {
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:3px">
     ${all.map((m,i)=>{
       const c=m.side==="me"?"var(--cyan)":"var(--magenta)";
+      const spd_spr=m.sprite_anim||m.sprite||"";
+      const spd_img=spd_spr?`<img src="${spd_spr}" alt="" width="28" height="28" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:"";
       return `<div style="display:grid;grid-template-columns:18px 1fr 1fr 28px;align-items:center;gap:8px">
         <span style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);text-align:right">${String(i+1).padStart(2,"0")}</span>
         <div style="display:flex;align-items:center;gap:4px">
+          ${spd_img}
           <span style="width:3px;height:13px;background:${c};box-shadow:0 0 5px ${c};flex-shrink:0"></span>
           <span style="font-family:var(--font-mono);font-size:9.5px;color:${c};font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.name}</span>
         </div>

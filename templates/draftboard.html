@@ -744,9 +744,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb">
-                  <img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">
-                </span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
@@ -814,7 +812,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
@@ -880,7 +878,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
@@ -946,7 +944,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
@@ -1012,7 +1010,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
@@ -1078,7 +1076,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
@@ -1144,7 +1142,7 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
+                <span class="poke-orb">{%- if is_drafted -%}{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" style="width:28px;height:28px;object-fit:contain;border-radius:50%" onerror="this.style.opacity='0.1'">{%- else -%}<span style="font-size:8px;font-weight:700;font-family:var(--font-mono);color:var(--text-dim)">{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}{%- else -%}<img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'">{%- endif -%}</span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
