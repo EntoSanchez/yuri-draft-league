@@ -131,9 +131,6 @@
       {% set oc = coaches_map[pool_coach_id] %}
       <div class="dl-ey">// ON_CLOCK</div>
       <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--magenta);margin-top:2px;text-transform:uppercase;white-space:nowrap;">{{ oc.get('team_name','?') }}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);margin-top:1px;">
-        SLOT <span style="color:{{ TC.get(pool_slot[2],'var(--text-mute)') }};font-weight:700;">{{ TS.get(pool_slot[2], pool_slot[2]) }}</span>
-      </div>
       {% else %}
       <div class="dl-ey dim">// COMPLETE</div>
       {% endif %}
@@ -311,9 +308,17 @@
   {% set cc = coaches_map.get(slot[3]) if slot else none %}
   <div class="dl-pick-panel">
     {# Header #}
+    {% set bp = bank_pending_a if pool_label == 'A' else bank_pending_b %}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <span class="dl-ey">// POOL_{{ pool_label }} · ON_CLOCK</span>
-      {% if slot %}<span class="dl-chip">SLOT <span style="color:{{ TC.get(slot[2],'var(--text-mute)') }};font-weight:700;margin-left:4px;">{{ TS.get(slot[2], slot[2]) }}</span></span>{% endif %}
+      <span class="dl-ey">// POOL_{{ pool_label }} · {% if bp %}BANK_PICK{% else %}ON_CLOCK{% endif %}</span>
+      {% if slot and not bp %}
+      <form method="POST" action="{{ url_for('draft_live_skip') }}" style="margin:0">
+        <input type="hidden" name="pick_pool" value="{{ pool_label }}">
+        <button type="submit" style="padding:3px 10px;border:1px solid var(--hairline);border-radius:2px;background:transparent;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-dim);cursor:pointer;letter-spacing:.08em;">SKIP</button>
+      </form>
+      {% elif bp %}
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 8px;border:1px solid var(--amber);border-radius:2px;color:var(--amber);letter-spacing:.08em;">MAKEUP PICK</span>
+      {% endif %}
     </div>
 
     {% if cc %}
@@ -408,7 +413,6 @@ function filterPool(pool, q) {
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <div style="width:8px;height:8px;border-radius:50%;background:var(--magenta);animation:dl-pulse 1.5s infinite;"></div>
       <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text);">Your Pick</span>
-      {% if current_slot %}<span class="dl-chip" style="margin-left:auto;">SLOT <span style="color:{{ TC.get(current_slot[2],'var(--text-mute)') }};font-weight:700;margin-left:4px;">{{ TS.get(current_slot[2], current_slot[2]) }}</span></span>{% endif %}
     </div>
 
     {% if current_draft_state and current_draft_state.mode == 'points' %}

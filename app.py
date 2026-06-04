@@ -46,6 +46,9 @@ def _migrate_db():
             "ALTER TABLE coaches ADD COLUMN is_defending_champ INTEGER DEFAULT 0",
             "ALTER TABLE draft_sessions ADD COLUMN current_pick_a INTEGER DEFAULT 1",
             "ALTER TABLE draft_sessions ADD COLUMN current_pick_b INTEGER DEFAULT 1",
+            "ALTER TABLE draft_sessions ADD COLUMN bank_pending_a INTEGER DEFAULT 0",
+            "ALTER TABLE draft_sessions ADD COLUMN bank_pending_b INTEGER DEFAULT 0",
+            "ALTER TABLE draft_sessions ADD COLUMN banked_picks TEXT DEFAULT '{}'",
             "ALTER TABLE pokemon_roster ADD COLUMN is_zmove_captain INTEGER DEFAULT 0",
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
         ]:
@@ -3383,6 +3386,14 @@ def draft_live():
         current_coach_a_id = current_slot_a[3] if current_slot_a else None
         current_coach_b_id = current_slot_b[3] if current_slot_b else None
 
+        # Bank picks: override on-clock coach if there's a pending bank turn
+        bank_pending_a = session_row["bank_pending_a"] or 0
+        bank_pending_b = session_row["bank_pending_b"] or 0
+        if bank_pending_a and bank_pending_a in coaches_map:
+            current_coach_a_id = bank_pending_a
+        if bank_pending_b and bank_pending_b in coaches_map:
+            current_coach_b_id = bank_pending_b
+
         next_5_a = seq_a[current_pick_a - 1: current_pick_a + 4] if seq_a else []
         next_5_b = seq_b[current_pick_b - 1: current_pick_b + 4] if seq_b else []
 
@@ -3536,6 +3547,8 @@ def draft_live():
         my_coach_id=my_coach_id,
         my_picks=my_picks,
         coaches_draft_states=coaches_draft_states,
+        bank_pending_a=bank_pending_a,
+        bank_pending_b=bank_pending_b,
         current_draft_state=current_draft_state,
         current_draft_state_a=current_draft_state_a,
         current_draft_state_b=current_draft_state_b,
@@ -3598,11 +3611,22 @@ def draft_live_pick():
 
         current_pick = (session_row["current_pick_a"] or 1) if pick_pool == "A" else (session_row["current_pick_b"] or 1)
 
-        if not seq or current_pick < 1 or current_pick > len(seq):
+        # Check if there's a bank pick pending for this pool
+        bank_pending_col = "bank_pending_a" if pick_pool == "A" else "bank_pending_b"
+        bank_pending_coach_id = session_row[bank_pending_col] or 0
+        is_bank_pick = bool(bank_pending_coach_id)
+
+        if not is_bank_pick and (not seq or current_pick < 1 or current_pick > len(seq)):
             flash("Draft is complete or pick number is invalid.", "warning")
             return redirect(url_for("draft_live"))
 
-        pick_num, round_idx, slot_name, coach_id = seq[current_pick - 1]
+        if seq and 0 < current_pick <= len(seq):
+            pick_num, round_idx, slot_name, _seq_coach_id = seq[current_pick - 1]
+        else:
+            pick_num, round_idx, slot_name, _seq_coach_id = 0, 0, "Free Pick", 0
+
+        # Bank pick overrides the on-clock coach; regular pick uses sequence
+        coach_id = bank_pending_coach_id if is_bank_pick else _seq_coach_id
 
         if not is_admin and my_coach_id != coach_id:
             flash("It's not your turn.", "warning")
@@ -3741,12 +3765,84 @@ def draft_live_pick():
             (coach_id, pokemon_name, points, actual_slot, 1 if is_free else 0)
         )
         pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
-        db.execute(
-            f"UPDATE draft_sessions SET {pick_col}=? WHERE id=?",
-            (current_pick + 1, session_row["id"])
-        )
+        if is_bank_pick:
+            # Consume the bank pick — clear bank_pending, keep current_pick unchanged
+            db.execute(
+                f"UPDATE draft_sessions SET {bank_pending_col}=0 WHERE id=?",
+                (session_row["id"],)
+            )
+        else:
+            # Advance to next pick in sequence
+            db.execute(
+                f"UPDATE draft_sessions SET {pick_col}=? WHERE id=?",
+                (current_pick + 1, session_row["id"])
+            )
+            # Check if the coach who just picked has a banked pick to use
+            try:
+                banked = json.loads(session_row["banked_picks"] or "{}")
+            except Exception:
+                banked = {}
+            if banked.get(str(coach_id), 0) > 0:
+                banked[str(coach_id)] -= 1
+                db.execute(
+                    f"UPDATE draft_sessions SET {bank_pending_col}=?, banked_picks=? WHERE id=?",
+                    (coach_id, json.dumps(banked), session_row["id"])
+                )
 
     flash(f"Picked {pokemon_name}!", "success")
+    return redirect(url_for("draft_live"))
+
+
+@app.route("/draft/live/skip", methods=["POST"])
+def draft_live_skip():
+    if session.get("role") != "admin":
+        flash("Admin only.", "warning")
+        return redirect(url_for("draft_live"))
+    pick_pool = request.form.get("pick_pool", "A")
+    with get_db() as db:
+        sess = db.execute(
+            "SELECT * FROM draft_sessions WHERE status='active' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not sess:
+            flash("No active draft session.", "warning")
+            return redirect(url_for("draft_live"))
+        settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
+        rs_str = settings.get("draft_round_structure", "")
+        try:
+            rs = json.loads(rs_str) if rs_str else DEFAULT_ROUND_STRUCTURE
+        except Exception:
+            rs = DEFAULT_ROUND_STRUCTURE
+        so = json.loads(sess["snake_order"] or "[]")
+        coaches_all = db.execute("SELECT * FROM coaches ORDER BY pool, id").fetchall()
+        p_ids = {c["id"] for c in coaches_all if c["pool"] == pick_pool}
+        seq = _get_pool_sequence(so, p_ids, rs)
+        pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
+        bank_col = "bank_pending_a" if pick_pool == "A" else "bank_pending_b"
+        cur = (sess["current_pick_a"] or 1) if pick_pool == "A" else (sess["current_pick_b"] or 1)
+        if not seq or cur < 1 or cur > len(seq):
+            flash("No current pick slot to skip.", "warning")
+            return redirect(url_for("draft_live"))
+        slot = seq[cur - 1]
+        coach_id, tier, pick_num = slot[3], slot[2], slot[0]
+        # Record a skip placeholder in draft_picks
+        db.execute(
+            "INSERT INTO draft_picks (session_id, pick_number, coach_id, pokemon_name, tier, is_free_pick) "
+            "VALUES (?,?,?,?,?,0)",
+            (sess["id"], pick_num, coach_id, "(SKIP)", tier)
+        )
+        # Bank a pick for the skipped coach
+        try:
+            banked = json.loads(sess["banked_picks"] or "{}")
+        except Exception:
+            banked = {}
+        banked[str(coach_id)] = banked.get(str(coach_id), 0) + 1
+        db.execute(
+            f"UPDATE draft_sessions SET {pick_col}=?, banked_picks=? WHERE id=?",
+            (cur + 1, json.dumps(banked), sess["id"])
+        )
+        coach_row = next((c for c in coaches_all if c["id"] == coach_id), None)
+        cname = coach_row["team_name"] if coach_row else str(coach_id)
+        flash(f"Pool {pick_pool} skipped — {cname} will get a makeup pick next turn.", "info")
     return redirect(url_for("draft_live"))
 
 
