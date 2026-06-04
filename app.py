@@ -4293,6 +4293,25 @@ def battle_prep():
             "SELECT pokeapi_name, type1, type2, hp, atk, def_stat, spa, spd, spe FROM pokedex"
         ).fetchall()
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
+        pickem_rows = db.execute("""
+            SELECT s.coach1_id, s.coach2_id, s.week,
+                   SUM(CASE WHEN pv.picked_coach_id = s.coach1_id THEN 1 ELSE 0 END) AS c1_votes,
+                   COUNT(*) AS total_votes
+            FROM schedule s
+            JOIN pickem_votes pv ON pv.match_id = s.id
+            GROUP BY s.id
+        """).fetchall()
+
+    pickem_map = {}
+    for r in pickem_rows:
+        c1, c2, total = r["coach1_id"], r["coach2_id"], r["total_votes"] or 0
+        c1_pct = round(r["c1_votes"] / total * 100) if total > 0 else 50
+        key = f"{min(c1, c2)}_{max(c1, c2)}"
+        pickem_map[key] = {
+            "c1_id": c1, "c2_id": c2,
+            "c1_pct": c1_pct, "c2_pct": 100 - c1_pct,
+            "total": total, "week": r["week"],
+        }
 
     pokedex_map = {r["pokeapi_name"]: r for r in pokedex_rows}
 
@@ -4343,6 +4362,7 @@ def battle_prep():
     return render_template(
         "battle_prep.html",
         coaches_json=json.dumps(list(coaches_data.values())),
+        pickem_json=json.dumps(pickem_map),
         league_name=settings.get("league_name", "Pokemon Draft League"),
     )
 

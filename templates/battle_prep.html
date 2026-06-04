@@ -259,6 +259,7 @@
 
 <script>
 const COACHES = {{ coaches_json | safe }};
+const PICKEM_MAP = {{ pickem_json | safe }};
 
 // ─────────────────────────────────────────────────────────────────────────
 // TYPE DATA
@@ -343,7 +344,7 @@ const BP_MOVE_CATS = [
 // ─────────────────────────────────────────────────────────────────────────
 const S = {
   myTeam:[], oppTeam:[], myCoach:null, oppCoach:null,
-  winProb:50, abilities:true,
+  winProb:50, pickem:null, abilities:true,
   statHL:"none", statView:"bars",
   speedStyle:"tiers", speedTarget:null,
   speedBench:"max", speedMode:"min", speedEV:252, speedIV:31,
@@ -389,6 +390,12 @@ function onSelectChange() {
   S.oppCoach = COACHES.find(c=>c.id===oppId) || null;
   S.myTeam   = S.myCoach  ? S.myCoach.pokemon  : [];
   S.oppTeam  = S.oppCoach ? S.oppCoach.pokemon : [];
+  if (S.myCoach && S.oppCoach) {
+    const key = Math.min(S.myCoach.id, S.oppCoach.id)+"_"+Math.max(S.myCoach.id, S.oppCoach.id);
+    S.pickem = PICKEM_MAP[key] || null;
+  } else {
+    S.pickem = null;
+  }
   if (S.oppTeam.length && (!S.speedTarget||!S.oppTeam.find(p=>p.name===S.speedTarget)))
     S.speedTarget = S.oppTeam[0].name;
   updateHeader();
@@ -424,22 +431,45 @@ function updateHeader() {
 
 function setWP(v) { S.winProb=parseInt(v); refreshVerdict(); }
 function verdictClick(e, el) {
+  if (S.pickem) return;
   const r = el.getBoundingClientRect();
   S.winProb = Math.max(0,Math.min(100,Math.round(((e.clientX-r.left)/r.width)*100)));
   document.getElementById("wp-range").value = S.winProb;
   refreshVerdict();
 }
 function refreshVerdict() {
-  const p=S.winProb, o=100-p;
+  const sliderEl = document.getElementById("wp-range");
+  const barEl    = document.getElementById("verdict-bar");
+  const lbl      = document.getElementById("verdict-lbl");
+  if (!S.myCoach && !S.oppCoach) {
+    document.getElementById("vbar-me").style.width ="50%";
+    document.getElementById("vbar-opp").style.width="50%";
+    document.getElementById("pct-me").textContent  ="50%";
+    document.getElementById("pct-opp").textContent ="50%";
+    lbl.textContent="NO TEAMS SELECTED"; lbl.style.color="var(--text-dim)";
+    sliderEl.style.display=""; barEl.style.cursor="pointer"; return;
+  }
+  const mN=(S.myCoach?.team_name||S.myCoach?.name||"YOU").toUpperCase();
+  const oN=(S.oppCoach?.team_name||S.oppCoach?.name||"OPP").toUpperCase();
+  let p, sublbl;
+  if (S.pickem) {
+    const myIsC1 = S.pickem.c1_id === S.myCoach?.id;
+    p = myIsC1 ? S.pickem.c1_pct : S.pickem.c2_pct;
+    sublbl = `PICKEMS · ${S.pickem.total} VOTE${S.pickem.total===1?"":"S"} · WK ${S.pickem.week}`;
+    sliderEl.style.display="none";
+    barEl.style.cursor="default";
+  } else {
+    p = S.winProb;
+    sublbl = Math.abs(p-(100-p))+"-PT SWING";
+    sliderEl.style.display="";
+    barEl.style.cursor="pointer";
+  }
+  const o=100-p;
   document.getElementById("vbar-me").style.width  = p+"%";
   document.getElementById("vbar-opp").style.width = o+"%";
   document.getElementById("pct-me").textContent   = p+"%";
   document.getElementById("pct-opp").textContent  = o+"%";
-  const lbl = document.getElementById("verdict-lbl");
-  if (!S.myCoach&&!S.oppCoach) { lbl.textContent="NO TEAMS SELECTED"; lbl.style.color="var(--text-dim)"; return; }
-  const mN=(S.myCoach?.team_name||S.myCoach?.name||"YOU").toUpperCase();
-  const oN=(S.oppCoach?.team_name||S.oppCoach?.name||"OPP").toUpperCase();
-  lbl.textContent = (p>=o?mN:oN)+" FAVORED · "+Math.abs(p-o)+"-PT SWING";
+  lbl.textContent = (p>=o?mN:oN)+" FAVORED · "+sublbl;
   lbl.style.color = p>=o ? "var(--cyan)" : "var(--magenta)";
 }
 
