@@ -2401,6 +2401,10 @@ def ensure_playoffs_table(db):
     cols_stats = [r[1] for r in db.execute("PRAGMA table_info(match_stats)").fetchall()]
     if "playoff_match_id" not in cols_stats:
         db.execute("ALTER TABLE match_stats ADD COLUMN playoff_match_id INTEGER DEFAULT NULL")
+    # Add LIVE-status column for bracket display
+    cols_pm = [r[1] for r in db.execute("PRAGMA table_info(playoff_matches)").fetchall()]
+    if "match_status" not in cols_pm:
+        db.execute("ALTER TABLE playoff_matches ADD COLUMN match_status TEXT DEFAULT NULL")
 
 
 def _bracket_seeding(size):
@@ -2540,6 +2544,159 @@ def _build_playoff_rounds(matches_raw, coaches_map):
     return wb, lb, gf
 
 
+def _build_bracket_json(matches_raw, coaches_map, settings):
+    """Build structured bracket data for the classic playoff bracket view."""
+    wb = [m for m in matches_raw if m["bracket"] == "W"]
+    if not wb:
+        return None
+
+    max_round = max(m["round"] for m in wb)
+
+    def rcode(r):
+        d = max_round - r
+        if d == 0: return "F"
+        if d == 1: return "SF"
+        if d == 2: return "QF"
+        if d == 3: return "WC"
+        return f"R{r}"
+
+    by_id = {m["id"]: dict(m) for m in wb}
+
+    # (target_match_id, next_match_slot) → feeder_match_id
+    feeder_of = {}
+    for m in wb:
+        if m["next_match_id"]:
+            feeder_of[(m["next_match_id"], m["next_match_slot"])] = m["id"]
+
+    # Assign match codes; WC round shows only non-bye matches
+    db_to_code = {}
+    for rnd in sorted(set(m["round"] for m in wb)):
+        rnd_ms = sorted([m for m in wb if m["round"] == rnd], key=lambda x: x["position"])
+        rc = rcode(rnd)
+        visible = [m for m in rnd_ms if not m["is_bye"]] if rc == "WC" else rnd_ms
+        for i, m in enumerate(visible):
+            db_to_code[m["id"]] = f"{rc}{i + 1}"
+
+    # FEEDS list for JS wire drawing
+    feeds = []
+    for m in wb:
+        if m["id"] not in db_to_code:
+            continue
+        if m["next_match_id"] and m["next_match_id"] in db_to_code:
+            feeds.append([db_to_code[m["id"]], db_to_code[m["next_match_id"]]])
+    final_m = next((m for m in wb if m["round"] == max_round), None)
+    if final_m and final_m["id"] in db_to_code:
+        feeds.append([db_to_code[final_m["id"]], "CROWN"])
+
+    result = []
+    for rnd in sorted(set(m["round"] for m in wb)):
+        rnd_ms = sorted([m for m in wb if m["round"] == rnd], key=lambda x: x["position"])
+        rc = rcode(rnd)
+        visible = [m for m in rnd_ms if not m["is_bye"]] if rc == "WC" else rnd_ms
+
+        for i, m in enumerate(visible):
+            m = dict(m)
+            code = f"{rc}{i + 1}"
+            c1 = coaches_map.get(m["coach1_id"])
+            c2 = coaches_map.get(m["coach2_id"])
+
+            fa_id = feeder_of.get((m["id"], 1))
+            fb_id = feeder_of.get((m["id"], 2))
+
+            def feeder_code(fid):
+                if not fid:
+                    return None
+                if by_id.get(fid, {}).get("is_bye"):
+                    return None
+                return db_to_code.get(fid)
+
+            feeder_a = feeder_code(fa_id) if not c1 else None
+            feeder_b = feeder_code(fb_id) if not c2 else None
+            is_bye_a = bool(fa_id and by_id.get(fa_id, {}).get("is_bye"))
+            is_bye_b = bool(fb_id and by_id.get(fb_id, {}).get("is_bye"))
+
+            w_id = m["winner_id"]
+            ms_val = m.get("match_status") or ""
+            if w_id:
+                status = "FINAL"
+            elif ms_val == "LIVE":
+                status = "LIVE"
+            elif c1 and c2:
+                status = "UPCOMING"
+            else:
+                status = "TBD"
+
+            winner = None
+            if w_id:
+                winner = "a" if w_id == m["coach1_id"] else "b"
+
+            s1, s2 = m["seed1"], m["seed2"]
+            upset = bool(
+                (winner == "a" and s1 and s2 and s1 > s2) or
+                (winner == "b" and s1 and s2 and s2 > s1)
+            )
+
+            def team_dict(c, seed):
+                if not c:
+                    return None
+                return {
+                    "id": c["id"],
+                    "name": c["team_name"],
+                    "logo": c.get("logo_url") or "",
+                    "color": c.get("color") or "#374151",
+                    "seed": seed,
+                }
+
+            result.append({
+                "code": code,
+                "db_id": m["id"],
+                "round": rc,
+                "pos": i,
+                "team_a": team_dict(c1, m["seed1"]),
+                "team_b": team_dict(c2, m["seed2"]),
+                "seed_a": m["seed1"],
+                "seed_b": m["seed2"],
+                "score_a": m["score1"],
+                "score_b": m["score2"],
+                "status": status,
+                "winner": winner,
+                "upset": upset,
+                "feeder_a": feeder_a,
+                "feeder_b": feeder_b,
+                "is_bye_a": is_bye_a,
+                "is_bye_b": is_bye_b,
+            })
+
+    done = sum(1 for m in result if m["status"] == "FINAL")
+    total = len(result)
+    live_m = next((m for m in result if m["status"] == "LIVE"), None)
+
+    final_match = next((m for m in result if m["round"] == "F"), None)
+    champion = None
+    if final_match and final_match["winner"]:
+        champion = final_match[f"team_{final_match['winner']}"]
+
+    season = settings.get("season", "?")
+    try:
+        next_season = str(int(season) + 1)
+    except (ValueError, TypeError):
+        next_season = season
+
+    return {
+        "matches": result,
+        "feeds": feeds,
+        "progress": {"done": done, "total": total},
+        "live": live_m["code"] if live_m else None,
+        "champion": champion,
+        "season": season,
+        "next_season": next_season,
+        "num_teams": settings.get("playoff_players", "12"),
+        "match_fmt": settings.get("playoff_match_format", "BO3"),
+        "byes": settings.get("playoff_byes", "4"),
+        "max_round": max_round,
+    }
+
+
 @app.route("/playoffs")
 def playoffs():
     with get_db() as db:
@@ -2551,15 +2708,30 @@ def playoffs():
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
 
     coaches_map = {c["id"]: dict(c) for c in coaches_all}
-    wb_rounds, lb_rounds, gf_matches = _build_playoff_rounds(matches_raw, coaches_map)
+    bracket = _build_bracket_json(list(matches_raw), coaches_map, settings) if matches_raw else None
+
+    if bracket:
+        mr = bracket["max_round"]
+        if mr >= 4:
+            round_cols = [("WC", "WILD CARD"), ("QF", "QUARTERFINALS"), ("SF", "SEMIFINALS"), ("F", "GRAND FINAL")]
+            col_template = "1fr 1fr 0.92fr 0.88fr 0.78fr"
+        elif mr == 3:
+            round_cols = [("QF", "QUARTERFINALS"), ("SF", "SEMIFINALS"), ("F", "GRAND FINAL")]
+            col_template = "1fr 0.92fr 0.88fr 0.78fr"
+        else:
+            round_cols = [("SF", "SEMIFINALS"), ("F", "GRAND FINAL")]
+            col_template = "1fr 0.88fr 0.78fr"
+    else:
+        round_cols = []
+        col_template = ""
 
     return render_template(
         "playoffs.html",
-        wb_rounds=wb_rounds,
-        lb_rounds=lb_rounds,
-        gf_matches=gf_matches,
+        bracket=bracket,
+        bracket_json=json.dumps(bracket) if bracket else "null",
         has_bracket=bool(matches_raw),
-        playoff_format=settings.get("playoff_format", "single"),
+        round_cols=round_cols,
+        col_template=col_template,
         settings=settings,
         league_name=settings.get("league_name", "Pokemon Draft League"),
     )

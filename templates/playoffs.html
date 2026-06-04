@@ -1,404 +1,382 @@
 {% extends "base.html" %}
 {% block title %}Playoffs – {{ league_name }}{% endblock %}
-{% block content %}
-
+{% block head_extra %}
 <style>
-  /* ── Bracket Layout ── */
-  .bracket-scroll { overflow-x: auto; padding-bottom: 20px; }
-  .bracket { display: flex; gap: 0; align-items: stretch; min-width: max-content; }
+/* ── Playoff bracket page styles (pb- prefix) ── */
+:root { --ease-out-cubic: cubic-bezier(.2,.7,.2,1); --ease-back-out: cubic-bezier(.34,1.56,.64,1); }
 
-  .bracket-round { display: flex; flex-direction: column; width: 240px; min-width: 240px; }
+.pb-wrap { height: calc(100dvh - 64px); min-height: 580px; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.pb-page { display: flex; flex-direction: column; gap: 14px; padding: 18px 22px 14px; height: 100%; box-sizing: border-box; overflow: hidden; }
 
-  .round-header {
-    text-align: center;
-    padding: 12px 16px 10px;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--cyan);
-    background: var(--cyan-soft);
-    border-bottom: 1px solid var(--hairline-2);
-    border-right: 1px solid var(--hairline);
-  }
+.pb-head { display: flex; align-items: baseline; gap: 12px; flex-shrink: 0; }
+.pb-rule { flex: 1; height: 1px; background: var(--hairline); align-self: center; }
 
-  .round-matches {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    padding: 12px 0;
-    border-right: 1px solid rgba(55,65,81,0.35);
-  }
+.pb-prog { display: inline-flex; align-items: center; gap: 8px; }
+.pb-prog-track { width: 96px; height: 4px; background: rgba(255,255,255,.06); position: relative; overflow: hidden; flex-shrink: 0; }
+.pb-prog-fill { height: 100%; background: var(--magenta); box-shadow: 0 0 8px var(--magenta-dim); width: 0; animation: pb-grow 1.1s var(--ease-out-cubic) .4s forwards; }
+@keyframes pb-grow { to { width: var(--w, 50%); } }
 
-  .match-slot {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 20px 8px 12px;
-    position: relative;
-    min-height: 88px;
-  }
+.pb-legend { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--hairline); flex-shrink: 0; flex-wrap: wrap; gap: 6px; }
+.pb-legend .keys { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pb-key { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); }
+.pb-swatch { width: 12px; height: 12px; border: 1px solid var(--hairline-2); flex-shrink: 0; }
+.pb-swatch.win  { background: var(--magenta-soft); border-color: var(--magenta-dim); }
+.pb-swatch.live { background: rgba(255,88,120,.12); border-color: rgba(255,88,120,.5); }
+.pb-swatch.bye  { background: rgba(199,255,82,.08); border-color: rgba(199,255,82,.4); }
 
-  /* Horizontal connector line extending right */
-  .match-slot::after {
-    content: '';
-    position: absolute;
-    right: -1px;
-    top: 50%;
-    width: 20px;
-    height: 1px;
-    background: rgba(75,85,99,0.7);
-  }
-  .bracket-round:last-child .match-slot::after { display: none; }
+/* bracket grid */
+.pb-bracket { position: relative; flex: 1; min-height: 0; }
+.pb-cols { position: relative; z-index: 2; display: grid; height: 100%; }
+.pb-col { display: flex; flex-direction: column; min-width: 0; }
+.pb-col-head { font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 7px; margin-bottom: 6px; height: 16px; flex-shrink: 0; }
+.pb-col.is-final .pb-col-head { color: var(--magenta); }
+.pb-col-body { flex: 1; display: flex; flex-direction: column; justify-content: space-around; min-height: 0; }
 
-  /* Vertical connector – top match of pair goes down */
-  .match-slot.connect-top::before {
-    content: '';
-    position: absolute;
-    right: -1px;
-    top: 50%;
-    bottom: 0;
-    width: 1px;
-    background: rgba(75,85,99,0.7);
-  }
-  /* Vertical connector – bottom match of pair goes up */
-  .match-slot.connect-bottom::before {
-    content: '';
-    position: absolute;
-    right: -1px;
-    top: 0;
-    bottom: 50%;
-    width: 1px;
-    background: rgba(75,85,99,0.7);
-  }
+/* connector SVG */
+.pb-wires { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
+.pb-wire { fill: none; stroke: var(--hairline-2); stroke-width: 1.5; }
+.pb-wire.draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: pb-draw .7s var(--ease-out-cubic) backwards; }
+.pb-wire.win { stroke: var(--magenta); stroke-width: 2; filter: drop-shadow(0 0 4px var(--magenta-dim)); }
+.pb-wire.pending { stroke: var(--hairline); stroke-dasharray: 3 5; }
+.pb-wire.lit { stroke: var(--lime); stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(199,255,82,.6)); }
+.pb-wire.dim { opacity: .25; }
+@keyframes pb-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
-  /* ── Match Cards ── */
-  .match-card {
-    width: 204px;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid rgba(55,65,81,0.65);
-    background: #0d1117;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .match-card:not(.bye):hover {
-    border-color: var(--magenta-dim);
-    box-shadow: 0 0 16px rgba(255,42,138,0.07);
-  }
-  .match-card.bye { opacity: 0.28; border-style: dashed; }
-  .match-card.has-winner { border-color: var(--magenta-dim); }
+/* match card */
+.pb-match { position: relative; }
+.pb-match-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; height: 13px; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .08em; color: var(--text-dim); }
+.pb-match-card { border: 1px solid var(--hairline); background: var(--panel); display: flex; flex-direction: column; position: relative; overflow: hidden; transition: border-color .18s, box-shadow .18s, opacity .18s; }
+.pb-match.live   .pb-match-card { border-color: rgba(255,88,120,.55); box-shadow: 0 0 24px -8px rgba(255,88,120,.6); }
+.pb-match.final  .pb-match-card { border-color: var(--hairline-2); }
+.pb-match.dimmed { opacity: .32; pointer-events: none; }
+.pb-match.traced .pb-match-card { border-color: var(--lime); box-shadow: 0 0 22px -6px rgba(199,255,82,.5); }
 
-  .match-player {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 9px;
-    min-height: 38px;
-    border-left: 3px solid transparent;
-  }
-  .match-player + .match-player { border-top: 1px solid rgba(55,65,81,0.5); }
+/* team cell */
+.pb-cell { display: grid; grid-template-columns: 16px 22px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; position: relative; transition: background .18s; }
+.pb-cell + .pb-cell { border-top: 1px solid var(--hairline); }
+.pb-cell-seed  { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); text-align: center; }
+.pb-cell-name  { font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-mute); transition: color .18s; }
+.pb-cell-score { font-family: var(--font-mono); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-dim); min-width: 14px; text-align: center; transition: color .18s; }
+.pb-cell.win  { background: var(--magenta-soft); }
+.pb-cell.win  .pb-cell-name  { color: var(--text); }
+.pb-cell.win  .pb-cell-score { color: var(--magenta); }
+.pb-cell.win  .pb-cell-seed  { color: var(--magenta); }
+.pb-cell.win::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--magenta); box-shadow: 0 0 8px var(--magenta); }
+.pb-cell.loss .pb-cell-name  { color: var(--text-dim); text-decoration: line-through; text-decoration-color: var(--hairline-2); }
+.pb-cell.tbd  .pb-cell-name  { color: var(--text-dim); opacity: .7; }
+.pb-cell.live-score .pb-cell-score { color: var(--red); }
+.pb-cell.pick { cursor: pointer; }
+.pb-cell.pick:hover { background: rgba(61,229,255,.05); }
 
-  /* Winner row: magenta left border + subtle magenta bg */
-  .match-player.winner {
-    background: var(--magenta-soft);
-    border-left-color: var(--magenta);
-  }
-  .match-player.loser { opacity: 0.32; }
+/* logo bubble */
+.pb-logo { width: 22px; height: 22px; border-radius: 50%; background: var(--panel-2) center/cover no-repeat; border: 1px solid var(--hairline); flex-shrink: 0; }
+.pb-logo.dim { filter: grayscale(.6) brightness(.7); }
 
-  .seed-badge {
-    font-size: 9px;
-    font-weight: 700;
-    color: #6b7280;
-    min-width: 14px;
-    text-align: right;
-    flex-shrink: 0;
-  }
-  .player-logo { width: 20px; height: 20px; border-radius: 3px; object-fit: contain; flex-shrink: 0; }
-  .player-logo-placeholder {
-    width: 20px; height: 20px; border-radius: 3px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 7px; font-weight: 900; color: #fff; flex-shrink: 0;
-  }
-  .player-name {
-    font-size: 11px; font-weight: 700; color: #d1d5db;
-    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .player-name.tbd { color: #4b5563; font-style: italic; font-weight: 400; }
-  .player-score {
-    font-size: 12px; font-weight: 900; min-width: 16px; text-align: right; flex-shrink: 0; color: #6b7280;
-  }
-  .player-score.winner-score { color: var(--magenta); }
-  .player-score.loser-score  { color: #ef4444; opacity: 0.55; }
+/* bye / upset chips */
+.pb-bye    { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: .1em; color: var(--lime); border: 1px solid rgba(199,255,82,.4); background: rgba(199,255,82,.08); padding: 1px 4px; margin-left: 5px; vertical-align: middle; }
+.pb-upset  { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: .08em; color: var(--amber); border: 1px solid rgba(255,194,87,.4); background: rgba(255,194,87,.08); padding: 1px 4px; }
 
-  /* Stats link on match card */
-  .match-stats-link {
-    display: block;
-    text-align: center;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .04em;
-    padding: 3px 0;
-    color: #4b5563;
-    background: rgba(0,0,0,0.2);
-    border-top: 1px solid rgba(55,65,81,0.3);
-    text-decoration: none;
-    transition: color .15s, background .15s;
-  }
-  .match-stats-link:hover { color: var(--cyan); background: var(--cyan-soft); }
+/* live pulse + scan */
+.pb-livetag { color: var(--red); display: inline-flex; align-items: center; gap: 4px; }
+.pb-livetag::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--red); box-shadow: 0 0 6px var(--red); animation: pb-pulse 1.3s ease-in-out infinite; }
+@keyframes pb-pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.pb-live-scan { position: absolute; left: -40%; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,88,120,.10), transparent); animation: pb-sweep 2.6s linear infinite; pointer-events: none; }
+@keyframes pb-sweep { to { left: 130%; } }
 
-  /* ── Champion Column ── */
-  .champ-round { display: flex; flex-direction: column; width: 180px; min-width: 180px; }
-  .champ-header {
-    text-align: center;
-    padding: 12px 16px 10px;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--magenta);
-    background: var(--magenta-soft);
-    border-bottom: 1px solid var(--magenta-dim);
-  }
-  .champ-body {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px 12px;
-  }
-  .champ-card {
-    text-align: center;
-    padding: 20px 16px;
-    border-radius: 2px;
-    border: 1px solid var(--magenta-dim);
-    background: var(--magenta-soft);
-    width: 148px;
-  }
+/* column reveal */
+.pb-reveal { animation: pb-fade-in .5s var(--ease-out-cubic) backwards; }
+@keyframes pb-fade-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+/* champion crown */
+.pb-crown { position: relative; overflow: hidden; border: 1px solid var(--magenta-dim); background: radial-gradient(130% 120% at 50% 0%, rgba(255,61,151,.16), transparent 60%), var(--panel); box-shadow: 0 0 40px -12px var(--magenta-dim); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 20px 18px; }
+.pb-crown-sweep { position: absolute; top: 0; bottom: 0; left: -35%; width: 26%; background: linear-gradient(90deg, transparent, rgba(255,61,151,.14), transparent); animation: pb-sweep 4.2s linear infinite; pointer-events: none; }
+.pb-crown-disc { width: 96px; height: 96px; border-radius: 50%; border: 1px solid var(--magenta-dim); display: grid; place-items: center; position: relative; background: radial-gradient(circle, var(--magenta-soft), transparent 72%); flex-shrink: 0; overflow: hidden; }
+.pb-crown-disc::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid var(--magenta-dim); opacity: .5; animation: pb-ring 2.6s ease-in-out infinite; }
+@keyframes pb-ring { 0%,100% { transform: scale(1); opacity: .35; } 50% { transform: scale(1.07); opacity: .8; } }
+.pb-crown-q { font-family: var(--font-display); font-weight: 700; font-size: 46px; color: var(--magenta); line-height: 1; text-shadow: 0 0 20px var(--magenta-dim); }
+.pb-crown-img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-prog-fill { width: var(--w, 50%); animation: none; }
+  .pb-wire.draw { stroke-dashoffset: 0; animation: none; }
+  .pb-reveal, .pb-crown-sweep, .pb-live-scan, .pb-livetag::before, .pb-crown-disc::after { animation: none; }
+}
+
+/* small screen scroll */
+@media (max-width: 900px) {
+  .pb-wrap { height: auto; overflow: visible; }
+  .pb-page { overflow: visible; height: auto; }
+  .pb-bracket { overflow-x: auto; }
+  .pb-cols { min-width: 680px; }
+}
 </style>
+{% endblock %}
+{% block content %}
+<div class="pb-wrap">
+<div class="pb-page">
 
-<!-- Header -->
-<div class="yc-page-hero hero-pattern">
-  <div class="max-w-full px-4 sm:px-6 lg:px-8 py-12">
-    <p class="yc-eyebrow">// POSTSEASON_{{ league_name.upper().replace(' ','_') }}</p>
-    <h1 class="yc-page-title">Playoff Bracket</h1>
-    <p class="yc-page-sub flex flex-wrap items-center gap-2 mt-3">
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
-            style="border-radius:2px;border-color:var(--cyan-dim);background:var(--cyan-soft);color:var(--cyan);">
-        {% if settings.get('playoff_format','single') == 'double' %}DOUBLE{% else %}SINGLE{% endif %}-ELIM
-      </span>
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
-            style="border-radius:2px;border-color:var(--hairline);background:var(--panel-2);color:var(--text-mute);">
-        {{ settings.get('playoff_players','?') }} TEAMS
-      </span>
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
-            style="border-radius:2px;border-color:var(--hairline);background:var(--panel-2);color:var(--text-mute);">
-        FORMAT · {{ settings.get('playoff_match_format','BO5') }}
-      </span>
-      {% if settings.get('playoff_byes','0')|int > 0 %}
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-xs font-bold font-mono"
-            style="border-radius:2px;border-color:var(--magenta-dim);background:var(--magenta-soft);color:var(--magenta);">
-        TOP {{ settings.get('playoff_byes') }} · BYE
-      </span>
-      {% endif %}
-    </p>
-  </div>
+{# ── Header row ── #}
+<div class="pb-head pb-reveal" style="animation-delay:0s">
+  <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--magenta)">// POSTSEASON_{{ league_name.upper().replace(' ','_') }}</span>
+  <span style="font-family:var(--font-display);font-size:23px;font-weight:600;text-transform:uppercase;color:var(--text);line-height:1">Playoff Bracket</span>
+  <span class="pb-rule"></span>
+  {% if bracket %}
+  <span class="pb-prog">
+    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">{{ bracket.progress.done }}/{{ bracket.progress.total }} PLAYED</span>
+    <span class="pb-prog-track">
+      <span class="pb-prog-fill" style="--w:{{ ((bracket.progress.done / bracket.progress.total * 100)|round|int) if bracket.progress.total else 0 }}%"></span>
+    </span>
+  </span>
+  <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">SINGLE-ELIM · {{ bracket.num_teams }} TEAMS · {{ bracket.match_fmt }} · TOP {{ bracket.byes }} BYE</span>
+  {% endif %}
 </div>
-
-<div class="px-4 sm:px-6 lg:px-8 py-8">
 
 {% if not has_bracket %}
-  <div class="text-center py-24">
-    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full border mb-4" style="border-color:var(--hairline);background:var(--panel);">
-      <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
-    </div>
-    <h2 class="text-lg font-bold text-gray-600 mb-1">Bracket not yet generated</h2>
-    <p class="text-sm text-gray-700">Check back once the admin sets up the playoff bracket.</p>
-    {% if session.get('role') == 'admin' %}
-      <a href="/admin/playoffs" class="mt-4 inline-block px-5 py-2.5 rounded-lg font-bold text-sm text-gray-900 bg-yellow-400 hover:bg-yellow-300 transition-colors">
-        Set up bracket →
-      </a>
-    {% endif %}
-  </div>
+{# ── No bracket yet ── #}
+<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+  <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em">// NO_BRACKET_YET</span>
+  <span style="font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--text-mute);text-transform:uppercase">Bracket Not Generated</span>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/playoffs" style="margin-top:4px;padding:6px 18px;border:1px solid var(--magenta-dim);color:var(--magenta);font-family:var(--font-mono);font-size:10px;font-weight:700;text-decoration:none;letter-spacing:.08em">ADMIN: SETUP →</a>
+  {% endif %}
+</div>
+
 {% else %}
 
-  {# ── Winners Bracket ── #}
-  {% if wb_rounds %}
-  <div class="mb-8">
-    {% if lb_rounds %}
-    <div class="flex items-center gap-3 mb-4">
-      <div class="w-1 h-5 rounded-full" style="background:linear-gradient(to bottom,#facc15,#e3350d);"></div>
-      <h2 class="text-sm font-black text-white uppercase tracking-wider">Winners Bracket</h2>
-    </div>
-    {% endif %}
-    <div class="bracket-scroll">
-      <div class="bracket">
+{# ── Bracket area ── #}
+<div class="pb-bracket" id="pb-bracket">
+  <svg class="pb-wires" id="pb-wires" width="100%" height="100%"></svg>
 
-        {% for rd in wb_rounds %}
-        <div class="bracket-round">
-          <div class="round-header">{{ rd.label }}</div>
-          <div class="round-matches">
-            {% for match in rd.matches %}
-            {% set is_odd = loop.index % 2 == 1 %}
-            <div class="match-slot {% if not loop.last and is_odd %}connect-top{% elif not loop.first and not is_odd %}connect-bottom{% endif %}">
-              {% if match.is_bye and not match.coach1 and not match.coach2 %}
-                {# empty placeholder #}
-              {% else %}
-              {% set p1_win = match.winner and match.winner.id == match.coach1_id %}
-              {% set p2_win = match.winner and match.winner.id == match.coach2_id %}
-              {% set p1_loss = match.winner and not p1_win %}
-              {% set p2_loss = match.winner and not p2_win %}
-              <div class="match-card {% if match.is_bye %}bye{% endif %} {% if match.winner %}has-winner{% endif %}">
+  <div class="pb-cols" id="pb-cols" style="grid-template-columns:{{ col_template }};gap:26px">
 
-                {# Player 1 #}
-                <div class="match-player {% if p1_win %}winner{% elif p1_loss %}loser{% endif %}">
-                  <span class="seed-badge">{{ match.seed1 or '' }}</span>
-                  {% if match.coach1 %}
-                    {% if match.coach1.logo_url %}
-                      <img src="{{ match.coach1.logo_url }}" class="player-logo" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
-                    {% else %}
-                      <div class="player-logo-placeholder" style="background:{{ match.coach1.color or '#374151' }};">{{ match.coach1.team_name[:2].upper() }}</div>
-                    {% endif %}
-                    <span class="player-name">{{ match.coach1.team_name }}</span>
-                  {% else %}
-                    <span class="player-name tbd">{% if match.is_bye %}BYE{% else %}TBD{% endif %}</span>
-                  {% endif %}
-                  {% if match.score1 is not none %}
-                    <span class="player-score {% if p1_win %}winner-score{% elif p1_loss %}loser-score{% endif %}">{{ match.score1 }}</span>
-                  {% endif %}
-                </div>
+    {# ── Round columns ── #}
+    {% for round_code, round_label in round_cols %}
+    <div class="pb-col pb-reveal{% if round_code == 'F' %} is-final{% endif %}" style="animation-delay:{{ loop.index0 * 0.12 }}s">
+      <div class="pb-col-head"><span>{{ round_label }}</span></div>
+      <div class="pb-col-body">
 
-                {# Player 2 #}
-                <div class="match-player {% if p2_win %}winner{% elif p2_loss %}loser{% endif %}">
-                  <span class="seed-badge">{{ match.seed2 or '' }}</span>
-                  {% if match.coach2 %}
-                    {% if match.coach2.logo_url %}
-                      <img src="{{ match.coach2.logo_url }}" class="player-logo" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
-                    {% else %}
-                      <div class="player-logo-placeholder" style="background:{{ match.coach2.color or '#374151' }};">{{ match.coach2.team_name[:2].upper() }}</div>
-                    {% endif %}
-                    <span class="player-name">{{ match.coach2.team_name }}</span>
-                  {% else %}
-                    <span class="player-name tbd">{% if match.is_bye %}BYE{% else %}TBD{% endif %}</span>
-                  {% endif %}
-                  {% if match.score2 is not none %}
-                    <span class="player-score {% if p2_win %}winner-score{% elif p2_loss %}loser-score{% endif %}">{{ match.score2 }}</span>
-                  {% endif %}
-                </div>
+        {% for m in bracket.matches if m.round == round_code %}
+        {% set live = m.status == 'LIVE' %}
+        {% set final = m.status == 'FINAL' %}
+        <div class="pb-match{% if live %} live{% endif %}{% if final %} final{% endif %}" id="{{ m.code }}">
+          <div class="pb-match-meta">
+            <span>{{ m.code }} · {{ bracket.match_fmt }}{% if m.upset %} &nbsp;·&nbsp; <span class="pb-upset">UPSET</span>{% endif %}</span>
+            {% if live %}<span class="pb-livetag">LIVE</span>
+            {% elif final %}<span>FINAL</span>
+            {% elif m.status == 'UPCOMING' %}<span style="color:var(--cyan)">ON DECK</span>
+            {% else %}<span></span>{% endif %}
+          </div>
+          <div class="pb-match-card">
+            {% if live %}<div class="pb-live-scan"></div>{% endif %}
 
-                {# Stats link for non-bye completed or in-progress matches #}
-                {% if not match.is_bye and match.coach1 and match.coach2 %}
-                  <a href="/admin/playoff_stats/{{ match.id }}" class="match-stats-link">
-                    {% if match.winner %}View Stats{% else %}Enter Stats{% endif %}
-                  </a>
-                {% endif %}
-
-              </div>
-              {% endif %}
+            {# Team A cell #}
+            {% set ta = m.team_a %}
+            <div class="pb-cell{% if m.winner == 'a' %} win{% elif m.winner == 'b' %} loss{% elif not ta %} tbd{% endif %}{% if live %} live-score{% endif %}{% if ta %} pick{% endif %}" data-team-id="{{ ta.id if ta else '' }}">
+              <span class="pb-cell-seed">{{ '%02d' % m.seed_a if m.seed_a else '·' }}</span>
+              <span class="pb-logo{% if m.winner == 'b' %} dim{% endif %}"{% if ta and ta.logo %} style="background-image:url('{{ ta.logo }}')"{% elif ta %} style="background:{{ ta.color }}"{% endif %}></span>
+              <span class="pb-cell-name">
+                {% if ta %}{{ ta.name }}{% if m.is_bye_a %}<span class="pb-bye">BYE</span>{% endif %}
+                {% elif m.feeder_a %}Winner {{ m.feeder_a }}
+                {% else %}TBD{% endif %}
+              </span>
+              <span class="pb-cell-score">{% if m.score_a is not none %}{{ m.score_a }}{% else %}–{% endif %}</span>
             </div>
-            {% endfor %}
+
+            {# Team B cell #}
+            {% set tb = m.team_b %}
+            <div class="pb-cell{% if m.winner == 'b' %} win{% elif m.winner == 'a' %} loss{% elif not tb %} tbd{% endif %}{% if live %} live-score{% endif %}{% if tb %} pick{% endif %}" data-team-id="{{ tb.id if tb else '' }}">
+              <span class="pb-cell-seed">{{ '%02d' % m.seed_b if m.seed_b else '·' }}</span>
+              <span class="pb-logo{% if m.winner == 'a' %} dim{% endif %}"{% if tb and tb.logo %} style="background-image:url('{{ tb.logo }}')"{% elif tb %} style="background:{{ tb.color }}"{% endif %}></span>
+              <span class="pb-cell-name">
+                {% if tb %}{{ tb.name }}{% if m.is_bye_b %}<span class="pb-bye">BYE</span>{% endif %}
+                {% elif m.feeder_b %}Winner {{ m.feeder_b }}
+                {% else %}TBD{% endif %}
+              </span>
+              <span class="pb-cell-score">{% if m.score_b is not none %}{{ m.score_b }}{% else %}–{% endif %}</span>
+            </div>
           </div>
         </div>
         {% endfor %}
 
-        {# Champion display #}
-        {% set finals = wb_rounds[-1].matches[0] if wb_rounds else none %}
-        {% if finals and finals.winner %}
-        <div class="champ-round">
-          <div class="champ-header">
-            <svg class="w-4 h-4 inline-block mb-0.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-            </svg>
-            Champion
-          </div>
-          <div class="champ-body">
-            <div class="champ-card">
-              {% if finals.winner.logo_url %}
-                <img src="{{ finals.winner.logo_url }}" class="w-14 h-14 rounded-lg object-contain mx-auto mb-3" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
-              {% else %}
-                <div class="w-14 h-14 rounded-lg flex items-center justify-center font-black text-white text-xl mx-auto mb-3" style="background:{{ finals.winner.color or '#374151' }};">{{ finals.winner.team_name[:2].upper() }}</div>
-              {% endif %}
-              <div class="text-xs font-black text-yellow-300 uppercase tracking-widest mb-1">Champion</div>
-              <div class="text-sm font-black text-white leading-tight">{{ finals.winner.team_name }}</div>
-              <div class="text-xs text-yellow-500/70 mt-0.5">{{ finals.winner.coach_name }}</div>
-            </div>
-          </div>
-        </div>
-        {% endif %}
-
       </div>
     </div>
-  </div>
-  {% endif %}
+    {% endfor %}
 
-  {# ── Losers Bracket ── #}
-  {% if lb_rounds %}
-  <div class="mt-10 mb-8">
-    <div class="flex items-center gap-3 mb-4">
-      <div class="w-1 h-5 rounded-full bg-red-700"></div>
-      <h2 class="text-sm font-black text-white uppercase tracking-wider">Losers Bracket</h2>
-    </div>
-    <div class="bracket-scroll">
-      <div class="bracket">
-        {% for rd in lb_rounds %}
-        <div class="bracket-round">
-          <div class="round-header" style="color:#f87171;background:rgba(248,113,113,0.06);border-bottom-color:rgba(248,113,113,0.15);">Round {{ rd.round }}</div>
-          <div class="round-matches">
-            {% for match in rd.matches %}
-            <div class="match-slot">
-              <div class="match-card">
-                {% for player_id, seed, score in [
-                  (match.coach1_id, match.seed1, match.score1),
-                  (match.coach2_id, match.seed2, match.score2)
-                ] %}
-                {% set coach = match.coach1 if loop.first else match.coach2 %}
-                {% set is_win = match.winner and match.winner.id == player_id %}
-                {% set is_loss = match.winner and match.winner.id != player_id %}
-                <div class="match-player {% if is_win %}winner{% elif is_loss %}loser{% endif %}">
-                  <span class="seed-badge">{{ seed or '' }}</span>
-                  {% if coach %}
-                    {% if coach.logo_url %}
-                      <img src="{{ coach.logo_url }}" class="player-logo" alt="" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
-                    {% else %}
-                      <div class="player-logo-placeholder" style="background:{{ coach.color or '#374151' }};">{{ coach.team_name[:2].upper() }}</div>
-                    {% endif %}
-                    <span class="player-name">{{ coach.team_name }}</span>
-                  {% else %}
-                    <span class="player-name tbd">TBD</span>
-                  {% endif %}
-                  {% if score is not none %}
-                    <span class="player-score {% if is_win %}winner-score{% elif is_loss %}loser-score{% endif %}">{{ score }}</span>
-                  {% endif %}
-                </div>
-                {% endfor %}
-              </div>
-            </div>
-            {% endfor %}
+    {# ── Champion column ── #}
+    <div class="pb-col pb-reveal" style="animation-delay:{{ round_cols|length * 0.12 }}s">
+      <div class="pb-col-head" style="color:var(--magenta)">CHAMPION · S{{ bracket.season }}</div>
+      <div class="pb-col-body" style="justify-content:center">
+        <div class="pb-crown" id="CROWN">
+          <div class="pb-crown-sweep"></div>
+          <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--magenta)">// YURI CUP</span>
+          {% if bracket.champion %}
+          <div class="pb-crown-disc">
+            {% if bracket.champion.logo %}
+            <img src="{{ bracket.champion.logo }}" class="pb-crown-img" alt="{{ bracket.champion.name }}" onerror="this.style.display='none'">
+            {% else %}
+            <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--magenta);line-height:1">{{ bracket.champion.name[:2].upper() }}</span>
+            {% endif %}
           </div>
+          <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.03em">{{ bracket.champion.name }}</div>
+          {% else %}
+          <div class="pb-crown-disc"><span class="pb-crown-q">?</span></div>
+          <div style="font-family:var(--font-display);font-size:13px;font-weight:600;color:var(--text);text-transform:uppercase">Champion TBD</div>
+          {% endif %}
+          <div style="font-family:var(--font-mono);font-size:8.5px;color:var(--text-dim);line-height:1.6;text-align:center">+ SEASON {{ bracket.next_season }} SEED #1</div>
         </div>
-        {% endfor %}
       </div>
     </div>
-  </div>
-  {% endif %}
 
-  {# Bottom legend #}
-  <div class="flex flex-wrap items-center gap-3 mt-8 pt-4" style="border-top:1px solid var(--hairline);">
-    <span class="inline-flex items-center px-2.5 py-1 text-xs font-black font-mono border" style="border-radius:2px;border-color:var(--magenta-dim);background:var(--magenta-soft);color:var(--magenta);">QF</span>
-    <span class="inline-flex items-center px-2.5 py-1 text-xs font-black font-mono border" style="border-radius:2px;border-color:var(--cyan-dim);background:var(--cyan-soft);color:var(--cyan);">SF</span>
-    <span class="inline-flex items-center px-2.5 py-1 text-xs font-black font-mono border" style="border-radius:2px;border-color:var(--hairline);background:var(--panel-2);color:var(--text-mute);">FINAL</span>
-    <span class="ml-auto text-xs font-mono" style="color:var(--text-dim);">FORMAT · {{ settings.get('playoff_players','?') }}-TEAM {{ settings.get('playoff_format','SINGLE')|upper }}-ELIM · {{ settings.get('playoff_match_format','BO5') }}</span>
-  </div>
+  </div>{# end pb-cols #}
+</div>{# end pb-bracket #}
 
-  {# Admin link #}
-  {% if session.get('role') == 'admin' %}
-  <div class="mt-4">
-    <a href="/admin/playoffs" class="text-xs font-semibold" style="color:var(--cyan-dim);">Admin: Manage bracket & enter results →</a>
+{# ── Legend ── #}
+<div class="pb-legend">
+  <div class="keys">
+    <span class="pb-key"><span class="pb-swatch win"></span>ADVANCED</span>
+    <span class="pb-key"><span class="pb-swatch live"></span>LIVE NOW</span>
+    <span class="pb-key"><span class="pb-swatch bye"></span>TOP-{{ bracket.byes }} BYE</span>
+    <span class="pb-key"><span style="width:14px;height:2px;background:var(--lime);box-shadow:0 0 6px var(--lime);display:inline-block;flex-shrink:0"></span>HOVER TEAM TO TRACE RUN</span>
   </div>
-  {% endif %}
-
-{% endif %}
+  <div id="pb-legend-right" style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">
+    {% if bracket.live %}1 LIVE · {{ bracket.live }}{% endif %}
+  </div>
 </div>
+
+{% if session.get('role') == 'admin' %}
+<div style="text-align:right;margin-top:-6px">
+  <a href="/admin/playoffs" style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);text-decoration:none;letter-spacing:.06em">ADMIN: MANAGE BRACKET →</a>
+</div>
+{% endif %}
+
+{% endif %}{# end has_bracket #}
+</div>{# end pb-page #}
+</div>{# end pb-wrap #}
+
+<script>
+const BRACKET = {{ bracket_json | safe }};
+(function () {
+  if (!BRACKET) return;
+
+  var matches = BRACKET.matches;
+  var feeds   = BRACKET.feeds;
+  var matchByCode = {};
+  matches.forEach(function (m) { matchByCode[m.code] = m; });
+
+  var ROUND_ORDER = ["WC", "QF", "SF", "F"];
+  var WIRE_DELAY  = { WC: 0.25, QF: 0.6, SF: 0.95, F: 1.25 };
+
+  function teamRun(teamId) {
+    if (!teamId) return [];
+    var codes = [];
+    matches.slice().sort(function (a, b) {
+      var ao = ROUND_ORDER.indexOf(a.round), bo = ROUND_ORDER.indexOf(b.round);
+      return ao !== bo ? ao - bo : a.pos - b.pos;
+    }).forEach(function (m) {
+      if ((m.team_a && m.team_a.id == teamId) || (m.team_b && m.team_b.id == teamId))
+        codes.push(m.code);
+    });
+    return codes;
+  }
+
+  /* ── Wire drawing ── */
+  var bracketEl = document.getElementById('pb-bracket');
+  var svgEl     = document.getElementById('pb-wires');
+
+  function drawWires() {
+    if (!bracketEl || !svgEl) return;
+    var base = bracketEl.getBoundingClientRect();
+    var paths = [];
+
+    feeds.forEach(function (pair) {
+      var fromCode = pair[0], toCode = pair[1];
+      var fromEl = document.getElementById(fromCode);
+      var toEl   = document.getElementById(toCode);
+      if (!fromEl || !toEl) return;
+
+      var fa = fromEl.getBoundingClientRect();
+      var ta = toEl.getBoundingClientRect();
+      var x1 = fa.right - base.left;
+      var y1 = (fa.top + fa.bottom) / 2 - base.top;
+      var x2 = ta.left  - base.left;
+      var y2 = (ta.top  + ta.bottom) / 2 - base.top;
+      var midX = x1 + (x2 - x1) * 0.5;
+      var d = 'M ' + x1 + ' ' + y1 + ' H ' + midX + ' V ' + y2 + ' H ' + x2;
+
+      var m = matchByCode[fromCode];
+      var decided = m && m.status === 'FINAL';
+      var round   = m ? m.round : 'WC';
+      var delay   = WIRE_DELAY[round] || 0.3;
+
+      var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', d);
+      p.setAttribute('pathLength', '1');
+      p.setAttribute('class', 'pb-wire draw ' + (decided ? 'win' : 'pending'));
+      p.setAttribute('data-from', fromCode);
+      p.setAttribute('data-to',   toCode);
+      p.style.animationDelay = delay + 's';
+      paths.push(p);
+    });
+
+    svgEl.innerHTML = '';
+    paths.forEach(function (p) { svgEl.appendChild(p); });
+  }
+
+  drawWires();
+  if (window.ResizeObserver) {
+    new ResizeObserver(drawWires).observe(bracketEl);
+  }
+
+  /* ── Hover trace ── */
+  var legendRight  = document.getElementById('pb-legend-right');
+  var defaultLegend = legendRight ? legendRight.textContent.trim() : '';
+  var hoveredId = null;
+
+  function applyTrace(teamId) {
+    var runIds = teamRun(teamId);
+
+    document.querySelectorAll('.pb-match').forEach(function (el) {
+      el.classList.toggle('dimmed', !!teamId && !runIds.includes(el.id));
+      el.classList.toggle('traced', !!teamId &&  runIds.includes(el.id));
+    });
+
+    document.querySelectorAll('.pb-wire').forEach(function (el) {
+      var from = el.getAttribute('data-from');
+      var m = matchByCode[from];
+      var advanced = m && teamId && (
+        (m.team_a && m.team_a.id == teamId && m.winner === 'a') ||
+        (m.team_b && m.team_b.id == teamId && m.winner === 'b')
+      );
+      el.classList.toggle('lit', !!advanced);
+      el.classList.toggle('dim', !!teamId && !advanced);
+      if (advanced) { el.classList.remove('win', 'pending'); }
+    });
+
+    document.querySelectorAll('.pb-cell[data-team-id]').forEach(function (el) {
+      var tid  = el.getAttribute('data-team-id');
+      var nameEl = el.querySelector('.pb-cell-name');
+      if (nameEl) nameEl.style.color = (teamId && tid == teamId) ? 'var(--lime)' : '';
+    });
+
+    if (legendRight) {
+      if (teamId) {
+        var found = null;
+        matches.forEach(function (m) {
+          if (!found && m.team_a && m.team_a.id == teamId) found = m.team_a;
+          if (!found && m.team_b && m.team_b.id == teamId) found = m.team_b;
+        });
+        legendRight.textContent = found ? 'TRACING · ' + found.name.toUpperCase() : '';
+      } else {
+        legendRight.textContent = defaultLegend;
+      }
+    }
+  }
+
+  document.querySelectorAll('.pb-cell.pick').forEach(function (el) {
+    var tid = el.getAttribute('data-team-id');
+    el.addEventListener('mouseenter', function () { hoveredId = tid; applyTrace(tid); });
+    el.addEventListener('mouseleave', function () { hoveredId = null; applyTrace(null); });
+  });
+})();
+</script>
 {% endblock %}
