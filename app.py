@@ -3837,15 +3837,10 @@ def draft_live_skip():
             "VALUES (?,?,?,?,?,?,?,?)",
             (sess["id"], pick_num, round_idx + 1, slot_name_val, coach_id, "(SKIP)", 0, None)
         )
-        # Bank a pick for the skipped coach
-        try:
-            banked = json.loads(sess["banked_picks"] or "{}")
-        except Exception:
-            banked = {}
-        banked[str(coach_id)] = banked.get(str(coach_id), 0) + 1
+        # Immediately grant a makeup pick by setting bank_pending
         db.execute(
-            f"UPDATE draft_sessions SET {pick_col}=?, banked_picks=? WHERE id=?",
-            (cur + 1, json.dumps(banked), sess["id"])
+            f"UPDATE draft_sessions SET {pick_col}=?, {bank_col}=? WHERE id=?",
+            (cur + 1, coach_id, sess["id"])
         )
         coach_row = next((c for c in coaches_all if c["id"] == coach_id), None)
         cname = coach_row["team_name"] if coach_row else str(coach_id)
