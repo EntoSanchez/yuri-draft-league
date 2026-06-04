@@ -3830,12 +3830,12 @@ def draft_live_skip():
             flash("No current pick slot to skip.", "warning")
             return redirect(url_for("draft_live"))
         slot = seq[cur - 1]
-        coach_id, tier, pick_num = slot[3], slot[2], slot[0]
+        pick_num, round_idx, slot_name_val, coach_id = slot[0], slot[1], slot[2], slot[3]
         # Record a skip placeholder in draft_picks
         db.execute(
-            "INSERT INTO draft_picks (session_id, pick_number, coach_id, pokemon_name, tier, is_free_pick) "
-            "VALUES (?,?,?,?,?,0)",
-            (sess["id"], pick_num, coach_id, "(SKIP)", tier)
+            "INSERT INTO draft_picks (session_id, pick_number, round_number, slot_name, coach_id, pokemon_name, points, ticket_used) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (sess["id"], pick_num, round_idx + 1, slot_name_val, coach_id, "(SKIP)", 0, None)
         )
         # Bank a pick for the skipped coach
         try:
