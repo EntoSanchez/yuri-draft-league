@@ -473,7 +473,7 @@ function renderStats() {
   if (S.statView==="avg") { el.innerHTML=buildDivBars(); return; }
 
   const hl=S.statHL;
-  function col(team, accent, lbl) {
+  function col(team, accent, lbl, isOpp) {
     if (!team.length) return `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);padding:8px 0">No team.</div>`;
     const sorted=[...team].sort((a,b) => hl==="none"
       ? STAT_KEYS.reduce((s,k)=>s+(b[k]||0),0)-STAT_KEYS.reduce((s,k)=>s+(a[k]||0),0)
@@ -493,22 +493,20 @@ function renderStats() {
       const bst=STAT_KEYS.reduce((s,k)=>s+(p[k]||0),0);
       const sprSrc=p.sprite_anim||p.sprite||"";
       const spr=sprSrc?`<img src="${sprSrc}" alt="" width="48" height="48" style="image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:`<div style="width:48px;height:48px;flex-shrink:0"></div>`;
-      return `<div style="display:grid;grid-template-columns:112px 1fr 38px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">
-        <div style="display:flex;align-items:center;gap:6px">
-          ${spr}
-          <div style="min-width:0"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap">${tcs}</div></div>
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:2px;height:${BH+12}px">${bars}</div>
-        <div style="text-align:right"><div style="font-family:var(--font-mono);font-size:7px;color:var(--text-dim)">${hl==="none"?"BST":STAT_LABEL[hl]}</div><span style="font-family:var(--font-mono);font-size:${hl==="none"?11:13}px;font-weight:${hl==="none"?600:700};color:${accent}">${hl==="none"?bst:(p[hl]||0)}</span></div>
-      </div>`;
+      const statCell=`<div style="text-align:${isOpp?"left":"right"}"><div style="font-family:var(--font-mono);font-size:7px;color:var(--text-dim)">${hl==="none"?"BST":STAT_LABEL[hl]}</div><span style="font-family:var(--font-mono);font-size:${hl==="none"?11:13}px;font-weight:${hl==="none"?600:700};color:${accent}">${hl==="none"?bst:(p[hl]||0)}</span></div>`;
+      const nameCell=`<div style="display:flex;align-items:center;gap:6px;${isOpp?"flex-direction:row-reverse":""}">${spr}<div style="min-width:0;${isOpp?"text-align:right":""}"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap;${isOpp?"justify-content:flex-end":""}">${tcs}</div></div></div>`;
+      const barsCell=`<div style="display:flex;align-items:flex-end;gap:2px;height:${BH+12}px">${bars}</div>`;
+      return isOpp
+        ? `<div style="display:grid;grid-template-columns:38px 1fr 112px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">${statCell}${barsCell}${nameCell}</div>`
+        : `<div style="display:grid;grid-template-columns:112px 1fr 38px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">${nameCell}${barsCell}${statCell}</div>`;
     }).join("");
-    return `<div style="font-family:var(--font-mono);font-size:8.5px;color:${accent};letter-spacing:.1em;margin-bottom:8px">${lbl}</div>${rows}`;
+    return `<div style="font-family:var(--font-mono);font-size:8.5px;color:${accent};letter-spacing:.1em;margin-bottom:8px;${isOpp?"text-align:right":""}">${lbl}</div>${rows}`;
   }
   const myN=(S.myCoach?.team_name||S.myCoach?.name||"MY TEAM").toUpperCase();
   const opN=(S.oppCoach?.team_name||S.oppCoach?.name||"OPPONENT").toUpperCase();
   el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <div>${col(S.myTeam,"var(--cyan)","// "+myN)}</div>
-    <div>${col(S.oppTeam,"var(--magenta)",opN+" //")}</div>
+    <div>${col(S.myTeam,"var(--cyan)","// "+myN,false)}</div>
+    <div>${col(S.oppTeam,"var(--magenta)",opN+" //",true)}</div>
   </div>`;
 }
 
