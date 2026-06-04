@@ -344,7 +344,7 @@
     min-width: 0;
   }
   .avail-poke  .poke-name { color: var(--text); }
-  .drafted-poke .poke-name { display: none; }
+  .drafted-poke .poke-name { color: var(--magenta-dim); }
   .banned-poke  .poke-name { color: var(--red); text-decoration: line-through; }
   .tera-banned .poke-name  { text-decoration: line-through; opacity: 0.6; }
 
@@ -755,8 +755,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -816,8 +817,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -875,8 +877,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -934,8 +937,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -993,8 +997,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -1052,8 +1057,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -1111,8 +1117,9 @@
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
                    data-bst="{{ t.bst or 0 }}">
-                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>{%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }}">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
+                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
