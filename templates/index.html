@@ -1,370 +1,487 @@
 {% extends "base.html" %}
 {% block title %}Standings — {{ league_name }}{% endblock %}
+{% block head_extra %}
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+{% endblock %}
 {% block content %}
 <style>
-@media (max-width: 479px) {
-  /* Tighten standings rows on very small phones */
-  .cp-card { gap: 10px !important; padding-left: 12px !important; padding-right: 12px !important; }
-  /* Shrink record column so team name has more room */
-  .yc-record-col { min-width: 78px !important; }
-  /* Scale down podium bars so they fit without overflow */
-  .yc-bar-1  { width: 98px !important; height: 76px !important; font-size: 1.5rem !important; }
-  .yc-bar-23 { width: 82px !important; }
-  /* Tighter podium gap */
-  .yc-podium { gap: 8px !important; }
-}
+  :root {
+    --ease-out-cubic: cubic-bezier(.2,.7,.2,1);
+    --ease-back-out:  cubic-bezier(.34,1.56,.64,1);
+    --hairline-2: rgba(232,232,248,.14);
+  }
+
+  /* ── page scaffold ── */
+  .lr-page { padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 16px; }
+  .lr-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .lr-rule { flex: 1; height: 1px; background: var(--hairline); align-self: center; min-width: 20px; }
+  .lr-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--magenta); }
+  .lr-title   { font-family: 'Chakra Petch', var(--font-display); font-weight: 600; font-size: 24px; color: var(--text); }
+
+  /* ── season progress ── */
+  .lr-prog { display: flex; align-items: center; gap: 8px; }
+  .lr-prog-track { width: 120px; height: 4px; background: rgba(255,255,255,.06); position: relative; overflow: hidden; }
+  .lr-prog-fill { height: 100%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan-dim); width: 0; transition: width 1s var(--ease-out-cubic); }
+  .lr-mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+
+  /* ── podium ── */
+  .lr-podium { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; align-items: end; }
+  .lr-podteam {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--hairline-2); background: var(--panel);
+    padding: 16px 16px 14px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .lr-podteam.p1 {
+    border-color: var(--magenta-dim); box-shadow: 0 0 32px -14px var(--magenta-dim);
+    background: radial-gradient(120% 130% at 50% -10%, rgba(255,42,138,.10), transparent 60%), var(--panel);
+  }
+  .lr-podteam-place {
+    position: absolute; top: -26px; right: -8px; z-index: 0;
+    font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 130px; line-height: 1;
+    pointer-events: none;
+  }
+  .lr-podteam-medal {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    border: 1px solid; padding: 2px 8px; position: relative; z-index: 1;
+  }
+  .lr-podteam-name {
+    font-family: 'Chakra Petch', var(--font-display); font-weight: 700; letter-spacing: .02em;
+    text-transform: uppercase; line-height: 1.1; position: relative; z-index: 1; color: var(--text);
+  }
+  .lr-podteam-stats { display: flex; gap: 6px; margin-top: 4px; position: relative; z-index: 1; flex-wrap: wrap; justify-content: center; }
+  .lr-logo { border-radius: 50%; background: var(--panel-2) center/contain no-repeat; border: 1px solid var(--hairline); flex: 0 0 auto; }
+  .lr-logo.sm { width: 26px; height: 26px; }
+  .lr-logo.md { width: 34px; height: 34px; }
+  .lr-logo.lg { width: 60px; height: 60px; }
+  .lr-logo.xl { width: 76px; height: 76px; }
+  .lr-coach { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; }
+  .lr-champ-badge {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; color: var(--amber);
+    border: 1px solid rgba(255,184,77,.4); background: rgba(255,184,77,.08); padding: 2px 5px; white-space: nowrap; position: relative; z-index: 1;
+  }
+  .lr-pod-sweep {
+    position: absolute; top: 0; bottom: 0; left: -30%; width: 22%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.045), transparent);
+    animation: lr-sweep 6s linear infinite; pointer-events: none;
+  }
+  @keyframes lr-sweep { to { left: 130%; } }
+
+  /* chip (for podium stats) */
+  .chip {
+    display: inline-flex; align-items: center;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    padding: 3px 8px; border: 1px solid var(--hairline-2); background: rgba(255,255,255,.04); color: var(--text-mute);
+  }
+  .chip.lime { color: var(--lime); border-color: rgba(193,255,61,.3); background: rgba(193,255,61,.06); }
+  .chip.cyan { color: var(--cyan); border-color: var(--cyan-dim); background: var(--cyan-soft); }
+
+  /* ── scope toggle ── */
+  .lr-seg { position: relative; display: inline-flex; border: 1px solid var(--hairline-2); }
+  .lr-seg button {
+    position: relative; z-index: 1; background: transparent; border: 0; border-right: 1px solid var(--hairline);
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--text-mute); padding: 7px 16px; cursor: pointer; transition: color .2s;
+  }
+  .lr-seg button:last-child { border-right: 0; }
+  .lr-seg button.on { color: var(--ink); }
+  .lr-seg-pill {
+    position: absolute; top: 0; bottom: 0; background: var(--magenta);
+    box-shadow: 0 0 16px -2px var(--magenta-dim);
+    transition: left .32s var(--ease-out-cubic), width .32s var(--ease-out-cubic); z-index: 0;
+  }
+
+  /* ── ladder ── */
+  .lr-ladder { width: 100%; border-collapse: collapse; }
+  .lr-ladder thead th {
+    text-align: left; font-family: var(--font-mono); font-weight: 500; font-size: 10px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-mute);
+    padding: 8px 12px; border-bottom: 1px solid var(--hairline-2);
+    position: sticky; top: 0; background: var(--panel); z-index: 2;
+  }
+  .lr-ladder td { padding: 0; border-bottom: 1px solid var(--hairline); }
+  .lr-rowcell { padding: 11px 12px; }
+  .lr-row { position: relative; transition: background .16s; }
+  .lr-row:hover td { background: rgba(61,229,255,.04); }
+  .lr-row.champ-row:hover td { background: rgba(255,184,77,.05); }
+  .lr-row td:first-child { box-shadow: inset 3px 0 0 transparent; transition: box-shadow .16s; }
+  .lr-row.r1 td:first-child { box-shadow: inset 3px 0 0 var(--magenta); }
+  .lr-row.r2 td:first-child, .lr-row.r3 td:first-child { box-shadow: inset 3px 0 0 var(--cyan); }
+
+  .lr-rank { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .lr-rank.r1 { color: var(--magenta); text-shadow: 0 0 14px var(--magenta-dim); }
+  .lr-rank.r2, .lr-rank.r3 { color: var(--cyan); }
+  .lr-rank.rx { color: var(--text-dim); }
+
+  .lr-move { font-family: var(--font-mono); font-size: 9px; letter-spacing: .04em; display: inline-flex; align-items: center; gap: 1px; }
+  .lr-move.up { color: var(--lime); } .lr-move.down { color: var(--red); } .lr-move.flat { color: var(--text-dim); }
+
+  .lr-team { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .lr-teamname { font-family: 'Chakra Petch', var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; color: var(--text); flex-wrap: wrap; }
+  .lr-num { font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; text-align: center; }
+  .lr-w { color: var(--lime); } .lr-l { color: var(--text-mute); } .lr-t { color: var(--text-dim); }
+  .lr-diff-pos { color: var(--cyan); } .lr-diff-neg { color: var(--red); } .lr-diff-zero { color: var(--text-dim); }
+
+  /* diff bar */
+  .lr-diffbar { position: relative; height: 16px; width: 100%; }
+  .lr-diffbar-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--hairline-2); }
+  .lr-diffbar-fill { position: absolute; top: 4px; height: 8px; width: 0; transition: width .7s var(--ease-back-out); }
+  .lr-diffbar-fill.pos { left: 50%; background: linear-gradient(90deg, var(--cyan-soft), var(--cyan)); box-shadow: 0 0 10px -2px var(--cyan-dim); }
+  .lr-diffbar-fill.neg { right: 50%; background: linear-gradient(270deg, rgba(255,88,120,.2), var(--red)); box-shadow: 0 0 10px -2px rgba(255,88,120,.5); }
+
+  /* form pips */
+  .lr-form { display: inline-flex; gap: 3px; }
+  .lr-pip { width: 16px; height: 12px; border: 1px solid var(--hairline); transition: transform .15s; }
+  .lr-pip.w { background: var(--lime); } .lr-pip.l { background: var(--red); }
+  .lr-pip.t { background: var(--text-dim); } .lr-pip.unp { background: transparent; }
+  .lr-row:hover .lr-pip { transform: translateY(-1px); }
+
+  /* staggered reveal */
+  .lr-reveal { opacity: 1; transform: none; animation: lr-fade-up .42s var(--ease-out-cubic) backwards; }
+  @keyframes lr-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* stat strip */
+  .lr-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+  .lr-stat { border: 1px solid var(--hairline); padding: 12px 14px; position: relative; overflow: hidden; }
+  .lr-stat .k { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim); text-transform: uppercase; }
+  .lr-stat .v { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 17px; margin-top: 5px; letter-spacing: .02em; }
+  .lr-stat .sub { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+
+  /* scroll */
+  .lr-scroll { overflow-x: auto; }
+  .lr-scroll::-webkit-scrollbar { height: 4px; }
+  .lr-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); }
+
+  /* empty */
+  .lr-empty { text-align: center; padding: 64px 20px; color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lr-reveal, .lr-pod-sweep, .lr-prog-fill { animation: none; }
+    .lr-prog-fill { width: var(--w, 0); }
+    .lr-diffbar-fill { transition: none; }
+  }
+
+  @media (max-width: 768px) {
+    .lr-page { padding: 16px 12px 32px; }
+    .lr-podium { grid-template-columns: 1fr; gap: 6px; }
+    .lr-podteam-place { font-size: 80px; }
+    .lr-stats { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 540px) {
+    .lr-ladder thead th:nth-child(4),
+    .lr-ladder td:nth-child(4),
+    .lr-ladder thead th:nth-child(5),
+    .lr-ladder td:nth-child(5),
+    .lr-ladder thead th:nth-child(7),
+    .lr-ladder td:nth-child(7) { display: none; }
+    .lr-stats { grid-template-columns: 1fr 1fr; }
+  }
 </style>
 
-<!-- ── Hero Banner ── -->
-<div class="yc-page-hero hero-pattern">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="flex flex-col sm:flex-row sm:items-end gap-3">
-      <div>
-        <p class="yc-eyebrow typeon">// LEAGUE.STANDINGS</p>
-        <h1 class="yc-page-title">{{ league_name }}</h1>
-      </div>
-      <div class="sm:ml-auto flex items-center gap-4 text-xs font-medium pb-1" style="color:var(--text-mute);">
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm" style="background:rgba(74,222,128,0.6);"></span> Win</span>
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm" style="background:rgba(248,113,113,0.6);"></span> Loss</span>
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm" style="background:rgba(34,225,255,0.6);"></span> Tie</span>
-        {% if total_weeks > 0 %}<span class="w-px h-3 hidden sm:block" style="background:var(--hairline-2);"></span><span class="font-bold font-mono hidden sm:block" style="color:var(--cyan);">WK {{ [completed_weeks + 1, total_weeks]|min }} / {{ total_weeks }}</span>{% endif %}
-      </div>
-    </div>
-  </div>
-  <div class="section-line"></div>
-</div>
+<div class="lr-page">
 
-<!-- ── Season Progress Bar ── -->
-{% if total_weeks > 0 %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-0">
-  <div class="flex items-center gap-4">
-    <div class="flex-1">
-      <div class="flex items-center justify-between mb-1.5">
-        <span class="text-xs font-bold uppercase tracking-widest text-gray-600">Season Progress</span>
-        <span class="text-xs text-gray-500 font-medium">
-          {% if completed_weeks >= total_weeks %}
-            <span class="text-green-400 font-bold">Season Complete</span>
-          {% else %}
-            Week {{ completed_weeks + 1 }} of {{ total_weeks }} · {{ completed_matches }}/{{ total_matches }} matches played
-          {% endif %}
-        </span>
-      </div>
-      <div class="h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
-        <div class="h-full rounded-full transition-all duration-700"
-             style="width:{{ ((completed_weeks / total_weeks) * 100) | round(1) }}%;
-                    background:linear-gradient(to right,var(--cyan),var(--magenta));
-                    box-shadow:0 0 8px var(--cyan-dim);">
-        </div>
-      </div>
-      <!-- Week pip markers -->
-      <div class="flex mt-1.5" style="position:relative;">
-        {% for w in all_weeks %}
-        <div class="flex-1 text-center" style="position:relative;">
-          <div class="mx-auto w-1 h-1 rounded-full" style="background:{% if loop.index <= completed_weeks %}rgba(34,225,255,0.6){% else %}#374151{% endif %};"></div>
-        </div>
-        {% endfor %}
-      </div>
+  <!-- header -->
+  <div class="lr-head">
+    <span class="lr-eyebrow">// LEAGUE.STANDINGS</span>
+    <span class="lr-title">Standings</span>
+    <span class="lr-rule"></span>
+    {% if total_weeks > 0 %}
+    <div class="lr-prog">
+      <span class="lr-mono">WEEK {{ '%02d' % [completed_weeks+1, total_weeks]|min }} / {{ '%02d' % total_weeks }}</span>
+      <span class="lr-prog-track"><span class="lr-prog-fill" id="lr-prog-fill" style="--w:{{ (completed_weeks/total_weeks*100)|round(1) }}%"></span></span>
+      <span class="lr-mono">{{ completed_matches }} PLAYED</span>
     </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- ── Top 3 Podium ── -->
-{% if standings_all and standings_all | length >= 1 %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
-  <p class="yc-eyebrow mb-6">// LEAGUE.STANDINGS</p>
-  {% set top3 = standings_all[:3] %}
-  <div class="yc-podium flex items-end justify-center gap-3 mb-10">
-    {# 2nd place (left) #}
-    {% if top3 | length >= 2 %}
-    {% set row = top3[1] %}
-    <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center text-decoration-none group" style="text-decoration:none;">
-      <div class="mb-3 w-20 h-20 flex-shrink-0">
-        {% if row.coach.logo_url %}
-          <img src="{{ row.coach.logo_url }}" class="w-20 h-20 object-contain rounded-xl" alt="">
-        {% else %}
-          <div class="w-20 h-20 rounded-xl flex items-center justify-center text-lg font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-        {% endif %}
-      </div>
-      <div class="text-sm font-bold text-white truncate mb-0.5" style="max-width:130px;">{{ row.coach.team_name }}</div>
-      <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L</div>
-      <div class="yc-bar-23 rounded-t-lg flex items-center justify-center font-black text-2xl" style="width:110px;height:70px;background:rgba(192,192,192,0.15);border:1px solid rgba(192,192,192,0.25);color:#C0C0C0;">2</div>
-    </a>
-    {% endif %}
-    {# 1st place (center, taller) #}
-    {% if top3 | length >= 1 %}
-    {% set row = top3[0] %}
-    <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center group" style="text-decoration:none;">
-      <div class="mb-1 text-xs font-bold font-mono" style="color:rgba(34,225,255,0.6);">// LEADER</div>
-      <div class="mb-3 w-24 h-24 flex-shrink-0" style="filter:drop-shadow(0 0 20px rgba(250,204,21,0.35));">
-        {% if row.coach.logo_url %}
-          <img src="{{ row.coach.logo_url }}" class="w-24 h-24 object-contain rounded-xl" alt="">
-        {% else %}
-          <div class="w-24 h-24 rounded-xl flex items-center justify-center text-2xl font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-        {% endif %}
-      </div>
-      <div class="text-base font-black text-white truncate mb-0.5" style="max-width:150px;">{{ row.coach.team_name }}</div>
-      <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L · +{{ row.diff | abs | int }}</div>
-      <div class="yc-bar-1 rounded-t-lg flex items-center justify-center font-black text-3xl" style="width:130px;height:92px;background:var(--magenta-soft);border:1px solid var(--magenta-dim);color:var(--magenta);box-shadow:0 0 28px rgba(255,42,138,0.12);">1</div>
-    </a>
-    {% endif %}
-    {# 3rd place (right) #}
-    {% if top3 | length >= 3 %}
-    {% set row = top3[2] %}
-    <a href="/team/{{ row.coach.id }}" class="flex flex-col items-center text-center group" style="text-decoration:none;">
-      <div class="mb-3 w-20 h-20 flex-shrink-0">
-        {% if row.coach.logo_url %}
-          <img src="{{ row.coach.logo_url }}" class="w-20 h-20 object-contain rounded-xl" alt="">
-        {% else %}
-          <div class="w-20 h-20 rounded-xl flex items-center justify-center text-lg font-black text-white" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-        {% endif %}
-      </div>
-      <div class="text-sm font-bold text-white truncate mb-0.5" style="max-width:130px;">{{ row.coach.team_name }}</div>
-      <div class="text-xs font-mono mb-3" style="color:rgba(255,255,255,0.3);">{{ row.W }}W {{ row.L }}L</div>
-      <div class="yc-bar-23 rounded-t-lg flex items-center justify-center font-black text-2xl" style="width:110px;height:56px;background:rgba(205,127,50,0.12);border:1px solid rgba(205,127,50,0.25);color:#CD7F32;">3</div>
-    </a>
     {% endif %}
   </div>
-</div>
-{% endif %}
-
-<!-- ── Standings Tables ── -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-  {% macro rank_badge(rank) %}
-    {% if rank == 1 %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:rgba(255,42,138,.15);color:var(--magenta);border:1px solid rgba(255,42,138,.3);">1</span>
-    {% elif rank == 2 or rank == 3 %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black" style="background:rgba(34,225,255,.1);color:var(--cyan);border:1px solid rgba(34,225,255,.25);">{{ rank }}</span>
-    {% else %}
-      <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold" style="color:var(--text-dim);border:1px solid var(--hairline);">{{ rank }}</span>
-    {% endif %}
-  {% endmacro %}
-
-  {% macro standings_table(standings, pool_label, pool_color='var(--cyan)') %}
-  <div class="mb-10">
-    <div class="flex items-center gap-3 mb-3">
-      <div class="w-1.5 h-7 rounded-full" style="background: {{ pool_color }};"></div>
-      <h2 class="text-xl font-black" style="font-family:var(--font-display);color: {{ pool_color }};">POOL {{ pool_label }}</h2>
-      <span class="text-xs font-mono" style="color:var(--text-dim);letter-spacing:.08em;">{{ standings | length }} TEAMS</span>
-      <span class="glint-rule"></span>
-    </div>
-    {# Column headers #}
-    <div class="flex items-center gap-4 px-5 py-1.5 mb-1" style="border-bottom:1px solid var(--hairline);">
-      <div class="flex-shrink-0" style="width:36px;"></div>
-      <div class="flex-shrink-0" style="width:44px;"></div>
-      <div class="flex-1 min-w-0" style="font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">TEAM</div>
-      <div class="flex-shrink-0 hidden sm:block text-right" style="width:110px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">FORM</div>
-      <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">W · L</div>
-      <div class="flex-shrink-0 text-right w-12 hidden sm:block" style="font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text-mute);">DIFF</div>
-    </div>
-
-    <div class="space-y-2">
-      {% for row in standings %}
-      {% set total_games = row.W + row.L + row.T %}
-      {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
-      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
-        {# Rank #}
-        <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
-
-        {# Logo with champion crown #}
-        <div class="flex-shrink-0 {% if row.coach.is_defending_champ %}champ-logo{% endif %}" style="margin-top:{% if row.coach.is_defending_champ %}8px{% else %}0{% endif %};" {% if row.coach.is_defending_champ %}aria-label="Defending champion"{% endif %}>
-          {% if row.coach.logo_url %}
-            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg tlogo" alt="">
-          {% else %}
-            <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white tlogo" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-          {% endif %}
-          {% if row.coach.is_defending_champ %}
-          <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-            <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-          </svg>
-          {% endif %}
-        </div>
-
-        {# Team + coach name #}
-        <div class="flex-1 min-w-0">
-          <div class="font-black text-white text-sm leading-tight truncate" style="font-family:var(--font-display);letter-spacing:.03em;">
-            {{ row.coach.team_name }}
-            {% if row.coach.is_defending_champ %}<span class="champ-chip champ-chip-sm"><span class="champ-chip-icon">★</span>DEF CHAMP</span>{% endif %}
-          </div>
-          <div class="text-xs text-gray-500" style="font-family:var(--font-mono);">{{ row.coach.coach_name }}</div>
-        </div>
-
-        {# FORM strip: last 5 weeks #}
-        <div class="flex-shrink-0 hidden sm:flex gap-1 items-center justify-end" style="width:110px;">
-          {% for w in all_weeks[-5:] %}
-            {% set res = row.weeks.get(w, '') %}
-            {% if res == 'W' %}
-              <div title="WK{{ '%02d'|format(w) }}: Win" style="width:18px;height:14px;border-radius:2px;background:var(--lime);border:1px solid var(--hairline);"></div>
-            {% elif res == 'L' %}
-              <div title="WK{{ '%02d'|format(w) }}: Loss" style="width:18px;height:14px;border-radius:2px;background:var(--red);border:1px solid var(--hairline);"></div>
-            {% elif res == 'T' %}
-              <div title="WK{{ '%02d'|format(w) }}: Tie" style="width:18px;height:14px;border-radius:2px;background:rgba(250,204,21,0.7);border:1px solid var(--hairline);"></div>
-            {% else %}
-              <div title="WK{{ '%02d'|format(w) }}: Upcoming" style="width:18px;height:14px;border-radius:2px;background:transparent;border:1px solid var(--hairline);"></div>
-            {% endif %}
-          {% endfor %}
-        </div>
-
-        {# Record + win-rate bar #}
-        <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
-          <div class="font-black text-base font-mono text-white leading-tight">
-            <span style="color:var(--lime);">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
-            <span class="mx-0.5 text-gray-600">·</span>
-            <span style="color:var(--red);">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
-            {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
-          </div>
-          {% if total_games > 0 %}
-          <div class="mt-1.5 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
-            <div class="h-full rounded-full" style="width:{{ win_pct }}%;background:{{ row.coach.color or '#facc15' }};"></div>
-          </div>
-          <div class="text-xs font-mono mt-0.5" style="color:rgba(255,255,255,0.2);">{{ win_pct }}%</div>
-          {% endif %}
-        </div>
-
-        {# Diff #}
-        <div class="flex-shrink-0 text-right w-12 hidden sm:block">
-          <div class="text-sm font-bold font-mono" style="color:{% if row.diff > 0 %}var(--cyan){% elif row.diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
-            {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
-          </div>
-          <div class="text-xs font-mono text-gray-700">DIFF</div>
-        </div>
-      </a>
-      {% else %}
-      <div class="cp-card px-5 py-10 text-center">
-        <p class="text-gray-600 text-sm">No teams in Pool {{ pool_label }} yet.</p>
-        {% if session.get('role') == 'admin' %}
-          <a href="/admin/teams" class="mt-2 inline-block text-xs text-yellow-500 hover:text-yellow-400">Add teams in Admin &rarr;</a>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endmacro %}
-
-  {% if standings_a or standings_b %}
-    {# ── Per-pool standings (primary view) ── #}
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
-      {% if standings_a %}
-        <div>{{ standings_table(standings_a, 'A', 'var(--cyan)') }}</div>
-      {% endif %}
-      {% if standings_b %}
-        <div>{{ standings_table(standings_b, 'B', 'var(--magenta)') }}</div>
-      {% endif %}
-    </div>
-  {% else %}
-    <div class="text-center py-24">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border mb-6" style="background:var(--panel);border-color:var(--hairline-2);">
-        <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-        </svg>
-      </div>
-      <h2 class="text-xl font-bold text-gray-600 mb-2">No league data yet</h2>
-      <p class="text-sm text-gray-700 mb-6">Set up your teams and schedule to get started.</p>
-      {% if session.get('role') == 'admin' %}
-        <a href="/admin" class="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-bold text-sm transition-colors" style="background:var(--magenta);color:#000;">
-          Set up your league &rarr;
-        </a>
-      {% endif %}
-    </div>
-  {% endif %}
 
   {% if standings_all %}
-  {# ── Overall standings (secondary) ── #}
-  <div class="flex items-center gap-3 mb-4 mt-2">
-    <div class="w-1 h-6 rounded-full bg-gray-700"></div>
-    <h2 class="text-base font-bold text-gray-500">Overall Standings</h2>
-    <span class="text-sm text-gray-600 font-medium">All pools combined</span>
-    <span class="glint-rule"></span>
-  </div>
-  <div class="mb-10">
-    <div class="space-y-2">
-      {% for row in standings_all %}
-      {% set total_games = row.W + row.L + row.T %}
-      {% set win_pct = (row.W / total_games * 100) | round(0) | int if total_games > 0 else 0 %}
-      <a href="/team/{{ row.coach.id }}" class="cp-card flex items-center gap-4 px-5 py-3.5 hover:border-cyan-500/30 transition-all no-underline" style="text-decoration:none;">
-        <div class="flex-shrink-0">{{ rank_badge(row.rank) }}</div>
-        <div class="flex-shrink-0 {% if row.coach.is_defending_champ %}champ-logo{% endif %}" style="margin-top:{% if row.coach.is_defending_champ %}8px{% else %}0{% endif %};" {% if row.coach.is_defending_champ %}aria-label="Defending champion"{% endif %}>
-          {% if row.coach.logo_url %}
-            <img src="{{ row.coach.logo_url }}" class="w-11 h-11 object-contain rounded-lg tlogo" alt="">
-          {% else %}
-            <div class="w-11 h-11 rounded-lg flex items-center justify-center text-xs font-black text-white tlogo" style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
-          {% endif %}
-          {% if row.coach.is_defending_champ %}
-          <svg class="champ-crown" viewBox="0 0 28 14" fill="none" aria-hidden="true">
-            <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="var(--amber)" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
-            <line x1="1" y1="13" x2="27" y2="13" stroke="var(--amber)" stroke-width="1.5"/>
-          </svg>
-          {% endif %}
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="font-black text-white text-sm leading-tight truncate" style="font-family:var(--font-display);letter-spacing:.03em;">
-            {{ row.coach.team_name }}
-            {% if row.coach.is_defending_champ %}<span class="champ-chip champ-chip-sm"><span class="champ-chip-icon">★</span>DEF CHAMP</span>{% endif %}
-          </div>
-          <div class="flex items-center gap-2 mt-0.5">
-            <span class="text-xs text-gray-500" style="font-family:var(--font-mono);">{{ row.coach.coach_name }}</span>
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:var(--cyan-soft);color:var(--cyan);">{{ row.coach.pool }}</span>
-          </div>
-        </div>
-        {# FORM strip: last 5 weeks #}
-        <div class="flex-shrink-0 hidden sm:flex gap-1 items-center justify-end" style="width:110px;">
-          {% for w in all_weeks[-5:] %}
-            {% set res = row.weeks.get(w, '') %}
-            {% if res == 'W' %}
-              <div title="WK{{ '%02d'|format(w) }}: Win" style="width:18px;height:14px;border-radius:2px;background:var(--lime);border:1px solid var(--hairline);"></div>
-            {% elif res == 'L' %}
-              <div title="WK{{ '%02d'|format(w) }}: Loss" style="width:18px;height:14px;border-radius:2px;background:var(--red);border:1px solid var(--hairline);"></div>
-            {% elif res == 'T' %}
-              <div title="WK{{ '%02d'|format(w) }}: Tie" style="width:18px;height:14px;border-radius:2px;background:rgba(250,204,21,0.7);border:1px solid var(--hairline);"></div>
-            {% else %}
-              <div title="WK{{ '%02d'|format(w) }}: Upcoming" style="width:18px;height:14px;border-radius:2px;background:transparent;border:1px solid var(--hairline);"></div>
-            {% endif %}
-          {% endfor %}
-        </div>
-        <div class="yc-record-col flex-shrink-0 text-right" style="min-width:110px;">
-          <div class="font-black text-base font-mono text-white leading-tight">
-            <span style="color:var(--lime);">{{ row.W }}</span><span class="text-gray-600 text-xs font-normal">W</span>
-            <span class="mx-0.5 text-gray-600">·</span>
-            <span style="color:var(--red);">{{ row.L }}</span><span class="text-gray-600 text-xs font-normal">L</span>
-            {% if row.T %}<span class="mx-0.5 text-gray-600">·</span><span class="text-gray-400">{{ row.T }}</span><span class="text-gray-600 text-xs font-normal">T</span>{% endif %}
-          </div>
-          {% if total_games > 0 %}
-          <div class="mt-1.5 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06);">
-            <div class="h-full rounded-full" style="width:{{ win_pct }}%;background:{{ row.coach.color or '#facc15' }};"></div>
-          </div>
-          {% endif %}
-        </div>
-        <div class="flex-shrink-0 text-right w-12 hidden sm:block">
-          <div class="text-sm font-bold font-mono" style="color:{% if row.diff > 0 %}var(--cyan){% elif row.diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
-            {{ '%+.0f' % row.diff if row.diff != 0 else '±0' }}
-          </div>
-          <div class="text-xs font-mono text-gray-700">DIFF</div>
-        </div>
-      </a>
-      {% endfor %}
+
+  <!-- podium container (re-rendered by JS on scope change) -->
+  <div id="lr-podium-wrap"></div>
+
+  <!-- scope toggle -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div class="lr-seg" id="lr-seg">
+      <span class="lr-seg-pill" id="lr-seg-pill"></span>
+      <button data-sc="ALL" class="on" onclick="setScope('ALL',this)">OVERALL</button>
+      <button data-sc="A"         onclick="setScope('A',this)">POOL A</button>
+      <button data-sc="B"         onclick="setScope('B',this)">POOL B</button>
     </div>
+    <span class="lr-mono">SORT · WINS → DIFF</span>
+  </div>
+
+  <!-- ladder scroll -->
+  <div class="lr-scroll"><div id="lr-ladder-wrap"></div></div>
+
+  <!-- stat strip -->
+  <div id="lr-stats-wrap"></div>
+
+  {% else %}
+  <div class="lr-empty">
+    NO LEAGUE DATA YET — SET UP YOUR TEAMS AND SCHEDULE TO GET STARTED.
+    {% if session.get('role') == 'admin' %}
+    <br><a href="/admin" style="color:var(--magenta);margin-top:8px;display:inline-block;">Set up your league →</a>
+    {% endif %}
   </div>
   {% endif %}
 
 </div>
 
+{% if standings_all %}
 <script>
-// Render sparkline SVG paths from data-pts attributes
-document.addEventListener('turbo:load', () => {
-  document.querySelectorAll('.spark[data-pts]').forEach(svg => {
-    const pts = svg.dataset.pts.split(',').map(Number).filter(x => !isNaN(x));
-    if (pts.length < 2) return;
-    const max = Math.max(...pts), min = Math.min(...pts), range = max - min || 1;
-    const d = pts.map((p, i) => {
-      const x = (i / (pts.length - 1)) * 100;
-      const y = 100 - ((p - min) / range) * 100;
-      return (i ? 'L' : 'M') + ' ' + x.toFixed(1) + ' ' + y.toFixed(1);
-    }).join(' ');
-    const path = svg.querySelector('.spark-path');
-    if (path) path.setAttribute('d', d);
+(function(){
+
+const ALL_WEEKS = {{ all_weeks | tojson }};
+const FORM_WEEKS = ALL_WEEKS.slice(-5); // last 5
+const DATA = {
+  ALL: {{ standings_all_json }},
+  A:   {{ standings_a_json }},
+  B:   {{ standings_b_json }},
+};
+
+let scope = "ALL";
+let animKey = 0;
+const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// ── pill measurement ──
+function measurePill(){
+  const seg = document.getElementById("lr-seg");
+  const pill = document.getElementById("lr-seg-pill");
+  if(!seg||!pill) return;
+  const active = seg.querySelector("button.on");
+  if(!active) return;
+  pill.style.left  = active.offsetLeft + "px";
+  pill.style.width = active.offsetWidth + "px";
+}
+
+function setScope(sc, btn){
+  if(sc===scope) return;
+  scope = sc;
+  animKey++;
+  // update button active state
+  document.querySelectorAll("#lr-seg button").forEach(b=>b.classList.toggle("on", b===btn));
+  requestAnimationFrame(()=>{ measurePill(); });
+  renderAll();
+}
+
+// ── logo element ──
+function logoHtml(t, sizeCls){
+  const ini = (t.team_name||"??").slice(0,2).toUpperCase();
+  if(t.logo_url) return `<span class="lr-logo ${sizeCls}" style="background-image:url('${esc(t.logo_url)}')" title="${esc(t.team_name)}"></span>`;
+  const bg = t.color || "#374151";
+  return `<span class="lr-logo ${sizeCls}" style="background:${bg};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;font-weight:700;color:#fff">${esc(ini)}</span>`;
+}
+
+// ── podium ──
+function renderPodium(){
+  const wrap = document.getElementById("lr-podium-wrap");
+  if(!wrap) return;
+  const rows = DATA[scope];
+  if(!rows||rows.length===0){ wrap.innerHTML=""; return; }
+  const top3 = rows.slice(0,3);
+  const slots = [
+    {r:top3[1],place:2,lift:26},
+    {r:top3[0],place:1,lift:0},
+    {r:top3[2],place:3,lift:38},
+  ].filter(s=>s.r);
+
+  const html = slots.map((s,i)=>{
+    const {r,place,lift} = s;
+    const t = r.coach;
+    const isFirst = place===1;
+    const accent = isFirst?"var(--magenta)":"var(--cyan)";
+    const logoCls = isFirst?"xl":"lg";
+    return `<div class="lr-podteam lr-reveal${isFirst?" p1":""}"
+        style="margin-top:${lift}px;animation-delay:${i*70}ms">
+      ${isFirst?'<div class="lr-pod-sweep"></div>':''}
+      <div class="lr-podteam-place" style="color:${isFirst?"var(--magenta-soft)":"rgba(255,255,255,.04)"}">${place}</div>
+      <div class="lr-podteam-medal" style="border-color:${accent};color:${accent}">${String(place).padStart(2,"0")}</div>
+      ${logoHtml(t,logoCls)}
+      <div class="lr-podteam-name" style="font-size:${isFirst?18:15}px">${esc(t.team_name)}</div>
+      <div class="lr-coach">${esc(t.coach_name)} · POOL ${esc(t.pool)}</div>
+      ${t.is_champ?'<span class="lr-champ-badge">★ DEF CHAMP</span>':''}
+      <div class="lr-podteam-stats">
+        <span class="chip lime" data-w="${r.W}">${r.W}W</span>
+        <span class="chip">${r.L}L</span>
+        <span class="chip cyan">${r.diff>=0?"+":""}${r.diff}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  wrap.innerHTML = `<div class="lr-podium">${html}</div>`;
+
+  if(!REDUCED) requestAnimationFrame(()=>{
+    wrap.querySelectorAll("[data-w]").forEach(el=>{
+      const v=parseInt(el.dataset.w)||0;
+      countUp(el, v+"W", v, 650);
+    });
   });
+}
+
+// ── ladder ──
+function renderLadder(){
+  const wrap = document.getElementById("lr-ladder-wrap");
+  if(!wrap) return;
+  const rows = DATA[scope];
+  if(!rows||rows.length===0){ wrap.innerHTML='<div class="lr-empty">NO TEAMS IN THIS POOL.</div>'; return; }
+
+  const maxDiff = Math.max(1,...rows.map(r=>Math.abs(r.diff)));
+
+  let html = `<table class="lr-ladder">
+    <thead><tr>
+      <th style="width:64px">RNK</th>
+      <th>TEAM</th>
+      <th style="width:44px;text-align:center">W</th>
+      <th style="width:44px;text-align:center">L</th>
+      <th style="width:44px;text-align:center">T</th>
+      <th style="width:60px;text-align:center">DIFF</th>
+      <th style="width:150px">MARGIN</th>
+      <th style="width:96px">FORM</th>
+    </tr></thead><tbody>`;
+
+  rows.forEach((r,i)=>{
+    const rk = r.rank;
+    const rkCls = rk===1?"r1":rk===2?"r2":rk===3?"r3":"rx";
+    const rowCls = (rk===1||rk===2||rk===3)?rkCls:"";
+    const t = r.coach;
+    const champ = t.is_champ;
+    const diffCls = r.diff>0?"lr-diff-pos":r.diff<0?"lr-diff-neg":"lr-diff-zero";
+    const diffStr = (r.diff>0?"+":"")+r.diff;
+    const pct = Math.abs(r.diff)/maxDiff*50; // half-width max
+
+    // form pips from the form array (last 5 weeks)
+    const pips = r.form.slice(-5);
+    while(pips.length<5) pips.unshift("");
+    const pipsHtml = pips.map(p=>{
+      const cls = p==="W"?"w":p==="L"?"l":p==="T"?"t":"unp";
+      return `<span class="lr-pip ${cls}"></span>`;
+    }).join("");
+
+    html += `<tr class="lr-row lr-reveal${rowCls?" "+rowCls:""}${champ?" champ-row":""}"
+        style="animation-delay:${i*35}ms">
+      <td class="lr-rowcell">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="lr-rank ${rkCls}">${String(rk).padStart(2,"0")}</span>
+          <span class="lr-move flat">—</span>
+        </div>
+      </td>
+      <td class="lr-rowcell">
+        <div class="lr-team">
+          ${logoHtml(t,"md")}
+          <div style="min-width:0">
+            <div class="lr-teamname">
+              ${esc(t.team_name)}
+              ${champ?'<span class="lr-champ-badge">★ DEF CHAMP</span>':''}
+            </div>
+            <div class="lr-coach">${esc(t.coach_name)} · POOL ${esc(t.pool)}</div>
+          </div>
+        </div>
+      </td>
+      <td class="lr-rowcell"><div class="lr-num lr-w" data-v="${r.W}">${r.W}</div></td>
+      <td class="lr-rowcell"><div class="lr-num lr-l" data-v="${r.L}">${r.L}</div></td>
+      <td class="lr-rowcell"><div class="lr-num lr-t">${r.T||"—"}</div></td>
+      <td class="lr-rowcell"><div class="lr-num ${diffCls}" data-diff="${r.diff}">${diffStr}</div></td>
+      <td class="lr-rowcell">
+        <div class="lr-diffbar">
+          <div class="lr-diffbar-mid"></div>
+          <div class="lr-diffbar-fill ${r.diff>=0?"pos":"neg"}" data-pct="${pct}"></div>
+        </div>
+      </td>
+      <td class="lr-rowcell"><div class="lr-form">${pipsHtml}</div></td>
+    </tr>`;
+  });
+
+  html += "</tbody></table>";
+  wrap.innerHTML = html;
+
+  // animate bars + count-ups
+  requestAnimationFrame(()=>{
+    wrap.querySelectorAll(".lr-diffbar-fill[data-pct]").forEach((el,i)=>{
+      const pct = parseFloat(el.dataset.pct)||0;
+      setTimeout(()=>{ el.style.width = pct+"%"; }, 60+i*35);
+    });
+    if(!REDUCED){
+      wrap.querySelectorAll(".lr-num[data-v]").forEach(el=>{
+        countUp(el, null, parseInt(el.dataset.v)||0, 600);
+      });
+      wrap.querySelectorAll("[data-diff]").forEach(el=>{
+        const v=parseInt(el.dataset.diff)||0;
+        const abs=Math.abs(v);
+        if(!REDUCED){
+          let s;const target=abs;const dur=700;
+          s=performance.now();
+          function tick(t){
+            const p=Math.min(1,(t-s)/dur),e=1-Math.pow(1-p,3);
+            const n=Math.round(target*e);
+            el.textContent=(v>0?"+":"")+(v<0?"-":"")+n;
+            if(p<1) requestAnimationFrame(tick);
+            else el.textContent=(v>0?"+":"")+v;
+          }
+          requestAnimationFrame(tick);
+        }
+      });
+    }
+  });
+}
+
+// ── stat strip ──
+function renderStats(){
+  const wrap = document.getElementById("lr-stats-wrap");
+  if(!wrap) return;
+  const rows = DATA[scope];
+  if(!rows||rows.length===0){ wrap.innerHTML=""; return; }
+
+  const leader   = rows[0];
+  const mostWins = [...rows].sort((a,b)=>b.W-a.W)[0];
+  const bestDiff = [...rows].sort((a,b)=>b.diff-a.diff)[0];
+  const watchList= [...rows].sort((a,b)=>a.diff-b.diff)[0];
+
+  const last = s=>s.team_name.split(" ").pop();
+  const cards = [
+    ["LEADER",    leader.coach.team_name,  leader.coach.coach_name.toUpperCase(),  "var(--magenta)"],
+    ["MOST WINS", mostWins.W+"W · "+last(mostWins.coach), "WIN COUNT",              "var(--lime)"],
+    ["BEST DIFF", (bestDiff.diff>0?"+":"")+bestDiff.diff+" · "+last(bestDiff.coach),"POINT SWING", "var(--cyan)"],
+    ["WATCH LIST",last(watchList.coach)+" ↓", (watchList.diff>0?"+":"")+watchList.diff+" DIFF",    "var(--amber)"],
+  ];
+  wrap.innerHTML = `<div class="lr-stats">${cards.map(([k,v,sub,c],i)=>`
+    <div class="lr-stat lr-reveal" style="animation-delay:${i*50+200}ms">
+      <div class="k">${esc(k)}</div>
+      <div class="v" style="color:${c}">${esc(v)}</div>
+      <div class="sub">${esc(sub)}</div>
+    </div>`).join("")}</div>`;
+}
+
+function countUp(el, suffix, target, dur){
+  if(REDUCED){ el.textContent=target+(suffix||""); return; }
+  const s=performance.now();
+  function tick(t){
+    const p=Math.min(1,(t-s)/dur),e=1-Math.pow(1-p,3);
+    const n=Math.round(target*e);
+    el.textContent=n+(suffix||"");
+    if(p<1) requestAnimationFrame(tick);
+    else el.textContent=target+(suffix||"");
+  }
+  requestAnimationFrame(tick);
+}
+
+function renderAll(){
+  renderPodium();
+  renderLadder();
+  renderStats();
+}
+
+// init
+renderAll();
+requestAnimationFrame(()=>{
+  measurePill();
+  // progress bar
+  const fill = document.getElementById("lr-prog-fill");
+  if(fill){ requestAnimationFrame(()=>{ fill.style.width = getComputedStyle(fill).getPropertyValue("--w")||"0%"; }); }
 });
+
+})();
 </script>
+{% endif %}
 {% endblock %}

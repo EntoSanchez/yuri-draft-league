@@ -1,167 +1,364 @@
 {% extends "base.html" %}
 {% block title %}MVP Race – {{ league_name }}{% endblock %}
+{% block head_extra %}
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+{% endblock %}
 {% block content %}
+<style>
+  :root {
+    --ease-out-cubic: cubic-bezier(.2,.7,.2,1);
+    --ease-back-out:  cubic-bezier(.34,1.56,.64,1);
+    --hairline-2: rgba(232,232,248,.14);
+  }
 
-<!-- ── Page Header ── -->
-<div class="yc-page-hero hero-pattern">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <p class="yc-eyebrow">// MVP.RACE</p>
-    <h1 class="yc-page-title">MVP Race</h1>
-    <p class="yc-page-sub">Pokémon ranked by K/D differential across all matches.</p>
+  /* ── page scaffold ── */
+  .lr-page { padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 16px; }
+  .lr-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .lr-rule { flex: 1; height: 1px; background: var(--hairline); align-self: center; min-width: 20px; }
+  .lr-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--magenta); }
+  .lr-title   { font-family: 'Chakra Petch', var(--font-display); font-weight: 600; font-size: 24px; color: var(--text); }
+  .lr-meta    { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+
+  /* ── podium ── */
+  .lr-mvp-podium { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; align-items: end; }
+  .lr-podcard {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--hairline-2); background: var(--panel);
+    padding: 16px 16px 14px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .lr-podcard.p1 { border-color: var(--magenta-dim); box-shadow: 0 0 30px -14px var(--magenta-dim); }
+  .lr-podcard .lr-place {
+    position: absolute; top: -22px; right: -10px;
+    font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 120px;
+    line-height: 1; color: rgba(255,255,255,.035); pointer-events: none;
+  }
+  .lr-podcard.p1 .lr-place { color: var(--magenta-soft); }
+  .lr-pod-sweep {
+    position: absolute; top: 0; bottom: 0; left: -40%; width: 30%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent);
+    animation: lr-sweep 6s linear infinite; pointer-events: none;
+  }
+  @keyframes lr-sweep { to { left: 130%; } }
+
+  /* ── orb ── */
+  .lr-orb {
+    position: relative; border-radius: 50%;
+    display: grid; place-items: center;
+    flex: 0 0 auto; border: 1px solid var(--hairline-2);
+  }
+  .lr-orb.sm { width: 30px; height: 30px; }
+  .lr-orb.md { width: 42px; height: 42px; }
+  .lr-orb.lg { width: 62px; height: 62px; }
+  .lr-orb-glyph {
+    font-family: 'Chakra Petch', var(--font-display); font-weight: 700;
+    color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.5);
+  }
+  .lr-orb.sm .lr-orb-glyph { font-size: 12px; }
+  .lr-orb.md .lr-orb-glyph { font-size: 17px; }
+  .lr-orb.lg .lr-orb-glyph { font-size: 26px; }
+  .lr-orb.lg.pulse::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 50%;
+    border: 1px solid var(--magenta);
+    animation: lr-ring 2s ease-in-out infinite;
+  }
+  @keyframes lr-ring { 0%,100% { opacity:.3; transform:scale(1); } 50% { opacity:.9; transform:scale(1.06); } }
+
+  /* ── type chips ── */
+  .lr-typestripe { display: inline-flex; gap: 4px; }
+  .lr-typechip {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: .08em;
+    text-transform: uppercase; padding: 2px 6px; border: 1px solid;
+  }
+
+  /* ── mon name + team ── */
+  .lr-monname { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; color: var(--text); }
+  .lr-coach   { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; }
+  .lr-logo    { border-radius: 50%; background: var(--panel-2) center/contain no-repeat; border: 1px solid var(--hairline); flex: 0 0 auto; }
+  .lr-logo.sm { width: 26px; height: 26px; }
+  .lr-bigdiff { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+
+  /* ── K/D ── */
+  .lr-kd { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .lr-kd .k { color: var(--lime); } .lr-kd .d { color: var(--red); } .lr-kd .sep { color: var(--text-dim); }
+
+  /* ── toggle buttons ── */
+  .lr-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'Chakra Petch', var(--font-display); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .1em; font-size: 11px;
+    padding: 7px 12px; cursor: pointer;
+    border: 1px solid var(--hairline-2); color: var(--text); background: transparent;
+    transition: all .15s;
+  }
+  .lr-btn:hover { border-color: var(--cyan-dim); color: var(--cyan); }
+  .lr-btn.on { background: var(--magenta); border-color: var(--magenta); color: var(--ink); }
+
+  /* ── ranked list ── */
+  .lr-scroll { overflow-y: auto; }
+  .lr-scroll::-webkit-scrollbar { width: 0; }
+  .lr-mvprow {
+    display: grid; grid-template-columns: 44px 52px 1fr 150px 150px;
+    align-items: center; gap: 14px;
+    padding: 11px 14px; border-bottom: 1px solid var(--hairline);
+    position: relative; transition: background .16s;
+  }
+  .lr-mvprow:hover { background: rgba(61,229,255,.04); }
+  .lr-mvprow:hover .lr-orb { transform: scale(1.08); transition: transform .18s var(--ease-out-cubic); }
+  .lr-rank { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 16px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+
+  /* ── KO bar ── */
+  .lr-kdbar { position: relative; height: 10px; background: rgba(255,255,255,.05); overflow: hidden; }
+  .lr-kdbar-fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: linear-gradient(90deg, var(--cyan-soft), var(--cyan));
+    box-shadow: 0 0 8px -1px var(--cyan-dim);
+    transition: width .7s var(--ease-back-out);
+  }
+  .lr-kdbar-fill.mag { background: linear-gradient(90deg, var(--magenta-soft), var(--magenta)); box-shadow: 0 0 8px -1px var(--magenta-dim); }
+
+  /* ── staggered reveal ── */
+  .lr-reveal { opacity: 1; transform: none; animation: lr-fade-up .42s var(--ease-out-cubic) backwards; }
+  @keyframes lr-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── empty state ── */
+  .lr-empty { text-align: center; padding: 64px 20px; color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lr-reveal, .lr-pod-sweep, .lr-orb.lg.pulse::after { animation: none; }
+    .lr-kdbar-fill { transition: none; }
+  }
+
+  @media (max-width: 640px) {
+    .lr-page { padding: 16px 14px 32px; }
+    .lr-mvprow { grid-template-columns: 36px 42px 1fr 100px; }
+    .lr-mvprow > :nth-child(5) { display: none; }
+    .lr-mvp-podium { grid-template-columns: 1fr; gap: 8px; }
+    .lr-podcard .lr-place { font-size: 80px; }
+  }
+</style>
+
+<div class="lr-page">
+
+  <!-- header -->
+  <div class="lr-head">
+    <span class="lr-eyebrow">// MVP.RACE</span>
+    <span class="lr-title">MVP Race</span>
+    <span class="lr-rule"></span>
+    <span class="lr-meta">RANKED BY K/D DIFFERENTIAL · ALL MATCHES</span>
   </div>
-</div>
-
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
   {% if mvp_data %}
-
-    <!-- Top 3 Podium (desktop only) -->
-    {% if mvp_data | length >= 3 %}
-    <div class="hidden md:grid grid-cols-3 gap-4 mb-10">
-      {% for p in mvp_data[:3] %}
-        {% if loop.index == 1 %}
-          {% set order = 'order-2' %}
-          {% set medal_bg = 'linear-gradient(135deg,#ffd700,#b8860b)' %}
-          {% set medal_color = '#1a1200' %}
-          {% set scale = 'scale-105' %}
-          {% set rank_num = '1' %}
-        {% elif loop.index == 2 %}
-          {% set order = 'order-1' %}
-          {% set medal_bg = 'linear-gradient(135deg,#c0c0c0,#808080)' %}
-          {% set medal_color = '#111' %}
-          {% set scale = '' %}
-          {% set rank_num = '2' %}
-        {% else %}
-          {% set order = 'order-3' %}
-          {% set medal_bg = 'linear-gradient(135deg,#cd7f32,#8b4513)' %}
-          {% set medal_color = '#fff' %}
-          {% set scale = '' %}
-          {% set rank_num = '3' %}
-        {% endif %}
-
-        <div class="{{ order }} {{ scale }} p-5 text-center" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
-          <div class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black mb-3"
-               style="background:{{ medal_bg }};color:{{ medal_color }};">{{ rank_num }}</div>
-          <img src="{{ pokemon_sprite_url(p.pokemon_name) }}"
-               onerror="this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';this.onerror=null;"
-               class="w-12 h-12 object-contain mx-auto mb-2" alt="">
-          <div class="font-black text-white text-lg leading-tight">{{ p.pokemon_name }}</div>
-          <div class="text-sm text-gray-400 mt-0.5">{{ p.team_name }}</div>
-          <div class="text-xs text-gray-600 mb-3">{{ p.coach_name }}</div>
-          <div class="text-2xl font-black
-            {% if p.diff > 0 %}text-green-400{% elif p.diff < 0 %}text-red-400{% else %}text-gray-400{% endif %}">
-            {{ '%+.1f' % p.diff }}
-          </div>
-          <div class="text-xs text-gray-600 font-medium">K/D Diff</div>
-        </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Full Rankings Table -->
-    <div class="overflow-hidden" style="border-radius:2px;border:1px solid var(--hairline);background:var(--panel);">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr style="border-bottom:1px solid var(--hairline);background:var(--panel-2);">
-              <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600 w-14">Rank</th>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Pokemon</th>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 hidden sm:table-cell">Team</th>
-              <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600">GP</th>
-              <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600">Kills</th>
-              <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600">Deaths</th>
-              <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600">+/- Diff</th>
-              <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-600 hidden md:table-cell">K/D</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for p in mvp_data %}
-              {% if p.rank == 1 %}
-                {% set row_bg = 'background:linear-gradient(to right, rgba(255,215,0,0.04), transparent);' %}
-                {% set rank_bg = 'linear-gradient(135deg,#ffd700,#b8860b)' %}
-                {% set rank_col = '#1a1200' %}
-              {% elif p.rank == 2 %}
-                {% set row_bg = 'background:linear-gradient(to right, rgba(192,192,192,0.04), transparent);' %}
-                {% set rank_bg = 'linear-gradient(135deg,#c0c0c0,#808080)' %}
-                {% set rank_col = '#111' %}
-              {% elif p.rank == 3 %}
-                {% set row_bg = 'background:linear-gradient(to right, rgba(205,127,50,0.06), transparent);' %}
-                {% set rank_bg = 'linear-gradient(135deg,#cd7f32,#8b4513)' %}
-                {% set rank_col = '#fff' %}
-              {% else %}
-                {% set row_bg = '' %}
-                {% set rank_bg = '' %}
-                {% set rank_col = '' %}
-              {% endif %}
-
-              <tr class="alt-row transition-colors" style="border-bottom:1px solid var(--hairline);{{ row_bg }}">
-                <td class="px-4 py-3.5 text-center">
-                  {% if p.rank <= 3 %}
-                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black"
-                          style="background:{{ rank_bg }};color:{{ rank_col }};">{{ p.rank }}</span>
-                  {% else %}
-                    <span class="text-sm text-gray-600 font-bold">{{ p.rank }}</span>
-                  {% endif %}
-                </td>
-                <td class="px-4 py-3.5">
-                  <div class="flex items-center gap-2.5">
-                    <img src="{{ pokemon_sprite_url(p.pokemon_name) }}"
-                         onerror="this.src='{{ pokemon_static_sprite_url(p.pokemon_name) }}';this.onerror=null;"
-                         class="w-9 h-9 object-contain flex-shrink-0" alt="">
-                    <div>
-                      <div class="font-bold text-white leading-tight">{{ p.pokemon_name }}</div>
-                      <div class="text-xs text-gray-500 sm:hidden">{{ p.team_name }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3.5 hidden sm:table-cell">
-                  <div class="font-semibold text-gray-200 text-sm">{{ p.team_name }}</div>
-                  <div class="text-xs text-gray-600">{{ p.coach_name }}</div>
-                </td>
-                <td class="px-4 py-3.5 text-center text-gray-400 font-semibold">{{ p.games }}</td>
-                <td class="px-4 py-3.5 text-center font-bold text-green-400">{{ '%.1f' % p.total_kills }}</td>
-                <td class="px-4 py-3.5 text-center font-bold text-red-400">{{ '%.1f' % p.total_deaths }}</td>
-                <td class="px-4 py-3.5 text-center">
-                  <span class="text-lg font-black
-                    {% if p.diff > 0 %}text-green-400
-                    {% elif p.diff < 0 %}text-red-400
-                    {% else %}text-gray-500{% endif %}">
-                    {{ '%+.1f' % p.diff }}
-                  </span>
-                </td>
-                <td class="px-4 py-3.5 text-center hidden md:table-cell">
-                  <span class="font-mono font-bold text-gray-300">
-                    {% if p.total_deaths > 0 %}
-                      {{ '%.2f' % (p.total_kills / p.total_deaths) }}
-                    {% elif p.total_kills > 0 %}
-                      <span style="color:var(--cyan);">&#8734;</span>
-                    {% else %}—{% endif %}
-                  </span>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+  <!-- JS renders podium + toggle + list into these containers -->
+  <div id="lr-podium-wrap"></div>
+  <div id="lr-toggle-wrap" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"></div>
+  <div class="lr-scroll" id="lr-list-wrap"></div>
 
   {% else %}
-    <div class="text-center py-24">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border mb-6" style="border-color:var(--hairline);background:var(--panel);">
-        <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
-      </div>
-      <h2 class="text-xl font-bold text-gray-600 mb-2">No stats yet</h2>
-      <p class="text-sm text-gray-700 mb-6">Enter match results to start tracking MVP standings.</p>
-      {% if session.get('role') == 'admin' %}
-        <a href="/admin/schedule" class="inline-flex items-center gap-2 px-6 py-3 font-bold text-sm transition-colors"
-           style="border-radius:2px;background:var(--magenta);color:#000;">
-          Enter match results &rarr;
-        </a>
-      {% endif %}
-    </div>
+  <div class="lr-empty">
+    <div style="font-size:36px;margin-bottom:12px;opacity:.3;">★</div>
+    NO STATS YET — ENTER MATCH RESULTS TO START TRACKING MVP STANDINGS.
+    {% if session.get('role') == 'admin' %}
+    <br><a href="/admin/schedule" style="color:var(--magenta);margin-top:8px;display:inline-block;">Enter match results →</a>
+    {% endif %}
+  </div>
   {% endif %}
 
 </div>
+
+{% if mvp_data %}
+<script>
+(function(){
+const MVP = {{ mvp_data | tojson }};
+const TYPE_COLOR = {
+  Dragon:"#7b6cff",Ground:"#d9a441",Flying:"#7fb8ff",Ghost:"#9a6cff",
+  Steel:"#a7b3c4",Dark:"#7a6f8a",Fighting:"#ff7a59",Fairy:"#ff8fd0",
+  Electric:"#ffd23d",Water:"#3da5ff",Fire:"#ff6a4d",Grass:"#7ddc6a",
+  Poison:"#c06cff",Rock:"#d2b06a",Bug:"#b7d63d",Ice:"#7fe8e0",
+  Psychic:"#ff6fa3",Normal:"#c9c9d2"
+};
+function tc(t){ return TYPE_COLOR[t] || "#c9c9d2"; }
+
+let metric = "DIFF";
+let animKey = 0;
+const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function sortedRanked(){
+  const arr = [...MVP].sort((a,b) =>
+    metric==="KILLS" ? (b.kills-a.kills||b.diff-a.diff) : (b.diff-a.diff||b.kills-a.kills)
+  );
+  return arr.map((m,i)=>({...m,rank:i+1}));
+}
+
+function orbHtml(m, size, pulse){
+  const c1 = tc(m.type1||"Normal"), c2 = tc(m.type2||m.type1||"Normal");
+  const glyph = (m.pokemon_name||"??").slice(0,2).toUpperCase();
+  return `<span class="lr-orb ${size}${pulse?" pulse":""}"
+    style="background:linear-gradient(135deg,${c1},${c2});box-shadow:0 0 16px -6px ${c1}">
+    <span class="lr-orb-glyph">${esc(glyph)}</span></span>`;
+}
+function typeStripe(m){
+  let html = '<span class="lr-typestripe">';
+  if(m.type1) html += `<span class="lr-typechip" style="color:${tc(m.type1)};border-color:${tc(m.type1)}66;background:${tc(m.type1)}14">${esc(m.type1)}</span>`;
+  if(m.type2) html += `<span class="lr-typechip" style="color:${tc(m.type2)};border-color:${tc(m.type2)}66;background:${tc(m.type2)}14">${esc(m.type2)}</span>`;
+  return html + '</span>';
+}
+function logoHtml(m, size){
+  const ini = (m.team_name||"??").slice(0,2).toUpperCase();
+  if(m.team_logo) return `<span class="lr-logo ${size}" style="background-image:url('${esc(m.team_logo)}')" title="${esc(m.team_name)}"></span>`;
+  return `<span class="lr-logo ${size}" style="display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">${esc(ini)}</span>`;
+}
+
+function renderPodium(ranked){
+  const wrap = document.getElementById("lr-podium-wrap");
+  if(!wrap) return;
+  const podium = [ranked[1], ranked[0], ranked[2]].filter(Boolean);
+  const heights = {1:0,2:14,3:26};
+  const HTML = podium.map((m,i)=>{
+    const isFirst = m.rank===1;
+    const big = metric==="KILLS" ? m.kills : m.diff;
+    const bigStr = metric==="KILLS" ? big : (big>=0?"+":"")+big;
+    const accent = isFirst ? "var(--magenta)" : "var(--cyan)";
+    const eyebrow = isFirst ? "★ MVP LEADER" : "RANK 0"+m.rank;
+    return `<div class="lr-podcard lr-reveal${isFirst?" p1":""}"
+        style="margin-top:${heights[m.rank]||0}px;animation-delay:${i*70}ms">
+      ${isFirst?'<div class="lr-pod-sweep"></div>':''}
+      <div class="lr-place">${m.rank}</div>
+      <div style="position:relative;z-index:1">
+        <span class="lr-eyebrow" style="color:${accent}">${eyebrow}</span>
+      </div>
+      ${orbHtml(m,"lg",isFirst)}
+      <div class="lr-monname">${esc(m.pokemon_name)}</div>
+      ${typeStripe(m)}
+      <div style="display:flex;align-items:center;gap:8px">
+        ${logoHtml(m,"sm")}
+        <span class="lr-coach">${esc(m.team_name)}</span>
+      </div>
+      <div style="margin-top:4px">
+        <span class="lr-bigdiff" style="color:${accent}" data-countup="${Math.abs(big)}" data-sign="${big>=0&&metric==="DIFF"?"+":""}">${bigStr}</span>
+        <span class="lr-meta" style="margin-left:6px;font-size:10px">${metric==="KILLS"?"KOs":"DIFF"}</span>
+      </div>
+      <div class="lr-kd" style="font-size:11px">
+        <span class="k">${m.kills} KO</span><span class="sep">/</span><span class="d">${m.deaths} F</span>
+      </div>
+    </div>`;
+  }).join("");
+  wrap.innerHTML = `<div class="lr-mvp-podium">${HTML}</div>`;
+}
+
+function renderToggle(){
+  const wrap = document.getElementById("lr-toggle-wrap");
+  if(!wrap) return;
+  wrap.innerHTML = `
+    <div style="display:flex;gap:8px">
+      <button class="lr-btn${metric==="DIFF"?" on":""}" id="btn-diff">K/D DIFF</button>
+      <button class="lr-btn${metric==="KILLS"?" on":""}" id="btn-kills">TOTAL KOs</button>
+    </div>
+    <span class="lr-meta">${MVP.length} MONS · ALL GAMES</span>`;
+  document.getElementById("btn-diff").onclick  = ()=>{ if(metric!=="DIFF"){ metric="DIFF"; animKey++; render(); } };
+  document.getElementById("btn-kills").onclick = ()=>{ if(metric!=="KILLS"){ metric="KILLS"; animKey++; render(); } };
+}
+
+function renderList(ranked){
+  const wrap = document.getElementById("lr-list-wrap");
+  if(!wrap) return;
+  const rest = ranked.slice(3);
+  const maxK = Math.max(1,...MVP.map(m=>m.kills));
+  const maxD = Math.max(1,...MVP.map(m=>Math.abs(m.diff)));
+  const label = metric==="KILLS" ? "TOTAL KOs" : "DIFFERENTIAL";
+
+  let html = `<div class="lr-mvprow" style="border-bottom:1px solid var(--hairline-2);padding:8px 14px">
+    <span class="lr-meta" style="font-size:10px">RNK</span>
+    <span class="lr-meta" style="font-size:10px">MON</span>
+    <span class="lr-meta" style="font-size:10px">POKÉMON · TEAM</span>
+    <span class="lr-meta" style="font-size:10px">KOs / FAINTS</span>
+    <span class="lr-meta" style="font-size:10px">${label}</span>
+  </div>`;
+
+  rest.forEach((m,i)=>{
+    const target = metric==="KILLS" ? (m.kills/maxK*100) : (Math.abs(m.diff)/maxD*100);
+    const valStr = metric==="KILLS" ? m.kills : ((m.diff>=0?"+":"")+m.diff);
+    const valColor = metric==="KILLS" ? "var(--lime)" : "var(--cyan)";
+    html += `<div class="lr-mvprow lr-reveal" style="animation-delay:${i*40}ms" data-bar-target="${target}" data-metric="${metric}">
+      <span class="lr-rank">${String(m.rank).padStart(2,"0")}</span>
+      ${orbHtml(m,"md",false)}
+      <div style="min-width:0">
+        <div class="lr-monname" style="font-size:13px">${esc(m.pokemon_name)}</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:3px">
+          ${logoHtml(m,"sm").replace('class="lr-logo sm"','class="lr-logo sm" style="width:16px;height:16px"')}
+          <span class="lr-coach">${esc(m.team_name)}</span>
+        </div>
+      </div>
+      <div class="lr-kd">
+        <span class="k" data-v="${m.kills}">${m.kills}</span><span class="sep">KO</span>
+        <span class="d" data-v="${m.deaths}">${m.deaths}</span><span class="sep">F</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="lr-kdbar" style="flex:1">
+          <div class="lr-kdbar-fill${metric==="DIFF"?" mag":""}"></div>
+        </div>
+        <span class="lr-meta" style="width:34px;text-align:right;color:${valColor};font-variant-numeric:tabular-nums"
+          data-v="${m.diff}" data-vk="${m.kills}">${valStr}</span>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+
+  // animate bars + count-ups
+  requestAnimationFrame(()=>{
+    wrap.querySelectorAll("[data-bar-target]").forEach((row,i)=>{
+      const fill = row.querySelector(".lr-kdbar-fill");
+      const target = parseFloat(row.dataset.barTarget)||0;
+      setTimeout(()=>{ if(fill) fill.style.width = target+"%"; }, 80+i*40);
+    });
+    if(!REDUCED){
+      wrap.querySelectorAll(".lr-kd span[data-v]").forEach(el=>{
+        const v = parseInt(el.dataset.v)||0;
+        countUp(el, v, 600);
+      });
+      wrap.querySelectorAll("span[data-vk]").forEach(el=>{
+        const v = metric==="KILLS" ? parseInt(el.dataset.vk)||0 : parseInt(el.dataset.v)||0;
+        const abs = Math.abs(v);
+        countUp(el, abs, 700, v>=0&&metric==="DIFF"?"+":v<0?"-":"");
+        if(metric==="DIFF") el.textContent = (v>=0?"+":"")+v;
+      });
+    }
+  });
+}
+
+function countUp(el, target, dur, prefix){
+  if(REDUCED){ el.textContent = (prefix||"")+target; return; }
+  let start; prefix = prefix||"";
+  function tick(t){
+    if(!start) start=t;
+    const p = Math.min(1,(t-start)/dur);
+    const e = 1-Math.pow(1-p,3);
+    el.textContent = prefix+Math.round(target*e);
+    if(p<1) requestAnimationFrame(tick);
+    else el.textContent = prefix+target;
+  }
+  requestAnimationFrame(tick);
+}
+
+function render(){
+  const ranked = sortedRanked();
+  renderPodium(ranked);
+  renderToggle();
+  renderList(ranked);
+  // count-up podium big numbers
+  if(!REDUCED) requestAnimationFrame(()=>{
+    document.querySelectorAll(".lr-bigdiff[data-countup]").forEach(el=>{
+      const v = parseInt(el.dataset.countup)||0;
+      const sign = el.dataset.sign||"";
+      countUp(el, v, 800, sign);
+    });
+  });
+}
+
+render();
+})();
+</script>
+{% endif %}
 {% endblock %}

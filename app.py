@@ -499,7 +499,8 @@ def get_standings(pool=None):
 def get_mvp_data():
     with get_db() as db:
         stats = db.execute("""
-            SELECT ms.pokemon_name, c.coach_name, c.team_name,
+            SELECT ms.pokemon_name, c.id as team_id, c.coach_name, c.team_name,
+                   c.logo_url as team_logo,
                    SUM(ms.kills) as total_kills, SUM(ms.deaths) as total_deaths,
                    COUNT(DISTINCT ms.schedule_id) as games
             FROM match_stats ms
@@ -951,11 +952,34 @@ def standings():
             ).fetchone()[0]
             if wk_total > 0 and wk_total == wk_done:
                 completed_weeks += 1
+    import json as _json
+    def _row_json(r):
+        return {
+            "coach": {
+                "id": r["coach"]["id"],
+                "team_name": r["coach"]["team_name"],
+                "coach_name": r["coach"]["coach_name"],
+                "pool": r["coach"].get("pool", ""),
+                "logo_url": r["coach"].get("logo_url", "") or "",
+                "color": r["coach"].get("color", "") or "",
+                "is_champ": bool(r["coach"].get("is_defending_champ", 0)),
+            },
+            "W": r["W"], "L": r["L"], "T": r["T"],
+            "diff": int(round(float(r["diff"]))),
+            "rank": r["rank"],
+            "form": [r["weeks"].get(w, "") for w in all_weeks],
+        }
+    standings_all_json = _json.dumps([_row_json(r) for r in standings_all])
+    standings_a_json   = _json.dumps([_row_json(r) for r in standings_a])
+    standings_b_json   = _json.dumps([_row_json(r) for r in standings_b])
     return render_template("index.html",
                            league_name=league_name,
                            standings_a=standings_a,
                            standings_b=standings_b,
                            standings_all=standings_all,
+                           standings_all_json=standings_all_json,
+                           standings_a_json=standings_a_json,
+                           standings_b_json=standings_b_json,
                            all_weeks=all_weeks,
                            total_weeks=total_weeks,
                            completed_weeks=completed_weeks,
@@ -1447,7 +1471,23 @@ def mvp():
     mvp_data = get_mvp_data()
     for i, p in enumerate(mvp_data):
         p["rank"] = i + 1
-        p["diff"] = p["total_kills"] - p["total_deaths"]
+        p["diff"] = int(round(float(p["total_kills"] or 0) - float(p["total_deaths"] or 0)))
+        p["kills"] = int(round(float(p["total_kills"] or 0)))
+        p["deaths"] = int(round(float(p["total_deaths"] or 0)))
+    # Batch-lookup types from pokedex
+    if mvp_data:
+        slugs = [_pokemon_slug(p["pokemon_name"]) for p in mvp_data]
+        with get_db() as db:
+            ph = ",".join("?" for _ in slugs)
+            pd_rows = db.execute(
+                f"SELECT pokeapi_name, type1, type2 FROM pokedex WHERE pokeapi_name IN ({ph})",
+                slugs
+            ).fetchall()
+        pd_map = {r["pokeapi_name"]: (r["type1"] or "Normal", r["type2"] or "") for r in pd_rows}
+        for p, slug in zip(mvp_data, slugs):
+            t = pd_map.get(slug, ("Normal", ""))
+            p["type1"] = t[0]
+            p["type2"] = t[1]
     return render_template("mvp.html",
                            mvp_data=mvp_data,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
