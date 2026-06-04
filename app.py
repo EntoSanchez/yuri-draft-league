@@ -3387,8 +3387,12 @@ def draft_live():
         current_coach_b_id = current_slot_b[3] if current_slot_b else None
 
         # Bank picks: override on-clock coach if there's a pending bank turn
-        bank_pending_a = session_row["bank_pending_a"] or 0
-        bank_pending_b = session_row["bank_pending_b"] or 0
+        try:
+            bank_pending_a = session_row["bank_pending_a"] or 0
+            bank_pending_b = session_row["bank_pending_b"] or 0
+        except (IndexError, KeyError):
+            bank_pending_a = 0
+            bank_pending_b = 0
         if bank_pending_a and bank_pending_a in coaches_map:
             current_coach_a_id = bank_pending_a
         if bank_pending_b and bank_pending_b in coaches_map:
@@ -3613,7 +3617,10 @@ def draft_live_pick():
 
         # Check if there's a bank pick pending for this pool
         bank_pending_col = "bank_pending_a" if pick_pool == "A" else "bank_pending_b"
-        bank_pending_coach_id = session_row[bank_pending_col] or 0
+        try:
+            bank_pending_coach_id = session_row[bank_pending_col] or 0
+        except (IndexError, KeyError):
+            bank_pending_coach_id = 0
         is_bank_pick = bool(bank_pending_coach_id)
 
         if not is_bank_pick and (not seq or current_pick < 1 or current_pick > len(seq)):
