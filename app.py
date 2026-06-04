@@ -4061,9 +4061,29 @@ def admin_draft():
         elif action == "reset":
             sid = request.form.get("session_id")
             with get_db() as db:
-                db.execute("UPDATE draft_sessions SET status='setup', current_pick=1, current_round=1, current_pick_a=1, current_pick_b=1 WHERE id=?", (sid,))
+                sess_row = db.execute("SELECT * FROM draft_sessions WHERE id=?", (sid,)).fetchone()
+                # Collect coach IDs from picks (may already be deleted) + snake_order
+                drafted_coach_ids = {
+                    r[0] for r in db.execute(
+                        "SELECT DISTINCT coach_id FROM draft_picks WHERE session_id=?", (sid,)
+                    ).fetchall()
+                }
+                try:
+                    so = json.loads(sess_row["snake_order"] or "[]") if sess_row else []
+                    drafted_coach_ids |= set(so)
+                except Exception:
+                    pass
+                db.execute(
+                    "UPDATE draft_sessions SET status='setup', current_pick=1, current_round=1, "
+                    "current_pick_a=1, current_pick_b=1, bank_pending_a=0, bank_pending_b=0, "
+                    "banked_picks='{}' WHERE id=?",
+                    (sid,)
+                )
                 db.execute("DELETE FROM draft_picks WHERE session_id=?", (sid,))
-            flash("Draft reset.", "warning")
+                if drafted_coach_ids:
+                    ph = ",".join("?" * len(drafted_coach_ids))
+                    db.execute(f"DELETE FROM pokemon_roster WHERE coach_id IN ({ph})", list(drafted_coach_ids))
+            flash("Draft reset — picks and rosters cleared.", "warning")
 
         elif action == "discard_session":
             sid = request.form.get("session_id")
