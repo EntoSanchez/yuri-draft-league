@@ -1546,12 +1546,29 @@ def history():
                 if coach.get("team_name") and coach["team_name"] not in career[key]["team_names"]:
                     career[key]["team_names"].append(coach["team_name"])
 
+        # Pull logo/color from live coaches table to override archive blanks
+        with get_db() as db:
+            live_coaches = db.execute(
+                "SELECT coach_name, logo_url, color FROM coaches"
+            ).fetchall()
+        live_logo = {
+            r["coach_name"].lower().strip(): {"logo": r["logo_url"] or "", "color": r["color"] or "#888"}
+            for r in live_coaches
+        }
+
         # Sort seasons within each coach by season_num desc
         coaches_list = []
         for c in career.values():
             c["seasons"].sort(key=lambda x: -x["season_num"])
             c["total_kos"] = round(c["total_kos"], 1)
             c["seasons_count"] = len(c["seasons"])
+            # Stamp the latest season with live logo/color if available
+            live = live_logo.get(c["coach_name"].lower().strip())
+            if live and c["seasons"]:
+                if live["logo"]:
+                    c["seasons"][0]["logo"] = live["logo"]
+                if live["color"] and live["color"] != "#888":
+                    c["seasons"][0]["color"] = live["color"]
             coaches_list.append(c)
 
         # Sort coaches by total wins desc

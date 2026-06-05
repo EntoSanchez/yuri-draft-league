@@ -105,14 +105,10 @@
 
       <!-- Header -->
       <div class="hist-card-header">
+        {% set avatar_logo = latest.logo if (latest and latest.logo) else '/static/favicon.jpg' %}
         <div class="hist-avatar"
              {% if latest and latest.color %}style="background:{{ latest.color }}22;border:2px solid {{ latest.color }}44"{% endif %}>
-          {% if latest and latest.logo %}
-          <img src="{{ latest.logo }}" alt="" onerror="this.style.display='none'">
-          {% endif %}
-          <span {% if latest and latest.logo %}style="display:none"{% endif %}>
-            {{ coach.coach_name[:1] | upper }}
-          </span>
+          <img src="{{ avatar_logo }}" alt="" onerror="this.src='/static/favicon.jpg'">
         </div>
         <div style="flex:1;min-width:0">
           <div class="hist-coach-name">{{ coach.coach_name }}</div>
