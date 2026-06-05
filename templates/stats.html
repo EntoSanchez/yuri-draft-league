@@ -55,7 +55,7 @@
   <section class="mh-sec mh-reveal" style="animation-delay:.05s">
     <div class="mh-sechead">
       <span class="num">01</span>
-      <span class="ttl">Type Meta</span>
+      <span class="ttl" data-tooltip="Distribution of all KOs by the primary type of the attacker. Click a type to filter all sections below">Type Meta</span>
       <span class="rule"></span>
       <span class="meta">BLOCK AREA = SHARE OF ALL KOs</span>
       <span id="type-clear-btn" style="display:none;margin-left:12px">
@@ -81,7 +81,7 @@
   <section class="mh-sec mh-reveal" style="animation-delay:.10s">
     <div class="mh-sechead">
       <span class="num">02</span>
-      <span class="ttl">Value Over Expected</span>
+      <span class="ttl" data-tooltip="A type's KO share minus its share of total draft spending. Positive = punching above its cost; negative = underperforming relative to investment">Value Over Expected</span>
       <span class="rule"></span>
       <span class="meta">KO SHARE − DRAFT-SPEND SHARE · PERCENTAGE POINTS</span>
     </div>
@@ -107,7 +107,7 @@
   <section class="mh-sec mh-reveal" style="animation-delay:.15s">
     <div class="mh-sechead">
       <span class="num">03</span>
-      <span class="ttl">Top Performers</span>
+      <span class="ttl" data-tooltip="Individual Pokémon ranked by total KOs or KO−Faint differential. Toggle the metric with the KOs / K−D buttons">Top Performers</span>
       <span class="rule"></span>
       <span class="meta" id="perf-meta">ALL TYPES</span>
       <span style="margin-left:12px">
@@ -126,7 +126,7 @@
   <section class="mh-sec mh-reveal" style="animation-delay:.20s">
     <div class="mh-sechead">
       <span class="num">04</span>
-      <span class="ttl">KOs vs Faints</span>
+      <span class="ttl" data-tooltip="Scatter plot: X-axis = times fainted, Y-axis = total KOs. MVPs deal damage without fainting (top-left). Liabilities faint often without scoring (bottom-right)">KOs vs Faints</span>
       <span class="rule"></span>
       <span class="meta" id="quad-meta">
         MVPs {{ stats.quadrant.counts.MVP }} · CANNONS {{ stats.quadrant.counts.CANNON }} · WALLS {{ stats.quadrant.counts.WALL }} · LIABILITIES {{ stats.quadrant.counts.LIABILITY }}
@@ -179,7 +179,7 @@
     <section class="mh-sec">
       <div class="mh-sechead">
         <span class="num">05</span>
-        <span class="ttl">Value Index</span>
+        <span class="ttl" data-tooltip="KOs per draft point spent. Bargains scored the most for their price; busts had high draft costs but low output">Value Index</span>
         <span class="rule"></span>
         <span class="meta">KOs PER DRAFT POINT</span>
       </div>
@@ -223,7 +223,7 @@
     <section class="mh-sec">
       <div class="mh-sechead">
         <span class="num">06</span>
-        <span class="ttl">Survivors</span>
+        <span class="ttl" data-tooltip="Pokémon with the best KO-to-faint ratio. A ratio of 3.0 means they scored 3 KOs for every faint — high impact, low risk">Survivors</span>
         <span class="rule"></span>
         <span class="meta">BEST KO-TO-FAINT RATIO</span>
       </div>
@@ -250,7 +250,7 @@
   <section class="mh-sec mh-reveal" style="animation-delay:.30s">
     <div class="mh-sechead">
       <span class="num">07</span>
-      <span class="ttl">Team Firepower</span>
+      <span class="ttl" data-tooltip="Total series points scored by each team across all regular-season matches. Higher = more offensive output over the season">Team Firepower</span>
       <span class="rule"></span>
       <span class="meta">SERIES POINTS FOR · ALL WEEKS</span>
     </div>
@@ -279,32 +279,26 @@
     </div>
   </section>
 
-  <!-- ── 08 ROSTER ARCHETYPES ──────────────────────────────────── -->
+  <!-- ── 08 TEAM MVPs ─────────────────────────────────────────── -->
   <section class="mh-sec mh-reveal" style="animation-delay:.35s">
     <div class="mh-sechead">
       <span class="num">08</span>
-      <span class="ttl">Roster Archetypes</span>
+      <span class="ttl" data-tooltip="The highest-KO Pokémon on each team across all tracked matches, sorted by kill count">Team MVPs</span>
       <span class="rule"></span>
-      <span class="meta">TRACKED-MON SPEED + SPEND PROFILE · TOP 8 BY KOs</span>
+      <span class="meta">TOP-KO MON PER TEAM · SORTED BY KOs</span>
     </div>
-    <div class="mh-arch">
-      {% for a in stats.archetypes[:8] %}
-      {% set arch_color = {'Hyper Offense':'var(--red)','Offense':'var(--magenta)','Balanced':'var(--cyan)','Trick Room':'var(--lime)'}[a.arch] | default('var(--cyan)') %}
-      {% set sw = (a.avgSpe / stats.arch_spe_max * 100) | round(2) %}
-      <div class="mh-arch-card">
-        <span class="mh-arch-logo" {% if a.team.logo_url is defined and a.team.logo_url %}style="background-image:url('{{ a.team.logo_url }}')"{% elif a.team.logo is defined and a.team.logo %}style="background-image:url('{{ a.team.logo }}')"{% endif %}></span>
-        <div style="min-width:0">
-          <div class="mh-arch-name">{{ a.team.team_name if a.team.team_name is defined else a.team.name }}</div>
-          <span class="mh-arch-tag" style="color:{{ arch_color }};border-color:{{ arch_color }}66;background:{{ arch_color }}14">{{ a.arch }}{% if a.topHeavy %} · TOP-HEAVY{% endif %}</span>
-          <div class="mh-arch-spe">
-            <div class="mh-arch-spetrack"><i class="mh-bar-anim" data-w="{{ sw }}" style="width:{{ sw }}%"></i></div>
-            <span class="mono dim" style="font-size:8.5px">{{ a.avgSpe }} SPE · {{ a.avgCost }}pt</span>
-          </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+      {% for entry in stats.team_mvps %}
+      <div style="display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px">
+        <span class="mh-lb-logo" {% if entry.team.logo %}style="background-image:url('{{ entry.team.logo }}')"{% endif %}></span>
+        <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ entry.mvp.orb_color }}cc,{{ entry.mvp.orb_color }}55);flex-shrink:0">
+          <img src="{{ entry.mvp.sprite }}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">
         </div>
-        <div class="mh-arch-r">
-          <div class="mh-arch-kos">{{ a.kos | int }}</div>
-          <div class="mono dim" style="font-size:8px">KOs · {{ a.n }} mon{{ 's' if a.n != 1 }}</div>
+        <div style="min-width:0;flex:1">
+          <div class="mh-lb-name" style="font-size:11.5px">{{ entry.mvp.name }}</div>
+          <div class="mh-lb-team" style="font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ entry.team.name }}</div>
         </div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--cyan);flex-shrink:0">{{ entry.mvp.kills | int }}<span class="mono" style="font-size:9px;color:var(--text-dim);margin-left:2px">KO</span></div>
       </div>
       {% endfor %}
     </div>
@@ -316,7 +310,7 @@
     <section class="mh-sec">
       <div class="mh-sechead">
         <span class="num">09</span>
-        <span class="ttl">Draft Economy</span>
+        <span class="ttl" data-tooltip="How the league's draft budget was distributed across tiers. Shows the number of Pokémon drafted and points spent per tier">Draft Economy</span>
         <span class="rule"></span>
         <span class="meta">{{ stats.draft_econ.drafted }}/{{ stats.draft_econ.totalPool }} DRAFTED</span>
       </div>
@@ -365,7 +359,7 @@
     <section class="mh-sec">
       <div class="mh-sechead">
         <span class="num">10</span>
-        <span class="ttl">Speed Tiers</span>
+        <span class="ttl" data-tooltip="Pokémon grouped into speed ranges (base Speed stat). Shows total KOs scored by each speed tier — useful for judging the pace of the meta">Speed Tiers</span>
         <span class="rule"></span>
         <span class="meta">BASE SPEED</span>
       </div>
@@ -405,7 +399,7 @@
   <section class="mh-sec mh-reveal" style="animation-delay:.45s">
     <div class="mh-sechead">
       <span class="num">11</span>
-      <span class="ttl">Clutch &amp; Records</span>
+      <span class="ttl" data-tooltip="Season-wide match records: sweeps (one team scored 0), one-point thrillers, highest-scoring games, biggest blowouts, and upset wins">Clutch &amp; Records</span>
       <span class="rule"></span>
       <span class="meta">{{ stats.records.played }} SERIES PLAYED · BO3 FORMAT</span>
     </div>

@@ -72,6 +72,19 @@
 .mh-orb.sm .mh-orb-glyph { font-size: 10px; } .mh-orb.md .mh-orb-glyph { font-size: 14px; } .mh-orb.lg .mh-orb-glyph { font-size: 21px; }
 .mh-orb-sprite { width: 86%; height: 86%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
+/* Section title tooltips */
+[data-tooltip] { cursor: help; position: relative; }
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--panel-3); border: 1px solid var(--hairline-2); border-radius: 6px;
+  color: var(--text-mute); font-family: var(--font-mono); font-size: 10px; font-weight: 400;
+  letter-spacing: .04em; line-height: 1.5; white-space: normal; width: 220px; padding: 7px 10px;
+  pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 999; text-align: left;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+[data-tooltip]:hover::after { opacity: 1; }
+
 .mh-types { display: inline-flex; gap: 4px; }
 .mh-typechip { font-family: var(--font-mono); font-size: 8px; letter-spacing: .07em; text-transform: uppercase; padding: 1.5px 5px; border: 1px solid; }
 

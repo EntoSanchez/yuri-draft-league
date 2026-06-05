@@ -163,7 +163,7 @@ def parse_draft_sheet(wb):
                 poke_val = row[poke_col]
                 if not isinstance(poke_val, str) or not poke_val.strip():
                     continue
-                pname = poke_val.strip()
+                pname = _norm_poke(poke_val.strip())
                 pts = int(pts_val) if isinstance(pts_val, (int, float)) else 0
                 result[(coach_id, pname.lower())] = {
                     "tier": cell2,
@@ -373,7 +373,7 @@ def parse_data_sheet(ws, wb=None):
         if not isinstance(row[90], (int, float)):
             continue
         coach_name = str(row[91]).strip() if row[91] else ""
-        pokemon_name = str(row[93]).strip() if row[93] else ""
+        pokemon_name = _norm_poke(str(row[93]).strip()) if row[93] else ""
         if not coach_name or not pokemon_name:
             continue
         cid = name_to_id.get(coach_name.lower())

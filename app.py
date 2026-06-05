@@ -1041,11 +1041,14 @@ def _build_stats_data(season_id=None):
             coaches_map = {c["id"]: c for c in sd.get("coaches", [])}
             # Enrich archived coaches with live logo/color from the coaches table
             live_coaches = db.execute(
-                "SELECT coach_name, logo_url, color FROM coaches"
+                "SELECT coach_name, team_name, logo_url, color FROM coaches"
             ).fetchall()
-            live_by_name = {r["coach_name"].lower().strip(): dict(r) for r in live_coaches}
+            live_by_coach = {r["coach_name"].lower().strip(): dict(r) for r in live_coaches}
+            live_by_team  = {r["team_name"].lower().strip(): dict(r) for r in live_coaches}
             for c in coaches_map.values():
-                live = live_by_name.get(c.get("coach_name", "").lower().strip(), {})
+                live = (live_by_coach.get(c.get("coach_name", "").lower().strip())
+                        or live_by_team.get(c.get("team_name", "").lower().strip())
+                        or {})
                 if live.get("logo_url"):
                     c["logo_url"] = live["logo_url"]
                 if live.get("color") and live["color"] != "#888":
@@ -1277,6 +1280,25 @@ def _build_stats_data(season_id=None):
             d = team_arch.setdefault(cid, {"team": m["team"], "mons": [], "kos": 0.0})
             d["mons"].append(m)
             d["kos"] += m["kills"]
+        # TEAM_MVPS: highest-KO pokemon per team
+        team_mvps = []
+        for cid, coach in coaches_map.items():
+            team_mons = [m for m in mon_dex if m["team"]["id"] == cid]
+            if not team_mons:
+                continue
+            mvp = max(team_mons, key=lambda m: m["kills"])
+            team_mvps.append({
+                "team": {
+                    "id": cid,
+                    "name": coach.get("team_name", f"Team {cid}"),
+                    "logo": coach.get("logo_url", ""),
+                    "color": coach.get("color", "#888"),
+                    "pool": coach.get("pool", "A"),
+                },
+                "mvp": mvp,
+            })
+        team_mvps.sort(key=lambda x: -x["mvp"]["kills"])
+
         archetypes = []
         arch_spe_max = 1
         for cid, d in team_arch.items():
@@ -1431,6 +1453,7 @@ def _build_stats_data(season_id=None):
             } if value_pick else None,
         },
         "speed_tiers": speed_tiers,
+        "team_mvps": team_mvps,
         "archetypes": archetypes,
         "arch_spe_max": arch_spe_max,
         "value_index": {"bargains": bargains, "busts": busts, "maxKpp": max_kpp},
@@ -1562,10 +1585,14 @@ def history():
         # Pull logo/color from live coaches table to override archive blanks
         with get_db() as db:
             live_coaches = db.execute(
-                "SELECT coach_name, logo_url, color FROM coaches"
+                "SELECT coach_name, team_name, logo_url, color FROM coaches"
             ).fetchall()
-        live_logo = {
+        live_by_coach = {
             r["coach_name"].lower().strip(): {"logo": r["logo_url"] or "", "color": r["color"] or "#888"}
+            for r in live_coaches
+        }
+        live_by_team = {
+            r["team_name"].lower().strip(): {"logo": r["logo_url"] or "", "color": r["color"] or "#888"}
             for r in live_coaches
         }
 
@@ -1575,12 +1602,15 @@ def history():
             c["seasons"].sort(key=lambda x: -x["season_num"])
             c["total_kos"] = round(c["total_kos"], 1)
             c["seasons_count"] = len(c["seasons"])
-            # Stamp the latest season with live logo/color if available
-            live = live_logo.get(c["coach_name"].lower().strip())
-            if live and c["seasons"]:
-                if live["logo"]:
+            # Stamp the latest season with live logo/color (match by name, then team name)
+            if c["seasons"]:
+                latest_team = c["seasons"][0].get("team_name", "").lower().strip()
+                live = (live_by_coach.get(c["coach_name"].lower().strip())
+                        or live_by_team.get(latest_team)
+                        or {})
+                if live.get("logo"):
                     c["seasons"][0]["logo"] = live["logo"]
-                if live["color"] and live["color"] != "#888":
+                if live.get("color") and live["color"] != "#888":
                     c["seasons"][0]["color"] = live["color"]
             coaches_list.append(c)
 
