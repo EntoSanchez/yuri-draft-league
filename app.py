@@ -1315,6 +1315,8 @@ def _build_stats_data(season_id=None):
         mean_f = sum(all_deaths) / len(all_deaths) if all_deaths else 0
         max_k = max(all_kos) if all_kos else 1
         max_f = max(all_deaths) if all_deaths else 1
+        max_k = max_k or 1
+        max_f = max_f or 1
         quad_counts = {"MVP": 0, "CANNON": 0, "WALL": 0, "LIABILITY": 0}
         quad_points = []
         for m in mon_dex:
