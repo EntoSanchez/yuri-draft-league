@@ -70,6 +70,7 @@
 .mh-orb.sm { width: 26px; height: 26px; } .mh-orb.md { width: 36px; height: 36px; } .mh-orb.lg { width: 54px; height: 54px; }
 .mh-orb-glyph { font-family: var(--font-display); font-weight: 700; color: rgba(255,255,255,.94); text-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .mh-orb.sm .mh-orb-glyph { font-size: 10px; } .mh-orb.md .mh-orb-glyph { font-size: 14px; } .mh-orb.lg .mh-orb-glyph { font-size: 21px; }
+.mh-orb-sprite { width: 86%; height: 86%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
 .mh-types { display: inline-flex; gap: 4px; }
 .mh-typechip { font-family: var(--font-mono); font-size: 8px; letter-spacing: .07em; text-transform: uppercase; padding: 1.5px 5px; border: 1px solid; }

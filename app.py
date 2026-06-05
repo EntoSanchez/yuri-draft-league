@@ -1039,6 +1039,17 @@ def _build_stats_data(season_id=None):
             sd = json.loads(row["data_json"])
             season_label = row["name"]
             coaches_map = {c["id"]: c for c in sd.get("coaches", [])}
+            # Enrich archived coaches with live logo/color from the coaches table
+            live_coaches = db.execute(
+                "SELECT coach_name, logo_url, color FROM coaches"
+            ).fetchall()
+            live_by_name = {r["coach_name"].lower().strip(): dict(r) for r in live_coaches}
+            for c in coaches_map.values():
+                live = live_by_name.get(c.get("coach_name", "").lower().strip(), {})
+                if live.get("logo_url"):
+                    c["logo_url"] = live["logo_url"]
+                if live.get("color") and live["color"] != "#888":
+                    c["color"] = live["color"]
             roster_rows = sd.get("pokemon_roster", [])
             sched_rows = [
                 s for s in sd.get("schedule", [])
@@ -1117,12 +1128,14 @@ def _build_stats_data(season_id=None):
             primary_type = types[0] if types else "Normal"
             orb_color = TYPE_COLORS.get(primary_type, "#a3a3a3")
             glyph = name[:2].upper()
+            sprite = pokemon_static_sprite_url(name)
             kpp = round(kills / cost, 2) if cost > 0 else 0.0
             mon_dex.append({
                 "id": f"{cid}_{name}",
                 "name": name,
                 "types": types,
                 "glyph": glyph,
+                "sprite": sprite,
                 "orb_color": orb_color,
                 "kills": kills,
                 "deaths": deaths,

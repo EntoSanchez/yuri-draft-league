@@ -166,7 +166,7 @@
            data-diff="{{ m.diff }}" data-spe="{{ m.spe }}" data-cost="{{ m.cost }}"
            data-team="{{ m.team.name }}" data-color="{{ m.orb_color }}" data-glyph="{{ m.glyph }}">
         <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
-          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+          <img src="{{ m.sprite }}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">
         </div>
       </div>
       {% endfor %}
@@ -192,7 +192,7 @@
            data-tip-cost="{{ m.cost }}" data-tip-team="{{ m.team.name }}">
         <span class="mono dim" style="font-size:11px">{{ loop.index }}</span>
         <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
-          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+          <img src="{{ m.sprite }}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">
         </div>
         <div style="min-width:0">
           <div class="mh-lb-name" style="font-size:11.5px">{{ m.name }}</div>
@@ -208,7 +208,7 @@
       <div class="mh-mrow" style="grid-template-columns:22px 26px 1fr 84px 46px">
         <span class="mono dim" style="font-size:11px">—</span>
         <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
-          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+          <img src="{{ m.sprite }}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">
         </div>
         <div style="min-width:0">
           <div class="mh-lb-name" style="font-size:11.5px">{{ m.name }}</div>
@@ -232,7 +232,7 @@
       <div class="mh-mrow" style="grid-template-columns:22px 26px 1fr 84px 46px">
         <span class="mono dim" style="font-size:11px">{{ loop.index }}</span>
         <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
-          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+          <img src="{{ m.sprite }}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">
         </div>
         <div style="min-width:0">
           <div class="mh-lb-name" style="font-size:11.5px">{{ m.name }}</div>
@@ -384,7 +384,7 @@
                  data-tip-diff="{{ m.diff }}" data-tip-spe="{{ m.spe }}"
                  data-tip-cost="{{ m.cost }}" data-tip-team="{{ m.team.name }}">
               <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
-                <span class="mh-orb-glyph">{{ m.glyph }}</span>
+                <img src="{{ m.sprite }}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">
               </div>
               <span class="nm">{{ m.name }}</span>
               <span class="sp">{{ m.spe }}</span>
@@ -575,7 +575,10 @@ function renderPerformers() {
 }
 
 function orbHtml(m, size) {
-  return `<div class="mh-orb ${size}" style="background:radial-gradient(circle at 35% 35%,${m.orb_color}cc,${m.orb_color}55)"><span class="mh-orb-glyph">${m.glyph}</span></div>`;
+  const inner = m.sprite
+    ? `<img src="${m.sprite}" class="mh-orb-sprite" alt="" onerror="this.style.display='none'">`
+    : `<span class="mh-orb-glyph">${m.glyph}</span>`;
+  return `<div class="mh-orb ${size}" style="background:radial-gradient(circle at 35% 35%,${m.orb_color}cc,${m.orb_color}55)">${inner}</div>`;
 }
 function typeChipsHtml(types) {
   return `<div class="mh-types">${types.map(t => `<span class="mh-typechip" style="color:${TYPE_COLORS[t]||'#888'};border-color:${TYPE_COLORS[t]||'#888'}55">${t}</span>`).join("")}</div>`;
