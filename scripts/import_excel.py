@@ -25,7 +25,7 @@ except ImportError:
     sys.exit("openpyxl not found — run: pip install openpyxl")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(PROJECT_ROOT, "league.db")
+DB_PATH = os.environ.get("LEAGUE_DB", os.path.join(PROJECT_ROOT, "league.db"))
 
 
 def _resolve_file(filename):
