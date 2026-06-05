@@ -1380,13 +1380,21 @@ def _build_stats_data():
 
 @app.route("/stats")
 def stats():
-    data = _build_stats_data()
-    return render_template(
-        "stats.html",
-        stats=data,
-        stats_json=json.dumps(data),
-        league_name=get_setting("league_name", "Pokemon Draft League"),
-    )
+    import traceback as _tb
+    try:
+        data = _build_stats_data()
+        stats_json = json.dumps(data)
+    except Exception:
+        return "<pre>" + _tb.format_exc() + "</pre>", 500
+    try:
+        return render_template(
+            "stats.html",
+            stats=data,
+            stats_json=stats_json,
+            league_name=get_setting("league_name", "Pokemon Draft League"),
+        )
+    except Exception:
+        return "<pre>" + _tb.format_exc() + "</pre>", 500
 
 
 @app.route("/teams")
