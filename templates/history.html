@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Coach History — {{ league_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/static/meta-styles.css">
+<style>
+.hist-page { background: var(--ink); min-height: calc(100vh - 64px); padding: 0 0 80px; }
+.hist-hero { padding: 36px 32px 24px; border-bottom: 1px solid var(--hairline); }
+.hist-hero .eyebrow { font-family: var(--font-mono); font-size: 10px; color: var(--magenta); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
+.hist-hero .h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 3vw, 32px); color: var(--text); }
+.hist-hero .sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 6px; letter-spacing: .08em; }
+
+.hist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; padding: 28px 32px; }
+
+.hist-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.hist-card:hover { border-color: var(--hairline-2); }
+
+.hist-card-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+.hist-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--panel-2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 16px;
+  color: var(--text); flex-shrink: 0;
+  overflow: hidden;
+}
+.hist-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hist-coach-name { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); }
+.hist-career-line { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-top: 2px; letter-spacing: .06em; }
+.hist-career-wl { display: flex; align-items: baseline; gap: 4px; margin-top: 4px; }
+.hist-career-wl .wins { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--cyan); }
+.hist-career-wl .sep { font-family: var(--font-mono); font-size: 14px; color: var(--text-dim); }
+.hist-career-wl .losses { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--text-mute); }
+.hist-career-wl .kos { font-family: var(--font-mono); font-size: 11px; color: var(--amber); margin-left: 8px; }
+
+.hist-seasons { padding: 10px 16px 14px; }
+.hist-season-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto auto;
+  align-items: center; gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.hist-season-row:last-child { border-bottom: none; }
+.hist-season-badge {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: 3px;
+  background: var(--panel-2); color: var(--text-dim);
+  text-align: center; white-space: nowrap;
+}
+.hist-season-badge.s-current { background: var(--cyan-dim); color: var(--cyan); }
+.hist-team-name { font-size: 12px; color: var(--text-mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-record { font-family: var(--font-mono); font-size: 12px; color: var(--text); white-space: nowrap; }
+.hist-record .w { color: var(--cyan); }
+.hist-record .l { color: var(--text-dim); }
+.hist-rank {
+  font-family: var(--font-mono); font-size: 10px;
+  width: 28px; height: 20px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel-3); color: var(--text-dim);
+}
+.hist-rank.r1 { background: rgba(255,201,77,.15); color: #ffc94d; }
+.hist-rank.r2 { background: rgba(180,180,180,.12); color: #b4b4b4; }
+.hist-rank.r3 { background: rgba(176,138,75,.12); color: #b08a4b; }
+
+.hist-empty { padding: 48px; text-align: center; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+
+@media (max-width: 600px) {
+  .hist-grid { grid-template-columns: 1fr; padding: 16px; gap: 12px; }
+  .hist-hero { padding: 24px 16px 16px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hist-page">
+
+  <!-- Hero -->
+  <div class="hist-hero">
+    <div class="eyebrow">// COACH · CAREER · RECORDS</div>
+    <div class="h1">Coach History</div>
+    <div class="sub">
+      {{ coaches|length }} COACHES ·
+      {{ seasons|length }} SEASON{{ 's' if seasons|length != 1 else '' }} ARCHIVED
+      &nbsp;·&nbsp;
+      <a href="/stats" style="color:var(--cyan);text-decoration:none">Stats &amp; Meta Hub ↗</a>
+    </div>
+  </div>
+
+  {% if coaches %}
+  <div class="hist-grid">
+    {% for coach in coaches %}
+    {% set latest = coach.seasons[0] if coach.seasons else none %}
+    <div class="hist-card">
+
+      <!-- Header -->
+      <div class="hist-card-header">
+        <div class="hist-avatar"
+             {% if latest and latest.color %}style="background:{{ latest.color }}22;border:2px solid {{ latest.color }}44"{% endif %}>
+          {% if latest and latest.logo %}
+          <img src="{{ latest.logo }}" alt="" onerror="this.style.display='none'">
+          {% endif %}
+          <span {% if latest and latest.logo %}style="display:none"{% endif %}>
+            {{ coach.coach_name[:1] | upper }}
+          </span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="hist-coach-name">{{ coach.coach_name }}</div>
+          <div class="hist-career-line">{{ coach.seasons_count }} SEASON{{ 'S' if coach.seasons_count != 1 else '' }} PLAYED</div>
+        </div>
+        <div>
+          <div class="hist-career-wl">
+            <span class="wins">{{ coach.total_w }}</span>
+            <span class="sep">-</span>
+            <span class="losses">{{ coach.total_l }}</span>
+            <span class="kos">{{ coach.total_kos }} KOs</span>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);text-align:right;margin-top:2px;letter-spacing:.06em">CAREER</div>
+        </div>
+      </div>
+
+      <!-- Season rows -->
+      <div class="hist-seasons">
+        {% if coach.seasons %}
+        {% for s in coach.seasons %}
+        <div class="hist-season-row">
+          <div>
+            <a href="/stats?season={{ s.season_id }}"
+               class="hist-season-badge {% if s.season_num >= 8 %}s-current{% endif %}"
+               style="text-decoration:none">
+              S{{ s.season_num if s.season_num else '?' }}
+            </a>
+          </div>
+          <div class="hist-team-name" title="{{ s.team_name }}">{{ s.team_name }}</div>
+          <div class="hist-record">
+            <span class="w">{{ s.w }}W</span>
+            <span style="color:var(--hairline-2)">-</span>
+            <span class="l">{{ s.l }}L</span>
+            {% if s.diff != 0 %}
+            <span style="font-size:10px;color:{{ 'var(--cyan)' if s.diff > 0 else 'var(--red)' }};margin-left:4px">
+              {{ '+' if s.diff > 0 else '' }}{{ s.diff|round(0)|int }}
+            </span>
+            {% endif %}
+          </div>
+          <div class="hist-rank {% if s.rank == 1 %}r1{% elif s.rank == 2 %}r2{% elif s.rank == 3 %}r3{% endif %}">
+            #{{ s.rank }}
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="hist-empty">No season data</div>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="hist-empty">
+    <div style="font-size:32px;margin-bottom:12px">📋</div>
+    No season archives yet.<br>
+    <a href="/admin" style="color:var(--cyan)">Archive the current season</a> to start tracking history.
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

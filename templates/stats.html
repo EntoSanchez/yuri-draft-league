@@ -23,11 +23,32 @@
   <!-- ── TITLE BAR ─────────────────────────────────────────────── -->
   <div class="mh-titlebar">
     <div>
-      <div class="eyebrow mag">// STATE.OF.THE.META · SEASON {{ stats.season }}</div>
+      <div class="eyebrow mag">// STATE.OF.THE.META · {{ stats.season }}</div>
       <div class="h1" style="margin-top:6px">Stats &amp; Meta Hub</div>
     </div>
     <div style="flex:1"></div>
-    <div class="mh-sub">{{ stats.mon_dex|length }} TRACKED MONS · {{ stats.total_kos }} KOs · {{ stats.type_meta|length }} TYPES ACTIVE</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      {% if seasons %}
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase">Season</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <a href="/stats"
+             style="font-family:var(--font-mono);font-size:11px;padding:3px 9px;border-radius:4px;text-decoration:none;border:1px solid;
+                    {% if stats.season_id is none %}border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim){% else %}border-color:var(--hairline);color:var(--text-mute);background:transparent{% endif %}">
+            Live
+          </a>
+          {% for s in seasons %}
+          <a href="/stats?season={{ s.id }}"
+             style="font-family:var(--font-mono);font-size:11px;padding:3px 9px;border-radius:4px;text-decoration:none;border:1px solid;
+                    {% if stats.season_id == s.id %}border-color:var(--magenta);color:var(--magenta);background:var(--magenta-dim){% else %}border-color:var(--hairline);color:var(--text-mute);background:transparent{% endif %}">
+            S{{ s.season_num if s.season_num else s.id }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="mh-sub">{{ stats.mon_dex|length }} MONS · {{ stats.total_kos }} KOs</div>
+    </div>
   </div>
 
   <!-- ── 01 TYPE META — TREEMAP ────────────────────────────────── -->

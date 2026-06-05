@@ -51,11 +51,23 @@ def _migrate_db():
             "ALTER TABLE draft_sessions ADD COLUMN banked_picks TEXT DEFAULT '{}'",
             "ALTER TABLE pokemon_roster ADD COLUMN is_zmove_captain INTEGER DEFAULT 0",
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
+            "ALTER TABLE seasons ADD COLUMN season_num INTEGER DEFAULT 0",
         ]:
             try:
                 db.execute(stmt)
             except Exception:
                 pass
+        # Rename legacy "Test Archive" to proper season name
+        try:
+            if not db.execute(
+                "SELECT 1 FROM league_settings WHERE key='_migration_season_rename_v1'"
+            ).fetchone():
+                db.execute(
+                    "UPDATE seasons SET name='Yuri Cup Season 8', season_num=8 WHERE name='Test Archive'"
+                )
+                db.execute("INSERT INTO league_settings (key, value) VALUES ('_migration_season_rename_v1', '1')")
+        except Exception:
+            pass
         # One-time reset: coaches got 'points' auto-assigned by the old DEFAULT clause.
         try:
             if not db.execute(
@@ -991,8 +1003,17 @@ def standings():
                            completed_matches=completed_matches)
 
 
-def _build_stats_data():
-    """Aggregate all data for the Stats & Meta Hub page."""
+def _list_seasons():
+    """Return list of all archived seasons sorted by season_num desc."""
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, name, season_num FROM seasons ORDER BY season_num DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def _build_stats_data(season_id=None):
+    """Aggregate stats for the Stats & Meta Hub. season_id=None → live tables; int → archive."""
     TYPE_COLORS = {
         "Normal": "#a3a3a3", "Fire": "#ff6830", "Water": "#6390f0",
         "Electric": "#f7d02c", "Grass": "#7ac74c", "Ice": "#96d9d6",
@@ -1002,28 +1023,60 @@ def _build_stats_data():
         "Dark": "#705746", "Steel": "#a7b3c4", "Fairy": "#ff8fd0",
     }
     with get_db() as db:
-        coaches_raw = db.execute("SELECT * FROM coaches ORDER BY id").fetchall()
-        if coaches_raw:
-            coaches_map = {c["id"]: dict(c) for c in coaches_raw}
-        else:
-            season_row = db.execute(
-                "SELECT data_json FROM seasons ORDER BY id DESC LIMIT 1"
-            ).fetchone()
-            if season_row:
-                sd = json.loads(season_row["data_json"])
-                coaches_map = {c["id"]: c for c in sd.get("coaches", [])}
-            else:
-                coaches_map = {}
-
-        dt_rows = db.execute(
-            "SELECT name, type1, type2, spe, points FROM draft_tiers"
-        ).fetchall()
-        dt_map = {r["name"].lower().strip(): dict(r) for r in dt_rows}
-
+        # ── always need live pokedex for type/speed fallback ─────────────────
         pdex_rows = db.execute(
             "SELECT display_name, type1, type2, spe FROM pokedex"
         ).fetchall()
         pdex_map = {r["display_name"].lower().strip(): dict(r) for r in pdex_rows}
+
+        if season_id is not None:
+            # ── load from archive JSON ────────────────────────────────────────
+            row = db.execute(
+                "SELECT data_json, name, season_num FROM seasons WHERE id=?", (season_id,)
+            ).fetchone()
+            if not row:
+                return None
+            sd = json.loads(row["data_json"])
+            season_label = row["name"]
+            coaches_map = {c["id"]: c for c in sd.get("coaches", [])}
+            roster_rows = sd.get("pokemon_roster", [])
+            sched_rows = [
+                s for s in sd.get("schedule", [])
+                if s.get("score1") is not None and s.get("score2") is not None
+            ]
+            ms_raw = sd.get("match_stats", [])
+            dt_map = {
+                r["name"].lower().strip(): r
+                for r in sd.get("draft_tiers", [])
+                if r.get("name")
+            }
+        else:
+            # ── load from live tables ────────────────────────────────────────
+            season_label = get_setting("season", "Current Season")
+            coaches_raw = db.execute("SELECT * FROM coaches ORDER BY id").fetchall()
+            if coaches_raw:
+                coaches_map = {c["id"]: dict(c) for c in coaches_raw}
+            else:
+                season_row = db.execute(
+                    "SELECT data_json FROM seasons ORDER BY season_num DESC LIMIT 1"
+                ).fetchone()
+                if season_row:
+                    sd = json.loads(season_row["data_json"])
+                    coaches_map = {c["id"]: c for c in sd.get("coaches", [])}
+                else:
+                    coaches_map = {}
+            roster_rows = [dict(r) for r in db.execute("SELECT * FROM pokemon_roster").fetchall()]
+            sched_rows = [dict(r) for r in db.execute(
+                "SELECT * FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
+            ).fetchall()]
+            ms_raw = [dict(r) for r in db.execute(
+                "SELECT coach_id, pokemon_name, SUM(kills) as kills, SUM(deaths) as deaths "
+                "FROM match_stats GROUP BY coach_id, pokemon_name"
+            ).fetchall()]
+            dt_rows = db.execute(
+                "SELECT name, type1, type2, spe, points FROM draft_tiers"
+            ).fetchall()
+            dt_map = {r["name"].lower().strip(): dict(r) for r in dt_rows}
 
         def _types(name):
             k = name.lower().strip()
@@ -1041,17 +1094,14 @@ def _build_stats_data():
             p = pdex_map.get(k, {})
             return int(p["spe"]) if p.get("spe") else 0
 
-        stats_agg = db.execute("""
-            SELECT coach_id, pokemon_name,
-                   SUM(kills) as kills, SUM(deaths) as deaths
-            FROM match_stats GROUP BY coach_id, pokemon_name
-        """).fetchall()
-        stats_map = {
-            (r["coach_id"], r["pokemon_name"].lower()): dict(r)
-            for r in stats_agg
-        }
-
-        roster_rows = db.execute("SELECT * FROM pokemon_roster").fetchall()
+        # aggregate per-pokemon kills/deaths (raw ms_raw may be per-game or pre-aggregated)
+        stats_map = {}
+        for r in ms_raw:
+            key = (r["coach_id"], r["pokemon_name"].lower())
+            if key not in stats_map:
+                stats_map[key] = {"kills": 0.0, "deaths": 0.0}
+            stats_map[key]["kills"] += float(r.get("kills") or 0)
+            stats_map[key]["deaths"] += float(r.get("deaths") or 0)
 
         mon_dex = []
         for r in roster_rows:
@@ -1128,9 +1178,6 @@ def _build_stats_data():
         voe_max = max((abs(t["delta"]) for t in type_voe), default=1) or 1
 
         # FIREPOWER
-        sched_rows = db.execute(
-            "SELECT * FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
-        ).fetchall()
         fp_data = {}
         for r in sched_rows:
             for cid, mine, opp in [
@@ -1173,12 +1220,12 @@ def _build_stats_data():
             "Tier 3": "#3dd9c2", "Tier 4": "#7ddc6a", "Tier 5": "#9a9aa8",
         }
         TIER_ORDER = ["Uber 1", "Uber 2", "Mega", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"]
-        tier_rows = db.execute("""
-            SELECT tier, COUNT(*) c FROM pokemon_roster
-            WHERE is_free_pick=0 AND tier != 'Free Pick'
-            GROUP BY tier
-        """).fetchall()
-        tier_cnt = {r["tier"]: r["c"] for r in tier_rows}
+        tier_cnt = {}
+        for r in roster_rows:
+            tier = r.get("tier") if isinstance(r, dict) else r["tier"]
+            is_fp = r.get("is_free_pick", 0) if isinstance(r, dict) else r["is_free_pick"]
+            if not is_fp and tier and tier != "Free Pick":
+                tier_cnt[tier] = tier_cnt.get(tier, 0) + 1
         bands = []
         for tier in TIER_ORDER:
             if tier in tier_cnt:
@@ -1349,7 +1396,8 @@ def _build_stats_data():
         }
 
     return {
-        "season": get_setting("season", "?"),
+        "season": season_label,
+        "season_id": season_id,
         "mon_dex": mon_dex,
         "total_kos": round(total_kos),
         "type_meta": type_meta,
@@ -1382,15 +1430,135 @@ def _build_stats_data():
 def stats():
     import traceback as _tb
     try:
-        data = _build_stats_data()
+        season_id = request.args.get("season", type=int)
+        data = _build_stats_data(season_id)
+        if data is None:
+            return "Season not found", 404
         stats_json = json.dumps(data)
+        seasons = _list_seasons()
     except Exception:
         return "<pre>" + _tb.format_exc() + "</pre>", 500
     try:
         return render_template(
             "stats.html",
             stats=data,
+            seasons=seasons,
             stats_json=stats_json,
+            league_name=get_setting("league_name", "Pokemon Draft League"),
+        )
+    except Exception:
+        return "<pre>" + _tb.format_exc() + "</pre>", 500
+
+
+@app.route("/history")
+def history():
+    """Coach career stats across all archived seasons."""
+    import traceback as _tb
+    try:
+        seasons = _list_seasons()
+
+        # Build per-coach career record from all archived seasons
+        # key = coach_name (case-insensitive), value = list of season records
+        career = {}  # coach_name.lower() → {coach_name, seasons: []}
+
+        for s in seasons:
+            with get_db() as db:
+                row = db.execute(
+                    "SELECT data_json, name, season_num FROM seasons WHERE id=?", (s["id"],)
+                ).fetchone()
+            if not row:
+                continue
+            sd = json.loads(row["data_json"])
+            season_label = row["name"]
+            season_num = row["season_num"] or 0
+
+            coaches = {c["id"]: c for c in sd.get("coaches", [])}
+            sched = [r for r in sd.get("schedule", [])
+                     if r.get("score1") is not None and r.get("score2") is not None]
+            ms = sd.get("match_stats", [])
+
+            # W/L per coach
+            wl = {}
+            for m in sched:
+                c1, c2 = m["coach1_id"], m["coach2_id"]
+                s1, s2 = float(m["score1"]), float(m["score2"])
+                for cid in (c1, c2):
+                    wl.setdefault(cid, {"w": 0, "l": 0, "gf": 0, "ga": 0, "gp": 0})
+                wl[c1]["gf"] += s1; wl[c1]["ga"] += s2; wl[c1]["gp"] += 1
+                wl[c2]["gf"] += s2; wl[c2]["ga"] += s1; wl[c2]["gp"] += 1
+                if s1 > s2:
+                    wl[c1]["w"] += 1; wl[c2]["l"] += 1
+                elif s2 > s1:
+                    wl[c2]["w"] += 1; wl[c1]["l"] += 1
+
+            # Per-coach total KOs from match_stats
+            ko_agg = {}
+            for r in ms:
+                cid = r["coach_id"]
+                ko_agg[cid] = ko_agg.get(cid, 0) + float(r.get("kills") or 0)
+
+            # Rank coaches by W, then KO diff
+            all_cids = list(coaches.keys())
+            ranked = sorted(
+                all_cids,
+                key=lambda cid: (
+                    -wl.get(cid, {}).get("w", 0),
+                    -(wl.get(cid, {}).get("gf", 0) - wl.get(cid, {}).get("ga", 0)),
+                )
+            )
+            rank_map = {cid: i + 1 for i, cid in enumerate(ranked)}
+
+            for cid, coach in coaches.items():
+                cname = coach.get("coach_name", "")
+                key = cname.lower().strip()
+                if not key:
+                    continue
+                if key not in career:
+                    career[key] = {
+                        "coach_name": cname,
+                        "seasons": [],
+                        "total_w": 0, "total_l": 0,
+                        "total_kos": 0.0,
+                        "team_names": [],
+                    }
+                rec = wl.get(cid, {"w": 0, "l": 0, "gf": 0, "ga": 0, "gp": 0})
+                kos = round(ko_agg.get(cid, 0), 1)
+                diff = round(rec["gf"] - rec["ga"], 1)
+                career[key]["seasons"].append({
+                    "season_id": s["id"],
+                    "season_name": season_label,
+                    "season_num": season_num,
+                    "team_name": coach.get("team_name", ""),
+                    "color": coach.get("color", "#888"),
+                    "logo": coach.get("logo_url", ""),
+                    "w": rec["w"], "l": rec["l"],
+                    "gf": round(rec["gf"], 1), "ga": round(rec["ga"], 1),
+                    "diff": diff,
+                    "kos": kos,
+                    "rank": rank_map.get(cid, 0),
+                    "gp": rec["gp"],
+                })
+                career[key]["total_w"] += rec["w"]
+                career[key]["total_l"] += rec["l"]
+                career[key]["total_kos"] += kos
+                if coach.get("team_name") and coach["team_name"] not in career[key]["team_names"]:
+                    career[key]["team_names"].append(coach["team_name"])
+
+        # Sort seasons within each coach by season_num desc
+        coaches_list = []
+        for c in career.values():
+            c["seasons"].sort(key=lambda x: -x["season_num"])
+            c["total_kos"] = round(c["total_kos"], 1)
+            c["seasons_count"] = len(c["seasons"])
+            coaches_list.append(c)
+
+        # Sort coaches by total wins desc
+        coaches_list.sort(key=lambda c: (-c["total_w"], -c["total_kos"]))
+
+        return render_template(
+            "history.html",
+            coaches=coaches_list,
+            seasons=seasons,
             league_name=get_setting("league_name", "Pokemon Draft League"),
         )
     except Exception:
