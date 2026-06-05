@@ -991,6 +991,404 @@ def standings():
                            completed_matches=completed_matches)
 
 
+def _build_stats_data():
+    """Aggregate all data for the Stats & Meta Hub page."""
+    TYPE_COLORS = {
+        "Normal": "#a3a3a3", "Fire": "#ff6830", "Water": "#6390f0",
+        "Electric": "#f7d02c", "Grass": "#7ac74c", "Ice": "#96d9d6",
+        "Fighting": "#ff7a59", "Poison": "#a33ea1", "Ground": "#e2bf65",
+        "Flying": "#89aae4", "Psychic": "#f95587", "Bug": "#a6b91a",
+        "Rock": "#b6a136", "Ghost": "#735797", "Dragon": "#7b6cff",
+        "Dark": "#705746", "Steel": "#a7b3c4", "Fairy": "#ff8fd0",
+    }
+    with get_db() as db:
+        coaches_raw = db.execute("SELECT * FROM coaches ORDER BY id").fetchall()
+        if coaches_raw:
+            coaches_map = {c["id"]: dict(c) for c in coaches_raw}
+        else:
+            season_row = db.execute(
+                "SELECT data_json FROM seasons ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            if season_row:
+                sd = json.loads(season_row["data_json"])
+                coaches_map = {c["id"]: c for c in sd.get("coaches", [])}
+            else:
+                coaches_map = {}
+
+        dt_rows = db.execute(
+            "SELECT name, type1, type2, spe, points FROM draft_tiers"
+        ).fetchall()
+        dt_map = {r["name"].lower().strip(): dict(r) for r in dt_rows}
+
+        pdex_rows = db.execute(
+            "SELECT display_name, type1, type2, spe FROM pokedex"
+        ).fetchall()
+        pdex_map = {r["display_name"].lower().strip(): dict(r) for r in pdex_rows}
+
+        def _types(name):
+            k = name.lower().strip()
+            d = dt_map.get(k, {})
+            if d.get("type1"):
+                return [t for t in [d.get("type1"), d.get("type2")] if t]
+            p = pdex_map.get(k, {})
+            return [t for t in [p.get("type1"), p.get("type2")] if t]
+
+        def _spe(name):
+            k = name.lower().strip()
+            d = dt_map.get(k, {})
+            if d.get("spe"):
+                return int(d["spe"])
+            p = pdex_map.get(k, {})
+            return int(p["spe"]) if p.get("spe") else 0
+
+        stats_agg = db.execute("""
+            SELECT coach_id, pokemon_name,
+                   SUM(kills) as kills, SUM(deaths) as deaths
+            FROM match_stats GROUP BY coach_id, pokemon_name
+        """).fetchall()
+        stats_map = {
+            (r["coach_id"], r["pokemon_name"].lower()): dict(r)
+            for r in stats_agg
+        }
+
+        roster_rows = db.execute("SELECT * FROM pokemon_roster").fetchall()
+
+        mon_dex = []
+        for r in roster_rows:
+            cid = r["coach_id"]
+            name = r["pokemon_name"]
+            coach = coaches_map.get(cid, {})
+            st = stats_map.get((cid, name.lower()), {"kills": 0, "deaths": 0})
+            kills = float(st.get("kills") or 0)
+            deaths = float(st.get("deaths") or 0)
+            types = _types(name)
+            spe = _spe(name)
+            cost = int(r["points"] or 0)
+            primary_type = types[0] if types else "Normal"
+            orb_color = TYPE_COLORS.get(primary_type, "#a3a3a3")
+            glyph = name[:2].upper()
+            kpp = round(kills / cost, 2) if cost > 0 else 0.0
+            mon_dex.append({
+                "id": f"{cid}_{name}",
+                "name": name,
+                "types": types,
+                "glyph": glyph,
+                "orb_color": orb_color,
+                "kills": kills,
+                "deaths": deaths,
+                "diff": round(kills - deaths, 1),
+                "spe": spe,
+                "cost": cost,
+                "kpp": kpp,
+                "team": {
+                    "id": cid,
+                    "name": coach.get("team_name", f"Team {cid}"),
+                    "logo": coach.get("logo_url", ""),
+                    "color": coach.get("color", "#888"),
+                    "pool": coach.get("pool", "A"),
+                },
+            })
+
+        total_kos = sum(m["kills"] for m in mon_dex)
+
+        # TYPE_META
+        type_kos = {}
+        type_spend = {}
+        type_mons_set = {}
+        for m in mon_dex:
+            for t in m["types"]:
+                type_kos[t] = type_kos.get(t, 0) + m["kills"]
+                type_spend[t] = type_spend.get(t, 0) + m["cost"]
+                type_mons_set.setdefault(t, set()).add(m["name"])
+        type_meta = []
+        for t, kos in sorted(type_kos.items(), key=lambda x: -x[1]):
+            share = round(kos / total_kos * 100, 1) if total_kos else 0
+            type_meta.append({
+                "type": t, "kos": round(kos, 1),
+                "used": len(type_mons_set[t]),
+                "spend": round(type_spend[t]),
+                "share": share,
+                "color": TYPE_COLORS.get(t, "#888"),
+            })
+
+        # TYPE_VOE
+        total_spend_pts = sum(type_spend.values())
+        type_voe = []
+        for tm in type_meta:
+            t = tm["type"]
+            ko_s = (type_kos[t] / total_kos * 100) if total_kos else 0
+            sp_s = (type_spend[t] / total_spend_pts * 100) if total_spend_pts else 0
+            delta = round(ko_s - sp_s, 1)
+            type_voe.append({
+                "type": t, "color": TYPE_COLORS.get(t, "#888"),
+                "koShare": round(ko_s, 1), "spendShare": round(sp_s, 1),
+                "delta": delta,
+            })
+        type_voe.sort(key=lambda x: -x["delta"])
+        voe_max = max((abs(t["delta"]) for t in type_voe), default=1)
+
+        # FIREPOWER
+        sched_rows = db.execute(
+            "SELECT * FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
+        ).fetchall()
+        fp_data = {}
+        for r in sched_rows:
+            for cid, mine, opp in [
+                (r["coach1_id"], float(r["score1"]), float(r["score2"])),
+                (r["coach2_id"], float(r["score2"]), float(r["score1"])),
+            ]:
+                d = fp_data.setdefault(cid, {"gf": 0, "ga": 0, "w": 0, "l": 0, "gp": 0})
+                d["gf"] += mine
+                d["ga"] += opp
+                d["gp"] += 1
+                if mine > opp:
+                    d["w"] += 1
+                elif opp > mine:
+                    d["l"] += 1
+        firepower = []
+        for cid, coach in coaches_map.items():
+            d = fp_data.get(int(cid) if isinstance(cid, str) else cid,
+                            {"gf": 0, "ga": 0, "w": 0, "l": 0, "gp": 0})
+            firepower.append({
+                "team": {
+                    "id": cid,
+                    "name": coach.get("team_name", f"Team {cid}"),
+                    "logo": coach.get("logo_url", ""),
+                    "color": coach.get("color", "#888"),
+                    "pool": coach.get("pool", "A"),
+                },
+                "gp": d["gp"], "w": d["w"], "l": d["l"],
+                "gf": round(d["gf"]), "ga": round(d["ga"]),
+                "diff": round(d["gf"] - d["ga"]),
+                "kos": round(sum(m["kills"] for m in mon_dex if m["team"]["id"] == cid)),
+            })
+        firepower.sort(key=lambda x: -x["gf"])
+        fp_max_gf = max((f["gf"] for f in firepower), default=1)
+
+        # DRAFT_ECON
+        TIER_COLORS = {
+            "Uber 1": "#ffc94d", "Uber 2": "#e8a82a",
+            "Mega": "#ff7e9d",
+            "Tier 1": "#5a9bff", "Tier 2": "#b07dff",
+            "Tier 3": "#3dd9c2", "Tier 4": "#7ddc6a", "Tier 5": "#9a9aa8",
+        }
+        TIER_ORDER = ["Uber 1", "Uber 2", "Mega", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"]
+        tier_rows = db.execute("""
+            SELECT tier, COUNT(*) c FROM pokemon_roster
+            WHERE is_free_pick=0 AND tier != 'Free Pick'
+            GROUP BY tier
+        """).fetchall()
+        tier_cnt = {r["tier"]: r["c"] for r in tier_rows}
+        bands = []
+        for tier in TIER_ORDER:
+            if tier in tier_cnt:
+                bands.append({
+                    "band": tier, "count": tier_cnt[tier],
+                    "color": TIER_COLORS.get(tier, "#666"),
+                })
+        total_drafted = sum(b["count"] for b in bands)
+
+        non_free = [m for m in mon_dex if 0 < m["cost"] < 90]
+        avg_cost = round(sum(m["cost"] for m in non_free) / len(non_free), 1) if non_free else 0
+        priciest = max(non_free, key=lambda m: m["cost"]) if non_free else None
+        has_kills = [m for m in non_free if m["kills"] > 0]
+        value_pick = max(has_kills, key=lambda m: m["kpp"]) if has_kills else None
+
+        # SPEED_TIERS
+        speed_bands = [
+            ("120+", 120, 999, "FASTEST — outspeeds most"),
+            ("100–119", 100, 119, "TOP SPEED — speed tie bracket"),
+            ("80–99", 80, 99, "MID TIER — fringe speed"),
+            ("50–79", 50, 79, "LOW TIER — needs TR / trick"),
+            ("<50", 0, 49, "TRICK ROOM USERS"),
+        ]
+        speed_tiers = []
+        for label, lo, hi, hint in speed_bands:
+            mons_in = sorted(
+                [m for m in mon_dex if lo <= m["spe"] <= hi],
+                key=lambda m: -m["spe"]
+            )
+            speed_tiers.append({"label": label, "hint": hint, "count": len(mons_in), "mons": mons_in})
+
+        # ARCHETYPES
+        team_arch = {}
+        for m in mon_dex:
+            cid = m["team"]["id"]
+            d = team_arch.setdefault(cid, {"team": m["team"], "mons": [], "kos": 0.0})
+            d["mons"].append(m)
+            d["kos"] += m["kills"]
+        archetypes = []
+        arch_spe_max = 1
+        for cid, d in team_arch.items():
+            mons = d["mons"]
+            if not mons:
+                continue
+            avg_spe = round(sum(m["spe"] for m in mons) / len(mons))
+            avg_c = round(sum(m["cost"] for m in mons) / len(mons), 1)
+            kos = round(d["kos"], 1)
+            if avg_spe >= 112:
+                arch = "Hyper Offense"
+            elif avg_spe >= 88:
+                arch = "Offense"
+            elif avg_spe >= 58:
+                arch = "Balanced"
+            else:
+                arch = "Trick Room"
+            archetypes.append({
+                "team": coaches_map.get(cid, {"id": cid, "team_name": f"Team {cid}",
+                                              "logo_url": "", "color": "#888", "pool": "A"}),
+                "n": len(mons), "kos": kos, "avgSpe": avg_spe, "avgCost": avg_c,
+                "arch": arch, "topHeavy": avg_c >= 15.5,
+            })
+            arch_spe_max = max(arch_spe_max, avg_spe)
+        archetypes.sort(key=lambda a: -a["kos"])
+
+        # VALUE_INDEX
+        eligible = sorted(
+            [m for m in mon_dex if 0 < m["cost"] < 90],
+            key=lambda m: -m["kpp"]
+        )
+        bargains = eligible[:6]
+        busts = sorted(
+            [m for m in eligible if m["cost"] >= 13],
+            key=lambda m: m["kpp"]
+        )[:4]
+        max_kpp = max((m["kpp"] for m in eligible), default=1)
+
+        # SURVIVORS
+        for m in mon_dex:
+            m["ratio"] = round(m["kills"] / max(1.0, m["deaths"]), 2)
+        survivors = sorted(mon_dex, key=lambda m: -m["ratio"])[:8]
+        surv_max = max((m["ratio"] for m in survivors), default=1)
+
+        # QUADRANT
+        all_kos = [m["kills"] for m in mon_dex]
+        all_deaths = [m["deaths"] for m in mon_dex]
+        mean_k = sum(all_kos) / len(all_kos) if all_kos else 0
+        mean_f = sum(all_deaths) / len(all_deaths) if all_deaths else 0
+        max_k = max(all_kos) if all_kos else 1
+        max_f = max(all_deaths) if all_deaths else 1
+        quad_counts = {"MVP": 0, "CANNON": 0, "WALL": 0, "LIABILITY": 0}
+        quad_points = []
+        for m in mon_dex:
+            if m["kills"] >= mean_k and m["deaths"] <= mean_f:
+                q = "MVP"
+            elif m["kills"] >= mean_k:
+                q = "CANNON"
+            elif m["deaths"] <= mean_f:
+                q = "WALL"
+            else:
+                q = "LIABILITY"
+            quad_counts[q] += 1
+            quad_points.append({**m, "quad": q})
+        quadrant = {
+            "meanK": round(mean_k, 2), "meanF": round(mean_f, 2),
+            "maxK": round(max_k), "maxF": round(max_f),
+            "points": quad_points, "counts": quad_counts,
+        }
+
+        # RECORDS
+        played = len(sched_rows)
+        fp_by_id = {cid: d["gf"] for cid, d in fp_data.items()}
+        sweeps = one_point = ties = 0
+        sweep_ex = one_point_ex = highest_ex = blowout = upset = None
+        highest_total = blowout_diff = upset_score = 0
+        for r in sched_rows:
+            s1, s2 = float(r["score1"]), float(r["score2"])
+            total = s1 + s2
+            diff = abs(s1 - s2)
+            c1 = coaches_map.get(r["coach1_id"], {"team_name": "?"})
+            c2 = coaches_map.get(r["coach2_id"], {"team_name": "?"})
+            win_c = c1 if s1 > s2 else c2
+            los_c = c2 if s1 > s2 else c1
+            win_s, los_s = (int(max(s1, s2)), int(min(s1, s2)))
+            if s1 == 0 or s2 == 0:
+                sweeps += 1
+                if sweep_ex is None:
+                    sweep_ex = {"a": {"name": win_c.get("team_name", "?")},
+                                "b": {"name": los_c.get("team_name", "?")},
+                                "scoreA": win_s, "scoreB": los_s}
+            if diff == 1:
+                one_point += 1
+                if one_point_ex is None:
+                    one_point_ex = {"a": {"name": win_c.get("team_name", "?")},
+                                    "b": {"name": los_c.get("team_name", "?")},
+                                    "scoreA": win_s, "scoreB": los_s}
+            if s1 == s2:
+                ties += 1
+            if total > highest_total:
+                highest_total = int(total)
+                highest_ex = {"a": {"name": win_c.get("team_name", "?")},
+                              "b": {"name": los_c.get("team_name", "?")},
+                              "scoreA": win_s, "scoreB": los_s}
+            if diff > blowout_diff:
+                blowout_diff = diff
+                blowout = {"match": {"a": {"name": win_c.get("team_name", "?")},
+                                     "b": {"name": los_c.get("team_name", "?")},
+                                     "scoreA": win_s, "scoreB": los_s}}
+            gf1 = fp_by_id.get(r["coach1_id"], 0)
+            gf2 = fp_by_id.get(r["coach2_id"], 0)
+            if s1 > s2 and gf2 > gf1 and (gf2 - gf1) > upset_score:
+                upset_score = gf2 - gf1
+                upset = {"week": r["week"], "match": {
+                    "a": {"name": c2.get("team_name", "?")},
+                    "b": {"name": c1.get("team_name", "?")},
+                    "scoreA": int(s1), "scoreB": int(s2)}}
+            elif s2 > s1 and gf1 > gf2 and (gf1 - gf2) > upset_score:
+                upset_score = gf1 - gf2
+                upset = {"week": r["week"], "match": {
+                    "a": {"name": c1.get("team_name", "?")},
+                    "b": {"name": c2.get("team_name", "?")},
+                    "scoreA": int(s2), "scoreB": int(s1)}}
+
+        records = {
+            "played": played, "sweeps": sweeps, "sweepEx": sweep_ex,
+            "onePoint": one_point, "onePointEx": one_point_ex, "ties": ties,
+            "highestTotal": highest_total, "highest": highest_ex,
+            "blowout": blowout, "upset": upset,
+        }
+
+    return {
+        "season": get_setting("season", "?"),
+        "mon_dex": mon_dex,
+        "total_kos": round(total_kos),
+        "type_meta": type_meta,
+        "type_voe": type_voe,
+        "voe_max": voe_max,
+        "firepower": firepower,
+        "fp_max_gf": fp_max_gf,
+        "draft_econ": {"totalPool": 650, "drafted": total_drafted, "bands": bands},
+        "draft_stats": {
+            "avgCost": avg_cost,
+            "priciest": {"name": priciest["name"], "cost": priciest["cost"]} if priciest else None,
+            "valuePick": {
+                "name": value_pick["name"],
+                "kills": value_pick["kills"],
+                "cost": value_pick["cost"],
+            } if value_pick else None,
+        },
+        "speed_tiers": speed_tiers,
+        "archetypes": archetypes,
+        "arch_spe_max": arch_spe_max,
+        "value_index": {"bargains": bargains, "busts": busts, "maxKpp": max_kpp},
+        "survivors": survivors,
+        "surv_max": surv_max,
+        "quadrant": quadrant,
+        "records": records,
+    }
+
+
+@app.route("/stats")
+def stats():
+    data = _build_stats_data()
+    return render_template(
+        "stats.html",
+        stats=data,
+        stats_json=json.dumps(data),
+        league_name=get_setting("league_name", "Pokemon Draft League"),
+    )
+
+
 @app.route("/teams")
 def teams():
     with get_db() as db:

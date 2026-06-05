@@ -657,7 +657,7 @@
         <a href="/" class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 {% if request.path == '/' %}active{% endif %}">Home</a>
         <!-- Standings dropdown -->
         <div class="nav-dropdown">
-          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/standings', '/mvp'] %}active{% endif %}">
+          <button class="nav-link text-sm text-gray-200 hover:text-white px-2.5 py-1 flex items-center gap-1 focus:outline-none {% if request.path in ['/standings', '/mvp', '/stats'] %}active{% endif %}">
             Standings
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -669,6 +669,10 @@
             <a href="/mvp" class="nav-dd-item">
               <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
               MVP Race
+            </a>
+            <a href="/stats" class="nav-dd-item {% if request.path == '/stats' %}active{% endif %}">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+              Stats &amp; Meta Hub
             </a>
           </div>
         </div>
@@ -863,11 +867,12 @@
         <svg class="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         Standings
       </span>
-      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/standings', '/mvp'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+      <svg class="w-3.5 h-3.5 opacity-40 transition-transform {% if request.path in ['/standings', '/mvp', '/stats'] %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
     </button>
-    <div id="standings-sub" class="drawer-sub {% if request.path in ['/standings', '/mvp'] %}open{% endif %}">
+    <div id="standings-sub" class="drawer-sub {% if request.path in ['/standings', '/mvp', '/stats'] %}open{% endif %}">
       <a href="/standings" class="drawer-sub-link">Standings</a>
       <a href="/mvp" class="drawer-sub-link">MVP Race</a>
+      <a href="/stats" class="drawer-sub-link {% if request.path == '/stats' %}active{% endif %}">Stats &amp; Meta Hub</a>
     </div>
 
     <!-- Schedule -->

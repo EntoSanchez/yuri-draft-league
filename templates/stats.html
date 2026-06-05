@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+{% block title %}Stats & Meta Hub — {{ league_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/static/meta-styles.css">
+<style>
+/* page overrides — sit on top of base.html */
+.mh-page { background: var(--ink); min-height: calc(100vh - 64px); }
+.mh-titlebar .eyebrow { font-family: var(--font-mono); font-size: 10px; color: var(--magenta); letter-spacing: .14em; text-transform: uppercase; }
+.mh-titlebar .h1 { font-family: var(--font-display); font-weight: 700; color: var(--text); }
+.eyebrow { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: .12em; text-transform: uppercase; }
+.eyebrow.mag { color: var(--magenta); }
+.mono { font-family: var(--font-mono); }
+.dim { color: var(--text-dim); }
+/* Bars start at 0 for animation; JS sets final width */
+.mh-bar-anim { width: 0 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mh-page" id="mh-page">
+
+  <!-- ── TITLE BAR ─────────────────────────────────────────────── -->
+  <div class="mh-titlebar">
+    <div>
+      <div class="eyebrow mag">// STATE.OF.THE.META · SEASON {{ stats.season }}</div>
+      <div class="h1" style="margin-top:6px">Stats &amp; Meta Hub</div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="mh-sub">{{ stats.mon_dex|length }} TRACKED MONS · {{ stats.total_kos }} KOs · {{ stats.type_meta|length }} TYPES ACTIVE</div>
+  </div>
+
+  <!-- ── 01 TYPE META — TREEMAP ────────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.05s">
+    <div class="mh-sechead">
+      <span class="num">01</span>
+      <span class="ttl">Type Meta</span>
+      <span class="rule"></span>
+      <span class="meta">BLOCK AREA = SHARE OF ALL KOs</span>
+      <span id="type-clear-btn" style="display:none;margin-left:12px">
+        <button class="mh-typebtn" onclick="clearTypeFilter()" style="color:var(--cyan);border-color:var(--cyan-dim)">✕ <span id="type-clear-label"></span></button>
+      </span>
+    </div>
+    <div id="mh-tree" style="height:360px;display:grid;gap:6px">
+      {% for t in stats.type_meta %}
+      <div class="mh-tree-cell" data-type="{{ t.type }}" data-kos="{{ t.kos }}"
+           style="background:{{ t.color }};cursor:pointer"
+           onclick="toggleTypeFilter('{{ t.type }}')">
+        <div class="tt" style="font-size:13px">{{ t.type }}</div>
+        <div>
+          <div class="tk">{{ t.kos }} KO · {{ t.share }}%</div>
+          <div class="ts">{{ t.used }} mons · {{ t.spend }} pt drafted</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── 02 VALUE OVER EXPECTED ───────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.10s">
+    <div class="mh-sechead">
+      <span class="num">02</span>
+      <span class="ttl">Value Over Expected</span>
+      <span class="rule"></span>
+      <span class="meta">KO SHARE − DRAFT-SPEND SHARE · PERCENTAGE POINTS</span>
+    </div>
+    <div class="mh-voe">
+      {% for t in stats.type_voe %}
+      {% set w = (t.delta | abs / stats.voe_max * 50) | round(2) %}
+      {% set pos = t.delta >= 0 %}
+      <div class="mh-voe-row">
+        <span class="mh-voe-lbl" style="color:{{ t.color }}">{{ t.type }}</span>
+        <div class="mh-voe-track">
+          <span class="mh-voe-mid"></span>
+          <div class="mh-voe-fill {{ 'pos' if pos else 'neg' }}"
+               style="background:linear-gradient(90deg,{{ t.color }}88,{{ t.color }});box-shadow:0 0 10px -3px {{ t.color }}"
+               data-w="{{ w }}"></div>
+        </div>
+        <span class="mh-voe-val" style="color:{{ 'var(--lime)' if pos else 'var(--red)' }}">{{ '+' if pos else '' }}{{ t.delta }} <span style="color:var(--text-dim)">pt</span></span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── 03 TOP PERFORMERS ─────────────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.15s">
+    <div class="mh-sechead">
+      <span class="num">03</span>
+      <span class="ttl">Top Performers</span>
+      <span class="rule"></span>
+      <span class="meta" id="perf-meta">ALL TYPES</span>
+      <span style="margin-left:12px">
+        <div class="mh-seg cyan" id="metric-seg">
+          <span class="mh-seg-pill" id="seg-pill"></span>
+          <button class="on" data-metric="KILLS" onclick="setMetric('KILLS')">KOs</button>
+          <button data-metric="DIFF" onclick="setMetric('DIFF')">K−D</button>
+        </div>
+      </span>
+    </div>
+    <div id="podium-container" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px"></div>
+    <div id="grid-container" style="display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:6px"></div>
+  </section>
+
+  <!-- ── 04 KOs vs FAINTS ──────────────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.20s">
+    <div class="mh-sechead">
+      <span class="num">04</span>
+      <span class="ttl">KOs vs Faints</span>
+      <span class="rule"></span>
+      <span class="meta" id="quad-meta">
+        MVPs {{ stats.quadrant.counts.MVP }} · CANNONS {{ stats.quadrant.counts.CANNON }} · WALLS {{ stats.quadrant.counts.WALL }} · LIABILITIES {{ stats.quadrant.counts.LIABILITY }}
+      </span>
+    </div>
+    <div class="mh-quad" id="quad-chart">
+      {% set Q = stats.quadrant %}
+      {% set pct_k = (Q.meanK / Q.maxK * 84 + 8) | round(2) %}
+      {% set pct_f = (Q.meanF / Q.maxF * 84 + 8) | round(2) %}
+      <div class="mh-quad-div v" style="left:{{ pct_f }}%"></div>
+      <div class="mh-quad-div h" style="bottom:{{ pct_k }}%"></div>
+      <!-- corners -->
+      <div class="mh-quad-corner" style="top:0;left:0">
+        <div class="lab" style="color:var(--magenta)">MVP <span class="cnt">{{ Q.counts.MVP }}</span></div>
+        <div class="hint">HIGH KO · LOW FAINT</div>
+      </div>
+      <div class="mh-quad-corner" style="top:0;right:0">
+        <div class="lab" style="color:var(--amber);justify-content:flex-end">CANNON <span class="cnt">{{ Q.counts.CANNON }}</span></div>
+        <div class="hint" style="text-align:right">HIGH KO · HIGH FAINT</div>
+      </div>
+      <div class="mh-quad-corner" style="bottom:0;left:0">
+        <div class="lab" style="color:var(--cyan)">WALL <span class="cnt">{{ Q.counts.WALL }}</span></div>
+        <div class="hint">LOW BOTH</div>
+      </div>
+      <div class="mh-quad-corner" style="bottom:0;right:0">
+        <div class="lab" style="color:var(--red);justify-content:flex-end">LIABILITY <span class="cnt">{{ Q.counts.LIABILITY }}</span></div>
+        <div class="hint" style="text-align:right">LOW KO · HIGH FAINT</div>
+      </div>
+      <span class="mh-quad-axlbl" style="bottom:6px;right:10px">FAINTS →</span>
+      <span class="mh-quad-axlbl" style="top:12px;left:8px;writing-mode:vertical-rl;transform:rotate(180deg)">KOs →</span>
+      {% for m in Q.points %}
+      {% set lx = (m.deaths / Q.maxF * 84 + 8) | round(2) %}
+      {% set by = (m.kills / Q.maxK * 84 + 8) | round(2) %}
+      <div class="mh-quad-dot" style="left:{{ lx }}%;bottom:{{ by }}%"
+           data-name="{{ m.name }}" data-types="{{ m.types|join(',') }}"
+           data-kills="{{ m.kills }}" data-deaths="{{ m.deaths }}"
+           data-diff="{{ m.diff }}" data-spe="{{ m.spe }}" data-cost="{{ m.cost }}"
+           data-team="{{ m.team.name }}" data-color="{{ m.orb_color }}" data-glyph="{{ m.glyph }}">
+        <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
+          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── 05 VALUE INDEX + 06 SURVIVORS ────────────────────────── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px" class="mh-reveal" style="animation-delay:.25s">
+
+    <section class="mh-sec">
+      <div class="mh-sechead">
+        <span class="num">05</span>
+        <span class="ttl">Value Index</span>
+        <span class="rule"></span>
+        <span class="meta">KOs PER DRAFT POINT</span>
+      </div>
+      {% for m in stats.value_index.bargains %}
+      {% set w = (m.kpp / stats.value_index.maxKpp * 100) | round(2) %}
+      <div class="mh-mrow" style="grid-template-columns:22px 26px 1fr 84px 46px"
+           data-tip-name="{{ m.name }}" data-tip-types="{{ m.types|join(',') }}"
+           data-tip-kills="{{ m.kills }}" data-tip-deaths="{{ m.deaths }}"
+           data-tip-diff="{{ m.diff }}" data-tip-spe="{{ m.spe }}"
+           data-tip-cost="{{ m.cost }}" data-tip-team="{{ m.team.name }}">
+        <span class="mono dim" style="font-size:11px">{{ loop.index }}</span>
+        <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
+          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+        </div>
+        <div style="min-width:0">
+          <div class="mh-lb-name" style="font-size:11.5px">{{ m.name }}</div>
+          <div class="mh-lb-team">{{ m.team.name }} · {{ m.cost }}pt · {{ m.kills|int }} KO</div>
+        </div>
+        <div class="mh-mbar"><i style="width:{{ w }}%;background:linear-gradient(90deg,rgba(199,255,82,.3),var(--lime));box-shadow:0 0 8px -2px var(--lime)" class="mh-bar-anim" data-w="{{ w }}"></i></div>
+        <span class="mono" style="text-align:right;color:var(--lime);font-weight:600;font-size:12px">{{ m.kpp }}</span>
+      </div>
+      {% endfor %}
+      <div class="eyebrow" style="color:var(--red);margin:12px 0 4px;font-size:9px">// BIGGEST BUSTS · HIGH COST, LOW OUTPUT</div>
+      {% for m in stats.value_index.busts %}
+      {% set w = (m.kpp / stats.value_index.maxKpp * 100) | round(2) %}
+      <div class="mh-mrow" style="grid-template-columns:22px 26px 1fr 84px 46px">
+        <span class="mono dim" style="font-size:11px">—</span>
+        <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
+          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+        </div>
+        <div style="min-width:0">
+          <div class="mh-lb-name" style="font-size:11.5px">{{ m.name }}</div>
+          <div class="mh-lb-team">{{ m.team.name }} · {{ m.cost }}pt · {{ m.kills|int }} KO</div>
+        </div>
+        <div class="mh-mbar"><i style="width:{{ w }}%;background:linear-gradient(90deg,rgba(255,88,120,.3),var(--red));box-shadow:0 0 8px -2px var(--red)" class="mh-bar-anim" data-w="{{ w }}"></i></div>
+        <span class="mono" style="text-align:right;color:var(--red);font-weight:600;font-size:12px">{{ m.kpp }}</span>
+      </div>
+      {% endfor %}
+    </section>
+
+    <section class="mh-sec">
+      <div class="mh-sechead">
+        <span class="num">06</span>
+        <span class="ttl">Survivors</span>
+        <span class="rule"></span>
+        <span class="meta">BEST KO-TO-FAINT RATIO</span>
+      </div>
+      {% for m in stats.survivors %}
+      {% set w = (m.ratio / stats.surv_max * 100) | round(2) %}
+      <div class="mh-mrow" style="grid-template-columns:22px 26px 1fr 84px 46px">
+        <span class="mono dim" style="font-size:11px">{{ loop.index }}</span>
+        <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
+          <span class="mh-orb-glyph">{{ m.glyph }}</span>
+        </div>
+        <div style="min-width:0">
+          <div class="mh-lb-name" style="font-size:11.5px">{{ m.name }}</div>
+          <div class="mh-lb-team">{{ m.kills|int }} KO · {{ m.deaths|int }} F · {{ m.team.name }}</div>
+        </div>
+        <div class="mh-mbar"><i style="width:{{ w }}%;background:linear-gradient(90deg,var(--cyan-soft),var(--cyan));box-shadow:0 0 8px -2px var(--cyan-dim)" class="mh-bar-anim" data-w="{{ w }}"></i></div>
+        <span class="mono" style="text-align:right;color:var(--cyan);font-weight:600;font-size:12px">{{ m.ratio }}</span>
+      </div>
+      {% endfor %}
+    </section>
+
+  </div>
+
+  <!-- ── 07 TEAM FIREPOWER ─────────────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.30s">
+    <div class="mh-sechead">
+      <span class="num">07</span>
+      <span class="ttl">Team Firepower</span>
+      <span class="rule"></span>
+      <span class="meta">SERIES POINTS FOR · ALL WEEKS</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+      {% for pool_label, pool_color in [('POOL A','var(--cyan)'), ('POOL B','var(--magenta)')] %}
+      <div>
+        <div class="eyebrow" style="color:{{ pool_color }};margin-bottom:8px">// {{ pool_label }}</div>
+        <div class="mh-fp">
+          {% set ns = namespace(rank=0) %}
+          {% for f in stats.firepower if f.team.pool == pool_label[-1] %}
+          {% set ns.rank = ns.rank + 1 %}
+          {% set w = (f.gf / stats.fp_max_gf * 100) | round(2) %}
+          <div class="mh-fp-row">
+            <span class="mh-fp-rank">{{ ns.rank }}</span>
+            <span class="mh-fp-logo" {% if f.team.logo %}style="background-image:url('{{ f.team.logo }}')"{% endif %}></span>
+            <div>
+              <div class="mh-fp-name">{{ f.team.name }}</div>
+            </div>
+            <div class="mh-fp-bar"><i style="width:{{ w }}%" class="mh-bar-anim" data-w="{{ w }}"></i></div>
+            <span class="mh-fp-val">{{ f.gf }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── 08 ROSTER ARCHETYPES ──────────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.35s">
+    <div class="mh-sechead">
+      <span class="num">08</span>
+      <span class="ttl">Roster Archetypes</span>
+      <span class="rule"></span>
+      <span class="meta">TRACKED-MON SPEED + SPEND PROFILE · TOP 8 BY KOs</span>
+    </div>
+    <div class="mh-arch">
+      {% for a in stats.archetypes[:8] %}
+      {% set arch_color = {'Hyper Offense':'var(--red)','Offense':'var(--magenta)','Balanced':'var(--cyan)','Trick Room':'var(--lime)'}[a.arch] | default('var(--cyan)') %}
+      {% set sw = (a.avgSpe / stats.arch_spe_max * 100) | round(2) %}
+      <div class="mh-arch-card">
+        <span class="mh-arch-logo" {% if a.team.logo_url is defined and a.team.logo_url %}style="background-image:url('{{ a.team.logo_url }}')"{% elif a.team.logo is defined and a.team.logo %}style="background-image:url('{{ a.team.logo }}')"{% endif %}></span>
+        <div style="min-width:0">
+          <div class="mh-arch-name">{{ a.team.team_name if a.team.team_name is defined else a.team.name }}</div>
+          <span class="mh-arch-tag" style="color:{{ arch_color }};border-color:{{ arch_color }}66;background:{{ arch_color }}14">{{ a.arch }}{% if a.topHeavy %} · TOP-HEAVY{% endif %}</span>
+          <div class="mh-arch-spe">
+            <div class="mh-arch-spetrack"><i class="mh-bar-anim" data-w="{{ sw }}" style="width:{{ sw }}%"></i></div>
+            <span class="mono dim" style="font-size:8.5px">{{ a.avgSpe }} SPE · {{ a.avgCost }}pt</span>
+          </div>
+        </div>
+        <div class="mh-arch-r">
+          <div class="mh-arch-kos">{{ a.kos | int }}</div>
+          <div class="mono dim" style="font-size:8px">KOs · {{ a.n }} mon{{ 's' if a.n != 1 }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── 09 DRAFT ECONOMY + 10 SPEED TIERS ────────────────────── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px" class="mh-reveal" style="animation-delay:.40s">
+
+    <section class="mh-sec">
+      <div class="mh-sechead">
+        <span class="num">09</span>
+        <span class="ttl">Draft Economy</span>
+        <span class="rule"></span>
+        <span class="meta">{{ stats.draft_econ.drafted }}/{{ stats.draft_econ.totalPool }} DRAFTED</span>
+      </div>
+      {% set econ_total = stats.draft_econ.bands | sum(attribute='count') %}
+      <div>
+        <div style="display:flex;height:46px;border:1px solid var(--hairline);overflow:hidden">
+          {% for b in stats.draft_econ.bands %}
+          {% set flex = b.count %}
+          <div title="{{ b.band }} · {{ b.count }}" style="flex:{{ flex }};background:{{ b.color }};opacity:.85;position:relative;border-right:1px solid rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center">
+            {% if b.count / econ_total > 0.06 %}
+            <span style="font-family:var(--font-mono);font-size:9px;color:rgba(0,0,0,.75);font-weight:600">{{ b.count }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px">
+          {% for b in stats.draft_econ.bands %}
+          <span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:8.5px;color:var(--text-mute);letter-spacing:.06em">
+            <span style="width:9px;height:9px;background:{{ b.color }};display:inline-block"></span>{{ b.band }} {{ (b.count / econ_total * 100) | round | int }}%
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <div class="mh-card" style="flex:1;padding:10px 12px;gap:4px">
+          <span class="k">AVG COST</span>
+          <span class="v" style="font-size:20px">{{ stats.draft_stats.avgCost }} <span class="mono dim" style="font-size:11px">pt</span></span>
+        </div>
+        {% if stats.draft_stats.priciest %}
+        <div class="mh-card" style="flex:1;padding:10px 12px;gap:4px">
+          <span class="k">PRICIEST</span>
+          <span class="v" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stats.draft_stats.priciest.name }}</span>
+          <span class="sub">{{ stats.draft_stats.priciest.cost }} pt</span>
+        </div>
+        {% endif %}
+        {% if stats.draft_stats.valuePick %}
+        <div class="mh-card" style="flex:1;padding:10px 12px;gap:4px">
+          <span class="k">BEST VALUE</span>
+          <span class="v" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stats.draft_stats.valuePick.name }}</span>
+          <span class="sub">{{ (stats.draft_stats.valuePick.kills / stats.draft_stats.valuePick.cost) | round(1) }} KO/pt</span>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="mh-sec">
+      <div class="mh-sechead">
+        <span class="num">10</span>
+        <span class="ttl">Speed Tiers</span>
+        <span class="rule"></span>
+        <span class="meta">BASE SPEED</span>
+      </div>
+      <div class="mh-speed">
+        {% for tier in stats.speed_tiers %}
+        <div style="display:grid;grid-template-columns:100px 1fr;gap:14px;align-items:center">
+          <div class="mh-speed-band" style="text-align:right">
+            <div class="mh-speed-band" style="font-family:var(--font-display);font-weight:700;font-size:15px">{{ tier.label }}</div>
+            <div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.04em;color:var(--text-dim);text-transform:uppercase">{{ tier.hint }}</div>
+          </div>
+          <div class="mh-speed-mons">
+            {% for m in tier.mons %}
+            <div class="mh-speed-pill"
+                 data-tip-name="{{ m.name }}" data-tip-types="{{ m.types|join(',') }}"
+                 data-tip-kills="{{ m.kills }}" data-tip-deaths="{{ m.deaths }}"
+                 data-tip-diff="{{ m.diff }}" data-tip-spe="{{ m.spe }}"
+                 data-tip-cost="{{ m.cost }}" data-tip-team="{{ m.team.name }}">
+              <div class="mh-orb sm" style="background:radial-gradient(circle at 35% 35%,{{ m.orb_color }}cc,{{ m.orb_color }}55)">
+                <span class="mh-orb-glyph">{{ m.glyph }}</span>
+              </div>
+              <span class="nm">{{ m.name }}</span>
+              <span class="sp">{{ m.spe }}</span>
+            </div>
+            {% endfor %}
+            {% if not tier.mons %}
+            <span class="mono dim" style="font-size:9px">—</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ── 11 CLUTCH & RECORDS ───────────────────────────────────── -->
+  <section class="mh-sec mh-reveal" style="animation-delay:.45s">
+    <div class="mh-sechead">
+      <span class="num">11</span>
+      <span class="ttl">Clutch &amp; Records</span>
+      <span class="rule"></span>
+      <span class="meta">{{ stats.records.played }} SERIES PLAYED · BO3 FORMAT</span>
+    </div>
+    <div class="mh-cards" style="grid-template-columns:repeat(3,1fr)">
+      {% set rec = stats.records %}
+      <!-- Sweeps -->
+      <div class="mh-card">
+        <span class="k">SHUTOUTS (0 KOs FOR)</span>
+        <span class="v" style="color:var(--magenta)" id="rec-sweeps">{{ rec.sweeps }}</span>
+        <span class="sub">{% if rec.sweepEx %}{{ rec.sweepEx.a.name }} {{ rec.sweepEx.scoreA }}–{{ rec.sweepEx.scoreB }} {{ rec.sweepEx.b.name }}{% else %}—{% endif %}</span>
+      </div>
+      <!-- One-point -->
+      <div class="mh-card">
+        <span class="k">ONE-KO MARGINS</span>
+        <span class="v" style="color:var(--cyan)" id="rec-onepoint">{{ rec.onePoint }}</span>
+        <span class="sub">{% if rec.onePointEx %}{{ rec.onePointEx.a.name }} {{ rec.onePointEx.scoreA }}–{{ rec.onePointEx.scoreB }} {{ rec.onePointEx.b.name }}{% else %}—{% endif %}</span>
+      </div>
+      <!-- Ties -->
+      <div class="mh-card">
+        <span class="k">TIE GAMES</span>
+        <span class="v" style="color:var(--lime)" id="rec-ties">{{ rec.ties }}</span>
+        <span class="sub">DECIDED ON TIEBREAK</span>
+      </div>
+      <!-- Highest scoring -->
+      <div class="mh-card">
+        <span class="k">HIGHEST-SCORING</span>
+        <span class="v" style="color:var(--amber)" id="rec-highest">{{ rec.highestTotal }} <span class="mono dim" style="font-size:11px">KOs</span></span>
+        <span class="sub">{% if rec.highest %}{{ rec.highest.a.name }} {{ rec.highest.scoreA }}–{{ rec.highest.scoreB }} {{ rec.highest.b.name }}{% else %}—{% endif %}</span>
+      </div>
+      <!-- Blowout -->
+      <div class="mh-card">
+        <span class="k">BIGGEST BLOWOUT</span>
+        <span class="v" style="color:var(--text)">{% if rec.blowout %}{{ rec.blowout.match.scoreA }}–{{ rec.blowout.match.scoreB }}{% else %}—{% endif %}</span>
+        <span class="sub">{% if rec.blowout %}{{ rec.blowout.match.a.name }} vs {{ rec.blowout.match.b.name }}{% else %}—{% endif %}</span>
+      </div>
+      <!-- Upset -->
+      <div class="mh-card">
+        <span class="k">BIGGEST UPSET</span>
+        <span class="v" style="color:var(--red)">{% if rec.upset %}WK {{ rec.upset.week }}{% else %}—{% endif %}</span>
+        <span class="sub">{% if rec.upset %}{{ rec.upset.match.b.name }} over {{ rec.upset.match.a.name }}{% else %}—{% endif %}</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="mono dim" style="font-size:9px;text-align:center;padding-top:6px;letter-spacing:.1em">
+    ▸ LIVE DATA · SEASON {{ stats.season }}
+  </div>
+
+</div><!-- /mh-page -->
+
+<!-- ── TOOLTIP ───────────────────────────────────────────────── -->
+<div id="mh-tip" class="mh-tip" style="display:none"></div>
+
+<!-- ── DATA + INTERACTIVE JS ────────────────────────────────── -->
+<script>
+const STATS = {{ stats_json | safe }};
+const TYPE_COLORS = Object.fromEntries(STATS.type_meta.map(t => [t.type, t.color]));
+
+// ── State ──────────────────────────────────────────────────────
+let metric = "KILLS";
+let typeSel = null;
+
+// ── Treemap layout ─────────────────────────────────────────────
+function buildTreemap() {
+  const items = STATS.type_meta;
+  const total = items.reduce((a, t) => a + t.kos, 0);
+  const target = 4, per = total / target;
+  const rows = [];
+  let row = [], sum = 0;
+  items.forEach(t => {
+    row.push(t); sum += t.kos;
+    if (sum >= per && rows.length < target - 1) { rows.push({ items: row, sum }); row = []; sum = 0; }
+  });
+  if (row.length) rows.push({ items: row, sum });
+
+  const tree = document.getElementById("mh-tree");
+  tree.style.gridTemplateRows = rows.map(r => (r.sum / total).toFixed(3) + "fr").join(" ");
+  tree.innerHTML = "";
+
+  rows.forEach(r => {
+    const rowDiv = document.createElement("div");
+    rowDiv.style.cssText = `display:grid;gap:6px;grid-template-columns:${r.items.map(t => t.kos + "fr").join(" ")}`;
+    r.items.forEach(t => {
+      const big = (r.sum / total) > 0.28;
+      const cell = document.createElement("div");
+      cell.className = "mh-tree-cell";
+      cell.dataset.type = t.type;
+      cell.style.background = t.color;
+      cell.style.cursor = "pointer";
+      cell.innerHTML = `<div class="tt" style="font-size:${big ? 22 : 13}px">${t.type}</div>
+        <div><div class="tk">${t.kos} KO · ${t.share}%</div>
+        <div class="ts">${t.used} mons · ${t.spend} pt drafted</div></div>`;
+      cell.onclick = () => toggleTypeFilter(t.type);
+      rowDiv.appendChild(cell);
+    });
+    tree.appendChild(rowDiv);
+  });
+  applyTreeFilter();
+}
+
+// ── Type filter ────────────────────────────────────────────────
+function toggleTypeFilter(type) {
+  typeSel = typeSel === type ? null : type;
+  const clearBtn = document.getElementById("type-clear-btn");
+  const clearLbl = document.getElementById("type-clear-label");
+  if (typeSel) {
+    clearBtn.style.display = "inline";
+    clearLbl.textContent = typeSel.toUpperCase();
+  } else {
+    clearBtn.style.display = "none";
+  }
+  applyTreeFilter();
+  renderPerformers();
+  document.getElementById("perf-meta").textContent = typeSel ? typeSel.toUpperCase() + " ONLY" : "ALL TYPES";
+}
+function clearTypeFilter() { toggleTypeFilter(typeSel); }
+function applyTreeFilter() {
+  document.querySelectorAll(".mh-tree-cell").forEach(cell => {
+    const faded = typeSel && typeSel !== cell.dataset.type;
+    cell.style.opacity = faded ? "0.25" : "1";
+    cell.style.outline = (!faded && typeSel === cell.dataset.type) ? "2px solid #fff" : "none";
+    cell.style.outlineOffset = "-2px";
+  });
+}
+
+// ── Metric toggle ──────────────────────────────────────────────
+function setMetric(m) {
+  metric = m;
+  document.querySelectorAll("#metric-seg button").forEach(btn => {
+    btn.classList.toggle("on", btn.dataset.metric === m);
+  });
+  const pill = document.getElementById("seg-pill");
+  const btns = document.querySelectorAll("#metric-seg button");
+  const idx = m === "KILLS" ? 0 : 1;
+  const btn = btns[idx];
+  pill.style.left = btn.offsetLeft + "px";
+  pill.style.width = btn.offsetWidth + "px";
+  renderPerformers();
+}
+
+// ── Render Top Performers ──────────────────────────────────────
+function renderPerformers() {
+  const keyFn = metric === "KILLS" ? m => m.kills : m => m.diff;
+  const filtered = STATS.mon_dex
+    .filter(m => !typeSel || m.types.includes(typeSel))
+    .map((m, _, arr) => m)
+    .sort((a, b) => keyFn(b) - keyFn(a) || b.kills - a.kills)
+    .map((m, i) => ({ ...m, lbRank: i + 1 }));
+
+  const podium = filtered.slice(0, 3);
+  const rest = filtered.slice(3, 15);
+
+  const pc = document.getElementById("podium-container");
+  pc.innerHTML = "";
+  podium.forEach((m, i) => pc.appendChild(makePodiumCard(m, i + 1)));
+
+  const gc = document.getElementById("grid-container");
+  gc.innerHTML = "";
+  if (rest.length === 0 && filtered.length === 0) {
+    const d = document.createElement("div");
+    d.className = "mono dim";
+    d.style.padding = "20px";
+    d.textContent = "NO MONS MATCH";
+    gc.appendChild(d);
+  }
+  rest.forEach(m => gc.appendChild(makeGridRow(m)));
+}
+
+function orbHtml(m, size) {
+  return `<div class="mh-orb ${size}" style="background:radial-gradient(circle at 35% 35%,${m.orb_color}cc,${m.orb_color}55)"><span class="mh-orb-glyph">${m.glyph}</span></div>`;
+}
+function typeChipsHtml(types) {
+  return `<div class="mh-types">${types.map(t => `<span class="mh-typechip" style="color:${TYPE_COLORS[t]||'#888'};border-color:${TYPE_COLORS[t]||'#888'}55">${t}</span>`).join("")}</div>`;
+}
+function logoStyle(team) {
+  return team.logo ? `background-image:url('${team.logo}')` : "";
+}
+
+function makePodiumCard(m, place) {
+  const c = place === 1 ? "var(--magenta)" : place === 2 ? "var(--cyan)" : "var(--lime)";
+  const label = place === 1 ? "★ META MVP" : `RANK 0${place}`;
+  const val = metric === "KILLS" ? m.kills : m.diff;
+  const valStr = (metric === "DIFF" && val >= 0 ? "+" : "") + val;
+  const valLabel = metric === "KILLS" ? "KO" : "DIFF";
+  const borderColor = place === 1 ? "var(--magenta-dim)" : "var(--hairline-2)";
+  const div = document.createElement("div");
+  div.className = "mh-card";
+  div.style.cssText = `border-color:${borderColor};align-items:center;text-align:center;padding-top:18px;gap:8px`;
+  div.innerHTML = `
+    ${place === 1 ? '<div class="mh-card-sweep"></div>' : ''}
+    <div class="eyebrow" style="color:${c};font-size:9px">${label}</div>
+    ${orbHtml(m, "lg")}
+    <div class="mh-lb-name" style="font-size:15px">${m.name}</div>
+    ${typeChipsHtml(m.types)}
+    <div style="display:flex;align-items:center;gap:7px">
+      <span class="mh-lb-logo" style="${logoStyle(m.team)}"></span>
+      <span class="mono dim" style="font-size:9px">${m.team.name}</span>
+    </div>
+    <div style="font-family:var(--font-display);font-weight:700;font-size:34px;color:${c};line-height:1;margin-top:2px">
+      ${valStr}<span class="mono dim" style="font-size:11px;margin-left:5px">${valLabel}</span>
+    </div>`;
+  addTipHandlers(div, m);
+  return div;
+}
+
+function makeGridRow(m) {
+  const c = metric === "KILLS" ? "var(--cyan)" : "var(--magenta)";
+  const val = metric === "KILLS" ? m.kills : (m.diff >= 0 ? "+" : "") + m.diff;
+  const div = document.createElement("div");
+  div.style.cssText = "display:grid;grid-template-columns:26px 28px 1fr auto;gap:11px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--hairline)";
+  div.innerHTML = `
+    <span class="mono" style="font-size:12px;color:var(--text-dim);font-variant-numeric:tabular-nums">${String(m.lbRank).padStart(2,"0")}</span>
+    ${orbHtml(m, "sm")}
+    <div style="min-width:0">
+      <div class="mh-lb-name" style="font-size:12px">${m.name}</div>
+      <div class="mh-lb-team"><span class="mh-lb-logo" style="${logoStyle(m.team)}"></span>${m.team.name}</div>
+    </div>
+    <span class="mono" style="font-weight:600;color:${c};font-variant-numeric:tabular-nums;font-size:13px">${val}</span>`;
+  addTipHandlers(div, m);
+  return div;
+}
+
+// ── Tooltip ────────────────────────────────────────────────────
+const tip = document.getElementById("mh-tip");
+function showTip(e, m) {
+  tip.innerHTML = `
+    <div class="t-name">${m.name}</div>
+    ${typeChipsHtml(m.types || [])}
+    <div class="t-row"><span class="lab">TEAM</span><span class="val">${m.team ? m.team.name : (m.dataset ? m.dataset.tipTeam : "")}</span></div>
+    <div class="t-row"><span class="lab">KOs</span><span class="val" style="color:var(--lime)">${m.kills}</span></div>
+    <div class="t-row"><span class="lab">FAINTS</span><span class="val" style="color:var(--red)">${m.deaths}</span></div>
+    <div class="t-row"><span class="lab">K−D</span><span class="val">${m.diff >= 0 ? "+" : ""}${m.diff}</span></div>
+    <div class="t-row"><span class="lab">SPEED</span><span class="val" style="color:var(--cyan)">${m.spe}</span></div>
+    <div class="t-row"><span class="lab">COST</span><span class="val">${m.cost} pt</span></div>`;
+  tip.style.display = "block";
+  moveTip(e);
+}
+function moveTip(e) {
+  tip.style.left = e.clientX + "px";
+  tip.style.top = e.clientY + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+function addTipHandlers(el, m) {
+  el.addEventListener("mouseenter", e => showTip(e, m));
+  el.addEventListener("mousemove", moveTip);
+  el.addEventListener("mouseleave", hideTip);
+}
+
+// Quad dot tooltips
+document.querySelectorAll(".mh-quad-dot").forEach(dot => {
+  const d = dot.dataset;
+  const m = {
+    name: d.name,
+    types: d.types ? d.types.split(",").filter(Boolean) : [],
+    kills: parseFloat(d.kills),
+    deaths: parseFloat(d.deaths),
+    diff: parseFloat(d.diff),
+    spe: parseInt(d.spe),
+    cost: parseInt(d.cost),
+    team: { name: d.team },
+  };
+  dot.addEventListener("mouseenter", e => showTip(e, m));
+  dot.addEventListener("mousemove", moveTip);
+  dot.addEventListener("mouseleave", hideTip);
+});
+
+// Speed pill tooltips
+document.querySelectorAll(".mh-speed-pill").forEach(pill => {
+  const d = pill.dataset;
+  const m = {
+    name: d.tipName, types: d.tipTypes ? d.tipTypes.split(",").filter(Boolean) : [],
+    kills: parseFloat(d.tipKills), deaths: parseFloat(d.tipDeaths),
+    diff: parseFloat(d.tipDiff), spe: parseInt(d.tipSpe),
+    cost: parseInt(d.tipCost), team: { name: d.tipTeam },
+  };
+  pill.addEventListener("mouseenter", e => showTip(e, m));
+  pill.addEventListener("mousemove", moveTip);
+  pill.addEventListener("mouseleave", hideTip);
+});
+
+// ── Bar animations ─────────────────────────────────────────────
+function animateBars() {
+  document.querySelectorAll(".mh-bar-anim").forEach(bar => {
+    const w = parseFloat(bar.dataset.w || "0");
+    bar.style.transition = "width .9s cubic-bezier(.34,1.56,.64,1)";
+    bar.style.width = w + "%";
+  });
+  document.querySelectorAll(".mh-voe-fill").forEach(fill => {
+    const w = parseFloat(fill.dataset.w || "0");
+    fill.style.width = w + "%";
+  });
+}
+
+// ── Seg pill init ─────────────────────────────────────────────
+function initSegPill() {
+  const btn = document.querySelector("#metric-seg button.on");
+  const pill = document.getElementById("seg-pill");
+  if (btn && pill) {
+    pill.style.left = btn.offsetLeft + "px";
+    pill.style.width = btn.offsetWidth + "px";
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  buildTreemap();
+  renderPerformers();
+  initSegPill();
+  // Animate bars after a small delay so CSS transitions fire
+  requestAnimationFrame(() => {
+    requestAnimationFrame(animateBars);
+  });
+});
+</script>
+{% endblock %}
