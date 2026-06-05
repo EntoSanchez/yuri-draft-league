@@ -1125,7 +1125,7 @@ def _build_stats_data():
                 "delta": delta,
             })
         type_voe.sort(key=lambda x: -x["delta"])
-        voe_max = max((abs(t["delta"]) for t in type_voe), default=1)
+        voe_max = max((abs(t["delta"]) for t in type_voe), default=1) or 1
 
         # FIREPOWER
         sched_rows = db.execute(
@@ -1163,7 +1163,7 @@ def _build_stats_data():
                 "kos": round(sum(m["kills"] for m in mon_dex if m["team"]["id"] == cid)),
             })
         firepower.sort(key=lambda x: -x["gf"])
-        fp_max_gf = max((f["gf"] for f in firepower), default=1)
+        fp_max_gf = max((f["gf"] for f in firepower), default=1) or 1
 
         # DRAFT_ECON
         TIER_COLORS = {
@@ -1253,13 +1253,13 @@ def _build_stats_data():
             [m for m in eligible if m["cost"] >= 13],
             key=lambda m: m["kpp"]
         )[:4]
-        max_kpp = max((m["kpp"] for m in eligible), default=1)
+        max_kpp = max((m["kpp"] for m in eligible), default=1) or 1
 
         # SURVIVORS
         for m in mon_dex:
             m["ratio"] = round(m["kills"] / max(1.0, m["deaths"]), 2)
         survivors = sorted(mon_dex, key=lambda m: -m["ratio"])[:8]
-        surv_max = max((m["ratio"] for m in survivors), default=1)
+        surv_max = max((m["ratio"] for m in survivors), default=1) or 1
 
         # QUADRANT
         all_kos = [m["kills"] for m in mon_dex]

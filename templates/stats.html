@@ -299,7 +299,7 @@
         <span class="rule"></span>
         <span class="meta">{{ stats.draft_econ.drafted }}/{{ stats.draft_econ.totalPool }} DRAFTED</span>
       </div>
-      {% set econ_total = stats.draft_econ.bands | sum(attribute='count') %}
+      {% set econ_total = [stats.draft_econ.bands | sum(attribute='count'), 1] | max %}
       <div>
         <div style="display:flex;height:46px;border:1px solid var(--hairline);overflow:hidden">
           {% for b in stats.draft_econ.bands %}
@@ -335,7 +335,7 @@
         <div class="mh-card" style="flex:1;padding:10px 12px;gap:4px">
           <span class="k">BEST VALUE</span>
           <span class="v" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stats.draft_stats.valuePick.name }}</span>
-          <span class="sub">{{ (stats.draft_stats.valuePick.kills / stats.draft_stats.valuePick.cost) | round(1) }} KO/pt</span>
+          <span class="sub">{{ (stats.draft_stats.valuePick.kills / [stats.draft_stats.valuePick.cost, 1] | max) | round(1) }} KO/pt</span>
         </div>
         {% endif %}
       </div>
