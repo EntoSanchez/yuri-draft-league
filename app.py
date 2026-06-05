@@ -10,6 +10,7 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_from_directory
 from functools import wraps
 from contextlib import contextmanager
+from replay_utils import fetch_replay as _replay_fetch, parse_log as _replay_parse_log, resolve_poke_name as _replay_resolve_poke, remap_dict as _replay_remap
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "yuricup-secret-key-change-me-in-production")
@@ -2539,6 +2540,143 @@ def _recalc_match_score(db, match_id, c1_id, c2_id):
     db.execute("UPDATE schedule SET score1=?, score2=? WHERE id=?", (s1, s2, match_id))
 
 
+def _import_replays_for_match(match_id, c1_id, c2_id, urls):
+    """Parse replay URLs and write game stats for the given schedule entry.
+
+    Returns a list of error strings (empty = success).
+    """
+    errors = []
+    parsed_games = []
+    for url in urls:
+        try:
+            data = _replay_fetch(url)
+        except Exception as e:
+            errors.append(f"Could not fetch {url}: {e}")
+            return errors
+        parsed_games.append((url, _replay_parse_log(data["log"])))
+
+    with get_db() as db:
+        # Load coaches and build showdown-name lookup
+        c1_row = db.execute("SELECT * FROM coaches WHERE id=?", (c1_id,)).fetchone()
+        c2_row = db.execute("SELECT * FROM coaches WHERE id=?", (c2_id,)).fetchone()
+        if not c1_row or not c2_row:
+            errors.append("Could not load coach rows from DB.")
+            return errors
+        c1 = dict(c1_row)
+        c2 = dict(c2_row)
+
+        # Validate that all replay players map to these two coaches
+        sn1 = (c1.get("showdown_name") or "").lower().strip()
+        sn2 = (c2.get("showdown_name") or "").lower().strip()
+        if not sn1 or not sn2:
+            missing = []
+            if not sn1:
+                missing.append(c1["coach_name"])
+            if not sn2:
+                missing.append(c2["coach_name"])
+            errors.append(
+                f"Showdown Name not set for: {', '.join(missing)}. "
+                "Set it in Admin → Edit Coach before importing replays."
+            )
+            return errors
+
+        for url, parsed in parsed_games:
+            replay_players = {parsed["p1"]["username"].lower(), parsed["p2"]["username"].lower()}
+            if not ({sn1, sn2} & replay_players):
+                errors.append(
+                    f"Replay players {replay_players} don't match coaches "
+                    f"'{c1['coach_name']}' ({sn1}) / '{c2['coach_name']}' ({sn2})."
+                )
+                return errors
+
+        # Determine starting game number
+        row = db.execute(
+            "SELECT MAX(game_number) as mx FROM match_games WHERE schedule_id=?",
+            (match_id,),
+        ).fetchone()
+        start_game = (row["mx"] or 0) + 1
+
+        for i, (url, parsed) in enumerate(parsed_games):
+            game_number = start_game + i
+
+            # Map p1/p2 → coach
+            by_pkey = {}
+            for pkey in ("p1", "p2"):
+                uname = parsed[pkey]["username"].lower()
+                if sn1 == uname:
+                    by_pkey[pkey] = c1
+                elif sn2 == uname:
+                    by_pkey[pkey] = c2
+                else:
+                    by_pkey[pkey] = c1 if pkey == "p1" else c2
+
+            winner_pkey = parsed["winner_player"]
+            winner_cid = by_pkey[winner_pkey]["id"] if winner_pkey else None
+
+            # Build roster-aware name maps
+            name_maps = {}
+            for pkey in ("p1", "p2"):
+                cid = by_pkey[pkey]["id"]
+                roster = [r["pokemon_name"] for r in db.execute(
+                    "SELECT pokemon_name FROM pokemon_roster WHERE coach_id=?", (cid,)
+                ).fetchall()]
+                all_raw = (set(parsed[pkey]["pokemon_used"])
+                           | set(parsed["kills"][pkey])
+                           | set(parsed["deaths"][pkey]))
+                name_maps[pkey] = {raw: _replay_resolve_poke(raw, roster) for raw in all_raw}
+
+            resolved = {}
+            for pkey in ("p1", "p2"):
+                nmap = name_maps[pkey]
+                resolved[pkey] = {
+                    "used":   sorted({nmap.get(m, m) for m in parsed[pkey]["pokemon_used"]}),
+                    "kills":  _replay_remap(parsed["kills"][pkey],  nmap),
+                    "deaths": _replay_remap(parsed["deaths"][pkey], nmap),
+                }
+
+            # Upsert match_games
+            existing = db.execute(
+                "SELECT id FROM match_games WHERE schedule_id=? AND game_number=?",
+                (match_id, game_number),
+            ).fetchone()
+            if existing:
+                db.execute(
+                    "UPDATE match_games SET replay_url=?, winner_coach_id=? WHERE id=?",
+                    (url, winner_cid, existing["id"]),
+                )
+                game_id = existing["id"]
+                db.execute("DELETE FROM match_lineups WHERE game_id=?", (game_id,))
+                db.execute("DELETE FROM match_stats WHERE game_id=?", (game_id,))
+            else:
+                db.execute(
+                    "INSERT INTO match_games "
+                    "(schedule_id, game_number, replay_url, winner_coach_id) VALUES (?,?,?,?)",
+                    (match_id, game_number, url, winner_cid),
+                )
+                game_id = db.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
+
+            for pkey in ("p1", "p2"):
+                cid = by_pkey[pkey]["id"]
+                r = resolved[pkey]
+                for mon in sorted(set(r["used"]) | set(r["kills"]) | set(r["deaths"])):
+                    db.execute(
+                        "INSERT OR IGNORE INTO match_lineups (game_id, coach_id, pokemon_name) "
+                        "VALUES (?,?,?)",
+                        (game_id, cid, mon),
+                    )
+                    db.execute(
+                        "INSERT INTO match_stats "
+                        "(schedule_id, game_id, coach_id, pokemon_name, kills, deaths) "
+                        "VALUES (?,?,?,?,?,?)",
+                        (match_id, game_id, cid, mon,
+                         float(r["kills"].get(mon, 0)), float(r["deaths"].get(mon, 0))),
+                    )
+
+        _recalc_match_score(db, match_id, c1_id, c2_id)
+
+    return errors
+
+
 @app.route("/admin/match_stats/<int:match_id>", methods=["GET", "POST"])
 @coach_or_admin_required
 def admin_match_stats(match_id):
@@ -2693,6 +2831,22 @@ def admin_match_stats(match_id):
             with get_db() as db:
                 db.execute("DELETE FROM match_stats WHERE id=?", (request.form["stat_id"],))
             flash("Stat deleted.", "warning")
+
+        elif action == "import_replays":
+            raw_urls = request.form.get("replay_urls", "")
+            urls = [u.strip() for u in raw_urls.splitlines() if u.strip()]
+            if not urls:
+                flash("No replay URLs provided.", "warning")
+            else:
+                try:
+                    errors = _import_replays_for_match(match_id, match["c1_id"], match["c2_id"], urls)
+                    if errors:
+                        for e in errors:
+                            flash(e, "danger")
+                    else:
+                        flash(f"Imported {len(urls)} game(s) from replay.", "success")
+                except Exception as e:
+                    flash(f"Replay import failed: {e}", "danger")
 
         return redirect(url_for("admin_match_stats", match_id=match_id))
 

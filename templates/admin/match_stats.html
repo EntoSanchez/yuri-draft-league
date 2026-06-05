@@ -22,6 +22,22 @@
   </div>
 </div>
 
+<!-- ── Import from Replays ── -->
+<div class="bg-gray-800 border border-indigo-700/50 rounded-xl p-5 mb-6 max-w-2xl">
+  <h2 class="font-bold text-base mb-1 text-indigo-300">Import from Replays</h2>
+  <p class="text-xs text-gray-500 mb-3">Paste one replay URL per line. Stats, lineups, and winner are auto-filled. Showdown Names must be set on each coach first.</p>
+  <form method="POST">
+    <input type="hidden" name="action" value="import_replays">
+    <textarea name="replay_urls" rows="3"
+              placeholder="https://replay.pokemonshowdown.com/&#10;https://replay.pokemonshowdown.com/"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm font-mono focus:border-indigo-500 focus:outline-none resize-y mb-3"></textarea>
+    <button type="submit"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded font-bold text-sm transition-colors">
+      Import Replays
+    </button>
+  </form>
+</div>
+
 <!-- ── Add Game Card ── -->
 {% if games|length < max_games %}
 <div class="bg-gray-800 border border-gray-700 border-dashed rounded-xl p-5 mb-6 max-w-2xl">

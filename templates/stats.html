@@ -158,8 +158,10 @@
       <span class="mh-quad-axlbl" style="bottom:6px;right:10px">FAINTS →</span>
       <span class="mh-quad-axlbl" style="top:12px;left:8px;writing-mode:vertical-rl;transform:rotate(180deg)">KOs →</span>
       {% for m in Q.points %}
-      {% set lx = (m.deaths / Q.maxF * 84 + 8) | round(2) %}
-      {% set by = (m.kills / Q.maxK * 84 + 8) | round(2) %}
+      {% set jitter_x = ((loop.index % 11) - 5) * 0.55 %}
+      {% set jitter_y = ((loop.index % 7) - 3) * 0.35 %}
+      {% set lx = (m.deaths / Q.maxF * 84 + 8 + jitter_x) | round(2) %}
+      {% set by = (m.kills / Q.maxK * 84 + 8 + jitter_y) | round(2) %}
       <div class="mh-quad-dot" style="left:{{ lx }}%;bottom:{{ by }}%"
            data-name="{{ m.name }}" data-types="{{ m.types|join(',') }}"
            data-kills="{{ m.kills }}" data-deaths="{{ m.deaths }}"
