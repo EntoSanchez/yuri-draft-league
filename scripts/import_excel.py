@@ -5,6 +5,10 @@ Usage:
     python scripts/import_excel.py [6] [7] [8]   # import specific seasons
     python scripts/import_excel.py                # import all seasons
 
+Excel files are resolved in this order:
+  1. PROJECT_ROOT/data/<filename>   ← upload files here on PythonAnywhere
+  2. ~/Downloads/<filename>         ← Windows dev machine fallback
+
 Each season is upserted by season_num — re-running is safe.
 """
 
@@ -17,26 +21,42 @@ from datetime import datetime
 try:
     import openpyxl
 except ImportError:
-    sys.exit("openpyxl not found — run: uv add openpyxl")
+    sys.exit("openpyxl not found — run: pip install openpyxl")
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "league.db")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(PROJECT_ROOT, "league.db")
+
+
+def _resolve_file(filename):
+    """Find the Excel file: project data/ dir first, then ~/Downloads."""
+    candidates = [
+        os.path.join(PROJECT_ROOT, "data", filename),
+        os.path.join(os.path.expanduser("~"), "Downloads", filename),
+        # Windows dev machine full path kept as last-resort
+        os.path.join(r"C:\Users\zcs55\Downloads", filename),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0]  # will fail with a clear error below
+
 
 SEASONS = {
     8: {
         "name": "Yuri Cup Season 8",
-        "file": r"C:\Users\zcs55\Downloads\Yuri Cup Season 8 For Real (2).xlsx",
+        "file": _resolve_file("Yuri Cup Season 8 For Real (2).xlsx"),
         "sheet": "Data",
         "fmt": "data_sheet",
     },
     7: {
         "name": "Yuri Cup Season 7",
-        "file": r"C:\Users\zcs55\Downloads\Yuri Cup Season 7 (1).xlsx",
+        "file": _resolve_file("Yuri Cup Season 7 (1).xlsx"),
         "sheet": "Data",
         "fmt": "data_sheet",
     },
     6: {
         "name": "Yuri Cup Season 6",
-        "file": r"C:\Users\zcs55\Downloads\Yuri Cup Season 6 Probably.xlsx",
+        "file": _resolve_file("Yuri Cup Season 6 Probably.xlsx"),
         "sheet": "Coach Stats",
         "fmt": "coach_stats",
     },
@@ -359,6 +379,10 @@ def import_season(season_num):
     print(f"  File : {cfg['file']}")
     print(f"  Sheet: {cfg['sheet']}")
 
+    if not os.path.exists(cfg["file"]):
+        print(f"  [ERROR] File not found: {cfg['file']}")
+        print(f"  Upload the Excel file to {os.path.join(PROJECT_ROOT, 'data', os.path.basename(cfg['file']))}")
+        return
     wb = openpyxl.load_workbook(cfg["file"], data_only=True)
     if cfg["sheet"] not in wb.sheetnames:
         print(f"  [ERROR] Sheet '{cfg['sheet']}' not found. Available: {wb.sheetnames}")
