@@ -402,6 +402,7 @@ function renderList() {
       </div>
       <div class="sr-status">
         <span class="sr-chip${final ? "" : " cyan"}">${m.status}</span>
+        ${final && m.has_recap ? `<a href="/match/${m.id}" style="display:block;margin-top:4px;font-family:var(--font-mono);font-size:8px;letter-spacing:.1em;color:var(--magenta);border:1px solid var(--magenta-dim);padding:1px 6px;text-decoration:none;white-space:nowrap">RECAP ▸</a>` : ""}
       </div>
     </div>`;
   }).join("");

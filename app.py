@@ -10,7 +10,10 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_from_directory
 from functools import wraps
 from contextlib import contextmanager
-from replay_utils import fetch_replay as _replay_fetch, parse_log as _replay_parse_log, resolve_poke_name as _replay_resolve_poke, remap_dict as _replay_remap
+from replay_utils import (fetch_replay as _replay_fetch, parse_log as _replay_parse_log,
+                          resolve_poke_name as _replay_resolve_poke, remap_dict as _replay_remap,
+                          parse_log_recap as _replay_parse_recap, build_recap as _replay_build_recap,
+                          TYPE_COLORS as _RECAP_TYPE_COLORS)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "yuricup-secret-key-change-me-in-production")
@@ -53,6 +56,7 @@ def _migrate_db():
             "ALTER TABLE pokemon_roster ADD COLUMN is_zmove_captain INTEGER DEFAULT 0",
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
             "ALTER TABLE seasons ADD COLUMN season_num INTEGER DEFAULT 0",
+            "ALTER TABLE match_games ADD COLUMN recap_json TEXT",
         ]:
             try:
                 db.execute(stmt)
@@ -1900,6 +1904,9 @@ def schedule():
             "SELECT id, coach_name, team_name, pool, logo_url FROM coaches ORDER BY pool, team_name"
         ).fetchall()
         cw_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
+        recap_ids = {r["schedule_id"] for r in db.execute(
+            "SELECT DISTINCT schedule_id FROM match_games WHERE recap_json IS NOT NULL"
+        ).fetchall()}
 
     all_weeks = [r["week"] for r in weeks_rows]
     current_week = int(cw_row["value"]) if cw_row else (all_weeks[-1] if all_weeks else 1)
@@ -1950,6 +1957,7 @@ def schedule():
                 "vote1": vote1, "vote2": vote2,
                 "fav_id": fav_id,
                 "motw": False,
+                "has_recap": m["id"] in recap_ids,
             })
         total_matches += len(match_list)
         all_done = all(m["status"] == "FINAL" for m in match_list) and bool(match_list)
@@ -2553,7 +2561,8 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         except Exception as e:
             errors.append(f"Could not fetch {url}: {e}")
             return errors
-        parsed_games.append((url, _replay_parse_log(data["log"])))
+        log_text = data["log"]
+        parsed_games.append((url, _replay_parse_log(log_text), _replay_parse_recap(log_text), data))
 
     with get_db() as db:
         # Load coaches and build showdown-name lookup
@@ -2580,7 +2589,7 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             )
             return errors
 
-        for url, parsed in parsed_games:
+        for url, parsed, _pr, _rd in parsed_games:
             replay_players = {parsed["p1"]["username"].lower(), parsed["p2"]["username"].lower()}
             if not ({sn1, sn2} & replay_players):
                 errors.append(
@@ -2596,7 +2605,7 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         ).fetchone()
         start_game = (row["mx"] or 0) + 1
 
-        for i, (url, parsed) in enumerate(parsed_games):
+        for i, (url, parsed, parsed_recap, replay_data) in enumerate(parsed_games):
             game_number = start_game + i
 
             # Map p1/p2 → coach
@@ -2615,15 +2624,27 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
 
             # Build roster-aware name maps
             name_maps = {}
+            rosters_by_pkey = {}
             for pkey in ("p1", "p2"):
                 cid = by_pkey[pkey]["id"]
                 roster = [r["pokemon_name"] for r in db.execute(
                     "SELECT pokemon_name FROM pokemon_roster WHERE coach_id=?", (cid,)
                 ).fetchall()]
+                rosters_by_pkey[pkey] = roster
                 all_raw = (set(parsed[pkey]["pokemon_used"])
                            | set(parsed["kills"][pkey])
-                           | set(parsed["deaths"][pkey]))
-                name_maps[pkey] = {raw: _replay_resolve_poke(raw, roster) for raw in all_raw}
+                           | set(parsed["deaths"][pkey])
+                           | set(parsed_recap.get("rosters", {}).get(pkey, []))
+                           | set(parsed_recap.get("brought", {}).get(pkey, set())))
+                all_raw.update(
+                    e["victim"] for e in parsed_recap.get("ko_log", [])
+                    if e["victimSide"] == pkey
+                )
+                all_raw.update(
+                    e["by"] for e in parsed_recap.get("ko_log", [])
+                    if e.get("bySide") == pkey and e.get("by")
+                )
+                name_maps[pkey] = {raw: _replay_resolve_poke(raw, roster) for raw in all_raw if raw}
 
             resolved = {}
             for pkey in ("p1", "p2"):
@@ -2634,6 +2655,39 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                     "deaths": _replay_remap(parsed["deaths"][pkey], nmap),
                 }
 
+            # Build recap JSON for the match recap page
+            match_row = db.execute(
+                "SELECT s.week, s.pool, c1.coach_name as c1_name, c1.team_name as c1_team, "
+                "c1.logo_url as c1_logo, c2.coach_name as c2_name, c2.team_name as c2_team, "
+                "c2.logo_url as c2_logo FROM schedule s "
+                "JOIN coaches c1 ON s.coach1_id=c1.id "
+                "JOIN coaches c2 ON s.coach2_id=c2.id WHERE s.id=?",
+                (match_id,)
+            ).fetchone()
+            replay_meta = {}
+            if match_row:
+                replay_meta["week"] = match_row["week"]
+                replay_meta["pool"] = match_row["pool"] or "LADDER"
+            else:
+                replay_meta["pool"] = "LADDER"
+            replay_meta["replay"] = url.replace("https://", "").replace("http://", "")
+            home_pid = parsed_recap.get("winner_player") or "p1"
+            away_pid = "p2" if home_pid == "p1" else "p1"
+            replay_meta["logo_home"] = by_pkey[home_pid].get("logo_url")
+            replay_meta["logo_away"] = by_pkey[away_pid].get("logo_url")
+            replay_meta["id_home"] = by_pkey[home_pid].get("id")
+            replay_meta["id_away"] = by_pkey[away_pid].get("id")
+            try:
+                recap = _replay_build_recap(
+                    parsed_recap,
+                    meta=replay_meta,
+                    name_map_p1=name_maps.get("p1", {}),
+                    name_map_p2=name_maps.get("p2", {}),
+                )
+                recap_json_str = json.dumps(recap)
+            except Exception:
+                recap_json_str = None
+
             # Upsert match_games
             existing = db.execute(
                 "SELECT id FROM match_games WHERE schedule_id=? AND game_number=?",
@@ -2641,8 +2695,8 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             ).fetchone()
             if existing:
                 db.execute(
-                    "UPDATE match_games SET replay_url=?, winner_coach_id=? WHERE id=?",
-                    (url, winner_cid, existing["id"]),
+                    "UPDATE match_games SET replay_url=?, winner_coach_id=?, recap_json=? WHERE id=?",
+                    (url, winner_cid, recap_json_str, existing["id"]),
                 )
                 game_id = existing["id"]
                 db.execute("DELETE FROM match_lineups WHERE game_id=?", (game_id,))
@@ -2650,8 +2704,8 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             else:
                 db.execute(
                     "INSERT INTO match_games "
-                    "(schedule_id, game_number, replay_url, winner_coach_id) VALUES (?,?,?,?)",
-                    (match_id, game_number, url, winner_cid),
+                    "(schedule_id, game_number, replay_url, winner_coach_id, recap_json) VALUES (?,?,?,?,?)",
+                    (match_id, game_number, url, winner_cid, recap_json_str),
                 )
                 game_id = db.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
 
@@ -2675,6 +2729,69 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         _recalc_match_score(db, match_id, c1_id, c2_id)
 
     return errors
+
+
+@app.route("/match/<int:match_id>")
+def match_recap(match_id):
+    """Public match recap / highlights page."""
+    with get_db() as db:
+        match = db.execute("""
+            SELECT s.*, c1.coach_name as c1_name, c1.team_name as c1_team, c1.logo_url as c1_logo,
+                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.logo_url as c2_logo
+            FROM schedule s
+            JOIN coaches c1 ON s.coach1_id = c1.id
+            JOIN coaches c2 ON s.coach2_id = c2.id
+            WHERE s.id=?
+        """, (match_id,)).fetchone()
+        if not match:
+            return "Match not found", 404
+        match = dict(match)
+
+        games = db.execute(
+            "SELECT * FROM match_games WHERE schedule_id=? ORDER BY game_number",
+            (match_id,)
+        ).fetchall()
+        games = [dict(g) for g in games]
+
+    # Find a game with recap_json — prefer the first one
+    featured = None
+    for g in games:
+        if g.get("recap_json"):
+            try:
+                featured = json.loads(g["recap_json"])
+                featured["_game_id"] = g["id"]
+                featured["_replay_url"] = g.get("replay_url", "")
+            except Exception:
+                pass
+            if featured:
+                break
+
+    # Enrich facts with match context if not already set
+    if featured:
+        facts = featured.get("facts", {})
+        if not facts.get("week") or facts.get("week") == "—":
+            facts["week"] = match.get("week", "—")
+        if not facts.get("pool"):
+            facts["pool"] = match.get("pool", "—")
+        if not facts.get("date") and match.get("match_date"):
+            facts["date"] = match["match_date"]
+
+        # Attach team logos for league matches (not ladder replays)
+        home = featured.get("home", {})
+        away = featured.get("away", {})
+        if not home.get("logo_url"):
+            home["logo_url"] = match.get("c1_logo") or match.get("c2_logo")
+        if not away.get("logo_url"):
+            away["logo_url"] = match.get("c2_logo") or match.get("c1_logo")
+
+    return render_template(
+        "match_recap.html",
+        match=match,
+        featured=featured,
+        games=games,
+        type_colors=_RECAP_TYPE_COLORS,
+        static_mode="static" in request.args,
+    )
 
 
 @app.route("/admin/match_stats/<int:match_id>", methods=["GET", "POST"])

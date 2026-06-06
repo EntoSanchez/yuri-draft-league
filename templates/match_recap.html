@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block title %}Match Recap · {{ match.c1_team }} vs {{ match.c2_team }}{% endblock %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='meta-styles.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='recap-styles.css') }}">
+<style>
+  /* Override display font for the recap page to match the design spec */
+  .mr-page, .mr-page * { --font-display: 'Chakra Petch', 'Rajdhani', system-ui, sans-serif; }
+</style>
+
+{% if not featured %}
+{# ── No recap data yet ── #}
+<div style="max-width:900px;margin:60px auto;padding:0 24px">
+  <div style="border:1px solid var(--hairline-2);background:var(--panel);padding:40px;text-align:center">
+    <div style="font-family:var(--font-display);font-weight:700;font-size:22px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px">
+      No Recap Available
+    </div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-mute)">
+      Import a Showdown replay from the
+      {% if session.get('is_admin') %}
+      <a href="{{ url_for('admin_match_stats', match_id=match.id) }}" style="color:var(--cyan)">match stats page</a>
+      {% else %}
+      match stats page
+      {% endif %}
+      to generate a highlight recap.
+    </div>
+    <div style="margin-top:20px;font-family:var(--font-display);font-size:14px;color:var(--text-dim)">
+      {{ match.c1_team }} vs {{ match.c2_team }} · Week {{ match.week }}
+    </div>
+  </div>
+</div>
+{% else %}
+
+{# ── Unpack FEATURED ── #}
+{% set M = featured %}
+{% set home_win = M.totals.winner == "HOME" %}
+{% set win_team = M.home if home_win else M.away %}
+{% set lose_team = M.away if home_win else M.home %}
+
+{# macro: type-tinted orb #}
+{% macro mon_orb(mon, size="md") %}
+  {% set t1 = type_colors.get(mon.types[0], "#c9c9d2") %}
+  {% set t2 = type_colors.get(mon.types[1] if mon.types|length > 1 else mon.types[0], t1) %}
+  <span class="mh-orb {{ size }}"
+    style="background:linear-gradient(135deg,{{ t1 }},{{ t2 }});box-shadow:0 0 14px -6px {{ t1 }}"
+    title="{{ mon.name }}">
+    <span class="mh-orb-glyph">{{ mon.name[:2] }}</span>
+  </span>
+{% endmacro %}
+
+{# macro: type chips #}
+{% macro type_chips(types) %}
+  <span class="mh-types">
+    {% for t in types %}
+      {% set col = type_colors.get(t, "#c9c9d2") %}
+      <span class="mh-typechip"
+        style="color:{{ col }};border-color:{{ col }}66;background:{{ col }}14">{{ t }}</span>
+    {% endfor %}
+  </span>
+{% endmacro %}
+
+{# macro: team logo (initials orb if no logo). cls is passed through so parent-scoped CSS sizes it. #}
+{% macro team_logo(team, cls="tlogo") %}
+  {% if team.logo_url %}
+    <img class="{{ cls }}" src="{{ team.logo_url }}" alt="{{ team.name }}" style="object-fit:contain;border-radius:4px">
+  {% else %}
+    <span class="{{ cls }}"
+      style="display:inline-flex;align-items:center;justify-content:center;
+             background:var(--panel-3);border:1px solid var(--hairline-2);
+             border-radius:4px;font-family:var(--font-display);font-weight:700;
+             font-size:9px;color:var(--text-mute);">
+      {{ team.initials or team.name[:2] }}
+    </span>
+  {% endif %}
+{% endmacro %}
+
+{# ── Page ── #}
+{% set is_static = static_mode or false %}
+<div class="mr-page{{ ' mh-static' if is_static else '' }}">
+
+  {# breadcrumb #}
+  <div class="mr-crumb">
+    <a href="{{ url_for('schedule') }}">SCHEDULE</a>
+    <span class="sep">/</span>
+    <a href="{{ url_for('schedule') }}#week-{{ M.facts.week }}">WEEK {{ '%02d' % (M.facts.week|int) if M.facts.week != '—' else '—' }}</a>
+    <span class="sep">/</span>
+    <span style="color:var(--text-mute)">{{ M.home.name }} vs {{ M.away.name }}</span>
+  </div>
+
+  {# ===== HERO SCOREBOARD ===== #}
+  <div class="mr-hero">
+    <div class="mr-hero-top">
+      <span class="mr-tag">{{ M.facts.tag }}</span>
+      {% if M.facts.pool and M.facts.pool != 'LADDER' %}
+        <span class="chip cyan" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;padding:3px 9px;border:1px solid var(--cyan-dim);color:var(--cyan);background:var(--cyan-soft)">POOL {{ M.facts.pool }}</span>
+      {% endif %}
+      {% if M.facts.week and M.facts.week != '—' %}
+        <span class="chip" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;padding:3px 9px;border:1px solid var(--hairline-2);color:var(--text-mute)">WEEK {{ '%02d' % (M.facts.week|int) }}</span>
+      {% endif %}
+      <div style="flex:1"></div>
+      <span class="mr-final">{{ M.facts.status }}</span>
+    </div>
+
+    <div class="mr-board">
+      {# home side #}
+      <div class="mr-side home {{ 'win' if home_win else 'lose' }}">
+        {{ team_logo(M.home) }}
+        <div class="mr-side-meta">
+          <span class="badge">{{ 'WINNER' if home_win else 'DEFEATED' }}</span>
+          <span class="nm">{{ M.home.name }}</span>
+          <span class="sub">{{ M.home.coach }} · {{ M.homeRec.w }}–{{ M.homeRec.l }}{% if M.homeRec.t %}–{{ M.homeRec.t }}{% endif %} · POOL {{ M.home.pool }}</span>
+        </div>
+      </div>
+
+      {# center score #}
+      <div class="mr-score">
+        <span class="mr-score-lbl">MONS REMAINING · DIFF {{ M.totals.diff }}</span>
+        <div class="mr-score-nums">
+          <span class="{{ 'win' if home_win else 'lose' }}">{{ M.totals.home.left }}</span>
+          <span class="dash">–</span>
+          <span class="{{ 'lose' if home_win else 'win' }}">{{ M.totals.away.left }}</span>
+        </div>
+        <div class="mr-score-ko">
+          KO TALLY <b>{{ M.totals.home.ko }}</b> <span style="color:var(--text-dim)">–</span> <b>{{ M.totals.away.ko }}</b>
+        </div>
+      </div>
+
+      {# away side #}
+      <div class="mr-side away {{ 'lose' if home_win else 'win' }}">
+        {{ team_logo(M.away) }}
+        <div class="mr-side-meta">
+          <span class="badge">{{ 'DEFEATED' if home_win else 'WINNER' }}</span>
+          <span class="nm">{{ M.away.name }}</span>
+          <span class="sub">{{ M.away.coach }} · {{ M.awayRec.w }}–{{ M.awayRec.l }}{% if M.awayRec.t %}–{{ M.awayRec.t }}{% endif %} · POOL {{ M.away.pool }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mr-hero-facts">
+      <div class="mr-fact">
+        <div class="k">RESULT</div>
+        <div class="v">{{ win_team.name.split(' ')|last }} def. {{ lose_team.name.split(' ')|last }}</div>
+      </div>
+      <div class="mr-fact">
+        <div class="k">FORMAT</div>
+        <div class="v mono">{{ M.facts.format }}</div>
+      </div>
+      <div class="mr-fact">
+        <div class="k">LENGTH</div>
+        <div class="v">{{ M.facts.turns }} TURNS</div>
+      </div>
+      <div class="mr-fact">
+        <div class="k">DATE</div>
+        <div class="v mono">{{ M.facts.date or '—' }}</div>
+      </div>
+      <div class="mr-fact">
+        <div class="k">CAST BY</div>
+        <div class="v mono">{{ M.facts.casters|join('  ·  ') if M.facts.casters else '—' }}</div>
+      </div>
+    </div>
+  </div>{# /mr-hero #}
+
+  {# ===== 01 MOMENTUM ===== #}
+  <section class="mh-sec">
+    <div class="mh-sechead">
+      <span class="num">01</span>
+      <span class="ttl">Story of the Game</span>
+      <span class="rule"></span>
+      <span class="meta">MONS REMAINING · PER TURN</span>
+    </div>
+    <div class="mr-momentum">
+      <div class="mr-mom-head">
+        <span class="mono" style="color:var(--text-mute);font-size:10px;letter-spacing:.06em">
+          {%- set max_t = namespace(t=0) -%}
+          {%- for p in M.momentum -%}{%- if p.t > max_t.t -%}{%- set max_t.t = p.t -%}{%- endif -%}{%- endfor -%}
+          {{ M.facts.turns }} TURNS · {{ M.koLog|length }} KNOCKOUTS
+        </span>
+        <div class="mr-mom-key">
+          <span><i class="h"></i>{{ M.home.name.split(' ')|last }}</span>
+          <span><i class="a"></i>{{ M.away.name.split(' ')|last }}</span>
+        </div>
+      </div>
+      {# SVG step chart — build path data in Jinja #}
+      {% set W = 1180 %}{% set H = 240 %}{% set padL = 38 %}{% set padR = 16 %}{% set padT = 14 %}{% set padB = 30 %}
+      {% set plotW = W - padL - padR %}{% set plotH = H - padT - padB %}
+      {% set maxT = [M.facts.turns|int + 2, 21]|max %}{% set maxV = 6 %}
+      {# Compute step path strings for home & away #}
+      {%- macro svgX(t) -%}{{ (padL + (t / maxT * plotW))|round(2) }}{%- endmacro -%}
+      {%- macro svgY(v) -%}{{ (padT + ((maxV - v) / maxV * plotH))|round(2) }}{%- endmacro -%}
+      {%- set home_path = namespace(d='') -%}
+      {%- set away_path = namespace(d='') -%}
+      {%- for p in M.momentum -%}
+        {%- if loop.first -%}
+          {%- set home_path.d = 'M ' ~ svgX(p.t) ~ ' ' ~ svgY(p.home) -%}
+          {%- set away_path.d = 'M ' ~ svgX(p.t) ~ ' ' ~ svgY(p.away) -%}
+        {%- else -%}
+          {%- set home_path.d = home_path.d ~ ' H ' ~ svgX(p.t) ~ ' V ' ~ svgY(p.home) -%}
+          {%- set away_path.d = away_path.d ~ ' H ' ~ svgX(p.t) ~ ' V ' ~ svgY(p.away) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      <svg class="mr-mom-svg" viewBox="0 0 {{ W }} {{ H }}" preserveAspectRatio="none" style="height:240px">
+        {# grid #}
+        {% for v in [0, 2, 4, 6] %}
+          <line class="grid" x1="{{ padL }}" x2="{{ W - padR }}" y1="{{ svgY(v) }}" y2="{{ svgY(v) }}" />
+          <text class="gridlbl" x="{{ padL - 8 }}" y="{{ (svgY(v)|float + 3)|round(1) }}" text-anchor="end">{{ v }}</text>
+        {% endfor %}
+        {# paths #}
+        <path class="line a{{ '' if is_static else ' dash a' }}" d="{{ away_path.d }}" />
+        <path class="line h{{ '' if is_static else ' dash' }}" d="{{ home_path.d }}" />
+        {# KO dots #}
+        {% for p in M.momentum %}
+          {% if p.ko %}
+            {% set scorer = p.ko.side %}
+            {% set col = 'var(--magenta)' if scorer == 'HOME' else 'var(--cyan)' %}
+            {# dot is placed on the LOSING side's line #}
+            {% set dot_v = p.away if scorer == 'HOME' else p.home %}
+            <circle class="kodot" cx="{{ svgX(p.t) }}" cy="{{ svgY(dot_v) }}" r="4.5" fill="{{ col }}" />
+            <text class="turnlbl" x="{{ svgX(p.t) }}" y="{{ H - 12 }}">{{ p.t }}</text>
+          {% endif %}
+        {% endfor %}
+        <text class="gridlbl" x="{{ padL }}" y="{{ H - 12 }}" text-anchor="start" style="opacity:.6">TURN</text>
+      </svg>
+      <div class="mr-mom-cap">
+        <span style="width:9px;height:9px;border-radius:50%;background:var(--magenta);display:inline-block"></span>
+        <span>Each dot is a knockout, placed on the line of the side that lost the mon.</span>
+      </div>
+    </div>
+  </section>
+
+  {# ===== 02 BOX SCORE ===== #}
+  <section class="mh-sec">
+    <div class="mh-sechead">
+      <span class="num">02</span>
+      <span class="ttl">Box Score</span>
+      <span class="rule"></span>
+      <span class="meta">6v6 · KOs + RESULT</span>
+    </div>
+    <div class="mr-box">
+      {# home column #}
+      {% for side_label, roster, team, tot, is_win in [
+          ('home', M.homeRoster, M.home, M.totals.home, home_win),
+          ('away', M.awayRoster, M.away, M.totals.away, not home_win)
+        ] %}
+      <div class="mr-box-col">
+        <div class="mr-box-head{{ ' win' if is_win else '' }}">
+          {{ team_logo(team) }}
+          <span class="nm">{{ team.name }}</span>
+          <span class="tot"><b>{{ tot.ko }}</b> KO · {{ tot.left }} LEFT</span>
+        </div>
+        <div class="mr-box-colhdr">
+          <span></span><span>POKÉMON</span><span class="r">KO</span><span class="r">RESULT</span>
+        </div>
+        {% set sorted_roster = roster|sort(attribute='kos', reverse=True) %}
+        {% for m in sorted_roster %}
+        <div class="mr-box-row{{ ' down' if m.fainted else '' }}">
+          {{ mon_orb(m, 'sm') }}
+          <div class="who">
+            <div class="info">
+              <div class="mn">{{ m.name }}{% if m.lead %}<span class="lead">LEAD</span>{% endif %}</div>
+              <div class="note">{{ m.note }}</div>
+            </div>
+          </div>
+          <div class="ko r{{ ' zero' if m.kos == 0 else '' }}">{{ m.kos }}</div>
+          <div class="r">
+            <span class="st {{ 'faint' if m.fainted else 'alive' }}">{{ 'FAINTED' if m.fainted else 'ALIVE' }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ===== 03 KO PLAY-BY-PLAY ===== #}
+  <section class="mh-sec">
+    <div class="mh-sechead">
+      <span class="num">03</span>
+      <span class="ttl">KO Play-by-Play</span>
+      <span class="rule"></span>
+      <span class="meta">{{ M.koLog|length }} KNOCKOUTS</span>
+    </div>
+    <div class="mr-pbp">
+      {% set tally = namespace(h=6, a=6) %}
+      {% for k in M.koLog %}
+        {% if k.side == 'HOME' %}{% set tally.a = tally.a - 1 %}{% elif k.side == 'AWAY' %}{% set tally.h = tally.h - 1 %}{% endif %}
+        {% set cls = 'h' if k.side == 'HOME' else 'a' %}
+        {% set side_team = M.home if k.side == 'HOME' else M.away %}
+      <div class="mr-pbp-row">
+        <div class="mr-pbp-turn">T{{ k.t }}</div>
+        <div class="mr-pbp-spine">
+          <span class="mr-pbp-node {{ cls }}"></span>
+          <div class="mr-pbp-card">
+            {{ team_logo(side_team, 'tlogo') }}
+            <div class="mr-pbp-text">
+              <div class="mr-pbp-kill">
+                <span class="killer">{{ k.by }}</span>
+                <span class="arrow">KO ▸</span>
+                <span class="victim">{{ k.vs }}</span>
+              </div>
+              <div class="mr-pbp-meta">
+                <span class="mr-pbp-move{{ ' se' if k.se else '' }}">{{ k.move }}{% if k.se %} · SUPER EFFECTIVE{% endif %}</span>
+                {% if k.note %}<span class="dim"> — {{ k.note }}</span>{% endif %}
+              </div>
+            </div>
+            <div class="mr-pbp-tally">
+              <span class="h">{{ tally.h }}</span><span class="x">–</span><span class="a">{{ tally.a }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ===== 04 THREE STARS ===== #}
+  <section class="mh-sec">
+    <div class="mh-sechead">
+      <span class="num">04</span>
+      <span class="ttl">Three Stars</span>
+      <span class="rule"></span>
+      <span class="meta">PLAYERS OF THE MATCH</span>
+    </div>
+    <div class="mr-stars">
+      {% for s in M.stars %}
+        {% set star_team = M.home if s.side == 'HOME' else M.away %}
+        <div class="mr-star{{ ' first' if s.star == 1 else '' }}">
+          <div class="mr-star-top">
+            <span class="mr-star-rank">
+              {% for _ in range(s.star) %}<span class="s">★</span>{% endfor %}
+            </span>
+            <span class="mr-star-team">
+              {{ team_logo(star_team, 'tlogo') }}
+              {{ star_team.name.split(' ')|last }}
+            </span>
+          </div>
+          <div class="mr-star-id">
+            {{ mon_orb(s.mon, 'lg') }}
+            <div>
+              <div class="nm">{{ s.mon.name }}</div>
+              {{ type_chips(s.mon.types) }}
+              <div class="mr-star-line">{{ s.line }}</div>
+            </div>
+          </div>
+          <div class="mr-star-blurb">{{ s.blurb }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ===== 05 WHAT IT MEANS ===== #}
+  <section class="mh-sec">
+    <div class="mh-sechead">
+      <span class="num">05</span>
+      <span class="ttl">What It Means</span>
+      <span class="rule"></span>
+      <span class="meta">HEAD-TO-HEAD · STANDINGS</span>
+    </div>
+    <div class="mr-meta-grid">
+      {# standings impact #}
+      <div class="mr-panel">
+        <div class="mono dim" style="font-size:9px;letter-spacing:.12em;margin-bottom:10px">
+          SEASON SERIES · STANDINGS AFTER WK {{ '%02d' % (M.facts.week|int) if M.facts.week != '—' else '—' }}
+        </div>
+        <div class="mr-impact">
+          {% for team, rec, is_win in [
+              (M.home, M.homeRec, home_win),
+              (M.away, M.awayRec, not home_win)
+            ] %}
+          <div class="mr-impact-row">
+            {{ team_logo(team) }}
+            <span class="nm"{{ ' style="color:var(--magenta)"' | safe if is_win else '' }}>{{ team.name }}</span>
+            <span class="rec">
+              <span class="w">{{ rec.w }}</span><span class="dim">–</span><span class="l">{{ rec.l }}</span>
+            </span>
+            <span class="df {{ 'pos' if rec.df >= 0 else 'neg' }}">{{ '+' if rec.df > 0 else '' }}{{ rec.df }} diff</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="mono dim" style="font-size:9.5px;margin-top:12px;line-height:1.5">
+          {{ win_team.name }} {% if home_win %}climb to{% else %}climb to{% endif %}
+          <span style="color:var(--lime)">{{ M.homeRec.w if home_win else M.awayRec.w }}–{{ M.homeRec.l if home_win else M.awayRec.l }}</span>
+          in Pool {{ M.facts.pool }};
+          {{ lose_team.name }} slip to
+          <span style="color:var(--red)">{{ M.awayRec.w if home_win else M.homeRec.w }}–{{ M.awayRec.l if home_win else M.homeRec.l }}</span>.
+        </div>
+      </div>
+
+      {# h2h / replay #}
+      <div class="mr-panel">
+        <div class="mono dim" style="font-size:9px;letter-spacing:.12em">ALL-TIME HEAD-TO-HEAD</div>
+        {% if M.h2h %}
+        <div class="mr-h2h">
+          <div class="mr-h2h-team">
+            {{ team_logo(M.home, 'tlogo') }}
+            <span class="mr-h2h-num h">{{ M.h2h.homeWins }}</span>
+            <span class="nm">{{ M.home.name.split(' ')|last }}</span>
+          </div>
+          <span class="mr-h2h-vs">WINS</span>
+          <div class="mr-h2h-team">
+            {{ team_logo(M.away, 'tlogo') }}
+            <span class="mr-h2h-num a">{{ M.h2h.awayWins }}</span>
+            <span class="nm">{{ M.away.name.split(' ')|last }}</span>
+          </div>
+        </div>
+        <div class="mono dim" style="font-size:9px;text-align:center;letter-spacing:.06em">{{ M.h2h.note }}</div>
+        {% else %}
+        <div style="padding:24px 0;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">
+          H2H data not yet recorded
+        </div>
+        {% endif %}
+        {% if M.facts.replay %}
+        <a class="btn" href="https://{{ M.facts.replay }}" target="_blank" rel="noopener"
+          style="width:100%;justify-content:center;margin-top:14px;display:flex;align-items:center;
+                 gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+                 color:var(--cyan);border:1px solid var(--cyan-dim);padding:10px 14px;
+                 text-decoration:none;transition:border-color .15s,background .15s">
+          ▸ WATCH REPLAY
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {# ===== FOOTER ===== #}
+  <div class="mr-foot">
+    <a href="{{ url_for('schedule') }}">← ALL WEEK {{ '%02d' % (M.facts.week|int) if M.facts.week != '—' else '—' }} RESULTS</a>
+    <span class="mid">YURI CUP S9 · MATCH RECAP</span>
+    <a href="{{ url_for('schedule') }}">SCHEDULE →</a>
+  </div>
+
+</div>{# /mr-page #}
+
+{# Animate SVG paths on load (skipped if ?static=1) #}
+{% if not is_static %}
+<script>
+(function() {
+  document.querySelectorAll('.mr-mom-svg .dash').forEach(function(path) {
+    var len = path.getTotalLength ? path.getTotalLength() : 600;
+    path.style.strokeDasharray = len;
+    path.style.strokeDashoffset = len;
+    path.style.animation = 'mr-draw 1.6s cubic-bezier(.2,.7,.2,1) forwards' +
+      (path.classList.contains('a') ? ' .25s' : '');
+  });
+})();
+</script>
+{% endif %}
+
+{% endif %}{# /if featured #}
+{% endblock %}
