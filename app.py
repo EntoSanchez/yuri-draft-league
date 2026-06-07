@@ -2733,11 +2733,12 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
 
 @app.route("/match/<int:match_id>")
 def match_recap(match_id):
-    """Public match recap / highlights page."""
+    """Public match recap / highlights page. Handles BO1 and BO3 bring-6-use-4."""
     with get_db() as db:
         match = db.execute("""
             SELECT s.*, c1.coach_name as c1_name, c1.team_name as c1_team, c1.logo_url as c1_logo,
-                   c2.coach_name as c2_name, c2.team_name as c2_team, c2.logo_url as c2_logo
+                   c1.id as c1_id, c2.coach_name as c2_name, c2.team_name as c2_team,
+                   c2.logo_url as c2_logo, c2.id as c2_id
             FROM schedule s
             JOIN coaches c1 ON s.coach1_id = c1.id
             JOIN coaches c2 ON s.coach2_id = c2.id
@@ -2753,41 +2754,77 @@ def match_recap(match_id):
         ).fetchall()
         games = [dict(g) for g in games]
 
-    # Find a game with recap_json — prefer the first one
-    featured = None
-    for g in games:
-        if g.get("recap_json"):
-            try:
-                featured = json.loads(g["recap_json"])
-                featured["_game_id"] = g["id"]
-                featured["_replay_url"] = g.get("replay_url", "")
-            except Exception:
-                pass
-            if featured:
-                break
-
-    # Enrich facts with match context if not already set
-    if featured:
-        facts = featured.get("facts", {})
+    def _enrich_recap(recap, game_number):
+        """Attach match context and team logos to a parsed recap."""
+        facts = recap.get("facts", {})
         if not facts.get("week") or facts.get("week") == "—":
             facts["week"] = match.get("week", "—")
         if not facts.get("pool"):
             facts["pool"] = match.get("pool", "—")
         if not facts.get("date") and match.get("match_date"):
             facts["date"] = match["match_date"]
+        recap["_game_number"] = game_number
 
-        # Attach team logos for league matches (not ladder replays)
-        home = featured.get("home", {})
-        away = featured.get("away", {})
+        # Map home/away names to DB coaches for logo lookup
+        home_name = recap.get("home", {}).get("name", "").lower()
+        away_name = recap.get("away", {}).get("name", "").lower()
+        c1_sn = (match.get("c1_name") or "").lower()
+        c2_sn = (match.get("c2_name") or "").lower()
+
+        home = recap.get("home", {})
+        away = recap.get("away", {})
         if not home.get("logo_url"):
-            home["logo_url"] = match.get("c1_logo") or match.get("c2_logo")
+            # Match by coach name proximity
+            if home_name == c1_sn or c1_sn in home_name:
+                home["logo_url"] = match.get("c1_logo")
+            elif home_name == c2_sn or c2_sn in home_name:
+                home["logo_url"] = match.get("c2_logo")
         if not away.get("logo_url"):
-            away["logo_url"] = match.get("c2_logo") or match.get("c1_logo")
+            if away_name == c2_sn or c2_sn in away_name:
+                away["logo_url"] = match.get("c2_logo")
+            elif away_name == c1_sn or c1_sn in away_name:
+                away["logo_url"] = match.get("c1_logo")
+        return recap
+
+    # Load ALL games that have recap_json (BO3 may have up to 3)
+    all_recaps = []
+    for g in games:
+        if g.get("recap_json"):
+            try:
+                r = json.loads(g["recap_json"])
+                r["_game_id"] = g["id"]
+                r["_replay_url"] = g.get("replay_url", "")
+                _enrich_recap(r, g["game_number"])
+                all_recaps.append(r)
+            except Exception:
+                pass
+
+    # Build series summary for BO3
+    series = None
+    if len(all_recaps) > 1:
+        home_wins = sum(1 for r in all_recaps if r.get("totals", {}).get("winner") == "HOME")
+        away_wins = sum(1 for r in all_recaps if r.get("totals", {}).get("winner") == "AWAY")
+        series_winner = "HOME" if home_wins > away_wins else ("AWAY" if away_wins > home_wins else None)
+        home_team = all_recaps[0].get("home", {})
+        away_team = all_recaps[0].get("away", {})
+        series = {
+            "home_wins": home_wins,
+            "away_wins": away_wins,
+            "winner": series_winner,
+            "home": home_team,
+            "away": away_team,
+            "games": len(all_recaps),
+        }
+
+    # Featured = last game (deciding game for BO3, only game for BO1)
+    featured = all_recaps[-1] if all_recaps else None
 
     return render_template(
         "match_recap.html",
         match=match,
         featured=featured,
+        all_recaps=all_recaps,
+        series=series,
         games=games,
         type_colors=_RECAP_TYPE_COLORS,
         static_mode="static" in request.args,

@@ -640,6 +640,25 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
         if not rosters_resolved[pside]:
             rosters_resolved[pside] = sorted({resolve(pside, n) for n in raw["brought"][pside]})
 
+    # Bring-N-Use-M detection: if fewer mons were switched in than were in team preview,
+    # filter the displayed roster to only the mons actually used.
+    # e.g. Bring 6 Use 4 — the 2 benched mons never appear and must not inflate "left" count.
+    brought_resolved = {
+        pside: {resolve(pside, n) for n in raw["brought"][pside]}
+        for pside in ("p1", "p2")
+    }
+    for pside in ("p1", "p2"):
+        b = brought_resolved[pside]
+        if b and len(b) < len(rosters_resolved[pside]):
+            # Keep team-preview order but only for used mons
+            rosters_resolved[pside] = [n for n in rosters_resolved[pside] if n in b]
+            # Append any used mon not in team preview (rare forme-change edge case)
+            for n in sorted(b - set(rosters_resolved[pside])):
+                rosters_resolved[pside].append(n)
+
+    # How many mons each side used (4 in bring-6-use-4; 6 in standard 6v6)
+    use_counts = {pside: len(rosters_resolved[pside]) for pside in ("p1", "p2")}
+
     # Build per-mon kill/faint tallies from ko_log
     kills_by_mon = {}    # (pside, name) → count
     fainted_mons = {}    # (pside, name) → bool
@@ -721,15 +740,22 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
     def _brought(pside):
         return len({resolve(pside, n) for n in raw["brought"][pside]})
 
+    bring_counts = {
+        "home": len(raw["rosters"][home_pid]) or use_counts[home_pid],
+        "away": len(raw["rosters"][away_pid]) or use_counts[away_pid],
+    }
+
     totals = {
-        "home": {"ko": _sum_kos(home_roster), "left": _left(home_roster), "brought": _brought(home_pid)},
-        "away": {"ko": _sum_kos(away_roster), "left": _left(away_roster), "brought": _brought(away_pid)},
+        "home": {"ko": _sum_kos(home_roster), "left": _left(home_roster),
+                 "brought": bring_counts["home"], "used": use_counts[home_pid]},
+        "away": {"ko": _sum_kos(away_roster), "left": _left(away_roster),
+                 "brought": bring_counts["away"], "used": use_counts[away_pid]},
         "winner": "HOME",
         "diff": abs(_left(home_roster) - _left(away_roster)),
     }
 
-    # Momentum: mons remaining after each KO
-    h, a = 6, 6
+    # Momentum: start at actual mons used (4 for bring-6-use-4, 6 for standard)
+    h, a = use_counts[home_pid], use_counts[away_pid]
     momentum = [{"t": 0, "home": h, "away": a, "ko": None}]
     for k in ko_log2:
         if k["side"] == "HOME":
@@ -785,18 +811,29 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
          "blurb": _star_blurb3()},
     ]
 
+    # Auto-detect bring/use for format string
+    _bring = max(bring_counts["home"], bring_counts["away"])
+    _use   = max(use_counts[home_pid], use_counts[away_pid])
+    _is_bring_use = _bring > _use and _use > 0
+    _auto_format = (
+        f"Bring {_bring} / Use {_use} · Showdown replay"
+        if _is_bring_use else "6v6 · Showdown replay"
+    )
+
     # Facts
     facts = {
         "week": nm.get("week", "—"),
         "pool": nm.get("pool", "LADDER"),
         "status": nm.get("status", "FINAL"),
         "date": nm.get("date", ""),
-        "format": nm.get("format", "Bo1 · 6v6 · Showdown replay"),
+        "format": nm.get("format", _auto_format),
         "turns": raw["turns"],
         "casters": nm.get("casters", []),
         "tag": nm.get("tag", "REPLAY"),
         "tagKind": nm.get("tagKind", "PARSED"),
         "replay": nm.get("replay", ""),
+        "bring": _bring,
+        "use": _use,
         "replayMode": nm.get("replayMode", True),
         "ratingHome": {
             "from": raw["rating_from"].get(home_name),

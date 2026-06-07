@@ -35,11 +35,8 @@
 </div>
 {% else %}
 
-{# ── Unpack FEATURED ── #}
+{# M = featured used for breadcrumb/series header; re-bound per game inside the loop #}
 {% set M = featured %}
-{% set home_win = M.totals.winner == "HOME" %}
-{% set win_team = M.home if home_win else M.away %}
-{% set lose_team = M.away if home_win else M.home %}
 
 {# macro: type-tinted orb #}
 {% macro mon_orb(mon, size="md") %}
@@ -90,6 +87,64 @@
     <span class="sep">/</span>
     <span style="color:var(--text-mute)">{{ M.home.name }} vs {{ M.away.name }}</span>
   </div>
+
+  {# ── BO3 Series Header ── only shown when there are multiple games #}
+  {% if series and series.games > 1 %}
+  <div style="border:1px solid var(--hairline-2);background:var(--panel-2);padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;color:var(--text-dim)">SERIES RESULT</span>
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+      <span style="font-family:var(--font-display);font-weight:700;font-size:18px;
+                   color:{{ 'var(--magenta)' if series.winner == 'HOME' else 'var(--text-mute)' }}">
+        {{ series.home.name }}
+      </span>
+      <span style="font-family:var(--font-display);font-weight:700;font-size:28px;
+                   font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:10px">
+        <span style="color:{{ 'var(--magenta)' if series.winner == 'HOME' else 'var(--text-mute)' }}">{{ series.home_wins }}</span>
+        <span style="color:var(--text-dim);font-size:18px">–</span>
+        <span style="color:{{ 'var(--cyan)' if series.winner == 'AWAY' else 'var(--text-mute)' }}">{{ series.away_wins }}</span>
+      </span>
+      <span style="font-family:var(--font-display);font-weight:700;font-size:18px;
+                   color:{{ 'var(--cyan)' if series.winner == 'AWAY' else 'var(--text-mute)' }}">
+        {{ series.away.name }}
+      </span>
+    </div>
+    {# Game selector tabs #}
+    <div style="display:flex;align-items:center;gap:6px">
+      {% for r in all_recaps %}
+      <a href="#game-{{ r._game_number }}"
+         style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;
+                padding:4px 10px;border:1px solid var(--hairline-2);color:var(--text-mute);
+                text-decoration:none;transition:border-color .15s,color .15s"
+         onmouseover="this.style.borderColor='var(--cyan-dim)';this.style.color='var(--cyan)'"
+         onmouseout="this.style.borderColor='var(--hairline-2)';this.style.color='var(--text-mute)'">
+        G{{ r._game_number }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Loop over all games (BO1 = 1 iteration; BO3 = up to 3) ── #}
+  {% for M in all_recaps %}
+  {% set home_win = M.totals.winner == "HOME" %}
+  {% set win_team = M.home if home_win else M.away %}
+  {% set lose_team = M.away if home_win else M.home %}
+
+  {# Game N label for BO3 #}
+  {% if all_recaps|length > 1 %}
+  <div id="game-{{ M._game_number }}"
+       style="display:flex;align-items:center;gap:12px;padding:10px 0 4px;
+              border-top:{{ '2px solid var(--magenta-dim)' if loop.first else '1px solid var(--hairline-2)' }};
+              {% if not loop.first %}margin-top:12px{% endif %}">
+    <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;
+                 color:{{ 'var(--magenta)' if home_win else 'var(--cyan)' }}">
+      GAME {{ M._game_number }}
+    </span>
+    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">
+      {{ win_team.name }} wins · {{ M.facts.turns }} turns
+    </span>
+  </div>
+  {% endif %}
 
   {# ===== HERO SCOREBOARD ===== #}
   <div class="mr-hero">
@@ -187,7 +242,9 @@
       {# SVG step chart — build path data in Jinja #}
       {% set W = 1180 %}{% set H = 240 %}{% set padL = 38 %}{% set padR = 16 %}{% set padT = 14 %}{% set padB = 30 %}
       {% set plotW = W - padL - padR %}{% set plotH = H - padT - padB %}
-      {% set maxT = [M.facts.turns|int + 2, 21]|max %}{% set maxV = 6 %}
+      {% set maxT = [M.facts.turns|int + 2, 21]|max %}
+      {# maxV: actual mons used per side (4 in bring-6-use-4; 6 in standard 6v6) #}
+      {% set maxV = M.momentum[0].home if M.momentum else 6 %}
       {# Compute step path strings for home & away #}
       {%- macro svgX(t) -%}{{ (padL + (t / maxT * plotW))|round(2) }}{%- endmacro -%}
       {%- macro svgY(v) -%}{{ (padT + ((maxV - v) / maxV * plotH))|round(2) }}{%- endmacro -%}
@@ -203,10 +260,13 @@
         {%- endif -%}
       {%- endfor -%}
       <svg class="mr-mom-svg" viewBox="0 0 {{ W }} {{ H }}" preserveAspectRatio="none" style="height:240px">
-        {# grid #}
-        {% for v in [0, 2, 4, 6] %}
+        {# grid labels — adapt to 4-mon or 6-mon game #}
+        {% set _grid_vals = [0, 2, 4, 6] if maxV >= 5 else [0, 1, 2, 3, 4] %}
+        {% for v in _grid_vals %}
+          {% if v <= maxV %}
           <line class="grid" x1="{{ padL }}" x2="{{ W - padR }}" y1="{{ svgY(v) }}" y2="{{ svgY(v) }}" />
           <text class="gridlbl" x="{{ padL - 8 }}" y="{{ (svgY(v)|float + 3)|round(1) }}" text-anchor="end">{{ v }}</text>
+          {% endif %}
         {% endfor %}
         {# paths #}
         <path class="line a{{ '' if is_static else ' dash a' }}" d="{{ away_path.d }}" />
@@ -237,7 +297,11 @@
       <span class="num">02</span>
       <span class="ttl">Box Score</span>
       <span class="rule"></span>
-      <span class="meta">6v6 · KOs + RESULT</span>
+      <span class="meta">
+        {%- set _u = M.totals.home.used if M.totals.home.used else (M.homeRoster|length) -%}
+        {%- set _b = M.totals.home.brought if M.totals.home.brought else _u -%}
+        {{ _b }}v{{ _b }}{% if _b != _u %} / USE {{ _u }}{% endif %} · KOs + RESULT
+      </span>
     </div>
     <div class="mr-box">
       {# home column #}
@@ -284,7 +348,8 @@
       <span class="meta">{{ M.koLog|length }} KNOCKOUTS</span>
     </div>
     <div class="mr-pbp">
-      {% set tally = namespace(h=6, a=6) %}
+      {% set _mon_start = M.momentum[0].home if M.momentum else 6 %}
+      {% set tally = namespace(h=_mon_start, a=_mon_start) %}
       {% for k in M.koLog %}
         {% if k.side == 'HOME' %}{% set tally.a = tally.a - 1 %}{% elif k.side == 'AWAY' %}{% set tally.h = tally.h - 1 %}{% endif %}
         {% set cls = 'h' if k.side == 'HOME' else 'a' %}
@@ -351,10 +416,16 @@
     </div>
   </section>
 
-  {# ===== 05 WHAT IT MEANS ===== #}
+  {% endfor %}{# end for M in all_recaps #}
+
+  {# ===== 05 WHAT IT MEANS — shown once using the featured (deciding) game ===== #}
+  {% set M = featured %}
+  {% set home_win = M.totals.winner == "HOME" %}
+  {% set win_team = M.home if home_win else M.away %}
+  {% set lose_team = M.away if home_win else M.home %}
   <section class="mh-sec">
     <div class="mh-sechead">
-      <span class="num">05</span>
+      <span class="num">{{ '06' if all_recaps|length > 1 else '05' }}</span>
       <span class="ttl">What It Means</span>
       <span class="rule"></span>
       <span class="meta">HEAD-TO-HEAD · STANDINGS</span>
@@ -381,7 +452,7 @@
           {% endfor %}
         </div>
         <div class="mono dim" style="font-size:9.5px;margin-top:12px;line-height:1.5">
-          {{ win_team.name }} {% if home_win %}climb to{% else %}climb to{% endif %}
+          {{ win_team.name }} climb to
           <span style="color:var(--lime)">{{ M.homeRec.w if home_win else M.awayRec.w }}–{{ M.homeRec.l if home_win else M.awayRec.l }}</span>
           in Pool {{ M.facts.pool }};
           {{ lose_team.name }} slip to
@@ -389,7 +460,7 @@
         </div>
       </div>
 
-      {# h2h / replay #}
+      {# h2h / replay — for BO3 list all game replays #}
       <div class="mr-panel">
         <div class="mono dim" style="font-size:9px;letter-spacing:.12em">ALL-TIME HEAD-TO-HEAD</div>
         {% if M.h2h %}
@@ -408,19 +479,23 @@
         </div>
         <div class="mono dim" style="font-size:9px;text-align:center;letter-spacing:.06em">{{ M.h2h.note }}</div>
         {% else %}
-        <div style="padding:24px 0;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">
+        <div style="padding:16px 0 8px;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">
           H2H data not yet recorded
         </div>
         {% endif %}
-        {% if M.facts.replay %}
-        <a class="btn" href="https://{{ M.facts.replay }}" target="_blank" rel="noopener"
-          style="width:100%;justify-content:center;margin-top:14px;display:flex;align-items:center;
-                 gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
-                 color:var(--cyan);border:1px solid var(--cyan-dim);padding:10px 14px;
-                 text-decoration:none;transition:border-color .15s,background .15s">
-          ▸ WATCH REPLAY
-        </a>
-        {% endif %}
+        {# Replay links — one per game for BO3 #}
+        {% for r in all_recaps %}
+          {% if r.facts.replay %}
+          <a href="https://{{ r.facts.replay }}" target="_blank" rel="noopener"
+            style="width:100%;justify-content:center;margin-top:{{ '14px' if loop.first else '6px' }};
+                   display:flex;align-items:center;gap:8px;font-family:var(--font-mono);
+                   font-size:10px;letter-spacing:.1em;color:var(--cyan);
+                   border:1px solid var(--cyan-dim);padding:10px 14px;
+                   text-decoration:none;transition:border-color .15s,background .15s">
+            ▸ WATCH {{ 'GAME ' ~ r._game_number if all_recaps|length > 1 else 'REPLAY' }}
+          </a>
+          {% endif %}
+        {% endfor %}
       </div>
     </div>
   </section>
