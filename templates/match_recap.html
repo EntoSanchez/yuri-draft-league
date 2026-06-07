@@ -90,25 +90,45 @@
 
   {# ── BO3 Series Header ── only shown when there are multiple games #}
   {% if series and series.games > 1 %}
+  {% set c1_win = series.winner == 'c1' %}
+  {% set c2_win = series.winner == 'c2' %}
   <div style="border:1px solid var(--hairline-2);background:var(--panel-2);padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
     <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;color:var(--text-dim)">SERIES RESULT</span>
     <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+      {# C1 logo #}
+      {% if series.c1_logo %}
+        <img src="{{ series.c1_logo }}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;flex-shrink:0">
+      {% endif %}
       <span style="font-family:var(--font-display);font-weight:700;font-size:18px;
-                   color:{{ 'var(--magenta)' if series.winner == 'HOME' else 'var(--text-mute)' }}">
-        {{ series.home.name }}
+                   color:{{ 'var(--magenta)' if c1_win else 'var(--text-mute)' }}">
+        {{ series.c1_name }}
       </span>
       <span style="font-family:var(--font-display);font-weight:700;font-size:28px;
-                   font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:10px">
-        <span style="color:{{ 'var(--magenta)' if series.winner == 'HOME' else 'var(--text-mute)' }}">{{ series.home_wins }}</span>
+                   font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:10px;margin:0 8px">
+        <span style="color:{{ 'var(--magenta)' if c1_win else ('var(--lime)' if not series.winner else 'var(--text-mute)') }}">{{ series.c1_wins }}</span>
         <span style="color:var(--text-dim);font-size:18px">–</span>
-        <span style="color:{{ 'var(--cyan)' if series.winner == 'AWAY' else 'var(--text-mute)' }}">{{ series.away_wins }}</span>
+        <span style="color:{{ 'var(--cyan)' if c2_win else ('var(--lime)' if not series.winner else 'var(--text-mute)') }}">{{ series.c2_wins }}</span>
       </span>
       <span style="font-family:var(--font-display);font-weight:700;font-size:18px;
-                   color:{{ 'var(--cyan)' if series.winner == 'AWAY' else 'var(--text-mute)' }}">
-        {{ series.away.name }}
+                   color:{{ 'var(--cyan)' if c2_win else 'var(--text-mute)' }}">
+        {{ series.c2_name }}
       </span>
+      {% if series.c2_logo %}
+        <img src="{{ series.c2_logo }}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;flex-shrink:0">
+      {% endif %}
+      {# Status chip #}
+      {% if series.winner %}
+        {% set winner_name = series.c1_name if c1_win else series.c2_name %}
+        <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;
+                     padding:3px 9px;border:1px solid var(--magenta-dim);color:var(--magenta);
+                     background:var(--magenta-soft);margin-left:4px">SERIES WIN</span>
+      {% else %}
+        <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;
+                     padding:3px 9px;border:1px solid var(--cyan-dim);color:var(--cyan);
+                     background:var(--cyan-soft);margin-left:4px">IN PROGRESS</span>
+      {% endif %}
     </div>
-    {# Game selector tabs #}
+    {# Game N anchor links #}
     <div style="display:flex;align-items:center;gap:6px">
       {% for r in all_recaps %}
       <a href="#game-{{ r._game_number }}"

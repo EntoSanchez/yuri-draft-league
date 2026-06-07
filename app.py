@@ -2799,20 +2799,25 @@ def match_recap(match_id):
             except Exception:
                 pass
 
-    # Build series summary for BO3
+    # Build series summary for BO3.
+    # Each game's recap labels its winner as "HOME" (build_recap always does this),
+    # so we cannot use totals.winner to count wins per coach across games.
+    # Instead we count from match_games.winner_coach_id which holds the DB coach ID.
     series = None
     if len(all_recaps) > 1:
-        home_wins = sum(1 for r in all_recaps if r.get("totals", {}).get("winner") == "HOME")
-        away_wins = sum(1 for r in all_recaps if r.get("totals", {}).get("winner") == "AWAY")
-        series_winner = "HOME" if home_wins > away_wins else ("AWAY" if away_wins > home_wins else None)
-        home_team = all_recaps[0].get("home", {})
-        away_team = all_recaps[0].get("away", {})
+        c1_id = match.get("c1_id") or match.get("coach1_id")
+        c2_id = match.get("c2_id") or match.get("coach2_id")
+        c1_wins = sum(1 for g in games if g.get("recap_json") and g.get("winner_coach_id") == c1_id)
+        c2_wins = sum(1 for g in games if g.get("recap_json") and g.get("winner_coach_id") == c2_id)
+        series_winner = "c1" if c1_wins > c2_wins else ("c2" if c2_wins > c1_wins else None)
         series = {
-            "home_wins": home_wins,
-            "away_wins": away_wins,
-            "winner": series_winner,
-            "home": home_team,
-            "away": away_team,
+            "c1_wins": c1_wins,
+            "c2_wins": c2_wins,
+            "winner": series_winner,   # "c1", "c2", or None (tied/in-progress)
+            "c1_name": match.get("c1_team", ""),
+            "c2_name": match.get("c2_team", ""),
+            "c1_logo": match.get("c1_logo"),
+            "c2_logo": match.get("c2_logo"),
             "games": len(all_recaps),
         }
 
