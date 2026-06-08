@@ -59,6 +59,14 @@
               <select class="field" data-set><option value="">— choose preset set —</option></select>
               <button class="save-set" data-act="save-set" title="Save current build as a custom set">★</button>
             </div>
+            <div class="league-team-line" style="display:flex;gap:6px;align-items:center">
+              <select class="field" data-league-team style="flex:1;min-width:0">
+                <option value="">— League Team —</option>
+              </select>
+              <select class="field" data-league-mon style="flex:1;min-width:0;display:none">
+                <option value="">— Pokémon —</option>
+              </select>
+            </div>
             <div class="type-tera">
               <div class="types" data-types></div>
               <select class="field" data-tera style="width:88px">${typeOpts}</select>
@@ -109,6 +117,38 @@
     }
 
     wire() {
+      // ── League team picker ──
+      const teamSel = this.q('[data-league-team]');
+      const monSel  = this.q('[data-league-mon]');
+      if (!root._calcTeamsCache) root._calcTeamsCache = null;
+      const loadTeams = () => {
+        if (root._calcTeamsCache) { populateTeams(root._calcTeamsCache); return; }
+        fetch('/api/calc/teams').then(r => r.json()).then(data => {
+          root._calcTeamsCache = data;
+          populateTeams(data);
+        }).catch(() => {});
+      };
+      const populateTeams = (data) => {
+        teamSel.innerHTML = '<option value="">— League Team —</option>' +
+          data.map(t => `<option value="${t.id}">${t.team} (${t.coach})</option>`).join('');
+      };
+      loadTeams();
+      teamSel.addEventListener('change', () => {
+        const id = parseInt(teamSel.value);
+        const team = (root._calcTeamsCache || []).find(t => t.id === id);
+        if (!team) { monSel.style.display = 'none'; monSel.innerHTML = '<option value="">— Pokémon —</option>'; return; }
+        monSel.innerHTML = '<option value="">— Pokémon —</option>' +
+          team.pokemon.map(p => `<option value="${p}">${p}</option>`).join('');
+        monSel.style.display = '';
+      });
+      monSel.addEventListener('change', () => {
+        const name = monSel.value;
+        if (name) {
+          this.combos.species.setValue(name);
+          this.setSpecies(name, true);
+        }
+      });
+
       // species combo
       this.combos.species = new Combo(this.q('[data-species]'), {
         placeholder: 'Search Pokémon…',

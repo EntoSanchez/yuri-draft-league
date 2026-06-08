@@ -5622,5 +5622,31 @@ def damage_calc_assets(filename):
     return send_from_directory(_CALC_DIR, filename)
 
 
+@app.route("/api/calc/teams")
+def api_calc_teams():
+    """Return all league teams with their current-season drafted Pokémon roster for the damage calc team picker."""
+    with get_db() as db:
+        coaches = db.execute(
+            "SELECT id, team_name, coach_name, pool, logo_url FROM coaches ORDER BY pool, team_name"
+        ).fetchall()
+
+        teams = []
+        for c in coaches:
+            mons = [r["pokemon_name"] for r in db.execute(
+                "SELECT pokemon_name FROM pokemon_roster WHERE coach_id=? ORDER BY pokemon_name",
+                (c["id"],)
+            ).fetchall()]
+            if mons:
+                teams.append({
+                    "id": c["id"],
+                    "team": c["team_name"],
+                    "coach": c["coach_name"],
+                    "pool": c["pool"] or "",
+                    "logo": c["logo_url"] or "",
+                    "pokemon": mons,
+                })
+    return jsonify(teams)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
