@@ -137,6 +137,11 @@
         const id = parseInt(teamSel.value);
         const team = (root._calcTeamsCache || []).find(t => t.id === id);
         if (!team) { monSel.style.display = 'none'; monSel.innerHTML = '<option value="">— Pokémon —</option>'; return; }
+        if (!team.pokemon || !team.pokemon.length) {
+          monSel.innerHTML = '<option value="">No draft picks yet</option>';
+          monSel.style.display = '';
+          return;
+        }
         monSel.innerHTML = '<option value="">— Pokémon —</option>' +
           team.pokemon.map(p => `<option value="${p}">${p}</option>`).join('');
         monSel.style.display = '';

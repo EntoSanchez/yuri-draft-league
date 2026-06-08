@@ -5633,21 +5633,24 @@ def api_calc_teams():
             "SELECT id, team_name, coach_name, pool, logo_url FROM coaches ORDER BY pool, team_name"
         ).fetchall()
 
+        # Fetch all rosters in one query (much faster than N+1 per coach)
+        all_roster = db.execute(
+            "SELECT coach_id, pokemon_name FROM pokemon_roster ORDER BY pokemon_name"
+        ).fetchall()
+        roster_map = {}
+        for r in all_roster:
+            roster_map.setdefault(r["coach_id"], []).append(r["pokemon_name"])
+
         teams = []
         for c in coaches:
-            mons = [r["pokemon_name"] for r in db.execute(
-                "SELECT pokemon_name FROM pokemon_roster WHERE coach_id=? ORDER BY pokemon_name",
-                (c["id"],)
-            ).fetchall()]
-            if mons:
-                teams.append({
-                    "id": c["id"],
-                    "team": c["team_name"],
-                    "coach": c["coach_name"],
-                    "pool": c["pool"] or "",
-                    "logo": c["logo_url"] or "",
-                    "pokemon": mons,
-                })
+            teams.append({
+                "id": c["id"],
+                "team": c["team_name"],
+                "coach": c["coach_name"],
+                "pool": c["pool"] or "",
+                "logo": c["logo_url"] or "",
+                "pokemon": roster_map.get(c["id"], []),
+            })
     return jsonify(teams)
 
 
