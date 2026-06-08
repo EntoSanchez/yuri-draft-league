@@ -5612,8 +5612,11 @@ _CALC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "
 @app.route("/damage-calc")
 @app.route("/damage-calc/")
 def damage_calc():
-    """Serve the standalone neon-noir damage calculator."""
-    return send_from_directory(_CALC_DIR, "index.html")
+    """Render the damage calculator inside the site's nav/chrome."""
+    with get_db() as db:
+        settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
+    return render_template("damage_calc.html",
+                           league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
 @app.route("/damage-calc/<path:filename>")
