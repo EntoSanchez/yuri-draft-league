@@ -5606,30 +5606,20 @@ def battle_prep():
     )
 
 
+_CALC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc")
+
+
 @app.route("/damage-calc")
+@app.route("/damage-calc/")
 def damage_calc():
-    # Serve the standalone calc HTML directly — it has its own nav and full layout.
-    return send_from_directory(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
-        "index.html"
-    )
-
-
-@app.route("/damage-calc/static/<path:filename>")
-def damage_calc_static(filename):
-    return send_from_directory(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
-        filename
-    )
+    """Serve the standalone neon-noir damage calculator."""
+    return send_from_directory(_CALC_DIR, "index.html")
 
 
 @app.route("/damage-calc/<path:filename>")
 def damage_calc_assets(filename):
-    # Relative asset paths (styles/, js/, data/, tweaks-panel.jsx) resolve here.
-    return send_from_directory(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
-        filename
-    )
+    """Serve all calc assets: styles/, js/, data/sets/, tweaks-panel.jsx."""
+    return send_from_directory(_CALC_DIR, filename)
 
 
 if __name__ == "__main__":

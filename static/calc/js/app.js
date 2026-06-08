@@ -98,7 +98,7 @@
       if (root[v]) { this.setsLoaded[genNum] = true; return Promise.resolve(); }
       return new Promise((resolve) => {
         const sc = document.createElement('script');
-        sc.src = 'data/sets/gen' + genNum + '.js';
+        sc.src = '/damage-calc/data/sets/gen' + genNum + '.js';
         sc.onload = () => { this.setsLoaded[genNum] = true; resolve(); };
         sc.onerror = () => { resolve(); };
         document.head.appendChild(sc);
