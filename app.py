@@ -5608,13 +5608,24 @@ def battle_prep():
 
 @app.route("/damage-calc")
 def damage_calc():
-    with get_db() as db:
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
-    return render_template("damage_calc.html", league_name=settings.get("league_name", "Pokemon Draft League"))
+    # Serve the standalone calc HTML directly — it has its own nav and full layout.
+    return send_from_directory(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
+        "index.html"
+    )
 
 
 @app.route("/damage-calc/static/<path:filename>")
 def damage_calc_static(filename):
+    return send_from_directory(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
+        filename
+    )
+
+
+@app.route("/damage-calc/<path:filename>")
+def damage_calc_assets(filename):
+    # Relative asset paths (styles/, js/, data/, tweaks-panel.jsx) resolve here.
     return send_from_directory(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc"),
         filename
