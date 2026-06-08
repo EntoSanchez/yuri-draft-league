@@ -108,13 +108,18 @@
           `<td><div class="pt-mon"><img class="pt-spr" alt="" src="${chain[0]}" data-fb="${fb}" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb='';}else{this.style.visibility='hidden';}">
              <div><div class="pt-name">${esc(r.species)}</div><div class="pt-set">${esc(r.setName)}</div></div></div></td>` +
           `<td><div class="pt-move"><span class="dot" style="background:${tcolor}"></span>${esc(r.moveName)}</div>
-             <div class="pt-bar" style="margin-top:5px"><i style="width:${w}%"></i></div></td>` +
+             <div class="pt-bar" style="margin-top:5px"><i data-fill="${w.toFixed(2)}"></i></div></td>` +
           `<td style="text-align:right"><div class="pt-pct">${r.pct.toFixed(1)}%</div><div class="pt-ko ko ${r.koClass}">${esc(shortKO(r.ko))}</div></td>`;
         tr.addEventListener('click', () => this.onPick && this.onPick(r.species, this.mode));
         frag.appendChild(tr);
       });
       body.innerHTML = '';
       body.appendChild(frag);
+      requestAnimationFrame(() => {
+        body.querySelectorAll('i[data-fill]').forEach(el => {
+          el.style.width = el.dataset.fill + '%';
+        });
+      });
     }
   }
   function shortKO(ko) { return ko ? ko.replace(/\s*\(after.*?\)/, '').replace(/after.*$/, '').trim() : ''; }

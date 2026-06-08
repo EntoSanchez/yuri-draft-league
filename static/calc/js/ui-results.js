@@ -48,14 +48,17 @@
     }
 
     renderCol(col, atkState, results, wrap) {
-      const accent = col === 'a' ? 'var(--atk)' : 'var(--def)';
+      const accent    = col === 'a' ? 'var(--atk)'     : 'var(--def)';
+      const accentDim = col === 'a' ? 'var(--atk-dim)' : 'var(--def-dim)';
       wrap.innerHTML = '';
+      const fills = [];   // {el, w} — widths applied after insertion so CSS transition fires 0→w
       results.forEach((r, i) => {
         const filled = !!atkState.moves[i];
         const row = document.createElement('div');
         const isSel = this.selected.col === col && this.selected.i === i && r && (r.ok || r.status || r.immune);
         row.className = 'res-row' + (filled ? '' : ' empty') + (isSel ? ' sel' : '');
-        row.style.setProperty('--accent', accent);
+        row.style.setProperty('--accent',     accent);
+        row.style.setProperty('--accent-dim', accentDim);
         row.style.gridTemplateColumns = '116px 1fr 112px';
         if (!filled) {
           row.innerHTML = `<div class="res-move"><span class="mname" style="color:var(--text-dim)">Move ${i + 1}</span></div><div></div><div></div>`;
@@ -66,7 +69,8 @@
         let mid = '', pct = '';
         if (r && r.ok) {
           const w = Math.min(100, r.pctMax);
-          mid = `<div class="res-bar-wrap"><div class="res-bar"><i style="width:${w}%;background:linear-gradient(90deg,${accent}88,${accent})"></i></div>
+          // Bar fill width is set to 0 in CSS; we animate to `w` via requestAnimationFrame after insertion.
+          mid = `<div class="res-bar-wrap"><div class="res-bar"><i data-fill="${w.toFixed(2)}"></i></div>
               <div class="res-sub">${r.minD}–${r.maxD} dmg</div></div>`;
           pct = `<div class="res-pct"><span class="range" style="color:${accent}">${r.pctMin.toFixed(1)}–${r.pctMax.toFixed(1)}%</span><span class="ko ${r.koClass}">${esc(shortKO(r.ko))}</span></div>`;
         } else if (r && r.status) {
@@ -81,6 +85,12 @@
         row.innerHTML = `<div class="res-move"><span class="mtype" style="background:${tcolor}"></span><span class="mname">${esc(atkState.moves[i])}</span></div>` + mid + pct;
         row.addEventListener('click', () => { this.selected = { col, i }; this.render(this._a, this._b, this._resA, this._resB); });
         wrap.appendChild(row);
+      });
+      // Trigger bar-fill animation: elements must already be in DOM with width:0 before we set target width.
+      requestAnimationFrame(() => {
+        wrap.querySelectorAll('i[data-fill]').forEach(el => {
+          el.style.width = el.dataset.fill + '%';
+        });
       });
     }
 
