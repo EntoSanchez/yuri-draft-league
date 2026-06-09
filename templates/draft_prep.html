@@ -1525,8 +1525,8 @@ function updateStats(picked) {
         </div>
         <div style="text-align:right;"><div style="font-family:var(--fm);font-size:14px;font-weight:700;color:var(--cyan);">${p.bst||'—'}</div><div style="font-size:9px;color:var(--text-dim);">BST</div></div>
       </div>
-      <div class="space-y-1.5" id="sb-${p.name.replace(/\s/g,'_')}"></div>`;
-    const bars = card.querySelector(`#sb-${p.name.replace(/\s/g,'_')}`);
+      <div class="space-y-1.5" id="sb-${p.name.replace(/\s/g,'_').replace(/[^\w-]/g,'')}"></div>`;
+    const bars = card.querySelector(`#sb-${p.name.replace(/\s/g,'_').replace(/[^\w-]/g,'')}`);
     STAT_DEFS.forEach(s => {
       const val = p[s.key]||0;
       const pct = Math.min(100, Math.round(val/s.max*100));
