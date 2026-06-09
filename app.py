@@ -143,6 +143,7 @@ def _name_to_slug(name):
         "oricorio":              "oricorio-baile",
         "shaymin":               "shaymin-land",
         "zygarde":               "zygarde-50",
+        "zygarde 10%":           "zygarde-10",
         "paldean tauros aqua":   "tauros-paldea-aqua-breed",
         "paldean tauros blaze":  "tauros-paldea-blaze-breed",
         "paldean tauros":        "tauros-paldea-combat-breed",
