@@ -22,7 +22,12 @@
     template() {
       const roleLabel = this.role === 'atk' ? 'ATTACKER' : 'DEFENDER';
       const idx = this.role === 'atk' ? '01' : '02';
-      const natureOpts = D.NATURE_NAMES.map(n => `<option value="${n}">${n}</option>`).join('');
+      const STAT_LBL = { atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' };
+      const natureOpts = D.NATURE_NAMES.map(n => {
+        const [plus, minus] = D.NATURES[n];
+        const lbl = plus ? `${n}  +${STAT_LBL[plus]} / −${STAT_LBL[minus]}` : `${n}`;
+        return `<option value="${n}">${lbl}</option>`;
+      }).join('');
       const statusOpts = D.STATUSES.map(s => `<option value="${s.v}">${s.label}</option>`).join('');
       const typeOpts = ['<option value="">— Tera —</option>'].concat(D.TYPES.map(t => `<option value="${t}">${t}</option>`)).join('');
       const statRows = D.STATS.map(s => `
