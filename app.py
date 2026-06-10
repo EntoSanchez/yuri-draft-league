@@ -5319,6 +5319,9 @@ def admin_draft():
     if active_session:
         snake_ids = json.loads(active_session["snake_order"] or "[]")
         active_snake = [coaches_map[cid] for cid in snake_ids if cid in coaches_map]
+        snake_pos = {cid: i for i, cid in enumerate(snake_ids)}
+        coaches_a = sorted(coaches_a, key=lambda c: snake_pos.get(c["id"], 999))
+        coaches_b = sorted(coaches_b, key=lambda c: snake_pos.get(c["id"], 999))
 
         with get_db() as db:
             picks = db.execute(
