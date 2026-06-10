@@ -4535,12 +4535,10 @@ def draft_live():
         picked_names_a = {p["pokemon_name"] for p in picks if p["coach_id"] in pool_a_ids}
         picked_names_b = {p["pokemon_name"] for p in picks if p["coach_id"] in pool_b_ids}
 
-        def _make_avail(picked_names, is_first):
+        def _make_avail(picked_names):
             result = []
             for p in all_draft:
                 if p["name"] in picked_names:
-                    continue
-                if is_first and p["name"] in mega_names_set:
                     continue
                 db_label = p["tier_label"] or ""
                 pts = p["points"] or 0
@@ -4553,8 +4551,8 @@ def draft_live():
                 result.append(dict(p, tier_label=tier_label))
             return result
 
-        avail_pokemon_a = _make_avail(picked_names_a, current_pick_a == 1)
-        avail_pokemon_b = _make_avail(picked_names_b, current_pick_b == 1)
+        avail_pokemon_a = _make_avail(picked_names_a)
+        avail_pokemon_b = _make_avail(picked_names_b)
 
         # Build grid from pokemon_roster (full roster) + ticket_used from current session
         pick_info_map = {(p["coach_id"], p["pokemon_name"]): p for p in picks}
