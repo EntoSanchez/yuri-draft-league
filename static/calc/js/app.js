@@ -217,8 +217,9 @@
       } else if (this.mode === 'Allv1') {
         this.pool.setData('Allv1', b, field, this.format, this.state.gen);
       } else {
-        const resA = [0, 1, 2, 3].map(i => a.moves[i] ? E.run(a, b, a.moves[i], field, a.moveOpts && a.moveOpts[i]) : { empty: true });
-        const resB = [0, 1, 2, 3].map(i => b.moves[i] ? E.run(b, a, b.moves[i], field, b.moveOpts && b.moveOpts[i]) : { empty: true });
+        const meta = (this.mode === 'champsMeta') ? 'champions' : null;
+        const resA = [0, 1, 2, 3].map(i => a.moves[i] ? E.run(a, b, a.moves[i], field, a.moveOpts && a.moveOpts[i], meta) : { empty: true });
+        const resB = [0, 1, 2, 3].map(i => b.moves[i] ? E.run(b, a, b.moves[i], field, b.moveOpts && b.moveOpts[i], meta) : { empty: true });
         this.results.render(a, b, resA, resB);
       }
       this.save();

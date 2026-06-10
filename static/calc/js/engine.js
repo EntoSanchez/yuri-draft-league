@@ -106,8 +106,36 @@
     });
   }
 
+  // Champions Meta move overrides (Pokemon Champions game mechanics)
+  const CHAMPS_OVERRIDES = {
+    'Apple Acid':       { bp: 90 },
+    'Beak Blast':       { bp: 120 },
+    'Bone Rush':        { bp: 30 },
+    'Fire Lash':        { bp: 90 },
+    'First Impression': { bp: 100 },
+    'Grav Apple':       { bp: 90 },
+    'Infernal Parade':  { bp: 65 },
+    'Mountain Gale':    { bp: 120 },
+    'Night Daze':       { bp: 90 },
+    'Psyshield Bash':   { bp: 90 },
+    'Spirit Shackle':   { bp: 90 },
+    'Trop Kick':        { bp: 85 },
+    'Snap Trap':        { type: 'Steel' },
+    'Crush Claw':       { slicing: true },
+    'Shadow Claw':      { slicing: true },
+    'Dragon Claw':      { slicing: true },
+  };
+
+  function applyChampsMeta(move) {
+    const o = CHAMPS_OVERRIDES[move.name];
+    if (!o) return;
+    if (o.bp    !== undefined) move.bp   = o.bp;
+    if (o.type  !== undefined) move.type = o.type;
+    if (o.slicing) { try { move.flags.slicing = true; } catch (e) {} }
+  }
+
   // Main: returns a normalized result for one move, or {error} / {empty}
-  function run(atkState, defState, moveName, fieldState, moveOpt) {
+  function run(atkState, defState, moveName, fieldState, moveOpt, meta) {
     if (!moveName) return { empty: true };
     try {
       const attacker = buildPokemon(atkState);
@@ -118,6 +146,7 @@
         isCrit: !!mo.isCrit, useZ: !!mo.useZ, useMax: !!mo.useMax,
         hits: mo.hits || undefined
       });
+      if (meta === 'champions') applyChampsMeta(move);
       const field = buildField(fieldState);
       const result = calculate(GEN, attacker, defender, move, field);
 
