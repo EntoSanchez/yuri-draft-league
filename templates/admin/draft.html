@@ -34,10 +34,10 @@
 .ad-panel { background:var(--panel-2);border:1px solid var(--hairline);border-radius:2px; }
 .ad-pick-panel { background:var(--panel);border:1px solid var(--magenta-dim);border-radius:2px;padding:14px;box-shadow:0 0 24px -10px var(--magenta-dim); }
 /* Grid rows — same as draft_live */
-.dl-row { display:grid;grid-template-columns:3px 30px 110px 1fr;align-items:center;gap:0;padding:0 10px 0 0;border-bottom:1px solid var(--hairline); }
+.dl-row { display:grid;grid-template-columns:3px 80px 1fr;align-items:center;gap:0;padding:0 12px 0 0;border-bottom:1px solid var(--hairline); }
 .dl-row:last-child { border-bottom:none; }
-.dl-row-inner { padding:7px 0 7px 8px; }
-.dl-cell { width:38px;height:50px;flex-shrink:0;border-radius:1px;position:relative; }
+.dl-row-inner { padding:10px 0 10px 11px; }
+.dl-cell { width:56px;height:76px;flex-shrink:0;border-radius:1px;position:relative; }
 .dl-cell-empty { display:flex;align-items:center;justify-content:center; }
 .dl-cell-filled { display:flex;flex-direction:column;padding:2px; }
 /* Sortable drag handle */
@@ -375,19 +375,16 @@ function skipPick(pool, sid) {
       {% set uber_list = [] %}
       {% for tn in tier_order %}{% if 'Uber' in tn %}{% for p in grid_pool.get(tn, {}).get(coach.id, []) %}{% if uber_list.append(p) %}{% endif %}{% endfor %}{% endif %}{% endfor %}
 
-      <div class="dl-row" style="background:{% if is_on_clock %}rgba(255,42,138,.04){% else %}transparent{% endif %};">
-        <div style="align-self:stretch;background:{% if is_on_clock %}{{ pool_color }}{% elif is_last %}var(--text-mute){% else %}transparent{% endif %};{% if is_on_clock %}box-shadow:0 0 8px {{ pool_color }};{% endif %}"></div>
-        <div class="dl-row-inner" style="padding-right:0;">
-          {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:26px;height:26px;object-fit:contain;border-radius:2px;display:block;" alt="">
-          {% else %}<div style="width:26px;height:26px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
-        </div>
-        <div class="dl-row-inner" style="min-width:0;">
-          <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:{% if is_on_clock %}{{ pool_color }}{% else %}var(--text){% endif %};text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:105px;">{{ coach.team_name }}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ coach.coach_name }}</div>
-          {% if cm == 'points' and cds %}<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:{{ pool_color }};margin-top:1px;">{{ cds.spent or 0 }}/{{ cds.budget or 70 }}pt</div>{% endif %}
+      <div class="dl-row" style="background:transparent;">
+        <div style="align-self:stretch;background:{% if is_last %}var(--cyan){% else %}transparent{% endif %};"></div>
+        <div class="dl-row-inner" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-right:4px;">
+          {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:48px;height:48px;object-fit:contain;border-radius:2px;display:block;" alt="">
+          {% else %}<div style="width:48px;height:48px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
+          <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;text-align:center;line-height:1.2;">{{ coach.coach_name }}</div>
+          {% if cm == 'points' and cds %}<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);line-height:1;">{{ cds.spent or 0 }}<span style="color:var(--text-dim);">/{{ cds.budget or 70 }}</span></div>{% endif %}
         </div>
         <div class="dl-row-inner" style="display:flex;align-items:center;overflow-x:auto;padding-right:4px;">
-          <div style="display:flex;gap:2px;flex-shrink:0;">
+          <div style="display:flex;gap:4px;flex-shrink:0;">
             {% for tier_name, pick in slot_list %}
             {% set sc = TC.get(tier_name,'#9a9aa8') %}
             {% set sl = TS.get(tier_name,'—') %}
@@ -403,20 +400,20 @@ function skipPick(pool, sid) {
                 {% if cm=='points' %}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>{% endif %}
               </div>
               <div style="flex:1;display:flex;align-items:center;justify-content:center;">
-                <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:26px;height:26px;object-fit:contain;" alt="">
+                <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:40px;height:40px;object-fit:contain;" alt="">
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--text-mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ pick.pokemon_name.split(' ')[-1] }}</div>
             </div>
             {% endif %}
             {% endfor %}
           </div>
-          <div style="width:1px;height:38px;background:var(--hairline);margin:0 6px;flex-shrink:0;"></div>
-          <div style="display:flex;gap:2px;flex-shrink:0;">
+          <div style="width:1px;height:58px;background:var(--hairline);margin:0 7px;flex-shrink:0;"></div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
             {% for i in range(2) %}
             {% if i < uber_list|length %}{% set pick = uber_list[i] %}
             <div class="dl-cell dl-cell-filled" style="border:1px solid #ffc94d;background:var(--panel-2);" title="{{ pick.pokemon_name }}">
               <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#ffc94d;">UBR</span></div>
-              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:26px;height:26px;object-fit:contain;" alt=""></div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:40px;height:40px;object-fit:contain;" alt=""></div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--text-mute);text-align:center;overflow:hidden;text-overflow:ellipsis;">{{ pick.pokemon_name.split(' ')[-1] }}</div>
             </div>
             {% else %}
