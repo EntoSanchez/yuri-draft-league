@@ -43,15 +43,15 @@
 }
 /* Team row — 4-col grid matching wireframe */
 .dl-row {
-  display:grid;grid-template-columns:3px 48px 168px 1fr;
+  display:grid;grid-template-columns:3px 80px 1fr;
   align-items:center;gap:0;
-  padding:0 14px 0 0;border-bottom:1px solid var(--hairline);
+  padding:0 12px 0 0;border-bottom:1px solid var(--hairline);
 }
 .dl-row:last-child { border-bottom:none; }
-.dl-row-inner { padding:11px 0 11px 12px; }
+.dl-row-inner { padding:10px 0 10px 11px; }
 /* Slot cell */
 .dl-cell {
-  width:64px;height:84px;flex-shrink:0;
+  width:56px;height:76px;flex-shrink:0;
   border-radius:1px;position:relative;
 }
 .dl-cell-empty {
@@ -175,27 +175,13 @@
       {# Accent bar #}
       <div style="align-self:stretch;background:{% if is_on_clock %}var(--magenta){% elif is_last %}var(--cyan){% else %}transparent{% endif %};{% if is_on_clock %}box-shadow:0 0 10px var(--magenta-dim);{% endif %}"></div>
 
-      {# Logo #}
-      <div class="dl-row-inner" style="padding-right:0;">
-        {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:42px;height:42px;object-fit:contain;border-radius:2px;display:block;" alt="">
-        {% else %}<div style="width:42px;height:42px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
-      </div>
-
-      {# Team info #}
-      <div class="dl-row-inner" style="min-width:0;">
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
-          <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:{% if is_on_clock %}var(--magenta){% else %}var(--text){% endif %};text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;">{{ coach.team_name }}</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;flex-shrink:0;{% if cm=='tier_tickets' %}color:var(--cyan);border:1px solid var(--cyan-dim);background:var(--cyan-soft);{% elif cm=='points' %}color:var(--magenta);border:1px solid var(--magenta-dim);background:var(--magenta-soft);{% else %}color:var(--text-mute);border:1px solid var(--hairline);{% endif %}">{{ 'TIR' if cm=='tier_tickets' else ('PTS' if cm=='points' else 'LGY') }}</span>
-        </div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:148px;margin-top:1px;">{{ coach.coach_name }}</div>
+      {# Logo + coach name stacked #}
+      <div class="dl-row-inner" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-right:4px;">
+        {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:48px;height:48px;object-fit:contain;border-radius:2px;display:block;" alt="">
+        {% else %}<div style="width:48px;height:48px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:{% if is_on_clock %}var(--magenta){% else %}var(--text-mute){% endif %};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;text-align:center;line-height:1.2;">{{ coach.coach_name }}</div>
         {% if cm == 'points' and cds %}
-        <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-variant-numeric:tabular-nums;">{{ cds.spent or 0 }}<span style="color:var(--text-dim);">/{{ cds.budget or 70 }}</span></span>
-          <div style="width:36px;height:2px;background:rgba(255,255,255,.06);border-radius:1px;overflow:hidden;">
-            {% set pct = [(((cds.spent or 0)/(cds.budget or 70))*100)|int,100]|min %}
-            <div style="width:{{ pct }}%;height:100%;background:var(--magenta);"></div>
-          </div>
-        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-variant-numeric:tabular-nums;line-height:1;">{{ cds.spent or 0 }}<span style="color:var(--text-dim);">/{{ cds.budget or 70 }}</span></div>
         {% endif %}
       </div>
 
@@ -218,7 +204,7 @@
               {% elif cm=='tier_tickets' and pick.ticket_used and pick.ticket_used!='uber' %}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:#a78bfa;font-weight:600;">{{ pick.ticket_used[:2] }}</span>{% endif %}
             </div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;">
-              <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:46px;height:46px;object-fit:contain;" alt="">
+              <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:40px;height:40px;object-fit:contain;" alt="">
             </div>
             <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ pick.pokemon_name.split(' ')[-1] }}</div>
             {% if pick.is_tera_captain and mechanic_tera=='1' %}<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:#22d3ee;"></div>{% endif %}
@@ -229,7 +215,7 @@
         </div>
 
         {# Uber separator + cells #}
-        <div style="width:1px;height:64px;background:var(--hairline);margin:0 8px;flex-shrink:0;"></div>
+        <div style="width:1px;height:58px;background:var(--hairline);margin:0 7px;flex-shrink:0;"></div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
           {% for i in range(2) %}
           {% if i < uber_list|length %}{% set pick = uber_list[i] %}
@@ -242,7 +228,7 @@
               <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>
             </div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;">
-              <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:46px;height:46px;object-fit:contain;" alt="">
+              <img src="{{ pokemon_sprite_url(pick.pokemon_name) }}" onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(pick.pokemon_name) }}';" style="width:40px;height:40px;object-fit:contain;" alt="">
             </div>
             <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ pick.pokemon_name.split(' ')[-1] }}</div>
           </div>
