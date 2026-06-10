@@ -125,13 +125,9 @@
       {% endif %}
     </div>
 
-    {# Right — ON_CLOCK #}
+    {# Right — round status #}
     <div style="text-align:right;min-width:80px;">
-      {% if pool_slot and pool_coach_id in coaches_map %}
-      {% set oc = coaches_map[pool_coach_id] %}
-      <div class="dl-ey">// ON_CLOCK</div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--magenta);margin-top:2px;text-transform:uppercase;white-space:nowrap;">{{ oc.get('team_name','?') }}</div>
-      {% else %}
+      {% if not pool_slot %}
       <div class="dl-ey dim">// COMPLETE</div>
       {% endif %}
     </div>
@@ -170,16 +166,16 @@
     {% for tn in tier_order %}{% if 'Uber' in tn %}{% for p in grid_pool.get(tn, {}).get(coach.id, []) %}{% if uber_list.append(p) %}{% endif %}{% endfor %}{% endif %}{% endfor %}
     {% set uber_list = uber_list | sort(attribute='points', reverse=True) %}
 
-    <div class="dl-row" style="background:{% if is_on_clock %}rgba(255,61,151,.045){% else %}transparent{% endif %};">
+    <div class="dl-row" style="background:transparent;">
 
-      {# Accent bar #}
-      <div style="align-self:stretch;background:{% if is_on_clock %}var(--magenta){% elif is_last %}var(--cyan){% else %}transparent{% endif %};{% if is_on_clock %}box-shadow:0 0 10px var(--magenta-dim);{% endif %}"></div>
+      {# Accent bar — cyan for last pick only #}
+      <div style="align-self:stretch;background:{% if is_last %}var(--cyan){% else %}transparent{% endif %};"></div>
 
       {# Logo + coach name stacked #}
       <div class="dl-row-inner" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-right:4px;">
         {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:48px;height:48px;object-fit:contain;border-radius:2px;display:block;" alt="">
         {% else %}<div style="width:48px;height:48px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
-        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:{% if is_on_clock %}var(--magenta){% else %}var(--text-mute){% endif %};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;text-align:center;line-height:1.2;">{{ coach.coach_name }}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;text-align:center;line-height:1.2;">{{ coach.coach_name }}</div>
         {% if cm == 'points' and cds %}
         <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-variant-numeric:tabular-nums;line-height:1;">{{ cds.spent or 0 }}<span style="color:var(--text-dim);">/{{ cds.budget or 70 }}</span></div>
         {% endif %}
