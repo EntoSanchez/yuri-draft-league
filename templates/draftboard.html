@@ -413,12 +413,28 @@
   /* ── Stat tooltip ── */
   #poke-tooltip {
     display: none; position: fixed; z-index: 9990;
-    pointer-events: none; width: 230px;
+    pointer-events: none; width: 260px;
     padding: 10px 12px 8px;
     background: var(--panel-2);
     border: 1px solid var(--hairline-2);
     box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(34,225,255,.04) inset;
   }
+  .ptt-chip {
+    font: 600 8px/1.4 var(--font-mono);
+    padding: 1px 5px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    color: var(--text-dim);
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+  .ptt-chip.match {
+    background: rgba(61,229,255,0.12);
+    border-color: var(--cyan-dim);
+    color: var(--cyan);
+    font-weight: 700;
+  }
+  #ptt-moves { scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent; }
 
   /* ── List view ── */
   #boardListView {
@@ -1292,13 +1308,13 @@
 
 <!-- ── Stat tooltip ── -->
 <div id="poke-tooltip">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
     <span id="ptt-name" style="font:700 11px/1 var(--font-mono);color:var(--text);text-transform:capitalize;letter-spacing:0.02em;"></span>
-    <span id="ptt-bst"  style="font:600 9px/1 var(--font-mono);color:var(--cyan-dim);"></span>
+    <span id="ptt-meta" style="font:600 9px/1 var(--font-mono);color:var(--cyan-dim);text-align:right;white-space:nowrap;"></span>
   </div>
   <div id="ptt-types" style="display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap;"></div>
   <div id="ptt-abilities" style="margin-bottom:6px;display:flex;flex-direction:column;gap:1px;"></div>
-  <div style="display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;">
     {% for stat_key, stat_label, stat_color in [
         ('hp',  'HP',  '#f87171'),('atk', 'Atk', '#fb923c'),('def', 'Def', '#facc15'),
         ('spa', 'SpA', '#60a5fa'),('spd', 'SpD', '#4ade80'),('spe', 'Spe', '#c084fc')
@@ -1311,6 +1327,11 @@
       <span id="ptt-{{ stat_key }}-val" style="font:700 9px/1 var(--font-mono);color:{{ stat_color }};width:24px;text-align:right;flex-shrink:0;"></span>
     </div>
     {% endfor %}
+  </div>
+  <!-- Moves section -->
+  <div id="ptt-moves-wrap" style="display:none;border-top:1px solid var(--hairline);padding-top:5px;">
+    <div style="font:700 8px/1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Moves</div>
+    <div id="ptt-moves" style="display:flex;flex-wrap:wrap;gap:2px;max-height:90px;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -1831,11 +1852,19 @@ function _setBar(key, val) {
 function _showStatTip(poke, e) {
   const bst = parseInt(poke.dataset.bst || 0);
   if (!bst) { _tt.style.display = 'none'; return; }
+  const raw = (poke.dataset.name || '').replace(/-/g, ' ');
   const nameEl = document.getElementById('ptt-name');
-  const bstEl  = document.getElementById('ptt-bst');
-  const raw    = (poke.dataset.name || '').replace(/-/g, ' ');
+  const metaEl = document.getElementById('ptt-meta');
   if (nameEl) nameEl.textContent = raw.replace(/\b\w/g, c => c.toUpperCase());
-  if (bstEl)  bstEl.textContent  = 'BST ' + bst;
+  if (metaEl) {
+    const pts  = poke.dataset.pts  || '';
+    const tier = poke.dataset.tier || '';
+    metaEl.innerHTML = [
+      tier ? `<span style="opacity:0.6">${tier}</span>` : '',
+      pts  ? `<span style="color:var(--cyan)">${pts}pts</span>` : '',
+      `<span>BST ${bst}</span>`,
+    ].filter(Boolean).join(' · ');
+  }
 
   const typesEl = document.getElementById('ptt-types');
   if (typesEl) {
@@ -1862,12 +1891,28 @@ function _showStatTip(poke, e) {
   _setBar('spa', parseInt(poke.dataset.spa || 0));
   _setBar('spd', parseInt(poke.dataset.spd || 0));
   _setBar('spe', parseInt(poke.dataset.spe || 0));
+
+  // Moves section
+  const movesWrap = document.getElementById('ptt-moves-wrap');
+  const movesEl   = document.getElementById('ptt-moves');
+  const movesRaw  = (poke.dataset.moves || '').split('|').map(m => m.trim()).filter(Boolean);
+  if (movesRaw.length && movesWrap && movesEl) {
+    const query = (document.getElementById('db-move')?.value || '').trim().toLowerCase();
+    movesEl.innerHTML = movesRaw.map(m => {
+      const isMatch = query && m.toLowerCase().includes(query);
+      return `<span class="ptt-chip${isMatch ? ' match' : ''}">${m}</span>`;
+    }).join('');
+    movesWrap.style.display = 'block';
+  } else if (movesWrap) {
+    movesWrap.style.display = 'none';
+  }
+
   _tt.style.display = 'block';
   _posTip(e);
 }
 
 function _posTip(e) {
-  const W = 238, H = _tt.offsetHeight || 190;
+  const W = 268, H = _tt.offsetHeight || 220;
   let x = e.clientX + 16, y = e.clientY + 14;
   if (x + W > window.innerWidth  - 8) x = e.clientX - W - 8;
   if (y + H > window.innerHeight - 8) y = e.clientY - H - 8;
