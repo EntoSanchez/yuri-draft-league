@@ -356,7 +356,7 @@
     align-items: center;
   }
   .dp-topbar-title  { flex: 1 1 auto; }
-  .dp-topbar-actions { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+  .dp-topbar-actions { flex: 0 0 100%; flex-wrap: wrap; gap: 6px; overflow-x: auto; scrollbar-width: none; }
   .dp-plan-input    { width: 80px; min-width: 0; }
   #dp-hud {
     flex: 0 0 100%;
@@ -584,6 +584,7 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
       <input id="plan-name-input" type="text" placeholder="Plan name&hellip;" class="dp-plan-input">
       <button onclick="saveCurrentPlan()" class="dp-btn primary">&#x25B8; SAVE</button>
       <button id="dp-star-btn" onclick="toggleStarredOnly()" class="dp-btn ghost" title="Filter search to starred Pokémon only">&#x2605; Starred</button>
+      <button onclick="openShowdownExport()" class="dp-btn ghost" title="Export team as Pokémon Showdown format">&#x2197; Showdown</button>
       <button onclick="clearAllSlots()" class="dp-btn ghost">&#x21BA; CLEAR</button>
     </div>
   </div>
@@ -2072,6 +2073,56 @@ updatePanels();
 renderPlansList();
 if (isMobile()) switchMobileTab('team');
 
+// ══════════════════════════════════════════════
+//  Showdown Export
+// ══════════════════════════════════════════════
+function buildShowdownText() {
+  const lines = [];
+  slots.forEach(s => {
+    if (!s.pokemon) return;
+    const p = s.pokemon;
+    lines.push(p.name);
+    const ability = p.ability1 || p.ability2 || p.ability3 || '';
+    if (ability) lines.push(`Ability: ${ability}`);
+    if (s.tera_captain && p.type1) lines.push(`Tera Type: ${p.type1}`);
+    if (Array.isArray(p.moves) && p.moves.length) {
+      p.moves.slice(0, 4).forEach(m => { if (m) lines.push(`- ${m}`); });
+    }
+    lines.push('');
+  });
+  return lines.join('\n').trim();
+}
+
+function openShowdownExport() {
+  const text = buildShowdownText();
+  const modal = document.getElementById('sd-export-modal');
+  const ta    = document.getElementById('sd-export-ta');
+  if (!modal || !ta) return;
+  ta.value = text || '(No Pokémon added yet)';
+  modal.style.display = 'flex';
+}
+
+function closeShowdownExport() {
+  const modal = document.getElementById('sd-export-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function copyShowdownExport() {
+  const ta = document.getElementById('sd-export-ta');
+  if (!ta || !ta.value) return;
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const btn = document.getElementById('sd-copy-btn');
+    if (btn) { btn.textContent = '✓ COPIED'; setTimeout(() => { btn.textContent = 'COPY'; }, 1800); }
+  }).catch(() => {
+    ta.select();
+    document.execCommand('copy');
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeShowdownExport();
+});
+
 // Close AC on outside click
 document.addEventListener('click', (e) => {
   const dd = document.getElementById('ac-dropdown');
@@ -2080,4 +2131,24 @@ document.addEventListener('click', (e) => {
   }
 });
 </script>
+
+<!-- Showdown Export Modal -->
+<div id="sd-export-modal" onclick="if(event.target===this)closeShowdownExport()" style="display:none;position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+  <div style="background:#10101a;border:1px solid rgba(61,229,255,0.3);width:min(94vw,540px);padding:18px 20px;box-shadow:0 16px 64px rgba(0,0,0,0.8);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span style="font-family:'Chakra Petch',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#3de5ff;">// Showdown Export</span>
+      <button onclick="closeShowdownExport()" style="background:none;border:none;cursor:pointer;color:rgba(234,234,242,0.46);font-size:14px;line-height:1;padding:2px;">✕</button>
+    </div>
+    <p style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(234,234,242,0.46);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Paste into Pokémon Showdown → Import Team</p>
+    <textarea id="sd-export-ta" spellcheck="false" readonly
+      style="width:100%;height:300px;background:#04040a;border:1px solid rgba(232,232,248,0.14);color:#eaeaf2;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:10px 12px;resize:none;outline:none;box-sizing:border-box;"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+      <button id="sd-copy-btn" onclick="copyShowdownExport()"
+        style="padding:6px 16px;background:#3de5ff;color:#04040a;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;cursor:pointer;">COPY</button>
+      <button onclick="closeShowdownExport()"
+        style="padding:6px 12px;background:transparent;border:1px solid rgba(232,232,248,0.18);color:rgba(234,234,242,0.46);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">CLOSE</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

@@ -536,6 +536,72 @@ if (ticketSel) {
 </div>
 {% endif %}
 
+{# ── Pick History Log ── #}
+{% if picks %}
+<div id="pick-log-section" style="margin-top:16px;border:1px solid var(--hairline);border-radius:2px;overflow:hidden;">
+  <button onclick="togglePickLog()" style="width:100%;display:grid;grid-template-columns:1fr auto;align-items:center;padding:10px 14px;background:var(--panel);border:none;cursor:pointer;text-align:left;">
+    <span>
+      <span class="dl-ey dim">// PICK_HISTORY</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mute);margin-left:10px;">{{ picks|length }} pick{{ 's' if picks|length != 1 else '' }}</span>
+    </span>
+    <span id="pick-log-arrow" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);transition:transform 0.2s;">▼</span>
+  </button>
+  <div id="pick-log-body" style="display:none;background:var(--panel-2);max-height:360px;overflow-y:auto;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--hairline);">
+          <th style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;text-align:left;">#</th>
+          <th style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;text-align:left;">Team</th>
+          <th style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;text-align:left;">Pokémon</th>
+          <th style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;text-align:center;">Tier</th>
+          <th style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;text-align:right;">Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pick in picks | reverse %}
+        {% set c = coaches_map.get(pick.coach_id) %}
+        {% set tc = TC.get(pick.tier_label, '#9a9aa8') %}
+        <tr style="border-bottom:1px solid var(--hairline);">
+          <td style="padding:5px 10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);">{{ pick.pick_number }}</td>
+          <td style="padding:5px 10px;">
+            {% if c %}
+            <div style="display:flex;align-items:center;gap:6px;">
+              {% if c.get('logo_url') %}
+              <img src="{{ c.logo_url }}" style="width:16px;height:16px;object-fit:contain;border-radius:2px;flex-shrink:0;" alt="">
+              {% else %}
+              <div style="width:16px;height:16px;border-radius:50%;background:{{ c.get('color','#374151') }};flex-shrink:0;"></div>
+              {% endif %}
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-mute);white-space:nowrap;">{{ c.get('team_name','?') }}</span>
+            </div>
+            {% else %}<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);">—</span>{% endif %}
+          </td>
+          <td style="padding:5px 10px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <img src="{{ pokemon_static_sprite_url(pick.pokemon_name) }}" style="width:20px;height:20px;object-fit:contain;flex-shrink:0;" alt="" onerror="this.style.opacity='0.2'">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);">{{ pick.pokemon_name }}</span>
+            </div>
+          </td>
+          <td style="padding:5px 10px;text-align:center;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:{{ tc }};letter-spacing:.06em;">{{ pick.tier_label or '—' }}</span>
+          </td>
+          <td style="padding:5px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--magenta);font-weight:600;">{{ pick.points }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function togglePickLog() {
+  const body  = document.getElementById('pick-log-body');
+  const arrow = document.getElementById('pick-log-arrow');
+  const open  = body.style.display === 'none';
+  body.style.display  = open ? 'block' : 'none';
+  arrow.style.transform = open ? 'rotate(180deg)' : '';
+}
+</script>
+{% endif %}
+
 </div>
 
 {% if draft_session and draft_session.status in ('active', 'paused') %}

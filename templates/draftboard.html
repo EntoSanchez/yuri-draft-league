@@ -445,6 +445,86 @@
   .board-poke:hover .star-btn { opacity: 1; color: rgba(255,184,77,0.5); }
   .star-btn.starred { color: var(--amber) !important; opacity: 1 !important; text-shadow: 0 0 5px rgba(255,184,77,0.5); }
   #db-star-btn.active { color: var(--amber); }
+
+  /* ── Mobile overrides ── */
+  @media (max-width: 767px) {
+    body { overflow: auto !important; }
+    .dbl-wrapper { height: auto; overflow: visible; }
+    .dbl-board { overflow: auto; height: auto; min-height: 50vh; }
+    .dbl-strip { padding-top: 8px; }
+    .dbl-ctrl-top { flex-wrap: wrap; gap: 8px; }
+    .dbl-team-rail { flex-direction: column; gap: 6px; }
+    .dbl-filters { gap: 4px; }
+    .dbl-input, .dbl-select { font-size: 12px; padding: 5px 6px; }
+    .board-col { width: 150px; }
+    .dbl-hud { align-items: flex-start; }
+    #compare-tray { flex-wrap: wrap; gap: 6px; }
+  }
+
+  /* ── Compare pin button ── */
+  .pin-btn {
+    flex-shrink: 0; background: none; border: none; cursor: pointer; padding: 0 2px;
+    font-size: 11px; line-height: 1;
+    color: rgba(61,229,255,0.2);
+    transition: color 0.15s;
+    opacity: 0;
+  }
+  .board-poke:hover .pin-btn { opacity: 1; color: rgba(61,229,255,0.5); }
+  .pin-btn.pinned { color: var(--cyan) !important; opacity: 1 !important; text-shadow: 0 0 5px rgba(61,229,255,0.5); }
+
+  /* ── Compare tray ── */
+  #compare-tray {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+    background: var(--panel-2);
+    border-top: 1px solid var(--cyan-dim);
+    padding: 8px 18px;
+    display: none; align-items: center; gap: 10px;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.6);
+  }
+  #compare-tray.open { display: flex; }
+  .cmp-pill {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--panel); border: 1px solid var(--hairline-2);
+    padding: 4px 8px 4px 6px;
+  }
+  .cmp-pill img { width: 24px; height: 24px; object-fit: contain; }
+  .cmp-pill-name { font: 600 10px/1 var(--font-mono); color: var(--text); text-transform: capitalize; }
+  .cmp-pill-x { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 10px; padding: 0 0 0 3px; line-height: 1; }
+  .cmp-pill-x:hover { color: var(--red); }
+
+  /* ── Compare modal ── */
+  #compare-modal {
+    display: none; position: fixed; inset: 0; z-index: 9800;
+    background: rgba(0,0,0,0.85);
+    align-items: center; justify-content: center;
+  }
+  #compare-modal.open { display: flex; }
+  #compare-inner {
+    background: var(--panel-2);
+    border: 1px solid var(--hairline-2);
+    width: min(96vw, 920px);
+    max-height: 90vh; overflow-y: auto;
+    padding: 16px 20px;
+    box-shadow: 0 16px 64px rgba(0,0,0,0.8);
+  }
+  .cmp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cmp-title { font: 700 13px/1 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cyan); }
+  .cmp-close-btn { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 14px; line-height: 1; padding: 2px; }
+  .cmp-close-btn:hover { color: var(--red); }
+  .cmp-grid { display: grid; gap: 10px; }
+  .cmp-col { background: var(--panel); border: 1px solid var(--hairline); padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cmp-sprite { width: 80px; height: 80px; object-fit: contain; }
+  .cmp-name { font: 700 12px/1 var(--font-mono); color: var(--text); text-transform: capitalize; text-align: center; }
+  .cmp-types { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
+  .cmp-type-pill { font: 700 8px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 5px; color: #fff; }
+  .cmp-stats { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+  .cmp-stat-row { display: flex; align-items: center; gap: 5px; }
+  .cmp-stat-label { font: 700 9px/1 var(--font-mono); width: 26px; text-align: right; flex-shrink: 0; }
+  .cmp-stat-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+  .cmp-stat-bar { height: 100%; border-radius: 3px; }
+  .cmp-stat-val { font: 700 9px/1 var(--font-mono); width: 26px; text-align: right; flex-shrink: 0; }
+  .cmp-stat-val.best { text-shadow: 0 0 6px currentColor; font-size: 10px; }
+  .cmp-bst { font: 700 11px/1 var(--font-display); letter-spacing: 0.04em; margin-top: 2px; }
 </style>
 {% endblock %}
 
@@ -1181,6 +1261,27 @@
 
 </div><!-- /dbl-wrapper -->
 
+<!-- Compare tray -->
+<div id="compare-tray">
+  <span style="font:700 9px/1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;color:var(--cyan-dim);flex-shrink:0;">// Compare</span>
+  <div id="compare-pills" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0;"></div>
+  <button onclick="openCompare()" id="cmp-go-btn"
+    style="padding:5px 14px;background:var(--cyan);color:var(--ink);font:700 9px/1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;border:none;cursor:pointer;flex-shrink:0;opacity:0.5;pointer-events:none;"
+    disabled>Compare →</button>
+  <button onclick="clearCompare()"
+    style="padding:5px 10px;background:var(--panel);border:1px solid var(--hairline-2);color:var(--text-dim);font:600 9px/1 var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;flex-shrink:0;">Clear</button>
+</div>
+
+<!-- Compare modal -->
+<div id="compare-modal">
+  <div id="compare-inner">
+    <div class="cmp-header">
+      <span class="cmp-title">// Pokémon Compare</span>
+      <button class="cmp-close-btn" onclick="closeCompare()">✕</button>
+    </div>
+    <div id="cmp-grid" class="cmp-grid"></div>
+  </div>
+</div>
 
 <!-- ── Stat tooltip ── -->
 <div id="poke-tooltip">
@@ -1486,6 +1587,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', e => toggleStar(e, name));
     poke.appendChild(btn);
     if (_starred.has(name)) poke.classList.add('is-starred');
+
+    // Pin button for compare
+    const pinBtn = document.createElement('button');
+    pinBtn.className = 'pin-btn';
+    pinBtn.dataset.poke = name;
+    pinBtn.title = 'Add to compare (max 4)';
+    pinBtn.innerHTML = '⊕';
+    pinBtn.addEventListener('click', e => pinPoke(e, name));
+    poke.appendChild(pinBtn);
   });
 
   const inp = document.getElementById('db-ability');
@@ -1553,10 +1663,134 @@ function closePtsPopover() {
   _editTierId = null;
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePtsPopover(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePtsPopover(); closeCompare(); } });
 document.addEventListener('click', e => {
   const pop = document.getElementById('pts-popover');
   if (pop && !pop.contains(e.target)) closePtsPopover();
+});
+
+// ── Multi-Pokémon compare ─────────────────────────────────────────────────────
+const MAX_COMPARE = 4;
+let _pinned = [];
+
+function pinPoke(e, name) {
+  e.stopPropagation();
+  const idx = _pinned.indexOf(name);
+  if (idx !== -1) {
+    _pinned.splice(idx, 1);
+  } else {
+    if (_pinned.length >= MAX_COMPARE) return;
+    _pinned.push(name);
+  }
+  document.querySelectorAll(`.pin-btn[data-poke="${name}"]`).forEach(b => b.classList.toggle('pinned', _pinned.includes(name)));
+  updateCompareTray();
+}
+
+function updateCompareTray() {
+  const tray  = document.getElementById('compare-tray');
+  const pills = document.getElementById('compare-pills');
+  const goBtn = document.getElementById('cmp-go-btn');
+  if (!tray || !pills) return;
+  if (_pinned.length === 0) { tray.classList.remove('open'); return; }
+  tray.classList.add('open');
+  pills.innerHTML = '';
+  _pinned.forEach(name => {
+    const poke = document.querySelector(`.board-poke[data-name="${name}"]`);
+    const imgSrc = poke ? (poke.querySelector('.poke-orb img')?.src || '') : '';
+    const pill = document.createElement('div');
+    pill.className = 'cmp-pill';
+    pill.innerHTML = `<img src="${imgSrc}" onerror="this.style.opacity='0'">
+      <span class="cmp-pill-name">${name}</span>
+      <button class="cmp-pill-x" onclick="pinPoke(event,'${name}')">✕</button>`;
+    pills.appendChild(pill);
+  });
+  if (goBtn) {
+    const ready = _pinned.length >= 2;
+    goBtn.disabled = !ready;
+    goBtn.style.opacity = ready ? '1' : '0.5';
+    goBtn.style.pointerEvents = ready ? 'auto' : 'none';
+  }
+}
+
+const _CMP_TYPE_COLORS = {
+  normal:'#9ca3af',fire:'#f97316',water:'#3b82f6',electric:'#eab308',
+  grass:'#22c55e',ice:'#67e8f9',fighting:'#dc2626',poison:'#a855f7',
+  ground:'#d97706',flying:'#818cf8',psychic:'#ec4899',bug:'#84cc16',
+  rock:'#92400e',ghost:'#6d28d9',dragon:'#1d4ed8',dark:'#374151',
+  steel:'#6b7280',fairy:'#f9a8d4'
+};
+const _CMP_STATS = [
+  {key:'hp', label:'HP', color:'#f87171'},
+  {key:'atk',label:'Atk',color:'#fb923c'},
+  {key:'def',label:'Def',color:'#facc15'},
+  {key:'spa',label:'SpA',color:'#60a5fa'},
+  {key:'spd',label:'SpD',color:'#4ade80'},
+  {key:'spe',label:'Spe',color:'#c084fc'},
+];
+
+function openCompare() {
+  if (_pinned.length < 2) return;
+  const grid = document.getElementById('cmp-grid');
+  if (!grid) return;
+  const data = _pinned.map(name => {
+    const p = document.querySelector(`.board-poke[data-name="${name}"]`);
+    if (!p) return null;
+    return {
+      name,
+      sprite: p.querySelector('.poke-orb img')?.src || '',
+      type1:  p.dataset.type1 || '',
+      type2:  p.dataset.type2 || '',
+      abilities: (p.dataset.abilities || '').split('|').filter(Boolean),
+      hp:  +p.dataset.hp  || 0, atk: +p.dataset.atk || 0,
+      def: +p.dataset.def || 0, spa: +p.dataset.spa || 0,
+      spd: +p.dataset.spd || 0, spe: +p.dataset.spe || 0,
+      bst: +p.dataset.bst || 0,
+    };
+  }).filter(Boolean);
+  const bests = {};
+  _CMP_STATS.forEach(({key}) => { bests[key] = Math.max(...data.map(d => d[key])); });
+  grid.style.gridTemplateColumns = `repeat(${data.length}, 1fr)`;
+  grid.innerHTML = data.map(d => {
+    const t1c = _CMP_TYPE_COLORS[d.type1] || '#374151';
+    const t2c = d.type2 ? (_CMP_TYPE_COLORS[d.type2] || '#374151') : null;
+    const statsHtml = _CMP_STATS.map(({key, label, color}) => {
+      const val = d[key];
+      const isBest = data.length > 1 && val === bests[key];
+      const pct = (Math.min(val, 255) / 255 * 100).toFixed(1);
+      return `<div class="cmp-stat-row">
+        <span class="cmp-stat-label" style="color:${color}">${label}</span>
+        <div class="cmp-stat-bar-wrap"><div class="cmp-stat-bar" style="width:${pct}%;background:${color};${isBest ? 'box-shadow:0 0 4px '+color : ''}"></div></div>
+        <span class="cmp-stat-val${isBest ? ' best' : ''}" style="color:${color}">${val}</span>
+      </div>`;
+    }).join('');
+    const types = `<span class="cmp-type-pill" style="background:${t1c}">${d.type1}</span>${t2c ? `<span class="cmp-type-pill" style="background:${t2c}">${d.type2}</span>` : ''}`;
+    const abs = d.abilities.filter(Boolean).map(a => `<span style="font:500 9px/1.4 var(--font-mono);color:var(--text-dim);text-align:center;text-transform:capitalize;">${a}</span>`).join('');
+    return `<div class="cmp-col">
+      <img class="cmp-sprite" src="${d.sprite}" onerror="this.style.opacity='0.2'">
+      <span class="cmp-name">${d.name}</span>
+      <div class="cmp-types">${types}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-height:28px;">${abs}</div>
+      <div class="cmp-stats">${statsHtml}</div>
+      <span class="cmp-bst" style="color:var(--cyan-dim)">BST ${d.bst}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('compare-modal').classList.add('open');
+}
+
+function closeCompare() {
+  document.getElementById('compare-modal')?.classList.remove('open');
+}
+
+function clearCompare() {
+  _pinned.forEach(name => {
+    document.querySelectorAll(`.pin-btn[data-poke="${name}"]`).forEach(b => b.classList.remove('pinned'));
+  });
+  _pinned = [];
+  updateCompareTray();
+}
+
+document.getElementById('compare-modal')?.addEventListener('click', e => {
+  if (e.target.id === 'compare-modal') closeCompare();
 });
 
 // ── Base stat tooltip ─────────────────────────────────────────────────────────

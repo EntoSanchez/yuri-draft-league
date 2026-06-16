@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Head-to-Head — {{ league_name }}{% endblock %}
+
+{% block head_extra %}
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  .h2h-wrap {
+    padding: 20px 24px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .h2h-eyebrow {
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--magenta); margin-bottom: 4px;
+  }
+  .h2h-title {
+    font: 700 28px/1 var(--font-display);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .h2h-sub {
+    font: 400 11px/1.5 var(--font-mono);
+    color: var(--text-dim); margin-bottom: 24px;
+  }
+
+  /* ── Matrix table ── */
+  .h2h-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--hairline-2);
+    background: var(--panel);
+  }
+  .h2h-table {
+    border-collapse: collapse;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  .h2h-table th, .h2h-table td {
+    border: 1px solid var(--hairline);
+    padding: 0;
+    min-width: 52px;
+  }
+  /* Row header */
+  .h2h-row-head {
+    background: var(--panel-2);
+    padding: 6px 10px;
+    text-align: left;
+    min-width: 120px;
+    border-right: 1px solid var(--hairline-2);
+    position: sticky; left: 0; z-index: 2;
+  }
+  .h2h-row-head-inner {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .h2h-coach-logo {
+    width: 20px; height: 20px; border-radius: 50%;
+    object-fit: contain; flex-shrink: 0;
+    border: 1px solid var(--hairline-2);
+  }
+  .h2h-coach-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .h2h-coach-name {
+    font: 600 9px/1 var(--font-mono);
+    letter-spacing: 0.04em; text-transform: capitalize;
+    color: var(--text-mute);
+    max-width: 80px; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Column header */
+  .h2h-col-head {
+    background: var(--panel-2);
+    padding: 8px 6px;
+    text-align: center;
+    border-bottom: 1px solid var(--hairline-2);
+    position: sticky; top: 0; z-index: 3;
+  }
+  .h2h-col-head-inner {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .h2h-col-logo {
+    width: 18px; height: 18px; border-radius: 50%;
+    object-fit: contain;
+    border: 1px solid var(--hairline-2);
+  }
+  .h2h-col-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+  }
+  .h2h-col-abbr {
+    font: 700 8px/1 var(--font-mono);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-dim);
+    max-width: 44px; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Data cell */
+  .h2h-cell {
+    text-align: center;
+    padding: 8px 4px;
+    font: 700 11px/1 var(--font-mono);
+    letter-spacing: 0.02em;
+    transition: background 0.1s;
+    cursor: default;
+  }
+  .h2h-cell.self {
+    background: var(--panel-2);
+    color: var(--text-dim);
+  }
+  .h2h-cell.win { color: #4ade80; }
+  .h2h-cell.loss { color: var(--red); }
+  .h2h-cell.tie  { color: var(--text-dim); }
+  .h2h-cell.empty { color: var(--text-dim); }
+  .h2h-cell:not(.self):hover { background: var(--panel-3); }
+
+  /* ── Summary card ── */
+  .h2h-summary {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px; margin-top: 28px;
+  }
+  .h2h-card {
+    background: var(--panel); border: 1px solid var(--hairline);
+    padding: 12px 14px;
+  }
+  .h2h-card-name {
+    font: 700 11px/1 var(--font-mono); color: var(--text);
+    text-transform: capitalize; margin-bottom: 6px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .h2h-card-record {
+    font: 700 20px/1 var(--font-display);
+    letter-spacing: 0.04em;
+  }
+  .h2h-card-sub {
+    font: 500 9px/1 var(--font-mono);
+    color: var(--text-dim); margin-top: 3px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="h2h-wrap">
+  <div class="h2h-eyebrow">// stats.head_to_head</div>
+  <div class="h2h-title">Head-to-Head</div>
+  <p class="h2h-sub">All-time W/L record between every pair of coaches (current season + all archived seasons). Read row vs column: cell shows row coach's wins over column coach.</p>
+
+  {% if coaches %}
+
+  <!-- Matrix -->
+  <div class="h2h-table-wrap">
+    <table class="h2h-table">
+      <thead>
+        <tr>
+          <!-- Top-left corner -->
+          <th class="h2h-row-head" style="z-index:4;position:sticky;top:0;left:0;background:var(--panel-2);"></th>
+          {% for c in coaches %}
+          <th class="h2h-col-head">
+            <div class="h2h-col-head-inner">
+              {% if c.logo_url %}
+                <img src="{{ c.logo_url }}" class="h2h-col-logo" alt="" onerror="this.style.opacity='0.2'">
+              {% else %}
+                <div class="h2h-col-dot" style="background:{{ c.color }};"></div>
+              {% endif %}
+              <span class="h2h-col-abbr">{{ (c.team_name or c.coach_name)[:5] }}</span>
+            </div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row_c in coaches %}
+        {% set row_key = row_c.key %}
+        <tr>
+          <!-- Row header -->
+          <td class="h2h-row-head">
+            <div class="h2h-row-head-inner">
+              {% if row_c.logo_url %}
+                <img src="{{ row_c.logo_url }}" class="h2h-coach-logo" alt="" onerror="this.style.opacity='0.2'">
+              {% else %}
+                <div class="h2h-coach-dot" style="background:{{ row_c.color }};"></div>
+              {% endif %}
+              <span class="h2h-coach-name">{{ row_c.coach_name }}</span>
+            </div>
+          </td>
+          {% for col_c in coaches %}
+          {% set col_key = col_c.key %}
+          {% if row_key == col_key %}
+            <td class="h2h-cell self">—</td>
+          {% else %}
+            {% set wins = matrix.get(row_key, {}).get(col_key, 0) %}
+            {% set losses = matrix.get(col_key, {}).get(row_key, 0) %}
+            {% if wins == 0 and losses == 0 %}
+              <td class="h2h-cell empty" title="{{ row_c.coach_name }} vs {{ col_c.coach_name }}: no matches">—</td>
+            {% elif wins > losses %}
+              <td class="h2h-cell win" title="{{ row_c.coach_name }} {{ wins }}–{{ losses }} {{ col_c.coach_name }}">{{ wins }}–{{ losses }}</td>
+            {% elif losses > wins %}
+              <td class="h2h-cell loss" title="{{ row_c.coach_name }} {{ wins }}–{{ losses }} {{ col_c.coach_name }}">{{ wins }}–{{ losses }}</td>
+            {% else %}
+              <td class="h2h-cell tie" title="{{ row_c.coach_name }} {{ wins }}–{{ losses }} {{ col_c.coach_name }}">{{ wins }}–{{ losses }}</td>
+            {% endif %}
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="h2h-summary">
+    {% for c in coaches %}
+    {% set total_w = matrix.get(c.key, {}).values() | sum %}
+    {% set total_l = matrix.values() | selectattr('loop.index0', '>', -1) | list | length %}
+    {# Compute total losses: sum of wins opponents have over this coach #}
+    {% set wins_dict = matrix.get(c.key, {}) %}
+    {% set total_wins = wins_dict.values() | sum %}
+    {% set total_losses = namespace(n=0) %}
+    {% for opp in coaches %}
+      {% if opp.key != c.key %}
+        {% set total_losses.n = total_losses.n + matrix.get(opp.key, {}).get(c.key, 0) %}
+      {% endif %}
+    {% endfor %}
+    {% set tw = total_wins %}
+    {% set tl = total_losses.n %}
+    {% if tw > 0 or tl > 0 %}
+    <div class="h2h-card">
+      <div class="h2h-card-name">{{ c.coach_name }}</div>
+      <div class="h2h-card-record">
+        <span style="color:#4ade80;">{{ tw }}</span>
+        <span style="color:var(--text-dim);font-size:14px;">–</span>
+        <span style="color:var(--red);">{{ tl }}</span>
+      </div>
+      <div class="h2h-card-sub">All-time H2H</div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div style="padding:48px;text-align:center;color:var(--text-dim);font:700 13px/1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;">
+    No completed matches yet.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

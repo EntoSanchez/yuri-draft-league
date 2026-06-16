@@ -1633,6 +1633,90 @@ def history():
         return "<pre>" + _tb.format_exc() + "</pre>", 500
 
 
+@app.route("/h2h")
+def h2h():
+    """Head-to-head win/loss matrix for all coaches across all seasons."""
+    # Build matrix keyed by coach_name.lower()
+    matrix = {}   # {a_key: {b_key: wins_by_a_over_b}}
+    all_keys = set()
+
+    def _record(winner_name, loser_name):
+        w = winner_name.strip().lower()
+        l = loser_name.strip().lower()
+        if not w or not l or w == l:
+            return
+        all_keys.add(w); all_keys.add(l)
+        matrix.setdefault(w, {}).setdefault(l, 0)
+        matrix[w][l] += 1
+        matrix.setdefault(l, {}).setdefault(w, 0)  # ensure entry exists
+
+    # Live season matches
+    with get_db() as db:
+        live_matches = db.execute("""
+            SELECT s.score1, s.score2,
+                   c1.coach_name AS c1n, c2.coach_name AS c2n
+            FROM schedule s
+            JOIN coaches c1 ON s.coach1_id = c1.id
+            JOIN coaches c2 ON s.coach2_id = c2.id
+            WHERE s.score1 IS NOT NULL AND s.score2 IS NOT NULL
+        """).fetchall()
+        live_coaches = db.execute(
+            "SELECT coach_name, team_name, color, logo_url FROM coaches ORDER BY coach_name"
+        ).fetchall()
+
+    for m in live_matches:
+        s1, s2 = float(m["score1"] or 0), float(m["score2"] or 0)
+        if s1 > s2:
+            _record(m["c1n"], m["c2n"])
+        elif s2 > s1:
+            _record(m["c2n"], m["c1n"])
+
+    # Archived seasons
+    seasons = _list_seasons()
+    for s in seasons:
+        with get_db() as db:
+            row = db.execute("SELECT data_json FROM seasons WHERE id=?", (s["id"],)).fetchone()
+        if not row:
+            continue
+        try:
+            sd = json.loads(row["data_json"])
+        except Exception:
+            continue
+        cmap = {c["id"]: c.get("coach_name", "") for c in sd.get("coaches", [])}
+        for m in sd.get("schedule", []):
+            s1 = float(m.get("score1") or 0)
+            s2 = float(m.get("score2") or 0)
+            c1n = cmap.get(m.get("coach1_id"), "")
+            c2n = cmap.get(m.get("coach2_id"), "")
+            if not c1n or not c2n:
+                continue
+            if s1 > s2:
+                _record(c1n, c2n)
+            elif s2 > s1:
+                _record(c2n, c1n)
+
+    # Build ordered coach list
+    live_info = {r["coach_name"].strip().lower(): dict(r) for r in live_coaches}
+    sorted_keys = sorted(all_keys)
+    coaches_out = []
+    for k in sorted_keys:
+        info = live_info.get(k, {})
+        coaches_out.append({
+            "key": k,
+            "coach_name": info.get("coach_name") or k.title(),
+            "team_name": info.get("team_name", ""),
+            "color": info.get("color", "#888"),
+            "logo_url": info.get("logo_url", ""),
+        })
+
+    return render_template(
+        "h2h.html",
+        coaches=coaches_out,
+        matrix=matrix,
+        league_name=get_setting("league_name", "Pokemon Draft League"),
+    )
+
+
 @app.route("/teams")
 def teams():
     with get_db() as db:
