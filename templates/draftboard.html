@@ -545,6 +545,21 @@
   .cmp-stat-val { font: 700 9px/1 var(--font-mono); width: 26px; text-align: right; flex-shrink: 0; }
   .cmp-stat-val.best { text-shadow: 0 0 6px currentColor; font-size: 10px; }
   .cmp-bst { font: 700 11px/1 var(--font-display); letter-spacing: 0.04em; margin-top: 2px; }
+  .cmp-move {
+    font: 600 8px/1.4 var(--font-mono);
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  .cmp-move-excl {
+    background: rgba(61,229,255,0.1);
+    border: 1px solid rgba(61,229,255,0.35);
+    color: var(--cyan);
+  }
+  .cmp-move-shared {
+    background: rgba(255,184,77,0.1);
+    border: 1px solid rgba(255,184,77,0.35);
+    color: var(--amber);
+  }
 </style>
 {% endblock %}
 
@@ -1778,10 +1793,16 @@ function openCompare() {
       bst: +p.dataset.bst || 0,
       pts: +p.dataset.pts || 0,
       tier: p.dataset.tier || '',
+      moves: (p.dataset.moves || '').split('|').map(m => m.trim()).filter(Boolean),
     };
   }).filter(Boolean);
   const bests = {};
   _CMP_STATS.forEach(({key}) => { bests[key] = Math.max(...data.map(d => d[key])); });
+
+  // Move frequency across all compared Pokémon (for shared/exclusive colouring)
+  const moveFreq = {};
+  data.forEach(d => d.moves.forEach(m => { moveFreq[m] = (moveFreq[m] || 0) + 1; }));
+
   grid.style.gridTemplateColumns = `repeat(${data.length}, 1fr)`;
   grid.innerHTML = data.map(d => {
     const t1c = _CMP_TYPE_COLORS[d.type1] || '#374151';
@@ -1804,6 +1825,21 @@ function openCompare() {
     const ptsHtml = d.pts
       ? `<span style="font:700 16px/1 var(--font-display);color:var(--cyan);letter-spacing:0.04em;">${d.pts}<span style="font-size:9px;color:var(--cyan-dim);margin-left:2px;">pts</span></span>`
       : '';
+    // Moves: sort exclusive (freq=1) first, then shared (freq≥2), alpha within each group
+    const excl   = d.moves.filter(m => moveFreq[m] === 1).sort();
+    const shared = d.moves.filter(m => moveFreq[m]  > 1).sort();
+    const movesHtml = (excl.length || shared.length) ? `
+      <div style="width:100%;border-top:1px solid var(--hairline);padding-top:6px;margin-top:2px;">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+          <span style="font:700 8px/1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);">Moves</span>
+          <span style="font:600 8px/1 var(--font-mono);color:var(--cyan-dim);">${excl.length} unique</span>
+          <span style="font:600 8px/1 var(--font-mono);color:var(--amber);">${shared.length} shared</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:2px;max-height:130px;overflow-y:auto;scrollbar-width:thin;">
+          ${excl.map(m   => `<span class="cmp-move cmp-move-excl">${m}</span>`).join('')}
+          ${shared.map(m => `<span class="cmp-move cmp-move-shared">${m}</span>`).join('')}
+        </div>
+      </div>` : '';
     return `<div class="cmp-col">
       <img class="cmp-sprite" src="${d.sprite}" onerror="this.style.opacity='0.2'">
       <span class="cmp-name">${d.name}</span>
@@ -1813,6 +1849,7 @@ function openCompare() {
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-height:28px;">${abs}</div>
       <div class="cmp-stats">${statsHtml}</div>
       <span class="cmp-bst" style="color:var(--cyan-dim)">BST ${d.bst}</span>
+      ${movesHtml}
     </div>`;
   }).join('');
   document.getElementById('compare-modal').classList.add('open');
