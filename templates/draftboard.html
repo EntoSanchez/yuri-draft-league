@@ -2058,11 +2058,19 @@ function _showStatTip(poke, e) {
   const movesRaw  = (poke.dataset.moves || '').split('|').map(m => m.trim()).filter(Boolean);
   if (_showMoves && movesRaw.length && movesWrap && movesEl) {
     const query = (document.getElementById('db-move')?.value || '').trim().toLowerCase();
-    movesEl.innerHTML = movesRaw.map(m => {
-      const isMatch = query && m.toLowerCase().includes(query);
-      return `<span class="ptt-chip${isMatch ? ' match' : ''}">${m}</span>`;
-    }).join('');
-    movesWrap.style.display = 'block';
+    const catMoves = _boardMoveCat !== 'all'
+      ? (_MOVE_CATS.find(c => c.label === _boardMoveCat)?.moves || [])
+      : null;
+    const filtered = catMoves ? movesRaw.filter(m => catMoves.includes(m)) : movesRaw;
+    if (filtered.length) {
+      movesEl.innerHTML = filtered.map(m => {
+        const isMatch = query && m.toLowerCase().includes(query);
+        return `<span class="ptt-chip${isMatch ? ' match' : ''}">${m}</span>`;
+      }).join('');
+      movesWrap.style.display = 'block';
+    } else {
+      movesWrap.style.display = 'none';
+    }
   } else if (movesWrap) {
     movesWrap.style.display = 'none';
   }
