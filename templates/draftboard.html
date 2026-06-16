@@ -799,7 +799,7 @@
                    data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb">
                   <img src="{{ pokemon_static_sprite_url(t.name) }}"
                        onerror="this.style.opacity='0.1'"
@@ -857,7 +857,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -919,7 +919,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -979,7 +979,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -1039,7 +1039,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -1099,7 +1099,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -1159,7 +1159,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -1219,7 +1219,7 @@
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
                    data-hp="{{ t.hp or 0 }}" data-atk="{{ t.atk or 0 }}" data-def="{{ t.defense or 0 }}"
                    data-spa="{{ t.spa or 0 }}" data-spd="{{ t.spd or 0 }}" data-spe="{{ t.spe or 0 }}"
-                   data-bst="{{ t.bst or 0 }}">
+                   data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
                 {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
@@ -1752,6 +1752,8 @@ function openCompare() {
       def: +p.dataset.def || 0, spa: +p.dataset.spa || 0,
       spd: +p.dataset.spd || 0, spe: +p.dataset.spe || 0,
       bst: +p.dataset.bst || 0,
+      pts: +p.dataset.pts || 0,
+      tier: p.dataset.tier || '',
     };
   }).filter(Boolean);
   const bests = {};
@@ -1772,9 +1774,17 @@ function openCompare() {
     }).join('');
     const types = `<span class="cmp-type-pill" style="background:${t1c}">${d.type1}</span>${t2c ? `<span class="cmp-type-pill" style="background:${t2c}">${d.type2}</span>` : ''}`;
     const abs = d.abilities.filter(Boolean).map(a => `<span style="font:500 9px/1.4 var(--font-mono);color:var(--text-dim);text-align:center;text-transform:capitalize;">${a}</span>`).join('');
+    const tierHtml = d.tier
+      ? `<span style="font:700 9px/1 var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);opacity:0.7;">${d.tier}</span>`
+      : '';
+    const ptsHtml = d.pts
+      ? `<span style="font:700 16px/1 var(--font-display);color:var(--cyan);letter-spacing:0.04em;">${d.pts}<span style="font-size:9px;color:var(--cyan-dim);margin-left:2px;">pts</span></span>`
+      : '';
     return `<div class="cmp-col">
       <img class="cmp-sprite" src="${d.sprite}" onerror="this.style.opacity='0.2'">
       <span class="cmp-name">${d.name}</span>
+      ${tierHtml}
+      ${ptsHtml}
       <div class="cmp-types">${types}</div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-height:28px;">${abs}</div>
       <div class="cmp-stats">${statsHtml}</div>
