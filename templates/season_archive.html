@@ -254,7 +254,10 @@ function showTab(id) {
   btn.style.color = 'var(--cyan)';
   btn.style.borderBottom = '2px solid var(--cyan)';
 }
-window.addEventListener('DOMContentLoaded', () => showTab('standings'));
+// turbo:load fires on first load and after every Turbo navigation
+document.addEventListener('turbo:load', () => {
+  if (document.getElementById('tab-standings')) showTab('standings');
+});
 </script>
 
 {% endblock %}

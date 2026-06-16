@@ -8,6 +8,7 @@ Usage:
   python -c "import populate_types; populate_types.DB_PATH='league.db'; populate_types.main()"
 """
 
+import os
 import re
 import sqlite3
 import sys
@@ -15,7 +16,7 @@ import time
 import urllib.request
 import json
 
-DB_PATH = "D:/Yuri Draft League/league.db"
+DB_PATH = os.environ.get("DB_PATH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "league.db")
 
 # Types we can determine without an API call — avoids rate-limit failures
 HARDCODED_TYPES = {

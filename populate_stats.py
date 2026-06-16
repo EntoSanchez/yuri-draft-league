@@ -5,7 +5,7 @@ Run once locally and once on PythonAnywhere.
 import sqlite3, re, sys
 
 import os
-DB = os.environ.get("LEAGUE_DB", "league.db")
+DB = os.environ.get("DB_PATH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "league.db")
 db = sqlite3.connect(DB)
 db.row_factory = sqlite3.Row
 

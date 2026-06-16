@@ -204,3 +204,37 @@
   letter-spacing: .08em; text-transform: uppercase; color: var(--text-mute); border: 1px solid var(--hairline-2); padding: 9px 14px; }
 .mr-foot a:hover { color: var(--text); border-color: var(--cyan-dim); }
 .mr-foot .mid { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: .08em; }
+
+/* ============================================================
+   Mobile (<= 640px)
+   ============================================================ */
+@media (max-width: 640px) {
+  .mr-page { padding: 14px 12px 32px; gap: 20px; }
+
+  /* Scoreboard: stack team / score / team vertically */
+  .mr-board { grid-template-columns: 1fr; gap: 14px; }
+  .mr-side  { justify-content: center; }
+  .mr-side.r { flex-direction: row-reverse; }
+  .mr-score { min-width: 0; }
+  .mr-score-nums { gap: 12px; }
+
+  /* Hero facts: 2-up grid instead of one overflowing row */
+  .mr-hero-facts { flex-wrap: wrap; border-top: none; margin-top: 16px; }
+  .mr-fact { flex: 1 1 45%; border-right: none; border-top: 1px solid var(--hairline); }
+
+  /* Box scores: single column */
+  .mr-box { grid-template-columns: 1fr; gap: 16px; }
+
+  /* Three stars: single column */
+  .mr-stars { grid-template-columns: 1fr; }
+
+  /* Meta grid: single column */
+  .mr-meta-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  /* Momentum header: let the key wrap under the title */
+  .mr-mom-head { flex-wrap: wrap; }
+  .mr-mom-key  { margin-left: 0; }
+
+  /* Footer nav: wrap so the centre label doesn't squeeze the links */
+  .mr-foot { flex-wrap: wrap; justify-content: center; }
+}

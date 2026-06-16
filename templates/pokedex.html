@@ -392,9 +392,22 @@ document.addEventListener('click', e => {
     mbox.classList.add('hidden');
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-  const total = document.querySelectorAll('.dex-row').length;
-  document.getElementById('dex-count').textContent = `${total} Pokémon`;
+// turbo:load fires on first load and after every Turbo navigation
+document.addEventListener('turbo:load', () => {
+  const countEl = document.getElementById('dex-count');
+  if (countEl) {
+    const total = document.querySelectorAll('.dex-row').length;
+    countEl.textContent = `${total} Pokémon`;
+  }
+  // Populate the type-color legend (idempotent)
+  const legend = document.getElementById('type-legend');
+  if (legend && !legend.children.length) {
+    const types = ['normal','fire','water','electric','grass','ice','fighting','poison',
+                   'ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'];
+    legend.innerHTML = types.map(t =>
+      `<span class="type-badge type-${t} px-2 py-0.5 rounded text-xs font-bold" style="text-transform:capitalize;">${t}</span>`
+    ).join('');
+  }
 });
 </script>
 

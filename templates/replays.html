@@ -35,16 +35,16 @@
           <div class="flex items-center gap-0 divide-x divide-gray-800/60">
 
             <!-- Coach 1 -->
-            <div class="flex-1 flex items-center gap-3 px-4 py-3">
+            <div class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-3">
               {% if r.c1_logo %}
               <img src="{{ r.c1_logo }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="{{ r.c1_team }}">
               {% else %}
               <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white flex-shrink-0"
                    style="background:{{ r.c1_color or '#374151' }};">{{ r.c1_team[:2].upper() }}</div>
               {% endif %}
-              <div>
-                <div class="font-bold text-white text-sm">{{ r.c1_team }}</div>
-                <div class="text-xs text-gray-500">{{ r.c1_coach }}</div>
+              <div class="min-w-0">
+                <div class="font-bold text-white text-sm truncate">{{ r.c1_team }}</div>
+                <div class="text-xs text-gray-500 truncate">{{ r.c1_coach }}</div>
               </div>
               {% if r.winner_coach_id == r.coach1_id %}
               <span class="ml-auto px-2 py-0.5 rounded text-xs font-bold text-green-400" style="background:rgba(34,197,94,0.12);">W</span>
@@ -60,16 +60,16 @@
             </div>
 
             <!-- Coach 2 -->
-            <div class="flex-1 flex items-center gap-3 px-4 py-3 flex-row-reverse text-right">
+            <div class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-3 flex-row-reverse text-right">
               {% if r.c2_logo %}
               <img src="{{ r.c2_logo }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="{{ r.c2_team }}">
               {% else %}
               <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white flex-shrink-0"
                    style="background:{{ r.c2_color or '#374151' }};">{{ r.c2_team[:2].upper() }}</div>
               {% endif %}
-              <div>
-                <div class="font-bold text-white text-sm">{{ r.c2_team }}</div>
-                <div class="text-xs text-gray-500">{{ r.c2_coach }}</div>
+              <div class="min-w-0">
+                <div class="font-bold text-white text-sm truncate">{{ r.c2_team }}</div>
+                <div class="text-xs text-gray-500 truncate">{{ r.c2_coach }}</div>
               </div>
               {% if r.winner_coach_id == r.coach2_id %}
               <span class="mr-auto px-2 py-0.5 rounded text-xs font-bold text-green-400" style="background:rgba(34,197,94,0.12);">W</span>

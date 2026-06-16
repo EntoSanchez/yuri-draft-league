@@ -2,11 +2,12 @@
 Initialize the Yuri Cup draft league database.
 Run once to create the schema and set up the admin user.
 """
+import os
 import sqlite3
 import hashlib
 import sys
 
-DB_PATH = "D:/Yuri Draft League/league.db"
+DB_PATH = os.environ.get("DB_PATH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "league.db")
 
 
 def hash_pw(password):

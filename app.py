@@ -592,10 +592,14 @@ def my_matches():
         if action == "submit_result":
             s1 = request.form.get("score1") or None
             s2 = request.form.get("score2") or None
-            if s1 is not None:
-                s1 = float(s1)
-            if s2 is not None:
-                s2 = float(s2)
+            try:
+                if s1 is not None:
+                    s1 = float(s1)
+                if s2 is not None:
+                    s2 = float(s2)
+            except (ValueError, TypeError):
+                flash("Scores must be numbers.", "error")
+                return redirect(url_for("my_matches"))
             with get_db() as db:
                 db.execute(
                     "UPDATE schedule SET score1=?, score2=? WHERE id=?",
@@ -1481,7 +1485,8 @@ def stats():
         stats_json = json.dumps(data)
         seasons = _list_seasons()
     except Exception:
-        return "<pre>" + _tb.format_exc() + "</pre>", 500
+        app.logger.error("page render failed:\n%s", _tb.format_exc())
+        return "Sorry — something went wrong loading this page.", 500
     try:
         return render_template(
             "stats.html",
@@ -1491,7 +1496,8 @@ def stats():
             league_name=get_setting("league_name", "Pokemon Draft League"),
         )
     except Exception:
-        return "<pre>" + _tb.format_exc() + "</pre>", 500
+        app.logger.error("page render failed:\n%s", _tb.format_exc())
+        return "Sorry — something went wrong loading this page.", 500
 
 
 @app.route("/history")
@@ -1630,7 +1636,8 @@ def history():
             league_name=get_setting("league_name", "Pokemon Draft League"),
         )
     except Exception:
-        return "<pre>" + _tb.format_exc() + "</pre>", 500
+        app.logger.error("page render failed:\n%s", _tb.format_exc())
+        return "Sorry — something went wrong loading this page.", 500
 
 
 @app.route("/h2h")
@@ -2119,8 +2126,10 @@ def pickems():
             # determine winner (score1 > score2 → coach1, else coach2, 0-0 → None)
             s1 = m["score1"] or 0
             s2 = m["score2"] or 0
-            if s1 > 0 or s2 > 0:
-                m["winner_id"] = m["coach1_id"] if s1 > s2 else m["coach2_id"]
+            if s1 > s2:
+                m["winner_id"] = m["coach1_id"]
+            elif s2 > s1:
+                m["winner_id"] = m["coach2_id"]
             else:
                 m["winner_id"] = None
 
@@ -2981,6 +2990,9 @@ def admin_match_stats(match_id):
                 lineups_by_game[gid].setdefault(ln["coach_id"], []).append(dict(ln))
 
     if request.method == "POST":
+        # Access control: only the two coaches in this match (or an admin) may edit it.
+        if session.get("role") != "admin" and session.get("coach_id") not in (match["c1_id"], match["c2_id"]):
+            return "Forbidden — you are not a coach in this match.", 403
         action = request.form.get("action")
 
         if action == "add_game":
@@ -3986,6 +3998,9 @@ def admin_playoff_stats(match_id):
                 lineups_by_game[gid].setdefault(ln["coach_id"], []).append(dict(ln))
 
     if request.method == "POST":
+        # Access control: only the two coaches in this playoff match (or an admin) may edit it.
+        if session.get("role") != "admin" and session.get("coach_id") not in (pm["c1_id"], pm["c2_id"]):
+            return "Forbidden — you are not a coach in this match.", 403
         action = request.form.get("action")
 
         if action == "add_game":
