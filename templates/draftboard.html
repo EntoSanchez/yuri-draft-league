@@ -470,11 +470,20 @@
     .dbl-strip { padding-top: 8px; }
     .dbl-ctrl-top { flex-wrap: wrap; gap: 8px; }
     .dbl-team-rail { flex-direction: column; gap: 6px; }
-    .dbl-filters { gap: 4px; }
-    .dbl-input, .dbl-select { font-size: 12px; padding: 5px 6px; }
+    .dbl-filters { gap: 4px; overflow-x: auto; flex-wrap: wrap; padding-bottom: 4px; }
+    .dbl-input, .dbl-select { font-size: 12px; padding: 5px 6px; width: 100% !important; max-width: 160px; }
     .board-col { width: 150px; }
     .dbl-hud { align-items: flex-start; }
-    #compare-tray { flex-wrap: wrap; gap: 6px; }
+    #compare-tray { flex-wrap: wrap; gap: 6px; flex-direction: column; align-items: flex-start; }
+    /* Minimum readable font sizes */
+    .dbl-eyebrow, .dbl-hud-eye, .dbl-pool-label,
+    .dbl-band-count, .col-label, .col-count,
+    .dbl-leg-item { font-size: 10px !important; }
+    /* Minimum tap targets */
+    .dbl-seg-btn  { min-height: 36px; padding: 6px 10px; }
+    .dbl-clear, .dbl-view-btn { min-height: 36px; padding: 6px 10px; }
+    /* Legend: wrap instead of floating off-screen */
+    .dbl-legend { margin-left: 0; flex-wrap: wrap; }
   }
 
   /* ── Compare pin button ── */

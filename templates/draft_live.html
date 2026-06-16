@@ -83,6 +83,21 @@
   transition:border-color .12s,background .12s;
 }
 .dl-poke-btn:hover { border-color:var(--magenta-dim);background:var(--magenta-soft); }
+
+@media (max-width: 767px) {
+  /* Two-pool grid: stack pools vertically */
+  .dl-pool-grid { grid-template-columns: 1fr !important; }
+  /* Admin pick entry: stack vertically */
+  .dl-admin-pick-grid { grid-template-columns: 1fr !important; }
+  /* Status strip: two-column instead of five */
+  .dl-status-strip { grid-template-columns: 1fr auto !important; gap: 8px !important; }
+  /* Pool header: compress */
+  .dl-pool-hdr { padding: 8px 10px; gap: 8px; }
+  /* Pick history header button tap target */
+  #pick-log-section button { min-height: 44px; }
+  /* Outer page padding */
+  body > div { padding: 8px !important; }
+}
 </style>
 
 {# ═══════════════ MACRO: single pool column ═══════════════ #}
@@ -262,7 +277,7 @@
 {% else %}{# ── Active/Paused draft_session ── #}
 
 {# ── Status strip ── #}
-<div style="display:grid;grid-template-columns:auto auto auto 1fr auto;gap:18px;align-items:center;padding:10px 16px;margin-bottom:14px;background:var(--panel-2);border:1px solid {% if is_admin %}var(--magenta-dim){% else %}var(--hairline){% endif %};border-radius:2px;{% if is_admin %}box-shadow:0 0 20px -8px var(--magenta-dim);{% endif %}">
+<div class="dl-status-strip" style="display:grid;grid-template-columns:auto auto auto 1fr auto;gap:18px;align-items:center;padding:10px 16px;margin-bottom:14px;background:var(--panel-2);border:1px solid {% if is_admin %}var(--magenta-dim){% else %}var(--hairline){% endif %};border-radius:2px;{% if is_admin %}box-shadow:0 0 20px -8px var(--magenta-dim);{% endif %}">
   <div>
     <div class="dl-ey">{{ '// ADMIN_MODE' if is_admin else '// LIVE_DRAFT' }}</div>
     <div class="dl-h2" style="font-size:18px;margin-top:2px;">{{ draft_session.name }}{% if draft_session.season %} · {{ draft_session.season }}{% endif %}</div>
@@ -289,7 +304,7 @@
 
 {# ── Admin: two-panel simultaneous pick entry (above the grid) ── #}
 {% if is_admin and draft_session.status == 'active' %}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+<div class="dl-admin-pick-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
   {% for pool_label, slot, draft_state, avail in [
       ('A', current_slot_a, current_draft_state_a, avail_pokemon_a),
       ('B', current_slot_b, current_draft_state_b, avail_pokemon_b),
@@ -495,7 +510,7 @@ if (ticketSel) {
 {% endif %}{# end session check #}
 
 {# ── Two-pool grid ── always rendered regardless of session state #}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+<div class="dl-pool-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
   {{ pool_col('A', coaches_a, grid_a, current_coach_a_id, current_slot_a, last_pick_a) }}
   {{ pool_col('B', coaches_b, grid_b, current_coach_b_id, current_slot_b, last_pick_b) }}
 </div>
@@ -547,7 +562,8 @@ if (ticketSel) {
     <span id="pick-log-arrow" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);transition:transform 0.2s;">▼</span>
   </button>
   <div id="pick-log-body" style="display:none;background:var(--panel-2);max-height:360px;overflow-y:auto;">
-    <table style="width:100%;border-collapse:collapse;">
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;min-width:340px;">
       <thead>
         <tr style="border-bottom:1px solid var(--hairline);">
           <th style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;text-align:left;">#</th>
@@ -589,6 +605,7 @@ if (ticketSel) {
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 <script>

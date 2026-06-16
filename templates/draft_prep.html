@@ -452,6 +452,19 @@
   /* Focused panel: title + details stack better */
   .dp-focused-hdr { flex-wrap: wrap; gap: 6px; }
   .dp-focused-title { font-size: 15px; }
+
+  /* Captain button and alt-add cell tap targets */
+  .dp-capt-btn      { min-height: 36px; padding: 6px 12px; font-size: 11px; }
+  .dp-alt-empty-cell { min-height: 60px; }
+
+  /* dp-btn outside topbar (e.g. clear in focused panel) */
+  .dp-btn           { min-height: 36px; }
+
+  /* Plan input: wider + 16px to prevent iOS zoom */
+  .dp-plan-input    { width: 120px; font-size: 16px !important; }
+
+  /* Override inline min-width:560px on type chart table */
+  #type-chart-table { min-width: 0 !important; width: max-content; }
 }
 </style>
 

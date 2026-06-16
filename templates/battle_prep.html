@@ -266,6 +266,41 @@
   font-family: var(--font-mono); font-size: 9px; color: var(--text-dim);
   letter-spacing: .06em;
 }
+
+@media (max-width: 767px) {
+  /* Unlock the fixed-height viewport so content scrolls naturally */
+  .vd-app {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 8px;
+    gap: 8px;
+  }
+  /* Panels: natural height */
+  .vd-panel { min-height: 0 !important; height: auto !important; overflow: visible !important; }
+
+  /* Header grid (team pickers): stack vertically */
+  .vd-header-grid { display: flex !important; flex-direction: column !important; gap: 12px !important; }
+
+  /* Band 2 & 3 side-by-side grids: single column */
+  .vd-band-2, .vd-band-3 { grid-template-columns: 1fr !important; }
+
+  /* Tap targets */
+  .vd-seg button { min-height: 36px !important; padding: 6px 10px !important; }
+  .lp-btn { min-height: 36px !important; }
+  .vd-chip { min-height: 36px !important; }
+
+  /* Type chart: horizontal scroll */
+  #hm-content { overflow-x: auto !important; }
+  #bp-type-chart { min-width: 500px; }
+
+  /* Lineup modal: stack sidebar above picker */
+  .lp-body { grid-template-columns: 1fr !important; grid-template-rows: auto 1fr !important; }
+  .lp-roster { max-height: 160px; border-right: none !important; border-bottom: 1px solid var(--hairline-2); }
+  .lp-topbar { flex-wrap: wrap; gap: 6px; }
+
+  /* Team selector: full width */
+  .vd-team-sel { max-width: 100% !important; font-size: 14px; }
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -281,7 +316,7 @@
     <div style="position:absolute;top:-70px;left:-40px;width:240px;height:240px;background:radial-gradient(circle,rgba(61,229,255,.16),transparent 60%);pointer-events:none"></div>
     <div style="position:absolute;top:-70px;right:-40px;width:240px;height:240px;background:radial-gradient(circle,rgba(255,61,151,.18),transparent 60%);pointer-events:none"></div>
 
-    <div style="position:relative;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center;gap:24px">
+    <div class="vd-header-grid" style="position:relative;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center;gap:24px">
 
       <!-- My team pill -->
       <div style="display:flex;align-items:center;gap:12px">
@@ -335,7 +370,7 @@
   <!-- ═══════════════════════════════════════════════════════
        BAND 2  —  ROW 1: STATS (1.3fr) · DEFENSE (1fr)
        ═══════════════════════════════════════════════════════ -->
-  <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:11px;flex:1 1 0;min-height:0">
+  <div class="vd-band-2" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:11px;flex:1 1 0;min-height:0">
 
     <!-- Stats panel -->
     <div class="vd-panel" style="padding:14px;display:flex;flex-direction:column;min-height:0">
@@ -371,7 +406,7 @@
   <!-- ═══════════════════════════════════════════════════════
        BAND 3  —  ROW 2: SPEED (1fr) · COVERAGE (1.25fr)
        ═══════════════════════════════════════════════════════ -->
-  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:11px;flex:1 1 0;min-height:0">
+  <div class="vd-band-3" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:11px;flex:1 1 0;min-height:0">
 
     <!-- Speed panel -->
     <div class="vd-panel" style="padding:14px;display:flex;flex-direction:column;min-height:0">

@@ -135,6 +135,19 @@
     color: var(--text-dim); margin-top: 3px;
     letter-spacing: 0.06em; text-transform: uppercase;
   }
+
+  @media (max-width: 600px) {
+    .h2h-wrap { padding: 14px 10px 40px; }
+    /* Compress table cells so more fits without scroll */
+    .h2h-row-head { min-width: 80px; padding: 4px 6px; font-size: 9px; }
+    .h2h-table th, .h2h-table td { min-width: 38px; padding: 4px; font-size: 9px; }
+    .h2h-coach-name { max-width: 55px; font-size: 10px; }
+    /* Summary cards: single column on very small screens */
+    .h2h-summary { grid-template-columns: 1fr !important; }
+    /* Big record number: slightly smaller */
+    .h2h-card-rec { font-size: 17px; }
+    .h2h-card-place { font-size: 17px; }
+  }
 </style>
 {% endblock %}
 
