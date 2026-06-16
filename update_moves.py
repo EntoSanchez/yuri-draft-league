@@ -2,14 +2,32 @@
 update_moves.py
 Fetch full Pokémon Showdown learnsets and update draft_tiers.moves
 with every move each Pokémon can ever learn.
+
+DB selection (highest priority first):
+  1. --db <path> command-line argument
+  2. DB_PATH environment variable  (same var the Flask app reads)
+  3. league.db next to this script
+
+On PythonAnywhere the app reads a NESTED path via the WSGI DB_PATH env var:
+  /home/zcs55397/yuri-draft-league/yuri-draft-league/league.db
+Running this script without --db there would update the WRONG (outer) DB and
+changes would never appear on the live site. Always pass --db on PythonAnywhere:
+  python update_moves.py --db /home/zcs55397/yuri-draft-league/yuri-draft-league/league.db
 """
+import argparse
+import os
+import pathlib
 import re
 import sqlite3
 import urllib.request
 
-import os, pathlib
 _HERE = pathlib.Path(__file__).parent
-DB_PATH = str(_HERE / "league.db")
+
+_parser = argparse.ArgumentParser(description="Update draft_tiers.moves from Showdown data.")
+_parser.add_argument("--db", help="Path to league.db (overrides DB_PATH env var).")
+_args, _ = _parser.parse_known_args()
+
+DB_PATH = _args.db or os.environ.get("DB_PATH") or str(_HERE / "league.db")
 
 
 def fetch(url):
@@ -297,7 +315,10 @@ MOVE_ADDITIONS: dict = {
 
 
 # ── 7. Update the database ────────────────────────────────────────────────────
-print("\nConnecting to database ...", flush=True)
+print(f"\nConnecting to database ...\n  DB_PATH = {DB_PATH}", flush=True)
+if not os.path.exists(DB_PATH):
+    raise SystemExit(f"ERROR: database not found at {DB_PATH}\n"
+                     f"Pass the correct path with --db (on PythonAnywhere this is the NESTED league.db).")
 db = sqlite3.connect(DB_PATH)
 db.row_factory = sqlite3.Row
 rows = db.execute("SELECT id, name FROM draft_tiers ORDER BY name").fetchall()
