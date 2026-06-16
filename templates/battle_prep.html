@@ -125,6 +125,147 @@
   color: var(--text); cursor: pointer; max-width: 200px;
 }
 .vd-team-sel option { background: var(--panel-2); }
+
+/* ══ Lineup Builder Modal ══════════════════════════════════ */
+#lp-modal {
+  display: none; position: fixed; inset: 0; z-index: 9800;
+  background: rgba(4,4,10,.97);
+  flex-direction: column;
+  overflow: hidden;
+}
+#lp-modal.open { display: flex; }
+
+.lp-topbar {
+  flex-shrink: 0; display: flex; align-items: center; gap: 14px;
+  padding: 12px 18px; background: var(--panel);
+  border-bottom: 1px solid var(--hairline-2);
+}
+.lp-title {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--cyan);
+  flex: 1;
+}
+.lp-btn {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+  padding: 5px 14px; border: none;
+}
+.lp-btn.primary { background: var(--magenta); color: #fff; }
+.lp-btn.ghost   { background: var(--panel-2); border: 1px solid var(--hairline-2); color: var(--text-dim); }
+.lp-btn.ghost:hover { border-color: var(--cyan-dim); color: var(--cyan); }
+.lp-btn.danger  { background: transparent; border: 1px solid var(--red); color: var(--red); }
+
+.lp-body {
+  flex: 1; display: grid; grid-template-columns: 200px 1fr;
+  min-height: 0; overflow: hidden;
+}
+
+/* Roster sidebar */
+.lp-roster {
+  background: var(--panel); border-right: 1px solid var(--hairline-2);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.lp-roster-head {
+  padding: 8px 12px; border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim);
+  flex-shrink: 0;
+}
+.lp-roster-list {
+  flex: 1; overflow-y: auto;
+  padding: 6px;
+  display: flex; flex-direction: column; gap: 4px;
+  scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
+}
+.lp-roster-mon {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px;
+  background: var(--panel-2); border: 1px solid var(--hairline);
+  cursor: pointer; transition: border-color .1s, background .1s;
+}
+.lp-roster-mon:hover { border-color: var(--cyan-dim); background: var(--cyan-soft); }
+.lp-roster-mon.in-lineup { border-color: var(--magenta-dim); opacity: .5; cursor: default; }
+.lp-roster-mon img {
+  width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;
+}
+.lp-roster-name {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+  text-transform: capitalize;
+}
+
+/* Slots area */
+.lp-slots-wrap {
+  overflow-y: auto; padding: 14px 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px; align-content: start;
+}
+
+/* Individual slot card */
+.lp-slot {
+  background: var(--panel); border: 1px solid var(--hairline);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.lp-slot.active-slot { border-color: var(--cyan-dim); box-shadow: 0 0 12px -4px var(--cyan-dim); }
+.lp-slot-num {
+  font-family: var(--font-mono); font-size: 8px; font-weight: 700;
+  color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase;
+  padding: 4px 8px 3px; border-bottom: 1px solid var(--hairline);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.lp-slot-num .lp-clear-slot {
+  background: none; border: none; cursor: pointer; color: var(--text-dim);
+  font-size: 10px; line-height: 1; padding: 0;
+}
+.lp-slot-num .lp-clear-slot:hover { color: var(--red); }
+.lp-slot-mon {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px 5px;
+  border-bottom: 1px solid var(--hairline);
+}
+.lp-slot-mon img { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.lp-slot-mon-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.lp-slot-pname {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--text); text-transform: capitalize;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lp-slot-empty-hint {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-dim);
+  text-align: center; padding: 16px 8px; letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.lp-slot-fields { padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+.lp-field-row { display: flex; flex-direction: column; gap: 1px; }
+.lp-field-label {
+  font-family: var(--font-mono); font-size: 7.5px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim);
+}
+.lp-input {
+  background: var(--panel-2); border: 1px solid var(--hairline);
+  color: var(--text); font-family: var(--font-mono); font-size: 9px;
+  padding: 3px 6px; outline: none; width: 100%; box-sizing: border-box;
+  appearance: none;
+}
+.lp-input:focus { border-color: var(--cyan-dim); }
+.lp-input option { background: var(--panel-2); }
+
+/* Bottom paste strip */
+.lp-paste-bar {
+  flex-shrink: 0; padding: 10px 18px;
+  background: var(--panel); border-top: 1px solid var(--hairline-2);
+  display: flex; align-items: center; gap: 10px;
+}
+.lp-paste-url {
+  flex: 1; background: var(--panel-2); border: 1px solid var(--hairline-2);
+  color: var(--cyan); font-family: var(--font-mono); font-size: 10px;
+  padding: 5px 10px; outline: none; cursor: text;
+}
+#lp-status {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-dim);
+  letter-spacing: .06em;
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -156,8 +297,9 @@
 
       <!-- Verdict centre -->
       <div>
-        <div style="text-align:center;margin-bottom:6px">
+        <div style="text-align:center;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px">
           <span class="vd-eyebrow mag" style="font-size:9px">// PROJECTED EDGE</span>
+          <button onclick="openLineup()" style="font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 12px;background:var(--cyan);color:var(--ink);border:none;cursor:pointer;">⚔ LINEUP</button>
         </div>
         <!-- pct labels -->
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -256,6 +398,48 @@
   </div><!-- /band 3 -->
 
 </div><!-- /vd-app -->
+
+<!-- ═══════════════════════════════════════════════════════
+     LINEUP BUILDER MODAL
+     ═══════════════════════════════════════════════════════ -->
+<div id="lp-modal">
+
+  <!-- Top bar -->
+  <div class="lp-topbar">
+    <span class="lp-title">// LINEUP_BUILDER · POKEPASTE_EXPORT</span>
+    <button class="lp-btn ghost" onclick="copyShowdown()">📋 COPY SHOWDOWN</button>
+    <button id="lp-paste-btn" class="lp-btn primary" onclick="generatePokePaste()">⇪ POKEPASTE</button>
+    <button class="lp-btn danger" onclick="clearLineup()">✕ CLEAR</button>
+    <button class="lp-btn ghost" onclick="closeLineup()">← CLOSE</button>
+  </div>
+
+  <!-- Body: roster + slots -->
+  <div class="lp-body">
+
+    <!-- Roster sidebar -->
+    <div class="lp-roster">
+      <div class="lp-roster-head">// MY ROSTER</div>
+      <div class="lp-roster-list" id="lp-roster-list">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);padding:8px;text-align:center;">Select your team first.</div>
+      </div>
+    </div>
+
+    <!-- Lineup slots -->
+    <div class="lp-slots-wrap" id="lp-slots-wrap">
+      <!-- rendered by JS -->
+    </div>
+
+  </div>
+
+  <!-- Paste bar -->
+  <div class="lp-paste-bar">
+    <span id="lp-status">6 slots · select a team to begin</span>
+    <input type="text" id="lp-url-out" class="lp-paste-url" readonly placeholder="PokéPaste URL will appear here…">
+    <button class="lp-btn ghost" onclick="openPastUrl()">↗ OPEN</button>
+    <button class="lp-btn ghost" id="lp-copy-url-btn" onclick="copyPasteUrl()">COPY URL</button>
+  </div>
+
+</div>
 
 <script>
 const COACHES = {{ coaches_json | safe }};
@@ -998,5 +1182,257 @@ function init(){
 }
 
 init();
+
+// ─────────────────────────────────────────────────────────────────────────
+// LINEUP BUILDER
+// ─────────────────────────────────────────────────────────────────────────
+const LP_NATURES = [
+  "Hardy","Lonely","Brave","Adamant","Naughty",
+  "Bold","Docile","Relaxed","Impish","Lax",
+  "Timid","Hasty","Serious","Jolly","Naive",
+  "Modest","Mild","Quiet","Bashful","Rash",
+  "Calm","Gentle","Sassy","Careful","Quirky",
+];
+const LP_ITEMS = [
+  "","Choice Band","Choice Specs","Choice Scarf",
+  "Life Orb","Leftovers","Assault Vest","Rocky Helmet",
+  "Focus Sash","Eviolite","Expert Belt","Heavy-Duty Boots",
+  "Booster Energy","Throat Spray","Black Glasses","Flame Orb",
+  "Toxic Orb","Terrain Extender","Clear Amulet","Safety Goggles",
+  "Covert Cloak","Wide Lens","Protective Pads","Mirror Herb",
+  "Power Herb","White Herb","Weakness Policy","Lum Berry",
+];
+const MAX_SLOTS = 6;
+
+// lineup[i] = { pokemon: poke|null, item:'', ability:'', nature:'', moves:['','','',''] }
+let lineup = Array.from({length: MAX_SLOTS}, () => ({
+  pokemon: null, item: '', ability: '', nature: '', moves: ['','','',''],
+}));
+let activeSlot = -1;  // which slot is being edited (-1 = none)
+
+function openLineup() {
+  document.getElementById('lp-modal').classList.add('open');
+  renderLineupRoster();
+  renderSlots();
+}
+function closeLineup() {
+  document.getElementById('lp-modal').classList.remove('open');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLineup();
+});
+
+function renderLineupRoster() {
+  const el = document.getElementById('lp-roster-list');
+  if (!el) return;
+  const team = S.myTeam || [];
+  if (!team.length) {
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);padding:8px;text-align:center;">Select your team first.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  team.forEach(p => {
+    const inLineup = lineup.some(s => s.pokemon && s.pokemon.name === p.name);
+    const div = document.createElement('div');
+    div.className = 'lp-roster-mon' + (inLineup ? ' in-lineup' : '');
+    div.innerHTML = `<img src="${p.sprite||p.sprite_anim||''}" onerror="this.style.opacity='0.2'">
+      <span class="lp-roster-name">${p.name}</span>
+      <span style="font-family:var(--font-mono);font-size:7.5px;color:var(--text-dim);flex-shrink:0;">${p.points||''}pt</span>`;
+    if (!inLineup) {
+      div.addEventListener('click', () => addToLineup(p));
+    }
+    el.appendChild(div);
+  });
+}
+
+function addToLineup(pokemon) {
+  // Fill the active slot if set, otherwise first empty slot
+  let idx = activeSlot >= 0 ? activeSlot : lineup.findIndex(s => !s.pokemon);
+  if (idx < 0) idx = 0;  // replace first if all full
+  const slot = lineup[idx];
+  slot.pokemon = pokemon;
+  slot.ability = pokemon.ability1 || '';
+  slot.item = '';
+  slot.nature = '';
+  slot.moves = ['', '', '', ''];
+  activeSlot = idx;
+  renderSlots();
+  renderLineupRoster();
+  updateStatus();
+}
+
+function clearSlotAt(idx) {
+  lineup[idx] = { pokemon: null, item: '', ability: '', nature: '', moves: ['','','',''] };
+  if (activeSlot === idx) activeSlot = -1;
+  renderSlots();
+  renderLineupRoster();
+  updateStatus();
+}
+
+function clearLineup() {
+  lineup = Array.from({length: MAX_SLOTS}, () => ({
+    pokemon: null, item: '', ability: '', nature: '', moves: ['','','',''],
+  }));
+  activeSlot = -1;
+  document.getElementById('lp-url-out').value = '';
+  renderSlots();
+  renderLineupRoster();
+  updateStatus();
+}
+
+function renderSlots() {
+  const wrap = document.getElementById('lp-slots-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  lineup.forEach((slot, idx) => {
+    const div = document.createElement('div');
+    div.className = 'lp-slot' + (activeSlot === idx ? ' active-slot' : '');
+    div.addEventListener('click', e => {
+      if (e.target.closest('.lp-input') || e.target.closest('.lp-clear-slot')) return;
+      activeSlot = idx;
+      renderSlots();
+    });
+
+    const numBar = `<div class="lp-slot-num">SLOT ${idx+1}${slot.pokemon ? ` · ${(slot.pokemon.tier||'').toUpperCase()}` : ''}
+      <button class="lp-clear-slot" onclick="clearSlotAt(${idx})" title="Clear slot">✕</button>
+    </div>`;
+
+    if (!slot.pokemon) {
+      div.innerHTML = `${numBar}<div class="lp-slot-empty-hint">Click a Pokémon<br>from the roster →</div>`;
+    } else {
+      const p = slot.pokemon;
+      const abilities = [p.ability1, p.ability2, p.ability3].filter(Boolean);
+      const abilityOpts = abilities.map(a => `<option value="${a}" ${slot.ability===a?'selected':''}>${a}</option>`).join('');
+      const natureOpts  = LP_NATURES.map(n => `<option value="${n}" ${slot.nature===n?'selected':''}>${n}</option>`).join('');
+      const itemOpts    = LP_ITEMS.map(it => `<option value="${it}" ${slot.item===it?'selected':''}>${it||'— No Item —'}</option>`).join('');
+
+      // Moves: use curated list as datalist
+      const dlId = `lp-dl-${idx}`;
+      const moveList = p.moves || [];
+      const datalist  = `<datalist id="${dlId}">${moveList.map(m=>`<option value="${m}">`).join('')}</datalist>`;
+      const moveFields = [0,1,2,3].map(mi => `
+        <div class="lp-field-row">
+          <label class="lp-field-label">Move ${mi+1}</label>
+          <input class="lp-input" list="${dlId}" value="${slot.moves[mi]||''}"
+            oninput="lineup[${idx}].moves[${mi}]=this.value"
+            placeholder="e.g. Earthquake" autocomplete="off">
+        </div>`).join('');
+
+      div.innerHTML = `${numBar}
+        <div class="lp-slot-mon">
+          <img src="${p.sprite||''}" onerror="this.style.opacity='0.2'">
+          <div class="lp-slot-mon-info">
+            <span class="lp-slot-pname">${p.name}</span>
+            <span style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);">${p.points}pt · ${p.type1||''}${p.type2?' / '+p.type2:''}</span>
+          </div>
+        </div>
+        <div class="lp-slot-fields">
+          <div class="lp-field-row">
+            <label class="lp-field-label">Item</label>
+            <select class="lp-input" onchange="lineup[${idx}].item=this.value">${itemOpts}</select>
+          </div>
+          <div class="lp-field-row" style="display:flex;gap:6px;">
+            <div style="flex:1">
+              <label class="lp-field-label">Ability</label>
+              <select class="lp-input" onchange="lineup[${idx}].ability=this.value">${abilityOpts}</select>
+            </div>
+            <div style="flex:1">
+              <label class="lp-field-label">Nature</label>
+              <select class="lp-input" onchange="lineup[${idx}].nature=this.value">
+                <option value="">— None —</option>${natureOpts}
+              </select>
+            </div>
+          </div>
+          ${datalist}
+          ${moveFields}
+        </div>`;
+    }
+    wrap.appendChild(div);
+  });
+}
+
+function buildShowdownText() {
+  return lineup.filter(s => s.pokemon).map(s => {
+    const p = s.pokemon;
+    const lines = [];
+    lines.push(s.item ? `${p.name} @ ${s.item}` : p.name);
+    if (s.ability) lines.push(`Ability: ${s.ability}`);
+    if (s.nature)  lines.push(`${s.nature} Nature`);
+    s.moves.filter(Boolean).forEach(m => lines.push(`- ${m}`));
+    return lines.join('\n');
+  }).join('\n\n');
+}
+
+function copyShowdown() {
+  const text = buildShowdownText();
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.lp-topbar .lp-btn.ghost');
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ COPIED'; setTimeout(()=>btn.textContent=orig, 1800); }
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  });
+}
+
+async function generatePokePaste() {
+  const text = buildShowdownText();
+  if (!text) { setLpStatus('No Pokémon in lineup.'); return; }
+  const btn = document.getElementById('lp-paste-btn');
+  if (btn) { btn.textContent = '⏳ UPLOADING…'; btn.disabled = true; }
+  setLpStatus('Uploading to pokepast.es…');
+  const myCoachName = S.myCoach ? (S.myCoach.team_name || S.myCoach.name) : '';
+  try {
+    const res = await fetch('/api/pokepaste', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ paste: text, title: `${myCoachName} Battle Team`, author: myCoachName }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      document.getElementById('lp-url-out').value = data.url;
+      setLpStatus('✓ PokéPaste generated!');
+    } else {
+      setLpStatus('Error: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) {
+    setLpStatus('Network error: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = '⇪ POKEPASTE'; btn.disabled = false; }
+  }
+}
+
+function openPastUrl() {
+  const url = document.getElementById('lp-url-out')?.value;
+  if (url) window.open(url, '_blank');
+}
+
+function copyPasteUrl() {
+  const url = document.getElementById('lp-url-out')?.value;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('lp-copy-url-btn');
+    if (btn) { btn.textContent = '✓'; setTimeout(()=>btn.textContent='COPY URL', 1600); }
+  });
+}
+
+function setLpStatus(msg) {
+  const el = document.getElementById('lp-status');
+  if (el) el.textContent = msg;
+}
+
+function updateStatus() {
+  const filled = lineup.filter(s => s.pokemon).length;
+  setLpStatus(`${filled} / ${MAX_SLOTS} slots filled`);
+}
+
+// Hook into team selector changes to refresh the lineup roster panel
+document.getElementById('my-team-select').addEventListener('change', () => {
+  if (document.getElementById('lp-modal').classList.contains('open')) {
+    renderLineupRoster();
+    updateStatus();
+  }
+});
 </script>
 {% endblock %}

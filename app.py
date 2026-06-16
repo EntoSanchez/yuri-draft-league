@@ -5692,6 +5692,42 @@ def battle_prep():
     )
 
 
+@app.route("/api/pokepaste", methods=["POST"])
+def api_pokepaste():
+    """Proxy a team paste to pokepast.es and return the resulting URL."""
+    import urllib.request as _ur
+    import urllib.parse as _up
+    data = request.get_json(silent=True) or {}
+    paste_text = (data.get("paste") or "").strip()
+    title      = (data.get("title") or "Battle Team").strip()
+    author     = (data.get("author") or "").strip()
+    if not paste_text:
+        return jsonify({"error": "No paste provided"}), 400
+    payload = _up.urlencode({
+        "paste":  paste_text,
+        "title":  title,
+        "author": author,
+        "notes":  "",
+    }).encode("utf-8")
+    try:
+        req = _ur.Request(
+            "https://pokepast.es/api/new",
+            data=payload,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "YuriDraftLeague/1.0",
+            },
+        )
+        with _ur.urlopen(req, timeout=12) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+        url = result.get("url") or result.get("link") or ""
+        if not url:
+            return jsonify({"error": "pokepast.es returned no URL", "raw": result}), 502
+        return jsonify({"url": url})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
 _CALC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "calc")
 
 
