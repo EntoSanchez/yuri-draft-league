@@ -244,3 +244,59 @@
   .mh-typebar-fill, .mh-lb-bar > i, .mh-fp-bar > i, .mh-econ-bar { transition: none; }
   .mh-voe-fill, .mh-mbar > i, .mh-arch-spetrack > i { transition: none; }
 }
+
+/* ============================================================
+   Mobile (<= 767px)
+   ============================================================ */
+@media (max-width: 767px) {
+  .mh-page { padding: 14px 12px 32px; gap: 20px; }
+
+  /* Title bar: stack and shrink the oversized 38px title */
+  .mh-titlebar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .mh-titlebar .h1 { font-size: 26px; white-space: normal; line-height: 1; }
+  .mh-titlebar > div[style*="flex:1"] { display: none; }
+
+  /* Section headers: let the title wrap, hide the trailing meta caption */
+  .mh-sechead { flex-wrap: wrap; gap: 8px; }
+  .mh-sechead .ttl { white-space: normal; font-size: 16px; }
+  .mh-sechead .meta { display: none; }
+
+  /* Collapse all 2-up section splits and 3-up card grids to single column */
+  [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; gap: 20px !important; }
+  [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns: 1fr !important; }
+  .mh-cards[style*="repeat(3,1fr)"],
+  .mh-cards { grid-template-columns: 1fr 1fr !important; }
+  .mh-arch { grid-template-columns: 1fr !important; }
+
+  /* Firepower rows: drop the wide inline bar so the name has room */
+  .mh-fp-row { grid-template-columns: 22px 26px 1fr 56px !important; gap: 8px; }
+  .mh-fp-bar { display: none; }
+
+  /* Value/survivor rows: shrink the bar column */
+  .mh-mrow[style*="84px"] { grid-template-columns: 20px 24px 1fr 50px 40px !important; gap: 8px !important; }
+
+  /* Type bars & VOE: shrink fixed label/value columns */
+  .mh-typebar { grid-template-columns: 60px 1fr 48px !important; gap: 8px; }
+  .mh-voe-row { grid-template-columns: 64px 1fr 56px !important; gap: 8px; }
+  .mh-voe-lbl { font-size: 10px; }
+
+  /* Speed tiers: narrower band column */
+  .mh-speed-row { grid-template-columns: 72px 1fr !important; gap: 10px; }
+
+  /* Draft economy: smaller caption text, shorter bars */
+  .mh-econ { height: 120px; gap: 4px; }
+  .mh-econ-lbl { font-size: 7.5px; }
+  .mh-econ-cap { font-size: 9px; }
+
+  /* KO/faint quadrant: shorter on small screens */
+  .mh-quad { height: 300px; }
+  .mh-quad-corner .lab { font-size: 9px; }
+  .mh-quad-corner .cnt { font-size: 12px; }
+
+  /* Terminal module: shrink the fixed first column */
+  .mh-term-line { grid-template-columns: 96px 1fr 44px !important; gap: 8px; }
+  .mh-term-body { font-size: 11px; }
+
+  /* Tooltips: keep within the viewport */
+  [data-tooltip]::after { width: min(220px, 70vw); left: 0; transform: none; }
+}

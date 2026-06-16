@@ -90,6 +90,33 @@
     border: 1px solid rgba(74,222,128,.35); background: rgba(74,222,128,.08);
     color: rgba(74,222,128,.9);
   }
+
+  @media (max-width: 600px) {
+    /* Restructure each matchup: two teams on top, vote bar full-width below */
+    .pk-row {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas: "left right" "bar bar";
+      min-height: 0;
+    }
+    .pk-team-l   { grid-area: left;  border-right: 1px solid var(--hairline); }
+    .pk-team-r   { grid-area: right; border-left: none; }
+    .pk-bar-wrap { grid-area: bar; min-height: 40px; border-top: 1px solid var(--hairline); }
+
+    /* Stack circle over name so each team fits a narrow column */
+    .pk-team   { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px; }
+    .pk-team-r { flex-direction: column; align-items: flex-end; }
+    .pk-circle { width: 32px; height: 32px; }
+    .pk-name   { font-size: 12px; }
+    .pk-coach  { font-size: 9px; }
+    .pk-pct    { font-size: 12px; }
+
+    /* Header counter: move out of the absolute corner so it can't overlap the title */
+    .pk-counter {
+      position: static !important;
+      margin: 0 16px 16px; display: inline-block;
+    }
+    .yc-page-title { font-size: 32px; }
+  }
 </style>
 
 <!-- Header -->
@@ -102,7 +129,7 @@
     </p>
   </div>
   <!-- Picked counter -->
-  <div style="position:absolute;top:20px;right:24px;padding:12px 18px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;text-align:center;min-width:80px;">
+  <div class="pk-counter" style="position:absolute;top:20px;right:24px;padding:12px 18px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;text-align:center;min-width:80px;">
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;">PICKED</div>
     <div id="picked-counter-display" style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--magenta);line-height:1.1;">0/{{ matches|length }}</div>
   </div>

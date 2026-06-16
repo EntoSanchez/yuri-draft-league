@@ -335,6 +335,21 @@
 
   /* ── Strip rows: tighten ── */
   .yc-strip-row { padding: 8px 10px; }
+
+  /* ── Stop the wide Unit Matrix table from blowing out page width ──
+     Grid/flex children default to min-width:auto; without this the 16-col
+     nowrap table expands the whole page instead of scrolling in its panel. */
+  .yc-team section,
+  .yc-team .grid { min-width: 0; }
+  .yc-team .yc-panel.overflow-x-auto { max-width: 100%; }
+
+  /* ── This Week bar: tighten score blocks so it needs less sideways swipe ── */
+  .yc-tw-bar [style*="min-width:80px"] { min-width: 60px !important; }
+  .yc-tw-bar [style*="min-width:56px"] { min-width: 46px !important; }
+
+  /* ── Battle-music widget: never exceed the viewport ── */
+  #music-widget #music-expanded { width: min(300px, calc(100vw - 28px)) !important; }
+  #music-widget iframe { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
 }
 </style>
 

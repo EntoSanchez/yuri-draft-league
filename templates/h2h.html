@@ -142,11 +142,9 @@
     .h2h-row-head { min-width: 80px; padding: 4px 6px; font-size: 9px; }
     .h2h-table th, .h2h-table td { min-width: 38px; padding: 4px; font-size: 9px; }
     .h2h-coach-name { max-width: 55px; font-size: 10px; }
-    /* Summary cards: single column on very small screens */
-    .h2h-summary { grid-template-columns: 1fr !important; }
-    /* Big record number: slightly smaller */
-    .h2h-card-rec { font-size: 17px; }
-    .h2h-card-place { font-size: 17px; }
+    /* Summary cards: tighter grid on small screens */
+    .h2h-summary { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; }
+    .h2h-card-record { font-size: 17px; }
   }
 </style>
 {% endblock %}
@@ -222,11 +220,10 @@
   <!-- Summary cards -->
   <div class="h2h-summary">
     {% for c in coaches %}
-    {% set total_w = matrix.get(c.key, {}).values() | sum %}
-    {% set total_l = matrix.values() | selectattr('loop.index0', '>', -1) | list | length %}
-    {# Compute total losses: sum of wins opponents have over this coach #}
+    {# Total wins: sum of this coach's wins over everyone #}
     {% set wins_dict = matrix.get(c.key, {}) %}
     {% set total_wins = wins_dict.values() | sum %}
+    {# Total losses: sum of wins opponents have over this coach #}
     {% set total_losses = namespace(n=0) %}
     {% for opp in coaches %}
       {% if opp.key != c.key %}

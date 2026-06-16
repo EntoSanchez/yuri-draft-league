@@ -300,6 +300,25 @@
 
   /* Team selector: full width */
   .vd-team-sel { max-width: 100% !important; font-size: 14px; }
+
+  /* Header children each take full width when stacked */
+  .vd-header-grid > div { width: 100%; }
+
+  /* Inner scroll areas flow with the page instead of trapping a tiny scrollbox
+     (type chart keeps its own horizontal scroll via #hm-content above) */
+  #stats-content, #speed-content, #mv-content { overflow: visible !important; }
+
+  /* Panel headers wrap their controls instead of overflowing */
+  .vd-head { flex-wrap: wrap; gap: 6px; row-gap: 8px; }
+  .vd-panel { padding: 12px !important; }
+
+  /* Stat filter chips + move category filter: easier to tap, allow wrap */
+  #stat-chips { gap: 4px; }
+  #mv-filter { gap: 5px; }
+  .vd-chip { padding: 5px 9px !important; }
+
+  /* Win-probability verdict bar: a little taller for touch */
+  #verdict-bar { height: 18px !important; }
 }
 </style>
 {% endblock %}
