@@ -465,12 +465,16 @@
   .pin-btn {
     flex-shrink: 0; background: none; border: none; cursor: pointer; padding: 0 2px;
     font-size: 11px; line-height: 1;
-    color: rgba(61,229,255,0.2);
-    transition: color 0.15s;
+    color: rgba(61,229,255,0.25);
+    transition: color 0.15s, opacity 0.15s;
     opacity: 0;
   }
-  .board-poke:hover .pin-btn { opacity: 1; color: rgba(61,229,255,0.5); }
+  /* Visible in compare mode or on hover */
+  body.cmp-mode .pin-btn { opacity: 0.55; }
+  .board-poke:hover .pin-btn { opacity: 1; color: rgba(61,229,255,0.6); }
   .pin-btn.pinned { color: var(--cyan) !important; opacity: 1 !important; text-shadow: 0 0 5px rgba(61,229,255,0.5); }
+  /* Compare mode toolbar button active state */
+  #db-cmp-btn.active { color: var(--cyan); }
 
   /* ── Compare tray ── */
   #compare-tray {
@@ -722,6 +726,9 @@
 
       <!-- Star filter -->
       <button id="db-star-btn" onclick="setStarFilter()" class="dbl-clear" title="Show starred Pokémon only">&#x2605; Starred</button>
+
+      <!-- Compare mode toggle -->
+      <button id="db-cmp-btn" onclick="toggleCompareMode()" class="dbl-clear" title="Pin Pokémon to compare stats side-by-side (up to 4)">&#x2295; Compare</button>
 
       <!-- View toggle -->
       <button id="view-toggle" onclick="toggleBoardView()" class="dbl-view-btn" title="Toggle list view">
@@ -1787,6 +1794,14 @@ function clearCompare() {
   });
   _pinned = [];
   updateCompareTray();
+}
+
+let _cmpMode = false;
+function toggleCompareMode() {
+  _cmpMode = !_cmpMode;
+  document.body.classList.toggle('cmp-mode', _cmpMode);
+  const btn = document.getElementById('db-cmp-btn');
+  if (btn) btn.classList.toggle('active', _cmpMode);
 }
 
 document.getElementById('compare-modal')?.addEventListener('click', e => {
