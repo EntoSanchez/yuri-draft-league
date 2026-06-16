@@ -433,6 +433,18 @@
     justify-content: center; height: 200px;
     color: var(--text-dim);
   }
+
+  /* ── Star button ── */
+  .star-btn {
+    flex-shrink: 0; background: none; border: none; cursor: pointer; padding: 0 2px;
+    font-size: 11px; line-height: 1;
+    color: rgba(255,184,77,0.2);
+    transition: color 0.15s;
+    opacity: 0;
+  }
+  .board-poke:hover .star-btn { opacity: 1; color: rgba(255,184,77,0.5); }
+  .star-btn.starred { color: var(--amber) !important; opacity: 1 !important; text-shadow: 0 0 5px rgba(255,184,77,0.5); }
+  #db-star-btn.active { color: var(--amber); }
 </style>
 {% endblock %}
 
@@ -627,6 +639,9 @@
 
       <!-- Clear -->
       <button onclick="clearFilters()" class="dbl-clear">Clear</button>
+
+      <!-- Star filter -->
+      <button id="db-star-btn" onclick="setStarFilter()" class="dbl-clear" title="Show starred Pokémon only">&#x2605; Starred</button>
 
       <!-- View toggle -->
       <button id="view-toggle" onclick="toggleBoardView()" class="dbl-view-btn" title="Toggle list view">
@@ -1214,6 +1229,32 @@ let currentAbility = '';
 let currentMove = '';
 let currentType = '';
 let currentSpeed = '';
+let currentStarred = false;
+let _starred = new Set(JSON.parse(localStorage.getItem('ydl_starred_pokemon') || '[]'));
+
+function toggleStar(e, name) {
+  e.stopPropagation();
+  if (_starred.has(name)) {
+    _starred.delete(name);
+  } else {
+    _starred.add(name);
+  }
+  localStorage.setItem('ydl_starred_pokemon', JSON.stringify(Array.from(_starred)));
+  document.querySelectorAll(`.star-btn[data-poke="${name}"]`).forEach(btn => {
+    btn.classList.toggle('starred', _starred.has(name));
+  });
+  document.querySelectorAll(`.board-poke[data-name="${name}"]`).forEach(poke => {
+    poke.classList.toggle('is-starred', _starred.has(name));
+  });
+  if (currentStarred) filterBoard();
+}
+
+function setStarFilter() {
+  currentStarred = !currentStarred;
+  const btn = document.getElementById('db-star-btn');
+  if (btn) btn.classList.toggle('active', currentStarred);
+  filterBoard();
+}
 
 function setPool(pool) {
   currentPool = pool;
@@ -1232,6 +1273,9 @@ function clearFilters() {
   document.getElementById('db-type').value = '';
   document.getElementById('db-speed').value = '';
   currentSearch = currentStatus = currentMove = currentAbility = currentType = currentSpeed = '';
+  currentStarred = false;
+  const _starBtn = document.getElementById('db-star-btn');
+  if (_starBtn) _starBtn.classList.remove('active');
   hideSuggestions();
   setPool('');
 }
@@ -1276,7 +1320,8 @@ function filterBoard() {
       poolDim = (pool !== currentPool);
     }
 
-    const show = nameOk && statusOk && moveOk && abilityOk && typeOk && speedOk;
+    const starOk   = !currentStarred  || _starred.has(name);
+    const show = nameOk && statusOk && moveOk && abilityOk && typeOk && speedOk && starOk;
     poke.style.display = show ? '' : 'none';
     if (show) {
       poke.classList.toggle('pool-dim', poolDim);
@@ -1429,6 +1474,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchEl) searchEl.value = urlQ;
   }
   setPool('');
+
+  document.querySelectorAll('.board-poke').forEach(poke => {
+    const name = poke.dataset.name;
+    if (!name) return;
+    const btn = document.createElement('button');
+    btn.className = 'star-btn' + (_starred.has(name) ? ' starred' : '');
+    btn.dataset.poke = name;
+    btn.title = 'Star this Pokémon';
+    btn.innerHTML = '&#x2605;';
+    btn.addEventListener('click', e => toggleStar(e, name));
+    poke.appendChild(btn);
+    if (_starred.has(name)) poke.classList.add('is-starred');
+  });
 
   const inp = document.getElementById('db-ability');
   inp.addEventListener('input', () => showSuggestions(inp.value));

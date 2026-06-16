@@ -553,6 +553,8 @@ const ROLES = [
 ];
 
 const POKEMON_DB = {{ pokemon_json | safe }};
+const _STARRED = new Set(JSON.parse(localStorage.getItem('ydl_starred_pokemon') || '[]'));
+let _dp_starredOnly = false;
 const BUDGET = {{ budget }};
 const MECHANIC_TERA  = {{ mechanic_tera|int }};
 const MECHANIC_ZMOVE = {{ mechanic_zmove|int }};
@@ -581,6 +583,7 @@ function slotUsesBudget(t) { return t === "Point Pick (Paid)"; }
     <div class="dp-topbar-actions">
       <input id="plan-name-input" type="text" placeholder="Plan name&hellip;" class="dp-plan-input">
       <button onclick="saveCurrentPlan()" class="dp-btn primary">&#x25B8; SAVE</button>
+      <button id="dp-star-btn" onclick="toggleStarredOnly()" class="dp-btn ghost" title="Filter search to starred Pokémon only">&#x2605; Starred</button>
       <button onclick="clearAllSlots()" class="dp-btn ghost">&#x21BA; CLEAR</button>
     </div>
   </div>
@@ -1040,6 +1043,7 @@ function buildPrimaryCard(idx) {
       inp.addEventListener('input',   () => openAC(idx, inp));
       inp.addEventListener('keydown', e  => handleACKey(e, idx, inp));
       inp.addEventListener('blur',    scheduleCloseAC);
+      inp.addEventListener('focus',   () => { if (_dp_starredOnly) openAC(idx, inp); });
       inp.focus();
     }
   }
@@ -1120,6 +1124,7 @@ function buildAltCards(idx) {
       inp.addEventListener('input',   () => openAltAC(idx, ai, inp));
       inp.addEventListener('keydown', e  => handleAltACKey(e, idx, ai, inp));
       inp.addEventListener('blur',    scheduleCloseAC);
+      inp.addEventListener('focus',   () => { if (_dp_starredOnly) openAltAC(idx, ai, inp); });
     }
   }
 }
@@ -1180,6 +1185,25 @@ function setSlotMode(idx, mode) {
 }
 
 // ══════════════════════════════════════════════
+//  Starred-only toggle
+// ══════════════════════════════════════════════
+function toggleStarredOnly() {
+  _dp_starredOnly = !_dp_starredOnly;
+  const btn = document.getElementById('dp-star-btn');
+  if (btn) {
+    btn.style.color       = _dp_starredOnly ? 'var(--amber)' : '';
+    btn.style.borderColor = _dp_starredOnly ? 'var(--amber)' : '';
+  }
+  const dd = document.getElementById('ac-dropdown');
+  if (dd && !dd.classList.contains('hidden')) {
+    const active = document.activeElement;
+    if (active && (active.classList.contains('dp-primary-search') || active.classList.contains('dp-alt-search'))) {
+      active.dispatchEvent(new Event('input'));
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
 //  Autocomplete
 // ══════════════════════════════════════════════
 function openAC(slotIdx, inputEl) {
@@ -1187,8 +1211,9 @@ function openAC(slotIdx, inputEl) {
   acAltMode = null;
   acActiveSlot = slotIdx;
   const q = inputEl.value.trim().toLowerCase();
-  if (!q) { closeAC(); return; }
-  acResults = POKEMON_DB.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20);
+  if (!q && !_dp_starredOnly) { closeAC(); return; }
+  const pool = _dp_starredOnly ? POKEMON_DB.filter(p => _STARRED.has(p.name.toLowerCase())) : POKEMON_DB;
+  acResults = q ? pool.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20) : pool.slice(0, 20);
   acHighlight = 0;
   if (!acResults.length) { closeAC(); return; }
   positionDropdown(inputEl);
@@ -1210,7 +1235,9 @@ function renderAC() {
   acResults.forEach((p, i) => {
     const item = document.createElement('div');
     item.className = 'ac-item' + (i === acHighlight ? ' active' : '');
+    const isStar = _STARRED.has(p.name.toLowerCase());
     item.innerHTML = `<img src="${p.sprite}" onerror="this.src='https://i.imgur.com/zt776Sk.jpeg'">
+      ${isStar ? '<span style="color:var(--amber);font-size:11px;flex-shrink:0;line-height:1;">&#x2605;</span>' : ''}
       <span>${p.name}</span>
       <span style="margin-left:auto;color:var(--magenta);opacity:0.8;">${p.points}pt</span>
       <span style="margin-left:4px;color:var(--text-dim);font-size:9px;">${p.tier}</span>`;
@@ -1271,8 +1298,9 @@ function openAltAC(slotIdx, altIdx, inputEl) {
   acAltMode = { slotIdx, altIdx };
   acActiveSlot = -1;
   const q = inputEl.value.trim().toLowerCase();
-  if (!q) { closeAC(); return; }
-  acResults = POKEMON_DB.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20);
+  if (!q && !_dp_starredOnly) { closeAC(); return; }
+  const pool = _dp_starredOnly ? POKEMON_DB.filter(p => _STARRED.has(p.name.toLowerCase())) : POKEMON_DB;
+  acResults = q ? pool.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20) : pool.slice(0, 20);
   acHighlight = 0;
   if (!acResults.length) { closeAC(); return; }
   positionDropdown(inputEl);
