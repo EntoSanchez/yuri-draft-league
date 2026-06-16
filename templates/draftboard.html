@@ -2102,4 +2102,50 @@ document.addEventListener('mouseout', e => {
 });
 </script>
 
+<button id="tour-fab" onclick="startTour(window._BOARD_TOUR)" title="Take a guided tour">?</button>
+<script>
+window._BOARD_TOUR = [
+  {
+    sel: '.dbl-hud',
+    title: 'Draft Progress',
+    body: 'Real-time tracker — shows how many Pokémon have been drafted out of the total pool and the overall completion bar.'
+  },
+  {
+    sel: '.dbl-team-rail',
+    title: 'Pool & Team Rail',
+    body: 'All coaches split into Pool A and Pool B. Click any team logo to jump directly to that team\'s column on the board.'
+  },
+  {
+    sel: '.dbl-filters',
+    title: 'Search & Filters',
+    body: 'Filter by name, ability, move (searchable dropdown), type, availability status, or speed tier. Stack multiple filters at once for precise lookups.'
+  },
+  {
+    sel: '#db-moves-btn',
+    title: 'Move Overlay',
+    body: 'Toggle on, then hover any Pokémon to see its full learnset. The category strip below the filter bar (Hazards, Priority, Speed Control, etc.) narrows the tooltip and the board simultaneously.'
+  },
+  {
+    sel: '#db-star-btn',
+    title: 'Starred Filter',
+    body: 'Mark target Pokémon on the Draft Prep page, then use this filter during the live draft to instantly spotlight only your pick list.'
+  },
+  {
+    sel: '#db-cmp-btn',
+    title: 'Compare Mode',
+    body: 'Activates pin buttons on every card. Pin up to 4 Pokémon to open a side-by-side breakdown of stats, abilities, and moves — unique moves in cyan, shared moves in amber.'
+  },
+  {
+    sel: '.dbl-board',
+    title: 'The Board',
+    body: 'Columns are tiers (T1–T5), rows are teams. Cyan border = available, magenta fill = drafted, red = banned. Hover any card to see stats, typing, BST, abilities, and (with Moves on) the full learnset.'
+  },
+  {
+    sel: '.dbl-legend',
+    title: 'Legend',
+    body: 'Color key: cyan available, magenta drafted, red banned. Gold crown = Tera captain, orange ring = Z-Move captain.'
+  },
+];
+</script>
+
 {% endblock %}

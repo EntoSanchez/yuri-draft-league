@@ -2196,4 +2196,45 @@ document.addEventListener('click', (e) => {
   </div>
 </div>
 
+<button id="tour-fab" onclick="startTour(window._PREP_TOUR)" title="Take a guided tour">?</button>
+<script>
+window._PREP_TOUR = [
+  {
+    sel: '#dp-topbar',
+    title: 'Your Draft Plan',
+    body: 'Name and manage draft plans. Save multiple strategies and switch between them with a click — prep for different opponents, meta calls, or backup picks.'
+  },
+  {
+    sel: '#slot-container',
+    title: 'Roster Slots',
+    body: 'Each slot is a draft tier. Click an empty slot and search to assign a Pokémon. Click a filled slot to pull up its full detail in the right panel.'
+  },
+  {
+    sel: '#dp-hud',
+    title: 'Budget Tracker',
+    body: 'Tracks your running points spend and tier-ticket usage as you fill slots. Turns red when you\'re close to budget — useful for staying legal before the draft.'
+  },
+  {
+    sel: '#dp-plans-section',
+    title: 'Saved Plans',
+    body: 'Save as many draft plans as you want. Rename, duplicate, or delete them. Use this to compare two strategies head-to-head before draft day.'
+  },
+  {
+    sel: '#dp-focused',
+    title: 'Pokémon Detail',
+    body: 'Full breakdown for the selected slot: sprite, base stats with visual bars, dual typing, all three abilities, and the complete move list grouped by role (Hazards, Recovery, Priority, etc.).'
+  },
+  {
+    sel: '#dp-analysis',
+    title: 'Team Analysis',
+    body: 'Auto-updates as you fill slots. Shows move coverage by category, a full-team speed tier chart, and a type coverage matrix so you can spot holes before draft day.'
+  },
+  {
+    sel: '#dp-star-btn',
+    title: 'Star Targets',
+    body: 'Star a Pokémon here to mark it as a draft target. On the Draft Board, hit the ★ Starred filter to instantly show only your targets during the live draft.'
+  },
+];
+</script>
+
 {% endblock %}

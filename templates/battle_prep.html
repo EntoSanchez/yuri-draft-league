@@ -1470,4 +1470,31 @@ document.getElementById('my-team-select').addEventListener('change', () => {
   }
 });
 </script>
+
+<button id="tour-fab" onclick="startTour(window._BATTLE_TOUR)" title="Take a guided tour">?</button>
+<script>
+window._BATTLE_TOUR = [
+  {
+    sel: '.vd-header-grid',
+    title: 'Team Matchup',
+    body: 'Pick your team and the opponent\'s from the dropdowns. Every panel — stats, defense, speed, coverage — populates automatically the moment both teams are selected.'
+  },
+  {
+    sel: '#verdict-bar',
+    title: 'Win-Probability Bar',
+    body: 'Click anywhere on the bar to log your projected edge. Drag to fine-tune. Use the LINEUP button next to it to lock in which 6 you\'re bringing to the match.'
+  },
+  {
+    sel: '.vd-band-2',
+    title: 'Stats & Type Defense',
+    body: 'Left: side-by-side base stat bars for every Pokémon on both teams. Toggle BARS/AVG and click stat chips to filter. Right: type defense — spot weaknesses and resistances. Toggle ABILITIES to factor in immunities.'
+  },
+  {
+    sel: '.vd-band-3',
+    title: 'Speed Tiers & Coverage',
+    body: 'Left: speed tier breakdown — TIERS shows relative order, LADDER shows exact benchmarks, CREEP shows speed-creep ranges. Right: coverage moves by category — filter by Hazards, Priority, Doubles, etc. to prep for specific threats.'
+  },
+];
+</script>
+
 {% endblock %}
