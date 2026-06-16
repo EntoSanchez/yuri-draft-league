@@ -491,6 +491,16 @@
   .pin-btn.pinned { color: var(--cyan) !important; opacity: 1 !important; text-shadow: 0 0 5px rgba(61,229,255,0.5); }
   /* Compare / moves toolbar button active state */
   #db-cmp-btn.active, #db-moves-btn.active { color: var(--cyan); }
+  /* Move category strip (board + compare) */
+  .movecat-btn {
+    font: 700 8px/1 var(--font-mono); letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 3px 8px; background: var(--panel);
+    border: 1px solid var(--hairline-2); color: var(--text-dim);
+    cursor: pointer; transition: color 0.1s, border-color 0.1s, background 0.1s;
+    white-space: nowrap;
+  }
+  .movecat-btn:hover { color: var(--text); }
+  .movecat-btn.active { color: var(--cyan); border-color: var(--cyan-dim); background: rgba(61,229,255,0.06); }
 
   /* ── Compare tray ── */
   #compare-tray {
@@ -545,6 +555,16 @@
   .cmp-stat-val { font: 700 9px/1 var(--font-mono); width: 26px; text-align: right; flex-shrink: 0; }
   .cmp-stat-val.best { text-shadow: 0 0 6px currentColor; font-size: 10px; }
   .cmp-bst { font: 700 11px/1 var(--font-display); letter-spacing: 0.04em; margin-top: 2px; }
+  /* Category filter bar */
+  .movecat-btn {
+    font: 700 8px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 4px 9px; background: var(--panel);
+    border: 1px solid var(--hairline-2); color: var(--text-dim);
+    cursor: pointer; transition: color 0.1s, border-color 0.1s, background 0.1s;
+    white-space: nowrap;
+  }
+  .movecat-btn:hover { color: var(--text); border-color: var(--hairline-2); }
+  .movecat-btn.active { color: var(--cyan); border-color: var(--cyan-dim); background: rgba(61,229,255,0.06); }
   .cmp-move {
     font: 600 8px/1.4 var(--font-mono);
     padding: 1px 5px;
@@ -795,6 +815,17 @@
       </div>
 
     </div><!-- /dbl-filters -->
+
+    <!-- Move category strip — visible when Moves toggle is on -->
+    <div id="dbl-move-cats" style="display:none;flex-wrap:wrap;gap:3px;padding-top:6px;border-top:1px solid var(--hairline);">
+      <button class="movecat-btn active" data-cat="all" onclick="setMoveCat('all')">All</button>
+      {% for cat in [
+        'Hazards','Support','Momentum','Priority','Speed Control','Phasing',
+        'Disruption','Status','Set Up','Recovery','Tact. Attacks','Doubles','Weather','Trap'
+      ] %}
+      <button class="movecat-btn" data-cat="{{ cat }}" onclick="setMoveCat('{{ cat }}')">{{ cat }}</button>
+      {% endfor %}
+    </div>
   </div><!-- /dbl-controls -->
 
 
@@ -1320,6 +1351,7 @@
       <span class="cmp-title">// Pokémon Compare</span>
       <button class="cmp-close-btn" onclick="closeCompare()">✕</button>
     </div>
+    <div id="cmp-cat-bar" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;"></div>
     <div id="cmp-grid" class="cmp-grid"></div>
   </div>
 </div>
@@ -1421,6 +1453,10 @@ function clearFilters() {
   document.getElementById('db-speed').value = '';
   currentSearch = currentStatus = currentMove = currentAbility = currentType = currentSpeed = '';
   currentStarred = false;
+  _boardMoveCat = 'all';
+  document.querySelectorAll('#dbl-move-cats .movecat-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === 'all');
+  });
   const _starBtn = document.getElementById('db-star-btn');
   if (_starBtn) _starBtn.classList.remove('active');
   hideSuggestions();
@@ -1462,13 +1498,23 @@ function filterBoard() {
     const typeOk    = !currentType    || type1 === currentType || type2 === currentType;
     const speedOk   = !currentSpeed   || (spe >= speedMin && spe <= speedMax);
 
+    // Move category filter
+    let moveCatOk = true;
+    if (_boardMoveCat !== 'all') {
+      const cat = _MOVE_CATS.find(c => c.label === _boardMoveCat);
+      if (cat) {
+        const catSet = new Set(cat.moves.map(m => m.toLowerCase()));
+        moveCatOk = moves.toLowerCase().split('|').some(m => m.trim() && catSet.has(m.trim()));
+      }
+    }
+
     let poolDim = false;
     if (currentPool && status === 'drafted') {
       poolDim = (pool !== currentPool);
     }
 
     const starOk   = !currentStarred  || _starred.has(name);
-    const show = nameOk && statusOk && moveOk && abilityOk && typeOk && speedOk && starOk;
+    const show = nameOk && statusOk && moveOk && abilityOk && typeOk && speedOk && starOk && moveCatOk;
     poke.style.display = show ? '' : 'none';
     if (show) {
       poke.classList.toggle('pool-dim', poolDim);
@@ -1758,6 +1804,30 @@ function updateCompareTray() {
   }
 }
 
+const _MOVE_CATS = [
+  { label:"Hazards",       moves:["Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Rapid Spin","Court Change","Mortal Spin"] },
+  { label:"Support",       moves:["Wish","Heal Bell","Aromatherapy","Reflect","Light Screen","Aurora Veil","Safeguard","Lucky Chant"] },
+  { label:"Momentum",      moves:["Volt Switch","U-turn","Baton Pass","Teleport","Parting Shot","Flip Turn","Chilly Reception","Shed Tail"] },
+  { label:"Priority",      moves:["Fake Out","Aqua Jet","Bullet Punch","Mach Punch","Ice Shard","Quick Attack","Shadow Sneak","Sucker Punch","Vacuum Wave","Grassy Glide","Extreme Speed","First Impression","Accelerock","Water Shuriken","Jet Punch","Upper Hand"] },
+  { label:"Speed Control", moves:["Tailwind","Trick Room","Icy Wind","Electro Web","Sticky Web","Thunder Wave","Glare","Nuzzle","String Shot","Bulldoze","Low Sweep","Cotton Spore","Scary Face","Agility","Rock Polish","Autotomize","Shift Gear","Chlorophyll","Swift Swim","Sand Rush","Slush Rush","Surge Surfer"] },
+  { label:"Phasing",       moves:["Dragon Tail","Roar","Whirlwind","Circle Throw","Haze","Perish Song"] },
+  { label:"Disruption",    moves:["Haze","Clear Smog","Encore","Gravity","Taunt","Switcheroo","Trick","Trick Room","Healing Wish","Memento","Instruct","Magic Coat","Disable","Psychic Noise","Alluring Voice"] },
+  { label:"Status",        moves:["Toxic","Will-O-Wisp","Thunder Wave","Glare","Spore","Stun Spore","Sleep Powder","Nuzzle","Hypnosis","Yawn"] },
+  { label:"Set Up",        moves:["Swords Dance","Dragon Dance","Nasty Plot","Calm Mind","Cosmic Power","Agility","Rock Polish","Bulk Up","Quiver Dance","Curse","Tail Glow","Hone Claws","Iron Defense","Shell Smash","Amnesia","Belly Drum","Shift Gear","Coil","Cotton Guard","Acid Armor","Autotomize","Clangorous Soul","Victory Dance","Torch Song","Work Up","Minimize"] },
+  { label:"Recovery",      moves:["Soft-Boiled","Recover","Roost","Slack Off","Synthesis","Milk Drink","Moonlight","Morning Sun","Shore Up","Strength Sap","Heal Order","Life Dew","Pain Split","Rest","Jungle Healing"] },
+  { label:"Tact. Attacks", moves:["Knock Off","Body Press","Freeze-Dry","Brick Break","Psychic Fangs","Foul Play","Trailblaze","Stored Power","Power Trip","Ice Spinner","Chilling Water","Poltergeist","Body Slam","Superpower"] },
+  { label:"Doubles",       moves:["Follow Me","Rage Powder","Acid Spray","After You","Ally Switch","Beat Up","Breaking Swipe","Bulldoze","Charm","Coaching","Eerie Impulse","Electro Web","Fake Tears","Heal Pulse","Heat Wave","Helping Hand","Howl","Icy Wind","Imprison","Muddy Water","Pollen Puff","Quick Guard","Screech","Snarl","Super Fang","Wide Guard","Dragon Cheer"] },
+  { label:"Weather",       moves:["Sunny Day","Rain Dance","Sandstorm","Hail","Snow","Weather Ball"] },
+  { label:"Trap",          moves:["Infestation","Block","Mean Look","Fire Spin","Whirlpool","Sand Tomb","Thunder Cage","Wrap","Pursuit"] },
+];
+
+// Build a reverse lookup: move name → category label
+const _MOVE_TO_CAT = {};
+_MOVE_CATS.forEach(c => c.moves.forEach(m => { _MOVE_TO_CAT[m] = c.label; }));
+
+let _cmpCatFilter = 'all';   // active category in the compare modal
+let _boardMoveCat = 'all';   // active category in the board filter strip
+
 const _CMP_TYPE_COLORS = {
   normal:'#9ca3af',fire:'#f97316',water:'#3b82f6',electric:'#eab308',
   grass:'#22c55e',ice:'#67e8f9',fighting:'#dc2626',poison:'#a855f7',
@@ -1803,6 +1873,24 @@ function openCompare() {
   const moveFreq = {};
   data.forEach(d => d.moves.forEach(m => { moveFreq[m] = (moveFreq[m] || 0) + 1; }));
 
+  // Category filter bar
+  const catBar = document.getElementById('cmp-cat-bar');
+  if (catBar) {
+    const allCats = [{ label:'All moves' }, ..._MOVE_CATS];
+    catBar.innerHTML = allCats.map(c => {
+      const val = c.label === 'All moves' ? 'all' : c.label;
+      const active = _cmpCatFilter === val;
+      // show count of how many of the category's moves any compared mon has
+      const count = c.label === 'All moves' ? '' :
+        ` (${new Set(data.flatMap(d => d.moves.filter(m => c.moves.includes(m)))).size})`;
+      return `<button class="movecat-btn${active ? ' active' : ''}" onclick="setCmpCat('${val}')">${c.label}${count}</button>`;
+    }).join('');
+  }
+
+  // Active category move set (null = all)
+  const activeCat = _cmpCatFilter === 'all' ? null
+    : new Set((_MOVE_CATS.find(c => c.label === _cmpCatFilter) || { moves: [] }).moves);
+
   grid.style.gridTemplateColumns = `repeat(${data.length}, 1fr)`;
   grid.innerHTML = data.map(d => {
     const t1c = _CMP_TYPE_COLORS[d.type1] || '#374151';
@@ -1825,9 +1913,10 @@ function openCompare() {
     const ptsHtml = d.pts
       ? `<span style="font:700 16px/1 var(--font-display);color:var(--cyan);letter-spacing:0.04em;">${d.pts}<span style="font-size:9px;color:var(--cyan-dim);margin-left:2px;">pts</span></span>`
       : '';
-    // Moves: sort exclusive (freq=1) first, then shared (freq≥2), alpha within each group
-    const excl   = d.moves.filter(m => moveFreq[m] === 1).sort();
-    const shared = d.moves.filter(m => moveFreq[m]  > 1).sort();
+    // Moves: apply category filter, then sort exclusive first, then shared
+    const visibleMoves = activeCat ? d.moves.filter(m => activeCat.has(m)) : d.moves;
+    const excl   = visibleMoves.filter(m => moveFreq[m] === 1).sort();
+    const shared = visibleMoves.filter(m => moveFreq[m]  > 1).sort();
     const movesHtml = (excl.length || shared.length) ? `
       <div style="width:100%;border-top:1px solid var(--hairline);padding-top:6px;margin-top:2px;">
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
@@ -1880,6 +1969,21 @@ function toggleMovesTooltip() {
   _showMoves = !_showMoves;
   const btn = document.getElementById('db-moves-btn');
   if (btn) btn.classList.toggle('active', _showMoves);
+  const strip = document.getElementById('dbl-move-cats');
+  if (strip) strip.style.display = _showMoves ? 'flex' : 'none';
+}
+
+function setCmpCat(label) {
+  _cmpCatFilter = label;
+  openCompare();  // re-render with new filter (modal stays open)
+}
+
+function setMoveCat(label) {
+  _boardMoveCat = label;
+  document.querySelectorAll('#dbl-move-cats .movecat-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === label);
+  });
+  filterBoard();
 }
 
 document.getElementById('compare-modal')?.addEventListener('click', e => {

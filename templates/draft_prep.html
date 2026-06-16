@@ -420,6 +420,38 @@
 
   /* Alts: 2-col on mobile instead of 3 */
   .dp-alts-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Bigger tap targets on slot rows */
+  .dp-slot-row { padding: 10px 10px 10px 0; min-height: 52px; }
+  .dp-slot-accent { height: 50px; }
+  .dp-slot-poke { font-size: 13px; }
+  .dp-slot-empty { font-size: 12px; }
+  .dp-slot-cost { font-size: 13px; }
+  .dp-slot-num  { font-size: 11px; }
+
+  /* Topbar action buttons — iOS minimum tap size */
+  .dp-topbar-actions button, .dp-topbar-actions select {
+    min-height: 36px; font-size: 12px; padding: 0 10px;
+  }
+  .dp-topbar-actions input { min-height: 36px; font-size: 12px; }
+
+  /* Move chips in analysis panel — readable on small screens */
+  .move-grid { gap: 5px; padding: 6px 2px 10px; }
+  .role-chip, .move-chip { font-size: 10px !important; padding: 3px 7px !important; }
+
+  /* Stat bars taller for readability */
+  .stat-bar-bg { height: 6px !important; }
+
+  /* Coverage table horizontal scroll */
+  #dp-analysis-body table { min-width: 320px; }
+  #dp-analysis-body > div:has(table) { overflow-x: auto; }
+
+  /* Plans list reasonable max-height */
+  #plans-list { max-height: 120px; }
+
+  /* Focused panel: title + details stack better */
+  .dp-focused-hdr { flex-wrap: wrap; gap: 6px; }
+  .dp-focused-title { font-size: 15px; }
 }
 </style>
 
