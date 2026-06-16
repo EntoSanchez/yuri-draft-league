@@ -348,8 +348,6 @@
         </div>
         <!-- favored label -->
         <div id="verdict-lbl" style="text-align:center;margin-top:5px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-dim)">NO TEAMS SELECTED</div>
-        <!-- win-prob slider (subtle) -->
-        <input type="range" id="wp-range" min="0" max="100" value="50" style="width:100%;margin-top:4px;accent-color:var(--cyan);opacity:.6" oninput="setWP(this.value)">
       </div>
 
       <!-- Opp team pill -->
@@ -648,25 +646,22 @@ function updateHeader() {
   refreshVerdict();
 }
 
-function setWP(v) { S.winProb=parseInt(v); refreshVerdict(); }
 function verdictClick(e, el) {
   if (S.pickem) return;
   const r = el.getBoundingClientRect();
   S.winProb = Math.max(0,Math.min(100,Math.round(((e.clientX-r.left)/r.width)*100)));
-  document.getElementById("wp-range").value = S.winProb;
   refreshVerdict();
 }
 function refreshVerdict() {
-  const sliderEl = document.getElementById("wp-range");
-  const barEl    = document.getElementById("verdict-bar");
-  const lbl      = document.getElementById("verdict-lbl");
+  const barEl = document.getElementById("verdict-bar");
+  const lbl   = document.getElementById("verdict-lbl");
   if (!S.myCoach && !S.oppCoach) {
     document.getElementById("vbar-me").style.width ="50%";
     document.getElementById("vbar-opp").style.width="50%";
     document.getElementById("pct-me").textContent  ="50%";
     document.getElementById("pct-opp").textContent ="50%";
     lbl.textContent="NO TEAMS SELECTED"; lbl.style.color="var(--text-dim)";
-    sliderEl.style.display=""; barEl.style.cursor="pointer"; return;
+    barEl.style.cursor="pointer"; return;
   }
   const mN=(S.myCoach?.team_name||S.myCoach?.name||"YOU").toUpperCase();
   const oN=(S.oppCoach?.team_name||S.oppCoach?.name||"OPP").toUpperCase();
@@ -675,12 +670,10 @@ function refreshVerdict() {
     const myIsC1 = S.pickem.c1_id === S.myCoach?.id;
     p = myIsC1 ? S.pickem.c1_pct : S.pickem.c2_pct;
     sublbl = `PICKEMS · ${S.pickem.total} VOTE${S.pickem.total===1?"":"S"} · WK ${S.pickem.week}`;
-    sliderEl.style.display="none";
     barEl.style.cursor="default";
   } else {
     p = S.winProb;
     sublbl = Math.abs(p-(100-p))+"-PT SWING";
-    sliderEl.style.display="";
     barEl.style.cursor="pointer";
   }
   const o=100-p;
