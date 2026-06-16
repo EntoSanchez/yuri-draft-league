@@ -72,7 +72,45 @@ for line in moves_js.splitlines():
 print(f"  -> {len(move_display)} move display names parsed", flush=True)
 
 
-# ── 3. Inheritance resolution ─────────────────────────────────────────────────
+# ── 3. Parse pokedex.ts for pre-evolution chain ───────────────────────────────
+print("Fetching pokedex.ts (~1 MB) ...", flush=True)
+pokedex_ts = fetch(
+    "https://raw.githubusercontent.com/smogon/pokemon-showdown/master/data/pokedex.ts"
+)
+
+# prevo_map: { poke_id -> prevo_id }  (only direct pre-evos)
+prevo_map: dict = {}
+cur_pdex = None
+
+for line in pokedex_ts.splitlines():
+    pm = re.match(r"^\t([a-z0-9]+): \{", line)
+    if pm:
+        cur_pdex = pm.group(1)
+    elif cur_pdex:
+        pv = re.match(r'^\t\tprevo: "([^"]+)"', line)
+        if pv:
+            # Convert display name to Showdown ID (lowercase, alphanumeric only)
+            prevo_map[cur_pdex] = re.sub(r"[^a-z0-9]", "", pv.group(1).lower())
+
+print(f"  -> {len(prevo_map)} pre-evolution links parsed", flush=True)
+
+
+def _prevo_chain(poke_id: str) -> list:
+    """Return list of pre-evolution IDs from immediate prevo up to base form."""
+    chain = []
+    cur = poke_id
+    seen = set()
+    while True:
+        prv = prevo_map.get(cur)
+        if not prv or prv in seen:
+            break
+        chain.append(prv)
+        seen.add(prv)
+        cur = prv
+    return chain
+
+
+# ── 4. Inheritance resolution ─────────────────────────────────────────────────
 def get_base_poke_id(poke_id: str):
     """Find the longest prefix of poke_id that exists with actual moves."""
     for length in range(len(poke_id) - 1, 2, -1):
@@ -83,7 +121,36 @@ def get_base_poke_id(poke_id: str):
 
 
 def get_full_moves(poke_id: str) -> list:
-    """Get complete move set, resolving up to 2 levels of inheritance."""
+    """Get complete move set: own moves + same-poke gen inheritance + prevo chain."""
+    if poke_id not in learnsets_data:
+        return []
+    entry = learnsets_data[poke_id]
+    own = set(entry["moves"])
+
+    # Same-species gen-to-gen inheritance (e.g. regional forms)
+    if entry["inherit"]:
+        base = get_base_poke_id(poke_id)
+        if base and base in learnsets_data:
+            b_entry = learnsets_data[base]
+            own |= set(b_entry["moves"])
+            if b_entry["inherit"]:
+                b2 = get_base_poke_id(base)
+                if b2 and b2 in learnsets_data:
+                    own |= set(learnsets_data[b2]["moves"])
+
+    # Pre-evolution chain — captures moves only available on earlier stages
+    # (e.g. Incineroar gets Parting Shot via Litten, Lopunny gets Fake Out via Buneary)
+    for prv_id in _prevo_chain(poke_id):
+        if prv_id in learnsets_data:
+            prv_moves = get_full_moves.__wrapped__(prv_id)
+            own |= set(prv_moves)
+
+    return list(own)
+
+
+# Wrap to avoid infinite recursion on prevo chain
+_orig_get_full_moves = get_full_moves
+def get_full_moves(poke_id: str) -> list:
     if poke_id not in learnsets_data:
         return []
     entry = learnsets_data[poke_id]
@@ -97,10 +164,19 @@ def get_full_moves(poke_id: str) -> list:
                 b2 = get_base_poke_id(base)
                 if b2 and b2 in learnsets_data:
                     own |= set(learnsets_data[b2]["moves"])
+    for prv_id in _prevo_chain(poke_id):
+        if prv_id in learnsets_data:
+            prv = learnsets_data[prv_id]
+            own |= set(prv["moves"])
+            # one more level up (e.g. base -> mid -> final)
+            if prv["inherit"]:
+                pb = get_base_poke_id(prv_id)
+                if pb and pb in learnsets_data:
+                    own |= set(learnsets_data[pb]["moves"])
     return list(own)
 
 
-# ── 4. Name -> Showdown ID ─────────────────────────────────────────────────────
+# ── 5. Name -> Showdown ID ─────────────────────────────────────────────────────
 HARD_OVERRIDES = {
     # Special chars / punctuation
     "type: null":           "typenull",
@@ -205,7 +281,22 @@ def name_to_showdown_id(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", lower)
 
 
-# ── 5. Update the database ────────────────────────────────────────────────────
+# ── 6. Manual additions for known Showdown learnset gaps ──────────────────────
+# Keys are Showdown IDs; values are display-name moves to always add.
+# Only needed when Showdown's learnsets.ts omits a verifiable competitive move.
+MOVE_ADDITIONS: dict = {
+    # Sneasel/Weavile: Parting Shot via chain breed (Pangoro → Sneasel egg)
+    "sneasel":       ["Parting Shot"],
+    "sneaselhisui":  ["Parting Shot"],
+    "weavile":       ["Parting Shot"],
+    # Jigglypuff line: Follow Me is a level-up move missing from Showdown data
+    "igglybuff":     ["Follow Me"],
+    "jigglypuff":    ["Follow Me"],
+    "wigglytuff":    ["Follow Me"],
+}
+
+
+# ── 7. Update the database ────────────────────────────────────────────────────
 print("\nConnecting to database ...", flush=True)
 db = sqlite3.connect(DB_PATH)
 db.row_factory = sqlite3.Row
@@ -228,6 +319,10 @@ for row in rows:
 
     if move_ids:
         display = sorted({move_display.get(mid, mid.title()) for mid in move_ids})
+        # Merge any manual additions for this Pokémon
+        extras = MOVE_ADDITIONS.get(sid, [])
+        if extras:
+            display = sorted(set(display) | set(extras))
         updates.append(("|".join(display), row["id"]))
     else:
         not_found.append((name, sid))
