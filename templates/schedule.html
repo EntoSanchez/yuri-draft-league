@@ -58,9 +58,9 @@
 .sr-tab {
   background:transparent; border:0; border-right:1px solid var(--hairline);
   padding:9px 16px 8px; cursor:pointer; text-align:left; flex-shrink:0;
-  transition:background .2s;
+  transition:background .2s, transform .2s ease;
 }
-.sr-tab:hover { background:rgba(255,255,255,.025); }
+.sr-tab:hover { background:rgba(255,255,255,.025); transform:translateY(-2px); }  /* (8) hover lift */
 .sr-tab.active { background:var(--magenta-soft); }
 .sr-tab-k { font-family:var(--font-mono); font-size:8px; letter-spacing:.14em; color:var(--text-dim); }
 .sr-tab-n {

@@ -117,6 +117,27 @@
     }
     .yc-page-title { font-size: 32px; }
   }
+
+  /* ── Motion-system patterns (handoff #18) ── */
+  /* (9) toss-up shimmer — light streak flagging a live 50/50 deadlock */
+  .tossup-shimmer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .tossup-shimmer::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 38%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
+    transform: translateX(-130%);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .tossup-shimmer::after { animation: shimmer-sweep 2.6s ease-in-out infinite; }
+    @keyframes shimmer-sweep { 0% { transform: translateX(-130%); } 100% { transform: translateX(160%); } }
+
+    /* (10) stamp-in when a pick locks in (status isn't translateY-centered, so no -50%) */
+    .pk-status.locked { animation: pk-stamp-in .5s cubic-bezier(.2,.8,.3,1) both; }
+    @keyframes pk-stamp-in {
+      0%   { opacity: 0; transform: scale(1.6); }
+      60%  { opacity: 1; transform: scale(.92); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+  }
 </style>
 
 <!-- Header -->
@@ -198,6 +219,9 @@
             <div class="vote-bar-l pk-bar-fill-l" style="width:{{ c1_pct }}%;" data-target="{{ c1_pct }}" data-match="{{ m.id }}"></div>
             <div class="vote-bar-r pk-bar-fill-r" style="width:{{ c2_pct }}%;" data-target="{{ c2_pct }}" data-match="{{ m.id }}"></div>
           </div>
+          {% if not result_known and total_votes > 0 and c1_pct == c2_pct %}
+          <div class="tossup-shimmer"></div>   {# (9) live 50/50 deadlock #}
+          {% endif %}
           <div class="pk-bar-overlay">
             <span class="pk-pct">{{ c1_pct }}%</span>
             <span id="pick-status-{{ m.id }}" class="pk-status">
