@@ -351,6 +351,22 @@
   #music-widget #music-expanded { width: min(300px, calc(100vw - 28px)) !important; }
   #music-widget iframe { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
 }
+
+/* ── Motion-system patterns (handoff #19) ── */
+@media (prefers-reduced-motion: no-preference) {
+  /* (15) panel glow breathe on the This Week banner (drives shadow over the static border) */
+  .yc-team .glow-breathe { animation: yc-glow-breathe 4.5s ease-in-out infinite; }
+  @keyframes yc-glow-breathe {
+    0%,100% { box-shadow: 0 0 24px -8px var(--magenta-dim); }
+    50%     { box-shadow: 0 0 42px -4px var(--magenta-dim); }
+  }
+  /* (16) text pulse on the VS label */
+  .yc-team .vs-pulse { animation: yc-vs-pulse 2.4s ease-in-out infinite; }
+  @keyframes yc-vs-pulse {
+    0%,100% { opacity: 1; text-shadow: 0 0 10px var(--cyan-dim); }
+    50%     { opacity: .72; text-shadow: 0 0 22px var(--cyan); }
+  }
+}
 </style>
 
 <div class="yc-team">
@@ -499,7 +515,7 @@
 
       <div class="yc-brackets mag">
         <span class="yc-br-tr"></span><span class="yc-br-br"></span>
-        <div class="yc-panel glow-mag overflow-hidden">
+        <div class="yc-panel glow-mag glow-breathe overflow-hidden">
 
           <!-- Top bar: eyebrow | my team | VS/score | opp | week pill | CTA -->
           <div class="yc-tw-bar">
@@ -531,7 +547,7 @@
                   <span style="color:{% if matchup.opp_score > matchup.my_score %}var(--lime){% else %}var(--text-mute){% endif %};">{{ matchup.opp_score|int }}</span>
                 </div>
               {% else %}
-                <div class="yc-h1" style="font-size:28px;color:var(--cyan);">VS</div>
+                <div class="yc-h1 vs-pulse" style="font-size:28px;color:var(--cyan);">VS</div>
                 <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">UPCOMING</div>
               {% endif %}
             </div>

@@ -320,6 +320,14 @@
   /* Win-probability verdict bar: a little taller for touch */
   #verdict-bar { height: 18px !important; }
 }
+
+/* (3 reuse) ambient drift on the VS hero corner glows (handoff #19) */
+@media (prefers-reduced-motion: no-preference) {
+  .blob-drift-a { animation: blobA 26s ease-in-out infinite; }
+  .blob-drift-b { animation: blobB 32s ease-in-out infinite; }
+  @keyframes blobA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(46px,34px) scale(1.2); } }
+  @keyframes blobB { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-40px,-30px) scale(1.14); } }
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -331,9 +339,9 @@
        ═══════════════════════════════════════════════════════ -->
   <div class="vd-brackets vd-panel glow-mag" style="padding:12px 20px;position:relative;overflow:hidden;flex-shrink:0">
     <div class="br-tr"></div><div class="br-br"></div>
-    <!-- corner glows -->
-    <div style="position:absolute;top:-70px;left:-40px;width:240px;height:240px;background:radial-gradient(circle,rgba(61,229,255,.16),transparent 60%);pointer-events:none"></div>
-    <div style="position:absolute;top:-70px;right:-40px;width:240px;height:240px;background:radial-gradient(circle,rgba(255,61,151,.18),transparent 60%);pointer-events:none"></div>
+    <!-- corner glows — (3 reuse) ambient drift -->
+    <div class="blob-drift-a" style="position:absolute;top:-70px;left:-40px;width:240px;height:240px;background:radial-gradient(circle,rgba(61,229,255,.16),transparent 60%);pointer-events:none"></div>
+    <div class="blob-drift-b" style="position:absolute;top:-70px;right:-40px;width:240px;height:240px;background:radial-gradient(circle,rgba(255,61,151,.18),transparent 60%);pointer-events:none"></div>
 
     <div class="vd-header-grid" style="position:relative;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center;gap:24px">
 

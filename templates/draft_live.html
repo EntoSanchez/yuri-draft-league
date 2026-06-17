@@ -98,6 +98,17 @@
   /* Outer page padding */
   body > div { padding: 8px !important; }
 }
+
+/* ── Motion-system patterns (handoff #19) ── */
+/* (13) dense-row hover tint — skip the on-clock row (it's already highlighted) */
+.draft-row { transition: background .15s ease; }
+.draft-row:not(.on-clock):hover { background: rgba(61,229,255,.05) !important; }
+@media (prefers-reduced-motion: no-preference) {
+  /* (18) most-recent pick lands into place; its status dot pulses */
+  .pick-land { animation: dl-pick-land .6s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes dl-pick-land { 0% { transform: scale(1.18); box-shadow: 0 0 14px var(--cyan); } 100% { transform: scale(1); box-shadow: none; } }
+  .pick-dot { animation: dl-pulse 1.4s ease-in-out infinite; }
+}
 </style>
 
 {# ═══════════════ MACRO: single pool column ═══════════════ #}
@@ -181,7 +192,7 @@
     {% for tn in tier_order %}{% if 'Uber' in tn %}{% for p in grid_pool.get(tn, {}).get(coach.id, []) %}{% if uber_list.append(p) %}{% endif %}{% endfor %}{% endif %}{% endfor %}
     {% set uber_list = uber_list | sort(attribute='points', reverse=True) %}
 
-    <div class="dl-row" style="background:transparent;">
+    <div class="dl-row draft-row{% if is_on_clock %} on-clock{% endif %}" style="background:transparent;">
 
       {# Accent bar — cyan for last pick only #}
       <div style="align-self:stretch;background:{% if is_last %}var(--cyan){% else %}transparent{% endif %};"></div>
@@ -207,8 +218,8 @@
             <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:{{ sc }};opacity:.45;letter-spacing:.04em;">{{ sl }}</span>
           </div>
           {% else %}
-          <div class="dl-cell dl-cell-filled" style="border:1px solid {{ sc }};background:var(--panel-2);" title="{{ pick.pokemon_name }}">
-            {% if is_last and pick.pokemon_name == last_pick_row.pokemon_name %}<div style="position:absolute;top:-2px;right:-2px;width:6px;height:6px;background:var(--cyan);box-shadow:0 0 6px var(--cyan);z-index:1;"></div>{% endif %}
+          <div class="dl-cell dl-cell-filled{% if is_last and pick.pokemon_name == last_pick_row.pokemon_name %} pick-land{% endif %}" style="border:1px solid {{ sc }};background:var(--panel-2);" title="{{ pick.pokemon_name }}">
+            {% if is_last and pick.pokemon_name == last_pick_row.pokemon_name %}<div class="pick-dot" style="position:absolute;top:-2px;right:-2px;width:6px;height:6px;background:var(--cyan);box-shadow:0 0 6px var(--cyan);z-index:1;"></div>{% endif %}
             <div style="display:flex;justify-content:space-between;align-items:baseline;line-height:1;">
               <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:{{ sc }};letter-spacing:.04em;">{{ sl }}</span>
               {% if cm=='points' %}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);font-weight:600;">{{ pick.points }}</span>
