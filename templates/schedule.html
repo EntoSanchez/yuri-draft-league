@@ -238,8 +238,8 @@ img.sr-logo { display:block; }
 </div>
 
 <script>
-const SCHEDULE = {{ schedule_json | safe }};
-const COACHES  = {{ coaches_json | safe }};
+const SCHEDULE = {{ schedule_json | safejson }};
+const COACHES  = {{ coaches_json | safejson }};
 const CURRENT_WEEK = {{ current_week }};
 
 // ── state ──────────────────────────────────────────────────────────

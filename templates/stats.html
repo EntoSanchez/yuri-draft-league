@@ -457,7 +457,7 @@
 
 <!-- ── DATA + INTERACTIVE JS ────────────────────────────────── -->
 <script>
-const STATS = {{ stats_json | safe }};
+const STATS = {{ stats_json | safejson }};
 const TYPE_COLORS = Object.fromEntries(STATS.type_meta.map(t => [t.type, t.color]));
 
 // ── State ──────────────────────────────────────────────────────

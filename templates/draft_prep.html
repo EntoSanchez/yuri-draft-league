@@ -597,7 +597,7 @@ const ROLES = [
     desc:"Pokémon with low enough Speed (≤55) to move first under Trick Room. A team with a TR setter benefits greatly from having multiple abusers to maximize the 5-turn window." },
 ];
 
-const POKEMON_DB = {{ pokemon_json | safe }};
+const POKEMON_DB = {{ pokemon_json | safejson }};
 const _STARRED = new Set(JSON.parse(localStorage.getItem('ydl_starred_pokemon') || '[]'));
 let _dp_starredOnly = false;
 const BUDGET = {{ budget }};

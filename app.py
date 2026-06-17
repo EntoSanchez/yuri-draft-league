@@ -4,10 +4,12 @@ import os
 import json
 import math
 import re
+import secrets
 import uuid
 import urllib.request
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_from_directory
+from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 from contextlib import contextmanager
 from replay_utils import (fetch_replay as _replay_fetch, parse_log as _replay_parse_log,
@@ -357,6 +359,23 @@ app.jinja_env.globals["pokemon_static_sprite_url"] = pokemon_static_sprite_url
 app.jinja_env.globals["pokemon_pokedex_sprite_url"] = pokemon_pokedex_sprite_url
 
 
+@app.template_filter("safejson")
+def _safejson(s):
+    """Make an already-serialized JSON string safe to embed inside <script>.
+
+    Escapes the characters that could break out of the script context (a team
+    or coach name containing '</script>', a quote, etc.) without re-encoding the
+    JSON. The \\uXXXX escapes are valid inside JS string literals, so the data
+    round-trips unchanged.
+    """
+    from markupsafe import Markup
+    text = "" if s is None else str(s)
+    for bad, esc in (("<", "\\u003c"), (">", "\\u003e"), ("&", "\\u0026"),
+                     (" ", "\\u2028"), (" ", "\\u2029")):
+        text = text.replace(bad, esc)
+    return Markup(text)
+
+
 def _extract_youtube_id(url):
     """Extract YouTube video ID from a watch/share/embed URL."""
     if not url:
@@ -389,7 +408,27 @@ def inject_nav_coaches():
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 def hash_pw(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Salted, slow password hash (PBKDF2 via werkzeug). Replaces bare SHA-256."""
+    return generate_password_hash(password)
+
+
+def verify_pw(password, stored_hash):
+    """Check a password against a stored hash.
+
+    Supports both the new werkzeug format (contains '$' separators) and the
+    legacy bare-SHA-256 hex so existing accounts keep working; legacy hashes are
+    transparently upgraded on next successful login (see the login route).
+    """
+    if not stored_hash:
+        return False
+    if "$" in stored_hash:  # werkzeug format: method$salt$hash
+        try:
+            return check_password_hash(stored_hash, password)
+        except Exception:
+            return False
+    # Legacy bare SHA-256 hex (constant-time compare)
+    legacy = hashlib.sha256(password.encode()).hexdigest()
+    return secrets.compare_digest(stored_hash, legacy)
 
 
 def login_required(f):
@@ -540,10 +579,14 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         with get_db() as db:
-            user = db.execute(
-                "SELECT * FROM users WHERE username=? AND password_hash=?",
-                (username, hash_pw(password))
+            row = db.execute(
+                "SELECT * FROM users WHERE username=?", (username,)
             ).fetchone()
+            user = row if (row and verify_pw(password, row["password_hash"])) else None
+            # Transparently upgrade legacy SHA-256 hashes to salted PBKDF2
+            if user and "$" not in (user["password_hash"] or ""):
+                db.execute("UPDATE users SET password_hash=? WHERE id=?",
+                           (hash_pw(password), user["id"]))
         if user:
             session["user_id"] = user["id"]
             session["username"] = user["username"]
@@ -2081,6 +2124,7 @@ def pickems():
                 week INTEGER NOT NULL,
                 match_id INTEGER NOT NULL,
                 picked_coach_id INTEGER NOT NULL,
+                voter_token TEXT,
                 UNIQUE(voter_name, week, match_id)
             )
         """)
@@ -2160,35 +2204,67 @@ def pickems():
 
 @app.route("/pickems/vote", methods=["POST"])
 def pickems_vote():
-    voter_name = request.form.get("voter_name", "").strip()
+    voter_name = request.form.get("voter_name", "").strip()[:40]
     week = request.form.get("week", type=int)
     match_id = request.form.get("match_id", type=int)
     picked_coach_id = request.form.get("picked_coach_id", type=int)
     if not voter_name or not week or not match_id or not picked_coach_id:
         return jsonify({"error": "Missing fields"}), 400
+
+    # Stable per-browser identity → one vote per browser per match (anti-stuffing).
+    token = request.cookies.get("pickem_voter") or secrets.token_hex(16)
+
     with get_db() as db:
-        db.execute("""
-            INSERT INTO pickem_votes (voter_name, week, match_id, picked_coach_id)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(voter_name, week, match_id) DO UPDATE SET picked_coach_id=excluded.picked_coach_id
-        """, (voter_name, week, match_id, picked_coach_id))
-        # Return updated vote counts so client can animate bars
+        try:  # ensure the column exists on DBs created before this change
+            db.execute("ALTER TABLE pickem_votes ADD COLUMN voter_token TEXT")
+        except Exception:
+            pass
+
         match_row = db.execute(
             "SELECT coach1_id, coach2_id FROM schedule WHERE id=?", (match_id,)
         ).fetchone()
-        if match_row:
-            c1_id, c2_id = match_row["coach1_id"], match_row["coach2_id"]
-            votes = db.execute(
-                "SELECT picked_coach_id, COUNT(*) as n FROM pickem_votes WHERE match_id=? GROUP BY picked_coach_id",
-                (match_id,)
-            ).fetchall()
-            vote_map = {r["picked_coach_id"]: r["n"] for r in votes}
-            c1_n = vote_map.get(c1_id, 0)
-            c2_n = vote_map.get(c2_id, 0)
-            total = c1_n + c2_n
-            c1_pct = round(c1_n / total * 100) if total > 0 else 50
-            return jsonify({"ok": True, "c1_pct": c1_pct, "c2_pct": 100 - c1_pct})
-    return jsonify({"ok": True})
+        if not match_row:
+            return jsonify({"error": "Match not found"}), 404
+        c1_id, c2_id = match_row["coach1_id"], match_row["coach2_id"]
+        # Integrity: may only vote for one of the two coaches actually in this match
+        if picked_coach_id not in (c1_id, c2_id):
+            return jsonify({"error": "Invalid pick"}), 400
+
+        # This browser's prior vote for this match (identity = cookie token, not name)
+        existing = db.execute(
+            "SELECT id FROM pickem_votes WHERE week=? AND match_id=? AND voter_token=?",
+            (week, match_id, token)
+        ).fetchone()
+        if existing:
+            db.execute(
+                "UPDATE pickem_votes SET picked_coach_id=?, voter_name=? WHERE id=?",
+                (picked_coach_id, voter_name, existing["id"])
+            )
+        else:
+            try:
+                db.execute(
+                    "INSERT INTO pickem_votes (voter_name, week, match_id, picked_coach_id, voter_token) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (voter_name, week, match_id, picked_coach_id, token)
+                )
+            except sqlite3.IntegrityError:
+                return jsonify({"error": "That name already voted on this match — pick another."}), 409
+
+        votes = db.execute(
+            "SELECT picked_coach_id, COUNT(*) as n FROM pickem_votes WHERE match_id=? GROUP BY picked_coach_id",
+            (match_id,)
+        ).fetchall()
+        vote_map = {r["picked_coach_id"]: r["n"] for r in votes}
+        c1_n = vote_map.get(c1_id, 0)
+        c2_n = vote_map.get(c2_id, 0)
+        total = c1_n + c2_n
+        c1_pct = round(c1_n / total * 100) if total > 0 else 50
+
+    resp = jsonify({"ok": True, "c1_pct": c1_pct, "c2_pct": 100 - c1_pct})
+    if not request.cookies.get("pickem_voter"):
+        resp.set_cookie("pickem_voter", token, max_age=60 * 60 * 24 * 365,
+                        httponly=True, samesite="Lax")
+    return resp
 
 
 @app.route("/transactions")
@@ -3221,7 +3297,7 @@ def admin_users():
         action = request.form.get("action")
         if action == "add":
             pw = request.form.get("password", "")
-            pw_hash = hashlib.sha256(pw.encode()).hexdigest()
+            pw_hash = hash_pw(pw)
             coach_id = request.form.get("coach_id") or None
             with get_db() as db:
                 try:
@@ -3235,7 +3311,7 @@ def admin_users():
         elif action == "change_password":
             uid = request.form["user_id"]
             pw = request.form.get("password", "")
-            pw_hash = hashlib.sha256(pw.encode()).hexdigest()
+            pw_hash = hash_pw(pw)
             with get_db() as db:
                 db.execute("UPDATE users SET password_hash=? WHERE id=?", (pw_hash, uid))
             flash("Password updated!", "success")

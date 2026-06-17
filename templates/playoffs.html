@@ -254,7 +254,7 @@
 </div>{# end pb-wrap #}
 
 <script>
-const BRACKET = {{ bracket_json | safe }};
+const BRACKET = {{ bracket_json | safejson }};
 (function () {
   if (!BRACKET) return;
 

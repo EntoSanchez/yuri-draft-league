@@ -234,9 +234,9 @@
 const ALL_WEEKS = {{ all_weeks | tojson }};
 const FORM_WEEKS = ALL_WEEKS.slice(-5); // last 5
 const DATA = {
-  ALL: {{ standings_all_json | safe }},
-  A:   {{ standings_a_json | safe }},
-  B:   {{ standings_b_json | safe }},
+  ALL: {{ standings_all_json | safejson }},
+  A:   {{ standings_a_json | safejson }},
+  B:   {{ standings_b_json | safejson }},
 };
 
 let scope = "ALL";
