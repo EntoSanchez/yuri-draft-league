@@ -61,11 +61,14 @@
   .logo-inner {
     display: inline-flex; align-items: center; gap: 36px;
     white-space: nowrap; flex-shrink: 0;
-    animation: logoScrollL 40s linear infinite;
+    animation: logoScrollL 54s linear infinite;   /* (3) front strip faster */
   }
   .logo-band-bot .logo-inner {
-    animation: logoScrollR 40s linear infinite;
+    animation: logoScrollR 82s linear infinite;   /* (3) back strip slower, reversed */
   }
+  /* (3) back strip dimmed for depth */
+  .logo-band-bot .logo-item,
+  .logo-band-bot .logo-swatch-item { opacity: 0.28; }
   @keyframes logoScrollL {
     from { transform: translateX(0); }
     to   { transform: translateX(-50%); }
@@ -105,20 +108,22 @@
   @media (max-width: 900px) {
     .hero-body { flex-direction: column; }
     .hero-left  { flex: none; padding: 2.5rem 1.5rem 1.5rem; }
-    .hero-right { flex: none; padding: 0 1.5rem 2rem; min-height: 260px; }
+    .hero-right { flex: none; padding: 0 1.5rem 2rem; min-height: 260px; margin-right: 0; justify-content: center; }
+    .hero-logo-wrap { justify-content: center; }
     .logo-band-bot { display: none; }
   }
 
   /* ── Hero right panel ── */
   .hero-right {
     flex: 1;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: flex-end;
     padding: 2rem 3.5rem 2rem 1rem;
+    margin-right: -40px;   /* (7) bleed past the padding edge (hero has overflow:hidden) */
   }
   .hero-logo-img {
-    max-height: 460px; max-width: 100%;
-    object-fit: contain;
-    filter: drop-shadow(0 0 48px rgba(0,245,255,0.18)) drop-shadow(0 0 80px rgba(255,45,120,0.1));
+    width: 100%; max-width: 500px; max-height: 460px; height: auto;
+    object-fit: contain; display: block;
+    filter: drop-shadow(0 0 24px rgba(255,42,138,.45)) drop-shadow(0 0 60px rgba(61,229,255,.18));
   }
 
   /* ── Hero badges ── */
@@ -608,6 +613,59 @@
     pointer-events: none;
   }
 
+  /* ════════════════════════════════════════════════════════════
+     HOME MOTION PASS (design handoff — 7 effects)
+     ════════════════════════════════════════════════════════════ */
+
+  /* (9) HUD corner brackets — repeat the motif sparingly */
+  .brackets { position: relative; }
+  .brackets::before, .brackets::after,
+  .brackets > .br-tr, .brackets > .br-br {
+    content: ""; position: absolute; width: 10px; height: 10px;
+    border: 1px solid var(--cyan); pointer-events: none; z-index: 3;
+  }
+  .brackets::before { top: -1px;    left: -1px;  border-right: 0; border-bottom: 0; }
+  .brackets::after  { bottom: -1px; left: -1px;  border-right: 0; border-top: 0; }
+  .brackets > .br-tr { top: -1px;    right: -1px; border-left: 0; border-bottom: 0; }
+  .brackets > .br-br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+  .brackets.mag::before, .brackets.mag::after,
+  .brackets.mag > .br-tr, .brackets.mag > .br-br { border-color: var(--magenta); }
+
+  /* (7) Featured logo — static glow halo behind the floating logo (parallax) */
+  .hero-logo-wrap { position: relative; display: flex; justify-content: flex-end; align-items: center; }
+  .hero-logo-halo {
+    position: absolute; inset: 2%;
+    background: radial-gradient(circle, rgba(255,42,138,.32), rgba(61,229,255,.12) 45%, transparent 70%);
+    filter: blur(40px); pointer-events: none; z-index: 0;
+  }
+  .hero-logo-frame { position: relative; z-index: 1; }
+
+  /* All motion gated so reduced-motion users get a fully visible, static hero */
+  @media (prefers-reduced-motion: no-preference) {
+    /* (1) entrance cascade — opacity:0 start lives here so reduced-motion stays visible */
+    .rise { opacity: 0; animation: rise-in .75s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* (2) neon title breathe + flicker */
+    .neon-title { animation: neon-breathe 5s ease-in-out infinite; }
+    @keyframes neon-breathe {
+      0%, 100% { text-shadow: 0 0 16px var(--magenta-dim); }
+      46%      { text-shadow: 0 0 34px var(--magenta), 0 0 72px var(--magenta-dim); }
+      49%      { text-shadow: 0 0 7px var(--magenta-dim); }
+      52%      { text-shadow: 0 0 34px var(--magenta), 0 0 72px var(--magenta-dim); }
+    }
+
+    /* (4) ambient glow blobs drift */
+    .blob-drift-a { animation: blobA 26s ease-in-out infinite; }
+    .blob-drift-b { animation: blobB 32s ease-in-out infinite; }
+    @keyframes blobA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(46px,34px) scale(1.2); } }
+    @keyframes blobB { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-40px,-30px) scale(1.14); } }
+
+    /* (7) featured logo float (halo stays static) */
+    .hero-logo-float { animation: logoFloat 9s ease-in-out infinite; }
+    @keyframes logoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+  }
+
   /* ═══ MOBILE (≤ 600px) ═══ */
   @media (max-width: 600px) {
     .hero-title-l1, .hero-title-l2 { font-size: clamp(2rem, 8.5vw, 3.2rem); }
@@ -650,6 +708,10 @@
 <section class="home-hero" id="hero">
   <div class="hero-grid"></div>
 
+  <!-- (4) ambient glow blobs — slowly drift & scale -->
+  <div class="blob-drift-a" style="position:absolute;top:-100px;left:-80px;width:380px;height:380px;background:radial-gradient(circle, rgba(255,42,138,.30), transparent 60%);filter:blur(20px);pointer-events:none;z-index:1;"></div>
+  <div class="blob-drift-b" style="position:absolute;bottom:-60px;right:-60px;width:320px;height:320px;background:radial-gradient(circle, rgba(61,229,255,.26), transparent 60%);filter:blur(20px);pointer-events:none;z-index:1;"></div>
+
   <!-- ① Top logo band (scrolls left) -->
   <div class="logo-band logo-band-top">
     <div class="logo-inner">
@@ -668,7 +730,7 @@
   <div class="hero-body">
     <div class="hero-left">
       <!-- Badges -->
-      <div class="hero-badges">
+      <div class="hero-badges rise" style="animation-delay:0.05s;">
         <span class="badge-live">
           <span style="width:6px;height:6px;border-radius:50%;background:#FF2D78;box-shadow:0 0 6px #FF2D78;animation:livePulse 1.6s ease-in-out infinite;display:inline-block;"></span>
           ON AIR
@@ -688,11 +750,13 @@
         {% set line1 = league_name %}
         {% set line2 = '' %}
       {% endif %}
-      <span class="hero-title-l1">{{ line1 }}</span>
-      {% if line2 %}<span class="hero-title-l2">{{ line2 }}</span>{% endif %}
+      <div class="rise" style="animation-delay:0.15s;">
+        <span class="hero-title-l1">{{ line1 }}</span>
+        {% if line2 %}<span class="hero-title-l2 neon-title">{{ line2 }}</span>{% endif %}
+      </div>
 
       <!-- Subtitle -->
-      <p class="hero-sub-text">
+      <p class="hero-sub-text rise" style="animation-delay:0.28s;">
         {% if total_weeks > 0 and total_teams > 0 %}
           {{ total_teams }} coaches. {{ total_weeks }} weeks. One trophy. Draft, battle, climb the ranks.
         {% else %}
@@ -701,15 +765,23 @@
       </p>
 
       <!-- CTAs -->
-      <div class="hero-ctas">
+      <div class="hero-ctas rise" style="animation-delay:0.4s;">
         <a href="/standings" class="btn-pm" style="text-transform:uppercase;letter-spacing:0.06em;">Standings →</a>
         <a href="/schedule" class="btn-sc" style="background:rgba(0,245,255,0.1);color:#00F5FF;border-color:rgba(0,245,255,0.4);text-transform:uppercase;letter-spacing:0.06em;">Live Schedule</a>
         <a href="/pickems" class="btn-ghost" style="text-transform:uppercase;letter-spacing:0.06em;">Make Picks</a>
       </div>
     </div>
 
-    <div class="hero-right">
-      <img src="/static/league-logo.jpeg" alt="{{ league_name }}" class="hero-logo-img">
+    <div class="hero-right rise" style="animation-delay:0.22s;">
+      <div class="hero-logo-wrap">
+        <!-- static glow halo (parallax against the floating logo) -->
+        <div class="hero-logo-halo"></div>
+        <!-- (9) bracket frame around the featured logo -->
+        <div class="brackets mag hero-logo-frame">
+          <span class="br-tr"></span><span class="br-br"></span>
+          <img src="/static/league-logo.jpeg" alt="{{ league_name }}" class="hero-logo-img hero-logo-float">
+        </div>
+      </div>
     </div>
   </div>
 
@@ -732,6 +804,9 @@
 
 <!-- ═══════════════════ STANDINGS TICKER ═══════════════════ -->
 {% if top3 or recent_results %}
+<!-- (9) HUD bracket frame around the marquee -->
+<div class="brackets mag" style="position:relative;">
+  <span class="br-tr"></span><span class="br-br"></span>
 <div class="result-ticker">
   <div class="ticker-track">
     <div class="ticker-inner">
@@ -762,13 +837,17 @@
     </div>
   </div>
 </div>
+</div>
 {% endif %}
 
 <div class="home-bg">
 
   <!-- ═══════════════════ STATS STRIP ═══════════════════ -->
   <div class="stats-strip">
-    <div class="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4">
+    <!-- (9) HUD bracket frame around the stat grid -->
+    <div class="brackets max-w-5xl mx-auto" style="position:relative;">
+    <span class="br-tr"></span><span class="br-br"></span>
+    <div class="grid grid-cols-2 sm:grid-cols-4">
       <div class="stat-item">
         <div class="stat-label">TEAMS</div>
         <div class="stat-num" style="color:var(--sc);" data-count="{{ total_teams }}">0</div>
@@ -792,6 +871,7 @@
         <div class="stat-sublabel">COMPLETE</div>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- ═══════════════════ STANDINGS + RESULTS (two columns) ═══════════════════ -->
@@ -811,11 +891,16 @@
             <a href="/standings" class="text-xs font-semibold transition-colors" style="color:rgba(0,245,255,0.5);">Full table →</a>
           </div>
           <div class="space-y-2 stagger">
+            {# (8) rank-colored accent rails — 1st magenta, 2nd cyan, 3rd lime #}
+            {% set _rank_ac = ['var(--magenta)','var(--cyan)','var(--lime)'] %}
+            {% set _rank_sf = ['var(--magenta-soft)','var(--cyan-soft)','var(--lime-soft)'] %}
             {% for row in top3 %}
+            {% set ac = _rank_ac[loop.index0] if loop.index0 < 3 else 'var(--hairline)' %}
+            {% set sf = _rank_sf[loop.index0] if loop.index0 < 3 else 'transparent' %}
             <a href="/team/{{ row.coach.id }}"
                class="flex items-center gap-4 px-5 py-3.5 transition-all group"
-               style="border-radius:2px;border:1px solid var(--hairline);background:var(--sf2);text-decoration:none;">
-              <span class="text-lg font-black font-mono w-9 flex-shrink-0" style="color:rgba(0,245,255,0.35);">{{ '%02d' % loop.index }}</span>
+               style="border-radius:2px;border:1px solid var(--hairline);border-left:2px solid {{ ac }};background:linear-gradient(90deg, {{ sf }}, transparent 55%);text-decoration:none;">
+              <span class="text-lg font-black font-mono w-9 flex-shrink-0" style="color:{{ ac }};">{{ '%02d' % loop.index }}</span>
               {% if row.coach.logo_url %}
                 <img src="{{ row.coach.logo_url }}" class="w-9 h-9 object-contain rounded-lg flex-shrink-0" alt="">
               {% else %}
