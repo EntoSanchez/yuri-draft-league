@@ -376,6 +376,32 @@ def _safejson(s):
     return Markup(text)
 
 
+# ─── CSRF protection (dependency-free, session double-submit token) ───────────
+def csrf_token():
+    """Return this session's CSRF token, generating one on first use."""
+    tok = session.get("_csrf_token")
+    if not tok:
+        tok = secrets.token_hex(32)
+        session["_csrf_token"] = tok
+    return tok
+
+
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+_CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+
+@app.before_request
+def _csrf_protect():
+    csrf_token()  # ensure the session has a token to embed in pages
+    if request.method in _CSRF_SAFE_METHODS:
+        return None
+    sent = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
+    if not sent or not secrets.compare_digest(str(sent), session.get("_csrf_token", "")):
+        return ("CSRF token missing or invalid — please reload the page and try again.", 400)
+    return None
+
+
 def _extract_youtube_id(url):
     """Extract YouTube video ID from a watch/share/embed URL."""
     if not url:

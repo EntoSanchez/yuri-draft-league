@@ -4,6 +4,43 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <script>
+  // ── CSRF: auto-attach the session token to every same-origin POST ──
+  (function () {
+    var TOKEN = "{{ csrf_token() }}";
+    // Inject a hidden csrf_token field into POST forms at submit time
+    // (capture phase → runs before Turbo or the native submit reads the form).
+    document.addEventListener('submit', function (e) {
+      var f = e.target;
+      if (!f || (f.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+      var inp = f.querySelector('input[name="csrf_token"]');
+      if (!inp) {
+        inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'csrf_token';
+        f.appendChild(inp);
+      }
+      inp.value = TOKEN;
+    }, true);
+    // Add the token header to same-origin mutating fetch() calls.
+    var _fetch = window.fetch;
+    window.fetch = function (input, init) {
+      init = init || {};
+      var m = (init.method || (input && input.method) || 'GET').toUpperCase();
+      if (m === 'POST' || m === 'PUT' || m === 'PATCH' || m === 'DELETE') {
+        var url = (typeof input === 'string') ? input : (input && input.url) || '';
+        var sameOrigin = !/^https?:\/\//i.test(url) || url.indexOf(window.location.origin) === 0;
+        if (sameOrigin) {
+          var h = new Headers(init.headers || {});
+          if (!h.has('X-CSRFToken')) h.set('X-CSRFToken', TOKEN);
+          init.headers = h;
+        }
+      }
+      return _fetch.call(this, input, init);
+    };
+  })();
+  </script>
   <link rel="icon" type="image/jpeg" href="/static/favicon.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
