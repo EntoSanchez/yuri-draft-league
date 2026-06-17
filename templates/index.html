@@ -25,12 +25,14 @@
   .lr-mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 
   /* ── podium ── */
-  .lr-podium { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; align-items: end; }
+  /* Winner column wider; pillars bottom-aligned with explicit tiered heights
+     (1st 260 / 2nd 200 / 3rd 160 set inline by the renderer). */
+  .lr-podium { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 16px; align-items: end; }
   .lr-podteam {
     position: relative; overflow: hidden;
     border: 1px solid var(--hairline-2); background: var(--panel);
-    padding: 16px 16px 14px; text-align: center;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 16px 16px 16px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px;
   }
   .lr-podteam.p1 {
     border-color: var(--magenta-dim); box-shadow: 0 0 32px -14px var(--magenta-dim);
@@ -155,6 +157,16 @@
   /* empty */
   .lr-empty { text-align: center; padding: 64px 20px; color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; }
 
+  /* Motion-system patterns (handoff): 5 podium-rise, 6 ghost-num.
+     Resting state (visible, untransformed) stays outside so reduced-motion
+     users get a correct static podium. */
+  @media (prefers-reduced-motion: no-preference) {
+    .podium-rise { transform-origin: bottom center; animation: podium-rise .7s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes podium-rise { from { opacity: 0; transform: translateY(36px) scaleY(.92); } to { opacity: 1; transform: none; } }
+    .ghost-num { animation: ghost-drift 16s ease-in-out infinite; }
+    @keyframes ghost-drift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-12px, 9px); } }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .lr-reveal, .lr-pod-sweep, .lr-prog-fill { animation: none; }
     .lr-prog-fill { width: var(--w, 0); }
@@ -164,6 +176,7 @@
   @media (max-width: 768px) {
     .lr-page { padding: 16px 12px 32px; }
     .lr-podium { grid-template-columns: 1fr; gap: 6px; }
+    .lr-podteam { height: auto !important; }   /* tiered heights don't make sense stacked */
     .lr-podteam-place { font-size: 80px; }
     .lr-stats { grid-template-columns: 1fr 1fr; }
   }
@@ -281,22 +294,23 @@ function renderPodium(){
   const rows = DATA[scope];
   if(!rows||rows.length===0){ wrap.innerHTML=""; return; }
   const top3 = rows.slice(0,3);
+  // (5) tiered podium heights — winner tallest, bottom-aligned; land winner last
   const slots = [
-    {r:top3[1],place:2,lift:26},
-    {r:top3[0],place:1,lift:0},
-    {r:top3[2],place:3,lift:38},
+    {r:top3[1],place:2,h:200,delay:120},
+    {r:top3[0],place:1,h:260,delay:350},
+    {r:top3[2],place:3,h:160,delay:220},
   ].filter(s=>s.r);
 
   const html = slots.map((s,i)=>{
-    const {r,place,lift} = s;
+    const {r,place,h,delay} = s;
     const t = r.coach;
     const isFirst = place===1;
     const accent = isFirst?"var(--magenta)":"var(--cyan)";
     const logoCls = isFirst?"xl":"lg";
-    return `<div class="lr-podteam lr-reveal${isFirst?" p1":""}"
-        style="margin-top:${lift}px;animation-delay:${i*70}ms">
+    return `<div class="lr-podteam podium-rise${isFirst?" p1":""}"
+        style="height:${h}px;animation-delay:${delay}ms">
       ${isFirst?'<div class="lr-pod-sweep"></div>':''}
-      <div class="lr-podteam-place" style="color:${isFirst?"var(--magenta-soft)":"rgba(255,255,255,.04)"}">${place}</div>
+      <div class="lr-podteam-place ghost-num" style="color:${isFirst?"var(--magenta-soft)":"rgba(255,255,255,.04)"};animation-delay:${place*0.8}s">${place}</div>
       <div class="lr-podteam-medal" style="border-color:${accent};color:${accent}">${String(place).padStart(2,"0")}</div>
       ${logoHtml(t,logoCls)}
       <div class="lr-podteam-name" style="font-size:${isFirst?18:15}px">${esc(t.team_name)}</div>
