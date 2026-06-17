@@ -814,7 +814,7 @@
         {% if top3 %}
           {% for i, row in enumerate(top3) %}
           <span class="ticker-match">
-            <span class="ticker-sep" style="font-size:0.7rem;color:{% if i==0 %}var(--magenta){% elif i==1 %}#C0C0C0{% else %}#CD7F32{% endif %};">★ {{ ['1ST','2ND','3RD'][i] }}</span>
+            <span class="ticker-sep" style="font-size:0.7rem;color:{% if i==0 %}var(--magenta){% elif i==1 %}var(--cyan){% else %}var(--lime){% endif %};">★ {{ ['1ST','2ND','3RD'][i] }}</span>
             {% if row.coach.logo_url %}<img src="{{ row.coach.logo_url }}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;display:inline-block;vertical-align:middle;margin-right:4px;" alt="">{% endif %}
             <span class="ticker-team" style="color:{{ row.coach.color or '#ffffff' }}">{{ row.coach.team_name }}</span>
             <span class="ticker-score">{{ row.W }}–{{ row.L }}</span>
