@@ -891,8 +891,6 @@ def my_matches():
             ).fetchall():
                 rosters_by_coach.setdefault(r["coach_id"], []).append(r["pokemon_name"])
 
-        coaches_map = {c["id"]: dict(c) for c in db.execute("SELECT * FROM coaches").fetchall()}
-
     for m in matches:
         games = games_by_match.get(m["id"], [])
         preview = preview_by_match.get(m["id"], {})
@@ -1718,13 +1716,14 @@ def h2h():
 
     def _record(winner_name, loser_name):
         w = winner_name.strip().lower()
-        l = loser_name.strip().lower()
-        if not w or not l or w == l:
+        lo = loser_name.strip().lower()
+        if not w or not lo or w == lo:
             return
-        all_keys.add(w); all_keys.add(l)
-        matrix.setdefault(w, {}).setdefault(l, 0)
-        matrix[w][l] += 1
-        matrix.setdefault(l, {}).setdefault(w, 0)  # ensure entry exists
+        all_keys.add(w)
+        all_keys.add(lo)
+        matrix.setdefault(w, {}).setdefault(lo, 0)
+        matrix[w][lo] += 1
+        matrix.setdefault(lo, {}).setdefault(w, 0)  # ensure entry exists
 
     # Live season matches
     with get_db() as db:
@@ -3313,7 +3312,6 @@ def admin_rules():
 @app.route("/admin/users", methods=["GET", "POST"])
 @admin_required
 def admin_users():
-    import hashlib
     with get_db() as db:
         users = db.execute(
             "SELECT u.*, c.coach_name FROM users u LEFT JOIN coaches c ON u.coach_id = c.id ORDER BY u.role, u.username"
@@ -3955,7 +3953,6 @@ def admin_playoffs():
                     (score1, score2, winner_id, match_id)
                 )
                 if m["next_match_id"]:
-                    col = "coach1_id, seed1" if m["next_match_slot"] == 1 else "coach2_id, seed2"
                     if m["next_match_slot"] == 1:
                         db.execute(
                             "UPDATE playoff_matches SET coach1_id=?, seed1=? WHERE id=?",
@@ -4724,10 +4721,6 @@ def draft_live():
         next_5_a = seq_a[current_pick_a - 1: current_pick_a + 4] if seq_a else []
         next_5_b = seq_b[current_pick_b - 1: current_pick_b + 4] if seq_b else []
 
-        mega_names_set = {r["name"] for r in db.execute(
-            "SELECT name FROM draft_tiers WHERE is_mega=1"
-        ).fetchall()}
-
         all_draft = db.execute(
             "SELECT * FROM draft_tiers WHERE is_banned != 1 ORDER BY points DESC, name"
         ).fetchall()
@@ -4762,7 +4755,6 @@ def draft_live():
             FROM pokemon_roster pr
             LEFT JOIN draft_tiers dt ON LOWER(pr.pokemon_name) = LOWER(dt.name)
         """).fetchall()
-        captain_map = {(r["coach_id"], r["pokemon_name"]): r for r in roster_rows}
         # Track uber slot assignment per coach so misnamed entries land in the right row
         uber_counts = {}
         roster_from_picks = []
@@ -4949,9 +4941,9 @@ def draft_live_pick():
             return redirect(url_for("draft_live"))
 
         if seq and 0 < current_pick <= len(seq):
-            pick_num, round_idx, slot_name, _seq_coach_id = seq[current_pick - 1]
+            pick_num, round_idx, _slot_name, _seq_coach_id = seq[current_pick - 1]
         else:
-            pick_num, round_idx, slot_name, _seq_coach_id = 0, 0, "Free Pick", 0
+            pick_num, round_idx, _slot_name, _seq_coach_id = 0, 0, "Free Pick", 0
 
         # Bank pick overrides the on-clock coach; regular pick uses sequence
         coach_id = bank_pending_coach_id if is_bank_pick else _seq_coach_id
@@ -5298,12 +5290,12 @@ def admin_draft_debug():
         f"DB_PATH env: {db_path}",
         f"DB file exists: {db_exists}",
         f"Current DB: coaches={len(coaches)} sessions={len(sessions)} picks={picks_count}",
-        f"",
-        f"Other .db files:",
+        "",
+        "Other .db files:",
     ] + other_db_info + [
-        f"",
+        "",
         f"active_session query result: {dict(active) if active else None}",
-        f"",
+        "",
         f"All sessions ({len(sessions)}):",
     ]
     for s in sessions:
