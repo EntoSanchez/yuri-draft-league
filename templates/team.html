@@ -366,7 +366,12 @@
     0%,100% { opacity: 1; text-shadow: 0 0 10px var(--cyan-dim); }
     50%     { opacity: .72; text-shadow: 0 0 22px var(--cyan); }
   }
+  /* (14) radar draw-in — scale up from the radar centre on load */
+  .yc-team .radar-poly { animation: yc-radar-draw .9s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes yc-radar-draw { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 }
+/* origin = this radar's centre in viewBox units (viewBox 0 0 200 200) */
+.yc-team .radar-poly { transform-box: view-box; transform-origin: 100px 100px; }
 </style>
 
 <div class="yc-team">
@@ -825,6 +830,7 @@
               <line x1="100" y1="100" x2="37.6" y2="64"   stroke="rgba(255,255,255,0.08)"/>
               <polygon
                 points="100,{{ '%.1f' % (100 - r_hp) }} {{ '%.1f' % (100 + 0.866*r_atk) }},{{ '%.1f' % (100 - 0.5*r_atk) }} {{ '%.1f' % (100 + 0.866*r_def) }},{{ '%.1f' % (100 + 0.5*r_def) }} 100,{{ '%.1f' % (100 + r_spe) }} {{ '%.1f' % (100 - 0.866*r_spd) }},{{ '%.1f' % (100 + 0.5*r_spd) }} {{ '%.1f' % (100 - 0.866*r_spa) }},{{ '%.1f' % (100 - 0.5*r_spa) }}"
+                class="radar-poly"
                 fill="rgba(34,225,255,0.18)" stroke="#22e1ff" stroke-width="1.5" stroke-linejoin="round"
                 style="filter:drop-shadow(0 0 4px rgba(34,225,255,0.6));"/>
               <text x="100" y="22"  text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.55)" font-family="JetBrains Mono, monospace">HP</text>
