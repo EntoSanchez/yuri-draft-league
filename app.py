@@ -228,6 +228,28 @@ def _name_to_slug(name):
     return [s for s in [showdown_slug, xy_mega_slug, regional_slug, mega_slug, mega_slug_pokeapi, primal_slug, alias, naive] if s]
 
 
+# New Champions / Legends Z-A megas that no public sprite source hosts yet —
+# self-hosted official artwork (static/sprites/megas/, sourced from Serebii).
+_MEGA_SPRITE_OVERRIDES = {
+    "mega raichu x":   "/static/sprites/megas/mega-raichu-x.png",
+    "mega raichu y":   "/static/sprites/megas/mega-raichu-y.png",
+    "mega staraptor":  "/static/sprites/megas/mega-staraptor.png",
+    "mega scolipede":  "/static/sprites/megas/mega-scolipede.png",
+    "mega scrafty":    "/static/sprites/megas/mega-scrafty.png",
+    "mega eelektross": "/static/sprites/megas/mega-eelektross.png",
+    "mega pyroar":     "/static/sprites/megas/mega-pyroar.png",
+    "mega malamar":    "/static/sprites/megas/mega-malamar.png",
+    "mega barbaracle": "/static/sprites/megas/mega-barbaracle.png",
+    "mega dragalge":   "/static/sprites/megas/mega-dragalge.png",
+    "mega falinks":    "/static/sprites/megas/mega-falinks.png",
+}
+
+
+def _local_mega_sprite(name):
+    """Self-hosted sprite path for new megas with no public sprite source, else None."""
+    return _MEGA_SPRITE_OVERRIDES.get((name or "").strip().lower())
+
+
 def pokemon_sprite_url(name, shiny=False):
     """Return the animated GIF sprite URL for a Pokemon name.
 
@@ -236,6 +258,9 @@ def pokemon_sprite_url(name, shiny=False):
        PokeAPI GitHub does not have animated GIFs for Gen 9+)
     2. Showdown CDN slug-based URL (covers all gens including Gen 9)
     """
+    ov = _local_mega_sprite(name)
+    if ov:
+        return ov
     slugs = _name_to_slug(name)
     for slug in slugs:
         pid = _pokemon_id_map.get(slug)
@@ -266,6 +291,10 @@ def pokemon_static_sprite_url(name):
     4. Showdown DEX sprite by slug (covers many custom megas from fan games)
     """
     # Megas whose base form uses a suffixed slug in pokemon_db rather than the bare name
+    ov = _local_mega_sprite(name)
+    if ov:
+        return ov
+
     _MEGA_BASE_OVERRIDES = {
         "pyroar-mega":           "pyroar-male",
         "zygarde-mega":          "zygarde-50",
@@ -321,6 +350,10 @@ def pokemon_pokedex_sprite_url(name):
     - Custom league megas (ID >= 10278): base-form PokeAPI sprite via suffix strip.
     - Handles both PokeAPI ("raichu-mega-x") and Showdown ("raichu-megax") slugs.
     """
+    ov = _local_mega_sprite(name)
+    if ov:
+        return ov
+
     _OVERRIDES = {
         "meowstic-mega":          "meowstic-male",
         "pyroar-mega":            "pyroar-male",
