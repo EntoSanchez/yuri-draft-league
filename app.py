@@ -144,6 +144,7 @@ def _name_to_slug(name):
         "mimikyu":               "mimikyu-disguised",
         "oricorio":              "oricorio-baile",
         "shaymin":               "shaymin-land",
+        "tatsugiri":             "tatsugiri-curly",
         "zygarde":               "zygarde-50",
         "zygarde 10%":           "zygarde-10",
         "paldean tauros aqua":   "tauros-paldea-aqua-breed",
