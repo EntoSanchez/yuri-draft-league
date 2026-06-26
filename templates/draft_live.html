@@ -3,8 +3,8 @@
 
 {% block content %}
 {# ── Design tokens ── #}
-{% set TC = {"Tier 1":"#5a9bff","Tier 2":"#b07dff","Tier 3":"#3dd9c2","Tier 4":"#7ddc6a","Tier 5":"#9a9aa8","Uber 1":"#ffc94d","Uber 2":"#ffc94d","Free Pick":"#ffb84d","Gold":"#ffc94d","Silver":"#c0c0dc","Bronze":"#cd7f32","Platinum":"#e5e4e2"} %}
-{% set TS = {"Tier 1":"T1","Tier 2":"T2","Tier 3":"T3","Tier 4":"T4","Tier 5":"T5","Free Pick":"FP","Gold":"GLD","Silver":"SLV","Bronze":"BRZ","Platinum":"PLT"} %}
+{% set TC = {"Tier 1":"#5a9bff","Tier 2":"#b07dff","Tier 3":"#3dd9c2","Tier 4":"#7ddc6a","Tier 5":"#9a9aa8","Uber 1":"#ffc94d","Uber 2":"#ffc94d","Mega":"#ff2a8a","Free Pick":"#ffb84d","Gold":"#ffc94d","Silver":"#c0c0dc","Bronze":"#cd7f32","Platinum":"#e5e4e2"} %}
+{% set TS = {"Tier 1":"T1","Tier 2":"T2","Tier 3":"T3","Tier 4":"T4","Tier 5":"T5","Mega":"MG","Free Pick":"FP","Gold":"GLD","Silver":"SLV","Bronze":"BRZ","Platinum":"PLT"} %}
 {% set UBER_NAMED_LIST = ["Gold","Silver","Bronze","Platinum"] %}
 {% set MAIN_TIERS = ["Tier 1","Tier 2","Tier 3","Tier 4","Tier 5"] %}
 {% set MAIN_COUNTS = {"Tier 1":1,"Tier 2":1,"Tier 3":2,"Tier 4":2,"Tier 5":2} %}
@@ -178,10 +178,14 @@
           {% else %}{% if slot_list.append((tier_name, none)) %}{% endif %}{% endif %}
         {% endfor %}
       {% endfor %}
+      {# Megas + free-pick overflow land in the "Free Pick" grid key — show them too #}
+      {% for p in grid_pool.get('Free Pick', {}).get(coach.id, []) %}{% if slot_list.append(('Free Pick', p)) %}{% endif %}{% endfor %}
     {% else %}
       {% set flat = [] %}
-      {% for tn in MAIN_TIERS %}{% for p in grid_pool.get(tn, {}).get(coach.id, []) %}{% if flat.append((tn, p)) %}{% endif %}{% endfor %}{% endfor %}
-      {% for i in range(8) %}
+      {# include Free Pick (where megas and overflow live) so they render #}
+      {% for tn in (MAIN_TIERS + ['Free Pick']) %}{% for p in grid_pool.get(tn, {}).get(coach.id, []) %}{% if flat.append((tn, p)) %}{% endif %}{% endfor %}{% endfor %}
+      {% set n_slots = [flat|length, 8] | max %}
+      {% for i in range(n_slots) %}
         {% if i < flat|length %}{% if slot_list.append(flat[i]) %}{% endif %}
         {% else %}{% if slot_list.append(("PT", none)) %}{% endif %}{% endif %}
       {% endfor %}
@@ -211,8 +215,10 @@
       <div class="dl-row-inner" style="display:flex;align-items:center;overflow-x:auto;padding-right:6px;">
         <div style="display:flex;gap:4px;flex-shrink:0;">
           {% for tier_name, pick in slot_list %}
-          {% set sc = TC.get(tier_name,'#9a9aa8') %}
-          {% set sl = TS.get(tier_name,'—') %}
+          {# badge by the pick's own tier (so a mega shows MG, not the FP grid bucket) #}
+          {% set badge_tier = pick.tier if (pick and pick.tier) else tier_name %}
+          {% set sc = TC.get(badge_tier,'#9a9aa8') %}
+          {% set sl = TS.get(badge_tier,'—') %}
           {% if pick is none %}
           <div class="dl-cell dl-cell-empty" style="border:1px dashed {{ sc }};background:rgba(255,255,255,.012);">
             <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:{{ sc }};opacity:.45;letter-spacing:.04em;">{{ sl }}</span>
