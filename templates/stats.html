@@ -468,24 +468,29 @@ let typeSel = null;
 function buildTreemap() {
   const items = STATS.type_meta;
   const total = items.reduce((a, t) => a + t.kos, 0);
-  const target = 4, per = total / target;
+  // Before any KOs are recorded (e.g. start of a season) every weight is 0,
+  // which makes the fr math NaN/0 and collapses the cells. Fall back to equal
+  // weights so the treemap tiles evenly instead of breaking.
+  const wOf  = t => (total > 0 ? t.kos : 1);
+  const totW = total > 0 ? total : (items.length || 1);
+  const target = 4, per = totW / target;
   const rows = [];
   let row = [], sum = 0;
   items.forEach(t => {
-    row.push(t); sum += t.kos;
+    row.push(t); sum += wOf(t);
     if (sum >= per && rows.length < target - 1) { rows.push({ items: row, sum }); row = []; sum = 0; }
   });
   if (row.length) rows.push({ items: row, sum });
 
   const tree = document.getElementById("mh-tree");
-  tree.style.gridTemplateRows = rows.map(r => (r.sum / total).toFixed(3) + "fr").join(" ");
+  tree.style.gridTemplateRows = rows.map(r => (r.sum / totW).toFixed(3) + "fr").join(" ");
   tree.innerHTML = "";
 
   rows.forEach(r => {
     const rowDiv = document.createElement("div");
-    rowDiv.style.cssText = `display:grid;gap:6px;grid-template-columns:${r.items.map(t => t.kos + "fr").join(" ")}`;
+    rowDiv.style.cssText = `display:grid;gap:6px;grid-template-columns:${r.items.map(t => wOf(t) + "fr").join(" ")}`;
     r.items.forEach(t => {
-      const big = (r.sum / total) > 0.28;
+      const big = (r.sum / totW) > 0.28;
       const cell = document.createElement("div");
       cell.className = "mh-tree-cell";
       cell.dataset.type = t.type;
