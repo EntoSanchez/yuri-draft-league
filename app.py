@@ -2490,7 +2490,14 @@ def draft_board():
                    pr.is_tera_captain, c.pool
             FROM pokemon_roster pr JOIN coaches c ON pr.coach_id = c.id
         """).fetchall()
-        drafted = {r["pokemon_name"]: dict(r) for r in drafted_rows}
+        # Pools A and B draft independently, so track each pool separately:
+        # a mon taken in A is still available in B (and vice versa).
+        drafted = {}
+        for r in drafted_rows:
+            entry = drafted.setdefault(r["pokemon_name"], {"A": None, "B": None})
+            p = r["pool"]
+            if p in ("A", "B") and entry[p] is None:
+                entry[p] = dict(r)
         coaches = db.execute("SELECT * FROM coaches ORDER BY pool, id").fetchall()
         settings = {r["key"]: r["value"] for r in db.execute("SELECT * FROM league_settings").fetchall()}
 

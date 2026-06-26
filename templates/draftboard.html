@@ -394,6 +394,10 @@
   /* Pool dim */
   .board-poke.pool-dim { opacity: 0.2; }
   .board-poke.pool-dim .board-badge { display: none; }
+  /* When a drafted mon is shown as available in the other pool's view, hide its
+     drafted indicators (logos are toggled by JS; dot/tera hidden here). */
+  .board-poke.avail-poke .state-dot,
+  .board-poke.avail-poke .state-tera { display: none; }
 
   /* ── Segmented pool buttons (legacy .pool-btn for JS) ── */
   .pool-btn { color: var(--text-dim); }
@@ -920,12 +924,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -934,7 +939,8 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -942,7 +948,7 @@
                   </svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -982,12 +988,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -996,13 +1003,14 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -1042,12 +1050,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -1056,13 +1065,14 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -1102,12 +1112,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -1116,13 +1127,14 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -1162,12 +1174,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -1176,13 +1189,14 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -1222,12 +1236,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -1236,13 +1251,14 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -1282,12 +1298,13 @@
             </div>
             <div class="board-col-body">
               {%- for t in nb -%}
-              {%- set d_info = drafted.get(t.name) -%}
-              {%- set is_drafted = d_info is not none -%}
-              {%- set coach_pool = d_info.pool if is_drafted else '' -%}
+              {%- set d = drafted.get(t.name) -%}
+              {%- set da = d['A'] if d else none -%}
+              {%- set db = d['B'] if d else none -%}
+              {%- set is_drafted = (da is not none) or (db is not none) -%}
               <div class="board-poke {% if is_drafted %}drafted-poke{% else %}avail-poke{% endif %} {% if t.is_tera_banned %}tera-banned{% endif %}"
                    data-name="{{ t.name.lower() }}" data-status="{% if is_drafted %}drafted{% else %}available{% endif %}"
-                   data-pool="{{ coach_pool }}"
+                   data-da="{{ '1' if da else '' }}" data-db="{{ '1' if db else '' }}"
                    data-abilities="{{ [t.ability1 or '', t.ability2 or '', t.ability3 or ''] | join('|') | lower }}"
                    data-moves="{{ t.moves or '' }}"
                    data-type1="{{ (t.type1 or '').lower() }}" data-type2="{{ (t.type2 or '').lower() }}"
@@ -1296,13 +1313,14 @@
                    data-bst="{{ t.bst or 0 }}" data-pts="{{ t.points or 0 }}" data-tier="{{ t.tier_label or '' }}">
                 <span class="poke-orb"><img src="{{ pokemon_static_sprite_url(t.name) }}" onerror="this.style.opacity='0.1'"></span>
                 <span class="poke-name {% if t.is_tera_banned %}line-through opacity-60{% endif %}">{{ t.name }}</span>
-                {%- if is_drafted -%}<span class="poke-logo" style="border-color:{{ d_info.color or '#374151' }};margin-left:auto">{%- if d_info.logo_url -%}<img src="{{ d_info.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (d_info.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if da -%}<span class="poke-logo logo-a" style="border-color:{{ da.color or '#374151' }};margin-left:auto">{%- if da.logo_url -%}<img src="{{ da.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (da.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
+                {%- if db -%}<span class="poke-logo logo-b" style="border-color:{{ db.color or '#374151' }};margin-left:auto">{%- if db.logo_url -%}<img src="{{ db.logo_url }}" onerror="this.style.opacity='0.1'">{%- else -%}<span>{{ (db.team_name or '??')[:2]|upper }}</span>{%- endif -%}</span>{%- endif -%}
                 {% if session.get('role') == 'admin' %}
                 <button onclick="editPts(event,{{ t.id }},{{ t.points }})" class="edit-pts-btn" title="Edit points">
                   <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 {% endif %}
-                {%- if is_drafted and d_info.is_tera_captain -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
+                {%- if (da and da.is_tera_captain) or (db and db.is_tera_captain) -%}<span class="state-tera tera-mark">◆</span>{%- endif -%}
                 {%- if is_drafted -%}<span class="state-dot"></span>{%- endif -%}
                 <span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type1 or '') | lower, '#374151') if t.type1 else 'transparent' }};"></span>
                 {%- if t.type2 -%}<span class="type-swatch" style="background: {{ TYPE_COLORS.get((t.type2 or '') | lower, '#374151') }};"></span>{%- endif -%}
@@ -1490,8 +1508,7 @@ function filterBoard() {
 
   document.querySelectorAll('.board-poke').forEach(poke => {
     const name     = poke.dataset.name     || '';
-    const status   = poke.dataset.status   || '';
-    const pool     = poke.dataset.pool     || '';
+    const isBanned = poke.classList.contains('banned-poke');
     const abilities = poke.dataset.abilities || '';
     const moves    = poke.dataset.moves    || '';
     const type1    = poke.dataset.type1    || '';
@@ -1499,6 +1516,24 @@ function filterBoard() {
     const spe      = parseInt(poke.dataset.spe || '0', 10);
     const col    = poke.closest('.board-col');
     const colKey = col ? col.dataset.col : '';
+
+    // ── Per-pool draft state: pools A and B draft independently, so a mon
+    //    taken in pool A is still available in pool B (and vice versa). ──
+    if (!isBanned) {
+      const da = poke.dataset.da === '1';
+      const db = poke.dataset.db === '1';
+      const effDrafted = currentPool === 'A' ? da
+                       : currentPool === 'B' ? db
+                       : (da || db);                 // "All" view
+      poke.classList.toggle('drafted-poke', effDrafted);
+      poke.classList.toggle('avail-poke', !effDrafted);
+      poke.dataset.status = effDrafted ? 'drafted' : 'available';
+      const la = poke.querySelector('.logo-a');
+      const lb = poke.querySelector('.logo-b');
+      if (la) la.style.display = (effDrafted && da && currentPool !== 'B') ? '' : 'none';
+      if (lb) lb.style.display = (effDrafted && db && currentPool !== 'A') ? '' : 'none';
+    }
+    const status = poke.dataset.status || '';
 
     const nameOk    = !currentSearch  || name.includes(currentSearch);
     const statusOk  = !currentStatus  || status === currentStatus;
@@ -1517,17 +1552,12 @@ function filterBoard() {
       }
     }
 
-    let poolDim = false;
-    if (currentPool && status === 'drafted') {
-      poolDim = (pool !== currentPool);
-    }
-
     const starOk   = !currentStarred  || _starred.has(name);
     const show = nameOk && statusOk && moveOk && abilityOk && typeOk && speedOk && starOk && moveCatOk;
     poke.style.display = show ? '' : 'none';
     if (show) {
-      poke.classList.toggle('pool-dim', poolDim);
-      colVisible[colKey] = (colVisible[colKey] || 0) + (poolDim ? 0 : 1);
+      poke.classList.remove('pool-dim');
+      colVisible[colKey] = (colVisible[colKey] || 0) + 1;
     }
   });
 
