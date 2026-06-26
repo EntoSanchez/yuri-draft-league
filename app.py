@@ -5063,20 +5063,28 @@ def draft_live_pick():
         points = poke_row["points"] or 0
         poke_tier_label = poke_row["tier_label"] or ""
         use_uber_slot = request.form.get("use_uber_slot") == "1"
+
+        mega_names_set = {r["name"] for r in db.execute(
+            "SELECT name FROM draft_tiers WHERE is_mega=1"
+        ).fetchall()}
+        is_mega = pokemon_name in mega_names_set
+
+        # A mega costed at an uber point value (mega_bronze/silver/gold/platinum_pts
+        # in settings, e.g. 27/28/29/30) is an uber pick.
+        mega_uber_tier = _mega_tier_label(points, settings) if is_mega else ""
+
         if poke_tier_label in UBER_NAMED_TIERS:
             is_uber = True
             effective_uber_tier = poke_tier_label
+        elif mega_uber_tier:
+            is_uber = True
+            effective_uber_tier = mega_uber_tier
         elif use_uber_slot and points in UBER_POINTS:
             is_uber = True
             effective_uber_tier = UBER_POINTS[points]
         else:
             is_uber = False
             effective_uber_tier = ""
-
-        mega_names_set = {r["name"] for r in db.execute(
-            "SELECT name FROM draft_tiers WHERE is_mega=1"
-        ).fetchall()}
-        is_mega = pokemon_name in mega_names_set
 
         # First overall pick must be a regular-tier pokemon (not mega, must have pts ≥ 1)
         if pick_num == 1 and (is_mega or points < 1):
