@@ -4461,10 +4461,10 @@ def _auto_slot(pokemon_name, poke_pts, mega_names_set, existing_roster_rows):
     Fills paid slots (2 per tier) before free slots (1 per tier).
     Overflows to 'Free Pick' when all slots of that tier are used.
     Returns (slot_name, is_free_pick).
-    """
-    if pokemon_name in mega_names_set:
-        return "Mega", True
 
+    Megas are NOT special-cased — they take a regular tier slot based on their
+    point value, exactly like any other pick.
+    """
     pts = poke_pts or 0
     tier = _regular_tier_label(pts)
 
