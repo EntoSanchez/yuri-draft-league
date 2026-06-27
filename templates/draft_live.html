@@ -310,7 +310,8 @@
     <a href="{{ url_for('draft_sheet') }}" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">SHEET</a>
     {% if is_admin %}<a href="{{ url_for('admin_draft') }}" data-turbo="false" style="padding:5px 12px;border:1px solid var(--hairline);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-mute);text-decoration:none;">ADMIN</a>{% endif %}
     {% if is_admin %}
-    <form method="POST" action="{{ url_for('admin_draft') }}" style="margin:0" onsubmit="return confirm('Reset the entire draft? This clears all picks and rosters.')">
+    <form method="POST" action="{{ url_for('admin_draft') }}" style="margin:0" data-turbo="false" onsubmit="return confirm('Reset the entire draft? This clears all picks and rosters.')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="reset">
       <input type="hidden" name="session_id" value="{{ draft_session.id }}">
       <button type="submit" style="padding:5px 12px;border:1px solid var(--red);border-radius:2px;background:transparent;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--red);cursor:pointer;letter-spacing:.08em;">RESET DRAFT</button>
@@ -333,7 +334,8 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <span class="dl-ey">// POOL_{{ pool_label }} · {% if bp %}BANK_PICK{% else %}ON_CLOCK{% endif %}</span>
       {% if slot and not bp %}
-      <form method="POST" action="{{ url_for('draft_live_skip') }}" style="margin:0">
+      <form method="POST" action="{{ url_for('draft_live_skip') }}" style="margin:0" data-turbo="false">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="pick_pool" value="{{ pool_label }}">
         <button type="submit" style="padding:3px 10px;border:1px solid var(--hairline);border-radius:2px;background:transparent;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-dim);cursor:pointer;letter-spacing:.08em;">SKIP</button>
       </form>
@@ -384,7 +386,8 @@
       {% for poke in avail %}
       {% set ut = poke.tier_label if poke.tier_label in UBER_NAMED_LIST else "" %}
       {% set uc = TC.get(ut, '') %}
-      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="pg-card-{{ pool_label }}" data-name="{{ poke.name|lower }}" data-uber="{{ ut }}">
+      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="pg-card-{{ pool_label }}" data-name="{{ poke.name|lower }}" data-uber="{{ ut }}" data-turbo="false">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
         <input type="hidden" name="pick_pool" value="{{ pool_label }}">
         {% if ut %}
@@ -465,7 +468,8 @@ function filterPool(pool, q) {
       {% for poke in avail_pokemon %}
       {% set ut = poke.tier_label if poke.tier_label in UBER_NAMED_LIST else "" %}
       {% set uc = TC.get(ut, '') %}
-      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card" data-name="{{ poke.name|lower }}" data-uber="{{ ut }}">
+      <form method="POST" action="{{ url_for('draft_live_pick') }}" class="poke-card" data-name="{{ poke.name|lower }}" data-uber="{{ ut }}" data-turbo="false">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="pokemon_name" value="{{ poke.name }}">
         <input type="hidden" name="pick_pool" value="{{ my_pool or 'A' }}">
         {% if ut %}
@@ -544,7 +548,8 @@ if (ticketSel) {
       <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--cyan);">{{ poke.points }}pt</span>
       <div style="display:flex;gap:4px;margin-top:2px;">
         {% if mechanic_tera == '1' %}
-        <form method="POST" action="{{ url_for('draft_live_set_captain') }}" style="display:inline;">
+        <form method="POST" action="{{ url_for('draft_live_set_captain') }}" style="display:inline;" data-turbo="false">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="pokemon_name" value="{{ poke.pokemon_name }}">
           <input type="hidden" name="captain_type" value="tera">
           <input type="hidden" name="coach_id" value="{{ poke.coach_id }}">
@@ -553,7 +558,8 @@ if (ticketSel) {
         </form>
         {% endif %}
         {% if mechanic_zmove == '1' %}
-        <form method="POST" action="{{ url_for('draft_live_set_captain') }}" style="display:inline;">
+        <form method="POST" action="{{ url_for('draft_live_set_captain') }}" style="display:inline;" data-turbo="false">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="pokemon_name" value="{{ poke.pokemon_name }}">
           <input type="hidden" name="captain_type" value="zmove">
           <input type="hidden" name="coach_id" value="{{ poke.coach_id }}">
