@@ -4418,7 +4418,16 @@ TIER_ORDER = ["Uber 1", "Uber 2", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 
 
 # Plan Griffin draft system
 UBER_NAMED_TIERS = {"Platinum", "Gold", "Silver", "Bronze"}
-UBER_POINTS = {27: "Bronze", 28: "Silver", 29: "Gold"}
+UBER_POINTS = {27: "Bronze", 28: "Silver", 29: "Gold", 30: "Platinum"}
+
+
+def _uber_named(label):
+    """Bare uber tier (Bronze/Silver/Gold/Platinum) for a tier_label that may be
+    stored with an 'Uber ' prefix (e.g. 'Uber Platinum'); '' if not an uber tier.
+    Uber labels in the DB carry the prefix, but all uber logic compares against
+    the bare names — normalize here so the prefix never silently fails the match."""
+    name = (label or "").replace("Uber ", "").strip()
+    return name if name in UBER_NAMED_TIERS else ""
 TICKET_ALLOC   = {"T1": 1, "T2": 1, "T3": 2, "T4": 2, "T5": 2}
 TICKET_RANK    = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "T5": 5}
 TIER_TO_TICKET = {"Tier 1": "T1", "Tier 2": "T2", "Tier 3": "T3", "Tier 4": "T4", "Tier 5": "T5"}
@@ -4554,8 +4563,9 @@ def _get_coach_uber_named_tiers(db, coach_id, session_id):
     """, (session_id, coach_id)).fetchall()
     result = []
     for r in rows:
-        if r["tier_label"] in UBER_NAMED_TIERS:
-            result.append(r["tier_label"])
+        named = _uber_named(r["tier_label"])
+        if named:
+            result.append(named)
         elif (r["points"] or 0) in UBER_POINTS:
             result.append(UBER_POINTS[r["points"]])
     return result
@@ -4638,7 +4648,7 @@ def draft_sheet():
 
         def _is_uber(p):
             return (p.get("tier") in UBER_TIERS
-                    or p.get("poke_tier_label") in UBER_NAMED_TIERS)
+                    or bool(_uber_named(p.get("poke_tier_label"))))
 
         if draft_mode == "points":
             non_mega = [p for p in picks if p["pokemon_name"] not in mega_names]
@@ -4722,7 +4732,7 @@ def draft_live():
         _base_keys = _roster_rows_base[0].keys() if _roster_rows_base else []
         for r in _roster_rows_base:
             tier = r["tier"]
-            if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
+            if tier not in TIER_ORDER and _uber_named(r["poke_tier_label"]):
                 cid = r["coach_id"]
                 count = _uber_counts_base.get(cid, 0)
                 tier = "Uber 2" if count >= 1 else "Uber 1"
@@ -4826,8 +4836,9 @@ def draft_live():
                     continue
                 db_label = p["tier_label"] or ""
                 pts = p["points"] or 0
-                if db_label in UBER_NAMED_TIERS:
-                    tier_label = db_label
+                named = _uber_named(db_label)
+                if named:
+                    tier_label = named
                 elif pts in UBER_POINTS:
                     tier_label = UBER_POINTS[pts]
                 else:
@@ -4853,7 +4864,7 @@ def draft_live():
             pick_info = pick_info_map.get((r["coach_id"], r["pokemon_name"]))
             tier = r["tier"]
             # Normalize tier: if stored value is missing/wrong but pokemon is uber-level, fix it
-            if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
+            if tier not in TIER_ORDER and _uber_named(r["poke_tier_label"]):
                 cid = r["coach_id"]
                 count = uber_counts.get(cid, 0)
                 tier = "Uber 2" if count >= 1 else "Uber 1"
@@ -5072,10 +5083,11 @@ def draft_live_pick():
         # A mega costed at an uber point value (mega_bronze/silver/gold/platinum_pts
         # in settings, e.g. 27/28/29/30) is an uber pick.
         mega_uber_tier = _mega_tier_label(points, settings) if is_mega else ""
+        poke_uber_tier = _uber_named(poke_tier_label)
 
-        if poke_tier_label in UBER_NAMED_TIERS:
+        if poke_uber_tier:
             is_uber = True
-            effective_uber_tier = poke_tier_label
+            effective_uber_tier = poke_uber_tier
         elif mega_uber_tier:
             is_uber = True
             effective_uber_tier = mega_uber_tier
@@ -5639,8 +5651,9 @@ def admin_draft():
             def _tl(p):
                 db_lbl = p["tier_label"] or ""
                 pts = p["points"] or 0
-                if db_lbl in UBER_NAMED_TIERS:
-                    return db_lbl
+                named = _uber_named(db_lbl)
+                if named:
+                    return named
                 if pts in UBER_POINTS:
                     return UBER_POINTS[pts]
                 return _regular_tier_label(pts) or db_lbl
@@ -5661,7 +5674,7 @@ def admin_draft():
             roster_picks = []
             for r in roster_rows:
                 tier = r["tier"]
-                if tier not in TIER_ORDER and r["poke_tier_label"] in UBER_NAMED_TIERS:
+                if tier not in TIER_ORDER and _uber_named(r["poke_tier_label"]):
                     cid = r["coach_id"]
                     cnt = _uber_c.get(cid, 0)
                     tier = "Uber 2" if cnt >= 1 else "Uber 1"
