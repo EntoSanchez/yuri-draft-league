@@ -6,7 +6,7 @@
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <script>
-  console.log("YDL build: logo-cover-v5");
+  console.log("YDL build: logo-fit-v6");
   // ── CSRF: auto-attach the session token to every same-origin POST ──
   (function () {
     var TOKEN = "{{ csrf_token() }}";
@@ -709,6 +709,12 @@
       font-family: 'Chakra Petch', system-ui, sans-serif;
     }
     #tour-fab:hover { background: #0e0e1a; box-shadow: 0 0 22px rgba(61,229,255,.4); }
+
+  /* Per-logo fit overrides: non-square uploads that get cropped badly by the
+     site-wide "cover" — force them to show the whole logo (contain) instead.
+     Add a coach's logo filename hash here if cover crops it wrong. */
+  img[src*="46d00f8bbcb4405d88a7114aff7f446b"] { object-fit: contain !important; }
+  [style*="46d00f8bbcb4405d88a7114aff7f446b"]  { background-size: contain !important; }
   </style>
   {% block head_extra %}{% endblock %}
 </head>
