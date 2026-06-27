@@ -6,6 +6,7 @@
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <script>
+  console.log("YDL build: forms-native-v2");
   // ── CSRF: auto-attach the session token to every same-origin POST ──
   (function () {
     var TOKEN = "{{ csrf_token() }}";
@@ -24,17 +25,23 @@
       inp.value = TOKEN;
     }, true);
     // Add the token header to same-origin mutating fetch() calls.
+    // IMPORTANT: only touch plain-string-URL fetches. If input is a Request
+    // object (e.g. Turbo's form submissions), leave it completely untouched —
+    // rebuilding it via fetch(request, {headers}) drops its Content-Type/body
+    // and silently breaks the submission. The CSRF token is already carried in
+    // the form body by the submit listener above, so the header isn't needed there.
     var _fetch = window.fetch;
     window.fetch = function (input, init) {
       init = init || {};
-      var m = (init.method || (input && input.method) || 'GET').toUpperCase();
-      if (m === 'POST' || m === 'PUT' || m === 'PATCH' || m === 'DELETE') {
-        var url = (typeof input === 'string') ? input : (input && input.url) || '';
-        var sameOrigin = !/^https?:\/\//i.test(url) || url.indexOf(window.location.origin) === 0;
-        if (sameOrigin) {
-          var h = new Headers(init.headers || {});
-          if (!h.has('X-CSRFToken')) h.set('X-CSRFToken', TOKEN);
-          init.headers = h;
+      if (typeof input === 'string') {
+        var m = (init.method || 'GET').toUpperCase();
+        if (m === 'POST' || m === 'PUT' || m === 'PATCH' || m === 'DELETE') {
+          var sameOrigin = !/^https?:\/\//i.test(input) || input.indexOf(window.location.origin) === 0;
+          if (sameOrigin) {
+            var h = new Headers(init.headers || {});
+            if (!h.has('X-CSRFToken')) h.set('X-CSRFToken', TOKEN);
+            init.headers = h;
+          }
         }
       }
       return _fetch.call(this, input, init);
