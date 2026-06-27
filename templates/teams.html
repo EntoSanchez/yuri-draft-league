@@ -39,7 +39,7 @@
                 <!-- Logo + Name -->
                 <div class="flex items-center gap-3 mb-4">
                   {% if coach.logo_url %}
-                    <img src="{{ coach.logo_url }}" class="w-14 h-14 object-contain flex-shrink-0" style="border-radius:4px;" alt="{{ coach.team_name }}">
+                    <img src="{{ coach.logo_url }}" class="w-14 h-14 object-cover flex-shrink-0" style="border-radius:4px;" alt="{{ coach.team_name }}">
                   {% else %}
                     <div class="w-14 h-14 flex items-center justify-center text-lg font-black text-white flex-shrink-0"
                          style="border-radius:4px;background-color:{{ coach.color or '#374151' }};">

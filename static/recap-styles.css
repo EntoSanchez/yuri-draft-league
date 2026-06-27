@@ -4,7 +4,7 @@
 
 /* Team logo size variants — the React original passes a component that CSS scopes contextually.
    Here we let parent-scoped rules take precedence and use .tlogo everywhere. */
-.tlogo { flex: 0 0 auto; object-fit: contain; border-radius: 4px; }
+.tlogo { flex: 0 0 auto; object-fit: cover; border-radius: 4px; }
 /* PBP card uses a smaller inline logo */
 .mr-pbp-card .tlogo { width: 20px; height: 20px; border-radius: 3px; }
 

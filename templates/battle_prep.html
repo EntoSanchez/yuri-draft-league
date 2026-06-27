@@ -652,7 +652,7 @@ function onSelectChange() {
 
 function setLogoEl(el, coach) {
   if (coach.logo_url) {
-    el.innerHTML = `<img src="${coach.logo_url}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:50%">`;
+    el.innerHTML = `<img src="${coach.logo_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     el.style.background = "var(--panel-2)";
     el.style.borderColor = coach.color || "var(--hairline)";
   } else {
@@ -776,7 +776,7 @@ function renderStats() {
         : `<div style="display:grid;grid-template-columns:48px 72px 1fr 38px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(232,232,248,.06)">${sprCell}${nameDiv}${barsCell}${statCell}</div>`;
     }).join("");
     const logoEl=coach?.logo_url
-      ?`<img src="${coach.logo_url}" alt="" width="30" height="30" style="object-fit:contain;border-radius:50%;border:1px solid ${accent};flex-shrink:0" onerror="this.style.display='none'">`
+      ?`<img src="${coach.logo_url}" alt="" width="30" height="30" style="object-fit:cover;border-radius:50%;border:1px solid ${accent};flex-shrink:0" onerror="this.style.display='none'">`
       :`<div style="width:30px;height:30px;border-radius:50%;background:${coach?.color||accent};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:700;color:#000;flex-shrink:0">${(coach?.team_name||"??").slice(0,2).toUpperCase()}</div>`;
     const hdr=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--hairline);${isOpp?"flex-direction:row-reverse":""}">${logoEl}<div style="${isOpp?"text-align:right":""}"><div style="font-family:var(--font-display);font-size:12px;font-weight:700;color:${accent};letter-spacing:.04em;text-transform:uppercase">${coach?.team_name||lbl}</div>${coach?.name?`<div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim)">${coach.name}</div>`:""}</div></div>`;
     return hdr+rows;

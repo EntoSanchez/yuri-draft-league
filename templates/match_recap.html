@@ -63,7 +63,7 @@
 {# macro: team logo (initials orb if no logo). cls is passed through so parent-scoped CSS sizes it. #}
 {% macro team_logo(team, cls="tlogo") %}
   {% if team.logo_url %}
-    <img class="{{ cls }}" src="{{ team.logo_url }}" alt="{{ team.name }}" style="object-fit:contain;border-radius:4px">
+    <img class="{{ cls }}" src="{{ team.logo_url }}" alt="{{ team.name }}" style="object-fit:cover;border-radius:4px">
   {% else %}
     <span class="{{ cls }}"
       style="display:inline-flex;align-items:center;justify-content:center;
@@ -97,7 +97,7 @@
     <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
       {# C1 logo #}
       {% if series.c1_logo %}
-        <img src="{{ series.c1_logo }}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;flex-shrink:0">
+        <img src="{{ series.c1_logo }}" style="width:26px;height:26px;object-fit:cover;border-radius:3px;flex-shrink:0">
       {% endif %}
       <span style="font-family:var(--font-display);font-weight:700;font-size:18px;
                    color:{{ 'var(--magenta)' if c1_win else 'var(--text-mute)' }}">
@@ -114,7 +114,7 @@
         {{ series.c2_name }}
       </span>
       {% if series.c2_logo %}
-        <img src="{{ series.c2_logo }}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;flex-shrink:0">
+        <img src="{{ series.c2_logo }}" style="width:26px;height:26px;object-fit:cover;border-radius:3px;flex-shrink:0">
       {% endif %}
       {# Status chip #}
       {% if series.winner %}

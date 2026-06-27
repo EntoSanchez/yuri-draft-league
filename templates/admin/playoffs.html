@@ -129,7 +129,7 @@
             <div class="flex items-center gap-2 mb-1.5">
               {% if match.coach1 %}
                 {% if match.coach1.logo_url %}
-                  <img src="{{ match.coach1.logo_url }}" class="w-6 h-6 rounded object-contain" alt="">
+                  <img src="{{ match.coach1.logo_url }}" class="w-6 h-6 rounded object-cover" alt="">
                 {% else %}
                   <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-black text-white" style="background:{{ match.coach1.color or '#374151' }};font-size:8px;">{{ match.coach1.team_name[:2].upper() }}</div>
                 {% endif %}
@@ -145,7 +145,7 @@
             <div class="flex items-center gap-2">
               {% if match.coach2 %}
                 {% if match.coach2.logo_url %}
-                  <img src="{{ match.coach2.logo_url }}" class="w-6 h-6 rounded object-contain" alt="">
+                  <img src="{{ match.coach2.logo_url }}" class="w-6 h-6 rounded object-cover" alt="">
                 {% else %}
                   <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-black text-white" style="background:{{ match.coach2.color or '#374151' }};font-size:8px;">{{ match.coach2.team_name[:2].upper() }}</div>
                 {% endif %}

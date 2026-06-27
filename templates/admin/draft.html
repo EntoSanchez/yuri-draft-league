@@ -189,7 +189,7 @@
     {# On-clock team #}
     {% if cc %}
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--hairline);background:var(--panel-2);border-radius:2px;margin-bottom:10px;">
-      {% if cc.get('logo_url') %}<img src="{{ cc.logo_url }}" style="width:30px;height:30px;object-fit:contain;border-radius:2px;flex-shrink:0;" alt="">
+      {% if cc.get('logo_url') %}<img src="{{ cc.logo_url }}" style="width:30px;height:30px;object-fit:cover;border-radius:2px;flex-shrink:0;" alt="">
       {% else %}<div style="width:30px;height:30px;border-radius:50%;background:{{ cc.get('color','#374151') }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">{{ cc.get('team_name','?')[:2].upper() }}</div>{% endif %}
       <div style="flex:1;min-width:0;">
         <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:{{ pool_color }};text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ cc.get('team_name','?') }}</div>
@@ -312,7 +312,7 @@ function skipPick(pool, sid) {
         {% set lc = coaches_map.get(last_pick.coach_id) %}
         {% if lc %}
         <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
-          {% if lc.get('logo_url') %}<img src="{{ lc.logo_url }}" style="width:20px;height:20px;object-fit:contain;border-radius:2px;flex-shrink:0;" alt="">
+          {% if lc.get('logo_url') %}<img src="{{ lc.logo_url }}" style="width:20px;height:20px;object-fit:cover;border-radius:2px;flex-shrink:0;" alt="">
           {% else %}<div style="width:20px;height:20px;border-radius:50%;background:{{ lc.get('color','#374151') }};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;">{{ lc.get('team_name','?')[:2].upper() }}</div>{% endif %}
           <div>
             <div style="font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:var(--text);">{{ lc.get('team_name','?') }}</div>
@@ -378,7 +378,7 @@ function skipPick(pool, sid) {
       <div class="dl-row" style="background:transparent;">
         <div style="align-self:stretch;background:{% if is_last %}var(--cyan){% else %}transparent{% endif %};"></div>
         <div class="dl-row-inner" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-right:4px;">
-          {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:48px;height:48px;object-fit:contain;border-radius:2px;display:block;" alt="">
+          {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;display:block;" alt="">
           {% else %}<div style="width:48px;height:48px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
           <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;text-align:center;line-height:1.2;">{{ coach.coach_name }}</div>
           {% if cm == 'points' and cds %}<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--magenta);line-height:1;">{{ cds.spent or 0 }}<span style="color:var(--text-dim);">/{{ cds.budget or 70 }}</span></div>{% endif %}
@@ -482,7 +482,7 @@ function skipPick(pool, sid) {
             <div class="sort-item" draggable="true" data-id="{{ coach.id }}" data-pool="{{ pool_label }}">
               <span class="sort-handle">⠿</span>
               {% if coach.logo_url %}
-              <img src="{{ coach.logo_url }}" style="width:20px;height:20px;object-fit:contain;border-radius:2px;flex-shrink:0;" alt="">
+              <img src="{{ coach.logo_url }}" style="width:20px;height:20px;object-fit:cover;border-radius:2px;flex-shrink:0;" alt="">
               {% else %}
               <div style="width:20px;height:20px;border-radius:50%;flex-shrink:0;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;">
                 {{ (coach.team_name or '?')[:2].upper() }}
@@ -546,7 +546,7 @@ setInterval(_apollDraft,8000);
             {% for coach in pool_coaches %}
             <div class="sort-item" draggable="true" data-id="{{ coach.id }}">
               <span class="sort-handle">⠿</span>
-              {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:18px;height:18px;object-fit:contain;border-radius:2px;" alt="">
+              {% if coach.logo_url %}<img src="{{ coach.logo_url }}" style="width:18px;height:18px;object-fit:cover;border-radius:2px;" alt="">
               {% else %}<div style="width:18px;height:18px;border-radius:50%;background:{{ coach.color or '#374151' }};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;">{{ coach.team_name[:2].upper() }}</div>{% endif %}
               <span style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--text);">{{ coach.team_name }}</span>
               <input type="hidden" name="snake_order" value="{{ coach.id }}">

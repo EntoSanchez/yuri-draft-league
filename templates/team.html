@@ -394,7 +394,7 @@
             <span class="yc-br-tr"></span><span class="yc-br-br"></span>
             {% if coach.logo_url %}
               <img src="{{ coach.logo_url }}" alt="{{ coach.team_name }}"
-                   class="object-contain"
+                   class="object-cover"
                    style="width:168px;height:168px;display:block;
                           box-shadow:0 0 40px -8px {{ coach.color or '#ff2a8a' }}80;{% if coach.is_defending_champ %}box-shadow:0 0 40px -8px #ffb84d80;{% endif %}">
             {% else %}
@@ -515,7 +515,7 @@
             <!-- col 2: my team (right-aligned) -->
             <div style="text-align:right;min-width:0;">
               {% if coach.logo_url %}
-              <img src="{{ coach.logo_url }}" class="object-contain" style="width:36px;height:36px;border:1px solid var(--hairline);display:inline-block;margin-bottom:4px;" alt="">
+              <img src="{{ coach.logo_url }}" class="object-cover" style="width:36px;height:36px;border:1px solid var(--hairline);display:inline-block;margin-bottom:4px;" alt="">
               {% else %}
               <div style="width:36px;height:36px;background:{{ coach.color or '#111' }};display:inline-flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;color:#fff;font-size:11px;margin-bottom:4px;">{{ coach.team_name[:2].upper() }}</div>
               {% endif %}
@@ -542,7 +542,7 @@
             <!-- col 4: opponent team -->
             <div style="min-width:0;">
               {% if matchup.opp_logo %}
-              <img src="{{ matchup.opp_logo }}" class="object-contain" style="width:36px;height:36px;border:1px solid var(--hairline);display:block;margin-bottom:4px;" alt="">
+              <img src="{{ matchup.opp_logo }}" class="object-cover" style="width:36px;height:36px;border:1px solid var(--hairline);display:block;margin-bottom:4px;" alt="">
               {% else %}
               <div style="width:36px;height:36px;background:{{ matchup.opp_color or '#111' }};display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;color:#fff;font-size:11px;margin-bottom:4px;">{{ matchup.opp_team[:2].upper() }}</div>
               {% endif %}
@@ -701,7 +701,7 @@
                 <span class="yc-mono" style="font-size:10px;color:var(--text-dim);">WK{{ '%02d' % m.week }}</span>
                 <div class="flex items-center gap-2 min-w-0">
                   {% if m.opp_logo %}
-                  <img src="{{ m.opp_logo }}" class="flex-shrink-0 object-contain" style="width:18px;height:18px;border:1px solid var(--hairline);" onerror="this.style.display='none'">
+                  <img src="{{ m.opp_logo }}" class="flex-shrink-0 object-cover" style="width:18px;height:18px;border:1px solid var(--hairline);" onerror="this.style.display='none'">
                   {% else %}
                   <div class="flex-shrink-0" style="width:18px;height:18px;background:{{ m.opp_color or '#333' }};"></div>
                   {% endif %}
@@ -959,7 +959,7 @@
               <span class="yc-mono flex-shrink-0" style="font-size:10px;color:var(--text-dim);">VS</span>
               <div class="flex items-center gap-2 flex-1 min-w-0">
                 {% if m.opp_logo %}
-                  <img src="{{ m.opp_logo }}" class="object-contain flex-shrink-0" style="width:22px;height:22px;border:1px solid var(--hairline);" onerror="this.style.display='none'">
+                  <img src="{{ m.opp_logo }}" class="object-cover flex-shrink-0" style="width:22px;height:22px;border:1px solid var(--hairline);" onerror="this.style.display='none'">
                 {% else %}
                   <div class="flex-shrink-0" style="width:22px;height:22px;background:{{ m.opp_color or '#111' }};"></div>
                 {% endif %}

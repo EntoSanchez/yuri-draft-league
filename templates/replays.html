@@ -37,7 +37,7 @@
             <!-- Coach 1 -->
             <div class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-3">
               {% if r.c1_logo %}
-              <img src="{{ r.c1_logo }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="{{ r.c1_team }}">
+              <img src="{{ r.c1_logo }}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0" alt="{{ r.c1_team }}">
               {% else %}
               <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white flex-shrink-0"
                    style="background:{{ r.c1_color or '#374151' }};">{{ r.c1_team[:2].upper() }}</div>
@@ -62,7 +62,7 @@
             <!-- Coach 2 -->
             <div class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-3 flex-row-reverse text-right">
               {% if r.c2_logo %}
-              <img src="{{ r.c2_logo }}" class="w-10 h-10 object-contain rounded-lg flex-shrink-0" alt="{{ r.c2_team }}">
+              <img src="{{ r.c2_logo }}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0" alt="{{ r.c2_team }}">
               {% else %}
               <div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white flex-shrink-0"
                    style="background:{{ r.c2_color or '#374151' }};">{{ r.c2_team[:2].upper() }}</div>

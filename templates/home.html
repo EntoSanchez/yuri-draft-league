@@ -815,7 +815,7 @@
           {% for i, row in enumerate(top3) %}
           <span class="ticker-match">
             <span class="ticker-sep" style="font-size:0.7rem;color:{% if i==0 %}var(--magenta){% elif i==1 %}var(--cyan){% else %}var(--lime){% endif %};">★ {{ ['1ST','2ND','3RD'][i] }}</span>
-            {% if row.coach.logo_url %}<img src="{{ row.coach.logo_url }}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;display:inline-block;vertical-align:middle;margin-right:4px;" alt="">{% endif %}
+            {% if row.coach.logo_url %}<img src="{{ row.coach.logo_url }}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;margin-right:4px;" alt="">{% endif %}
             <span class="ticker-team" style="color:{{ row.coach.color or '#ffffff' }}">{{ row.coach.team_name }}</span>
             <span class="ticker-score">{{ row.W }}–{{ row.L }}</span>
             <span style="color:rgba(255,255,255,0.3);font-size:0.7rem;">{{ row.coach.coach_name }}</span>
@@ -902,7 +902,7 @@
                style="border-radius:2px;border:1px solid var(--hairline);border-left:2px solid {{ ac }};background:linear-gradient(90deg, {{ sf }}, transparent 55%);text-decoration:none;">
               <span class="text-lg font-black font-mono w-9 flex-shrink-0" style="color:{{ ac }};">{{ '%02d' % loop.index }}</span>
               {% if row.coach.logo_url %}
-                <img src="{{ row.coach.logo_url }}" class="w-9 h-9 object-contain rounded-lg flex-shrink-0" alt="">
+                <img src="{{ row.coach.logo_url }}" class="w-9 h-9 object-cover rounded-lg flex-shrink-0" alt="">
               {% else %}
                 <div class="w-9 h-9 rounded-lg flex items-center justify-center font-black text-white text-xs flex-shrink-0"
                      style="background:{{ row.coach.color or '#374151' }};">{{ row.coach.team_name[:2].upper() }}</div>
@@ -941,7 +941,7 @@
                  style="border-radius:2px;border:1px solid var(--hairline);background:var(--sf2);">
               <div class="flex items-center divide-x divide-gray-800/60">
                 <a href="/team/{{ m.c1_id }}" class="flex-1 flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 {% if not c1_win and not is_tie %}opacity-40{% endif %}" style="text-decoration:none;">
-                  {% if m.c1_logo %}<img src="{{ m.c1_logo }}" class="w-9 h-9 object-contain rounded-lg flex-shrink-0" alt="">
+                  {% if m.c1_logo %}<img src="{{ m.c1_logo }}" class="w-9 h-9 object-cover rounded-lg flex-shrink-0" alt="">
                   {% else %}<div class="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background:{{ m.c1_color or '#374151' }};">{{ m.t1[:2].upper() }}</div>{% endif %}
                   <div class="min-w-0">
                     <div class="font-bold text-sm truncate" style="color:{% if c1_win %}#fff{% elif is_tie %}var(--sc){% else %}#6b7280{% endif %};">{{ m.t1 }}</div>
@@ -956,7 +956,7 @@
                   <span class="text-xs font-bold mt-0.5" style="color:var(--pm);">FINAL</span>
                 </div>
                 <a href="/team/{{ m.c2_id }}" class="flex-1 flex items-center gap-3 px-4 py-3 flex-row-reverse text-right transition-colors hover:bg-white/5 {% if c1_win and not is_tie %}opacity-40{% endif %}" style="text-decoration:none;">
-                  {% if m.c2_logo %}<img src="{{ m.c2_logo }}" class="w-9 h-9 object-contain rounded-lg flex-shrink-0" alt="">
+                  {% if m.c2_logo %}<img src="{{ m.c2_logo }}" class="w-9 h-9 object-cover rounded-lg flex-shrink-0" alt="">
                   {% else %}<div class="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style="background:{{ m.c2_color or '#374151' }};">{{ m.t2[:2].upper() }}</div>{% endif %}
                   <div class="min-w-0">
                     <div class="font-bold text-sm truncate" style="color:{% if not c1_win and not is_tie %}#fff{% elif is_tie %}var(--sc){% else %}#6b7280{% endif %};">{{ m.t2 }}</div>

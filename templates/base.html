@@ -6,7 +6,7 @@
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <script>
-  console.log("YDL build: uber-points-v4");
+  console.log("YDL build: logo-cover-v5");
   // ── CSRF: auto-attach the session token to every same-origin POST ──
   (function () {
     var TOKEN = "{{ csrf_token() }}";
@@ -1000,7 +1000,7 @@
         <div class="px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-widest" style="color:rgba(250,204,21,0.35)">Pool A</div>
         {% for c in pool_a %}
         <a href="/team/{{ c.id }}" class="drawer-sub-link">
-          {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="w-5 h-5 rounded object-contain flex-shrink-0">
+          {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="w-5 h-5 rounded object-cover flex-shrink-0">
           {% else %}<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>{% endif %}
           {{ c.team_name }}
         </a>
@@ -1010,7 +1010,7 @@
         <div class="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-widest" style="color:rgba(250,204,21,0.35)">Pool B</div>
         {% for c in pool_b %}
         <a href="/team/{{ c.id }}" class="drawer-sub-link">
-          {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="w-5 h-5 rounded object-contain flex-shrink-0">
+          {% if c.logo_url %}<img src="{{ c.logo_url }}" alt="{{ c.team_name }}" class="w-5 h-5 rounded object-cover flex-shrink-0">
           {% else %}<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ c.color or '#374151' }};"></span>{% endif %}
           {{ c.team_name }}
         </a>

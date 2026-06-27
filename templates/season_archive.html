@@ -71,7 +71,7 @@
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-3">
                     {% if row.coach.logo_url %}
-                    <img src="{{ row.coach.logo_url }}" class="w-7 h-7 object-contain rounded flex-shrink-0" alt="">
+                    <img src="{{ row.coach.logo_url }}" class="w-7 h-7 object-cover rounded flex-shrink-0" alt="">
                     {% else %}
                     <div class="w-7 h-7 rounded flex-shrink-0 border border-gray-700"
                          style="background-color:{{ row.coach.color or '#374151' }};"></div>
@@ -130,7 +130,7 @@
         <div class="p-4">
           <div class="flex items-center gap-3 mb-3">
             {% if coach.logo_url %}
-            <img src="{{ coach.logo_url }}" class="w-8 h-8 object-contain rounded flex-shrink-0" alt="">
+            <img src="{{ coach.logo_url }}" class="w-8 h-8 object-cover rounded flex-shrink-0" alt="">
             {% else %}
             <div class="w-8 h-8 rounded border border-gray-700 flex-shrink-0"
                  style="background-color:{{ coach.color or '#374151' }};"></div>
