@@ -1,5 +1,6 @@
 # Database (each server keeps its own — never overwrite with git pull)
 league.db
+*.db
 
 # Python
 .venv/
