@@ -74,7 +74,7 @@
   /* ── mon name + team ── */
   .lr-monname { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; color: var(--text); }
   .lr-coach   { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; }
-  .lr-logo    { border-radius: 50%; background: var(--panel-2) center/contain no-repeat; border: 1px solid var(--hairline); flex: 0 0 auto; }
+  .lr-logo    { border-radius: 50%; background: transparent center/contain no-repeat; border: 1px solid var(--hairline); flex: 0 0 auto; }
   .lr-logo.sm { width: 26px; height: 26px; }
   .lr-bigdiff { font-family: 'Chakra Petch', var(--font-display); font-weight: 700; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
 
@@ -208,7 +208,7 @@ function typeStripe(m){
 function logoHtml(m, size){
   const ini = (m.team_name||"??").slice(0,2).toUpperCase();
   if(m.team_logo) return `<span class="lr-logo ${size}" style="background-image:url('${esc(m.team_logo)}')" title="${esc(m.team_name)}"></span>`;
-  return `<span class="lr-logo ${size}" style="display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">${esc(ini)}</span>`;
+  return `<span class="lr-logo ${size}" style="background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">${esc(ini)}</span>`;
 }
 
 function renderPodium(ranked){
