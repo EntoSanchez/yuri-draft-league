@@ -1294,7 +1294,7 @@ function renderLineupRoster() {
     const inLineup = lineup.some(s => s.pokemon && s.pokemon.name === p.name);
     const div = document.createElement('div');
     div.className = 'lp-roster-mon' + (inLineup ? ' in-lineup' : '');
-    div.innerHTML = `<img src="${p.sprite||p.sprite_anim||''}" onerror="this.style.opacity='0.2'">
+    div.innerHTML = `<img src="${p.sprite_anim||p.sprite||''}" onerror="if(this.dataset.fb){this.style.opacity='0.2'}else{this.dataset.fb=1;this.src='${p.sprite||''}'}">
       <span class="lp-roster-name">${p.name}</span>
       <span style="font-family:var(--font-mono);font-size:7.5px;color:var(--text-dim);flex-shrink:0;">${p.points||''}pt</span>`;
     if (!inLineup) {
@@ -1379,7 +1379,7 @@ function renderSlots() {
 
       div.innerHTML = `${numBar}
         <div class="lp-slot-mon">
-          <img src="${p.sprite||''}" onerror="this.style.opacity='0.2'">
+          <img src="${p.sprite_anim||p.sprite||''}" onerror="if(this.dataset.fb){this.style.opacity='0.2'}else{this.dataset.fb=1;this.src='${p.sprite||''}'}">
           <div class="lp-slot-mon-info">
             <span class="lp-slot-pname">${p.name}</span>
             <span style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);">${p.points}pt · ${p.type1||''}${p.type2?' / '+p.type2:''}</span>
