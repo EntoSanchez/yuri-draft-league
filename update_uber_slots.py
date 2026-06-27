@@ -28,10 +28,11 @@ import app  # noqa: E402  — provides _uber_named
 db = sqlite3.connect(DB_PATH)
 db.row_factory = sqlite3.Row
 
-# Which drafted names are uber-tier (by tier_label) and what their bare tier is.
+# Which drafted names are uber-tier (by "Uber X" label OR by uber point value
+# 27-30) and what their bare tier is.
 uber_by_name = {}
-for r in db.execute("SELECT name, tier_label FROM draft_tiers"):
-    named = app._uber_named(r["tier_label"])
+for r in db.execute("SELECT name, tier_label, points FROM draft_tiers"):
+    named = app._uber_named(r["tier_label"]) or app.UBER_POINTS.get(r["points"] or 0, "")
     if named:
         uber_by_name[r["name"]] = named
 

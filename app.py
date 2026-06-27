@@ -5073,7 +5073,6 @@ def draft_live_pick():
 
         points = poke_row["points"] or 0
         poke_tier_label = poke_row["tier_label"] or ""
-        use_uber_slot = request.form.get("use_uber_slot") == "1"
 
         mega_names_set = {r["name"] for r in db.execute(
             "SELECT name FROM draft_tiers WHERE is_mega=1"
@@ -5085,13 +5084,16 @@ def draft_live_pick():
         mega_uber_tier = _mega_tier_label(points, settings) if is_mega else ""
         poke_uber_tier = _uber_named(poke_tier_label)
 
+        # An uber point value (27-30) is always an uber pick — no special button
+        # needed. The "Uber" toggle on the card is now just a visual cue; clicking
+        # plain PICK on a 27-30pt mon still routes it to the uber slot.
         if poke_uber_tier:
             is_uber = True
             effective_uber_tier = poke_uber_tier
         elif mega_uber_tier:
             is_uber = True
             effective_uber_tier = mega_uber_tier
-        elif use_uber_slot and points in UBER_POINTS:
+        elif points in UBER_POINTS:
             is_uber = True
             effective_uber_tier = UBER_POINTS[points]
         else:
