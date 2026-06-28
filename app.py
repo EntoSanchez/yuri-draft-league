@@ -5249,7 +5249,6 @@ def draft_live_skip():
         p_ids = {c["id"] for c in coaches_all if c["pool"] == pick_pool}
         seq = _get_pool_sequence(so, p_ids, rs)
         pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
-        bank_col = "bank_pending_a" if pick_pool == "A" else "bank_pending_b"
         cur = (sess["current_pick_a"] or 1) if pick_pool == "A" else (sess["current_pick_b"] or 1)
         if not seq or cur < 1 or cur > len(seq):
             flash("No current pick slot to skip.", "warning")
@@ -5262,14 +5261,21 @@ def draft_live_skip():
             "VALUES (?,?,?,?,?,?,?,?)",
             (sess["id"], pick_num, round_idx + 1, slot_name_val, coach_id, "(SKIP)", 0, None)
         )
-        # Immediately grant a makeup pick by setting bank_pending
+        # Advance the turn to the next coach in sequence, and grant a DEFERRED
+        # makeup pick (banked_picks) that the skipped coach uses at their OWN next
+        # turn — so the snake order isn't disrupted by an immediate return to them.
+        try:
+            banked = json.loads(sess["banked_picks"] or "{}")
+        except Exception:
+            banked = {}
+        banked[str(coach_id)] = banked.get(str(coach_id), 0) + 1
         db.execute(
-            f"UPDATE draft_sessions SET {pick_col}=?, {bank_col}=? WHERE id=?",
-            (cur + 1, coach_id, sess["id"])
+            f"UPDATE draft_sessions SET {pick_col}=?, banked_picks=? WHERE id=?",
+            (cur + 1, json.dumps(banked), sess["id"])
         )
         coach_row = next((c for c in coaches_all if c["id"] == coach_id), None)
         cname = coach_row["team_name"] if coach_row else str(coach_id)
-        flash(f"Pool {pick_pool} skipped — {cname} will get a makeup pick next turn.", "info")
+        flash(f"Pool {pick_pool} skipped — {cname} gets a makeup pick at their next turn.", "info")
     return redirect(url_for("draft_live"))
 
 
