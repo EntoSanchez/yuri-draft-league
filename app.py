@@ -5049,6 +5049,24 @@ def draft_live_pick():
         # Bank pick overrides the on-clock coach; regular pick uses sequence
         coach_id = bank_pending_coach_id if is_bank_pick else _seq_coach_id
 
+        # A makeup (bank) pick FILLS the coach's oldest skipped slot: anchor it to
+        # that (SKIP) row's pick_number/round so the pick is recorded at the slot
+        # it's making up — correct ordering, a valid in-range number, and the
+        # first-overall-pick guard preserved — instead of the next coach's slot or
+        # a bogus 0/0 past the end of the sequence.
+        consumed_skip_id = None
+        if is_bank_pick:
+            skip_row = db.execute(
+                "SELECT id, pick_number, round_number FROM draft_picks "
+                "WHERE session_id=? AND coach_id=? AND pokemon_name='(SKIP)' "
+                "ORDER BY pick_number LIMIT 1",
+                (session_row["id"], coach_id),
+            ).fetchone()
+            if skip_row:
+                consumed_skip_id = skip_row["id"]
+                pick_num = skip_row["pick_number"]
+                round_idx = (skip_row["round_number"] or 1) - 1
+
         if not is_admin and my_coach_id != coach_id:
             flash("It's not your turn.", "warning")
             return redirect(url_for("draft_live"))
@@ -5196,6 +5214,10 @@ def draft_live_pick():
             "INSERT OR IGNORE INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (?,?,?,?,0,0,?)",
             (coach_id, pokemon_name, points, actual_slot, 1 if is_free else 0)
         )
+        # This makeup pick just filled a skipped slot — remove that (SKIP) placeholder.
+        if consumed_skip_id is not None:
+            db.execute("DELETE FROM draft_picks WHERE id=?", (consumed_skip_id,))
+
         pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
         # A makeup (bank) pick stays on the same slot; a normal pick advances the
         # sequence to the next coach.
@@ -5205,22 +5227,33 @@ def draft_live_pick():
                 (current_pick + 1, session_row["id"])
             )
         # Then — whether this was a normal OR a makeup pick — immediately cash the
-        # coach's NEXT banked IOU (if any). This chains across requests so a coach
-        # who was skipped multiple times uses ALL their makeup picks back-to-back at
-        # this single turn, before the turn passes to the next coach in the order.
-        try:
-            banked = json.loads(session_row["banked_picks"] or "{}")
-        except Exception:
-            banked = {}
-        if banked.get(str(coach_id), 0) > 0:
-            banked[str(coach_id)] -= 1
-            next_pending = coach_id
+        # coach's NEXT banked IOU (if any), so a coach skipped multiple times uses
+        # ALL their makeup picks back-to-back at this turn before the turn passes on.
+        # Two guards:
+        #  - re-read this coach's IOU count live and decrement ATOMICALLY in SQL
+        #    (json_set), so a concurrent pick in the OTHER pool can't clobber it.
+        #  - only re-arm if the coach still has roster room (team_pick_count was the
+        #    PRE-insert count, so they now hold team_pick_count+1); otherwise the
+        #    makeup could never satisfy the 10-pick cap and would freeze the pool.
+        ck = str(coach_id)
+        cnt_row = db.execute(
+            "SELECT json_extract(COALESCE(banked_picks,'{}'), '$.\"'||?||'\"') FROM draft_sessions WHERE id=?",
+            (ck, session_row["id"]),
+        ).fetchone()
+        owed = (cnt_row[0] or 0) if cnt_row else 0
+        has_room = (team_pick_count + 1) < 10
+        if owed > 0 and has_room:
+            db.execute(
+                "UPDATE draft_sessions SET banked_picks = "
+                "json_set(COALESCE(banked_picks,'{}'), '$.\"'||?||'\"', ?) "
+                f", {bank_pending_col}=? WHERE id=?",
+                (ck, owed - 1, coach_id, session_row["id"]),
+            )
         else:
-            next_pending = 0
-        db.execute(
-            f"UPDATE draft_sessions SET {bank_pending_col}=?, banked_picks=? WHERE id=?",
-            (next_pending, json.dumps(banked), session_row["id"])
-        )
+            db.execute(
+                f"UPDATE draft_sessions SET {bank_pending_col}=0 WHERE id=?",
+                (session_row["id"],),
+            )
 
     flash(f"Picked {pokemon_name}!", "success")
     return redirect(url_for("draft_live"))
@@ -5250,33 +5283,61 @@ def draft_live_skip():
         p_ids = {c["id"] for c in coaches_all if c["pool"] == pick_pool}
         seq = _get_pool_sequence(so, p_ids, rs)
         pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
+        bank_col = "bank_pending_a" if pick_pool == "A" else "bank_pending_b"
         cur = (sess["current_pick_a"] or 1) if pick_pool == "A" else (sess["current_pick_b"] or 1)
+        try:
+            cur_pending = sess[bank_col] or 0
+        except (IndexError, KeyError):
+            cur_pending = 0
+
+        # If a makeup (bank) pick is currently pending, "skip" forfeits THAT makeup
+        # and clears the on-clock lock. This is the admin recovery path: a coach who
+        # can't (or won't) make their owed makeup pick never freezes the pool.
+        if cur_pending:
+            db.execute(f"UPDATE draft_sessions SET {bank_col}=0 WHERE id=?", (sess["id"],))
+            crow = next((c for c in coaches_all if c["id"] == cur_pending), None)
+            cn = crow["team_name"] if crow else str(cur_pending)
+            flash(f"Pool {pick_pool} — {cn}'s makeup pick was skipped (forfeited).", "info")
+            return redirect(url_for("draft_live"))
+
         if not seq or cur < 1 or cur > len(seq):
             flash("No current pick slot to skip.", "warning")
             return redirect(url_for("draft_live"))
         slot = seq[cur - 1]
         pick_num, round_idx, slot_name_val, coach_id = slot[0], slot[1], slot[2], slot[3]
-        # Record a skip placeholder in draft_picks
+        # Record a skip placeholder in draft_picks (the exact slot to be made up later).
+        # This INSERT also takes the write lock, so the banked_picks re-read below is
+        # consistent against a concurrent pick in the other pool.
         db.execute(
             "INSERT INTO draft_picks (session_id, pick_number, round_number, slot_name, coach_id, pokemon_name, points, ticket_used) "
             "VALUES (?,?,?,?,?,?,?,?)",
             (sess["id"], pick_num, round_idx + 1, slot_name_val, coach_id, "(SKIP)", 0, None)
         )
-        # Advance the turn to the next coach in sequence, and grant a DEFERRED
-        # makeup pick (banked_picks) that the skipped coach uses at their OWN next
-        # turn — so the snake order isn't disrupted by an immediate return to them.
+        # Grant a makeup IOU. Re-read banked_picks fresh (now under the write lock) so
+        # the increment can't be clobbered by the other pool's pick. If the coach has
+        # a LATER turn in this pool's snake sequence, defer the makeup to that turn
+        # (order preserved); if this was their LAST slot, redeem it NOW via bank_pending
+        # so the IOU isn't stranded with no future turn to cash it.
+        fresh = db.execute("SELECT banked_picks FROM draft_sessions WHERE id=?", (sess["id"],)).fetchone()
         try:
-            banked = json.loads(sess["banked_picks"] or "{}")
+            banked = json.loads(fresh["banked_picks"] or "{}")
         except Exception:
             banked = {}
         banked[str(coach_id)] = banked.get(str(coach_id), 0) + 1
-        db.execute(
-            f"UPDATE draft_sessions SET {pick_col}=?, banked_picks=? WHERE id=?",
-            (cur + 1, json.dumps(banked), sess["id"])
-        )
+        has_future_slot = any(seq[i][3] == coach_id for i in range(cur, len(seq)))
+        if has_future_slot:
+            db.execute(
+                f"UPDATE draft_sessions SET {pick_col}=?, banked_picks=? WHERE id=?",
+                (cur + 1, json.dumps(banked), sess["id"])
+            )
+        else:
+            db.execute(
+                f"UPDATE draft_sessions SET {pick_col}=?, {bank_col}=?, banked_picks=? WHERE id=?",
+                (cur + 1, coach_id, json.dumps(banked), sess["id"])
+            )
         coach_row = next((c for c in coaches_all if c["id"] == coach_id), None)
         cname = coach_row["team_name"] if coach_row else str(coach_id)
-        flash(f"Pool {pick_pool} skipped — {cname} gets a makeup pick at their next turn.", "info")
+        flash(f"Pool {pick_pool} skipped — {cname} gets a makeup pick.", "info")
     return redirect(url_for("draft_live"))
 
 
