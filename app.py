@@ -5197,29 +5197,30 @@ def draft_live_pick():
             (coach_id, pokemon_name, points, actual_slot, 1 if is_free else 0)
         )
         pick_col = "current_pick_a" if pick_pool == "A" else "current_pick_b"
-        if is_bank_pick:
-            # Consume the bank pick — clear bank_pending, keep current_pick unchanged
-            db.execute(
-                f"UPDATE draft_sessions SET {bank_pending_col}=0 WHERE id=?",
-                (session_row["id"],)
-            )
-        else:
-            # Advance to next pick in sequence
+        # A makeup (bank) pick stays on the same slot; a normal pick advances the
+        # sequence to the next coach.
+        if not is_bank_pick:
             db.execute(
                 f"UPDATE draft_sessions SET {pick_col}=? WHERE id=?",
                 (current_pick + 1, session_row["id"])
             )
-            # Check if the coach who just picked has a banked pick to use
-            try:
-                banked = json.loads(session_row["banked_picks"] or "{}")
-            except Exception:
-                banked = {}
-            if banked.get(str(coach_id), 0) > 0:
-                banked[str(coach_id)] -= 1
-                db.execute(
-                    f"UPDATE draft_sessions SET {bank_pending_col}=?, banked_picks=? WHERE id=?",
-                    (coach_id, json.dumps(banked), session_row["id"])
-                )
+        # Then — whether this was a normal OR a makeup pick — immediately cash the
+        # coach's NEXT banked IOU (if any). This chains across requests so a coach
+        # who was skipped multiple times uses ALL their makeup picks back-to-back at
+        # this single turn, before the turn passes to the next coach in the order.
+        try:
+            banked = json.loads(session_row["banked_picks"] or "{}")
+        except Exception:
+            banked = {}
+        if banked.get(str(coach_id), 0) > 0:
+            banked[str(coach_id)] -= 1
+            next_pending = coach_id
+        else:
+            next_pending = 0
+        db.execute(
+            f"UPDATE draft_sessions SET {bank_pending_col}=?, banked_picks=? WHERE id=?",
+            (next_pending, json.dumps(banked), session_row["id"])
+        )
 
     flash(f"Picked {pokemon_name}!", "success")
     return redirect(url_for("draft_live"))
