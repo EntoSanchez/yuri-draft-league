@@ -416,7 +416,13 @@
     <div class="vd-panel" style="padding:14px;display:flex;flex-direction:column;min-height:0">
       <div class="vd-head">
         <span class="vd-eyebrow">// DEFENSE · vs CLASSES</span>
-        <button id="abil-btn" onclick="toggleAbil()" style="font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.06em;cursor:pointer;padding:3px 9px;border:1px solid var(--cyan-dim);background:var(--cyan-soft);color:var(--cyan)">◉ ABILITIES</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <div class="vd-seg">
+            <button id="def-me"  onclick="setDefenseSide('me')"  style="background:var(--cyan);color:var(--ink)">MY TEAM</button>
+            <button id="def-opp" onclick="setDefenseSide('opp')" style="background:transparent;color:var(--text-mute)">OPP</button>
+          </div>
+          <button id="abil-btn" onclick="toggleAbil()" style="font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.06em;cursor:pointer;padding:3px 9px;border:1px solid var(--cyan-dim);background:var(--cyan-soft);color:var(--cyan)">◉ ABILITIES</button>
+        </div>
       </div>
       <div id="hm-content" style="flex:1;overflow:auto;min-height:0"></div>
       <div style="display:flex;gap:12px;margin-top:auto;padding-top:8px;border-top:1px dashed var(--hairline);flex-wrap:wrap">
@@ -593,6 +599,7 @@ const BP_MOVE_CATS = [
 const S = {
   myTeam:[], oppTeam:[], myCoach:null, oppCoach:null,
   winProb:50, pickem:null, abilities:true,
+  defenseSide:"me",
   statHL:"none", statView:"bars",
   speedStyle:"tiers", speedTarget:null,
   speedBench:"max", speedMode:"min", speedEV:252, speedIV:31,
@@ -839,10 +846,27 @@ function toggleAbil() {
   renderHeatmap();
 }
 
+function setDefenseSide(side) {
+  S.defenseSide = side;
+  const me = side === 'me';
+  const bMe = document.getElementById('def-me');
+  const bOpp = document.getElementById('def-opp');
+  if (bMe && bOpp) {
+    bMe.style.background  = me ? 'var(--cyan)' : 'transparent';
+    bMe.style.color       = me ? 'var(--ink)' : 'var(--text-mute)';
+    bOpp.style.background = !me ? 'var(--magenta)' : 'transparent';
+    bOpp.style.color      = !me ? 'var(--ink)' : 'var(--text-mute)';
+  }
+  renderHeatmap();
+}
+
 function renderHeatmap() {
   const el = document.getElementById("hm-content");
-  if (!S.myTeam.length) {
-    el.innerHTML=`<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);padding:12px 0">Select your team to see defense.</div>`;
+  const team   = S.defenseSide === 'opp' ? S.oppTeam : S.myTeam;
+  const accent = S.defenseSide === 'opp' ? 'var(--magenta)' : 'var(--cyan)';
+  if (!team.length) {
+    const which = S.defenseSide === 'opp' ? 'an opponent' : 'your';
+    el.innerHTML=`<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);padding:12px 0">Select ${which} team to see defense.</div>`;
     return;
   }
 
@@ -869,13 +893,13 @@ function renderHeatmap() {
 
   // Body: one row per pokemon
   const tbody = document.createElement('tbody');
-  S.myTeam.forEach(p => {
+  team.forEach(p => {
     const defTypes = [p.type1, p.type2].filter(Boolean);
     const abilityImm = S.abilities ? getAbilImm(p) : {};
     const hasImm = Object.keys(abilityImm).length > 0;
     const tr = document.createElement('tr');
     const nameCell = document.createElement('td');
-    nameCell.style.color = 'var(--cyan)';
+    nameCell.style.color = accent;
     nameCell.textContent = (p.name.length > 9 ? p.name.slice(0,8)+'…' : p.name) + (hasImm ? ' ★' : '');
     if (hasImm) nameCell.title = 'Ability immunity: ' + Object.keys(abilityImm).join(', ');
     tr.appendChild(nameCell);
@@ -902,12 +926,12 @@ function renderHeatmap() {
   const tfoot = document.createElement('tfoot');
   const totRow = document.createElement('tr');
   const totLabel = document.createElement('td');
-  totLabel.style.cssText = 'font-size:0.55rem;color:var(--cyan);font-weight:700;letter-spacing:0.06em;border-top:2px solid var(--hairline-2);';
+  totLabel.style.cssText = `font-size:0.55rem;color:${accent};font-weight:700;letter-spacing:0.06em;border-top:2px solid var(--hairline-2);`;
   totLabel.textContent = 'TOTAL';
   totRow.appendChild(totLabel);
   TYPES.forEach((atkType, atkIdx) => {
     let score = 0, wk = 0, imm = 0, res = 0;
-    S.myTeam.forEach(p => {
+    team.forEach(p => {
       const defTypes = [p.type1, p.type2].filter(Boolean);
       const abilityImm = S.abilities ? getAbilImm(p) : {};
       let mult;
@@ -1511,7 +1535,7 @@ window._BATTLE_TOUR = [
   {
     sel: '.vd-band-2',
     title: 'Stats & Type Defense',
-    body: 'Left: side-by-side base stat bars for every Pokémon on both teams. Toggle BARS/AVG and click stat chips to filter. Right: type defense — spot weaknesses and resistances. Toggle ABILITIES to factor in immunities.'
+    body: 'Left: side-by-side base stat bars for every Pokémon on both teams. Toggle BARS/AVG and click stat chips to filter. Right: type defense — spot weaknesses and resistances. Switch MY TEAM / OPP to view either side’s table, and toggle ABILITIES to factor in immunities.'
   },
   {
     sel: '.vd-band-3',
