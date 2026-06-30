@@ -345,8 +345,7 @@ input[type=number] { -moz-appearance: textfield; }
 }
 .move-opt-btn:hover { color: var(--text); border-color: var(--hairline-3); }
 .move-opt-btn.on { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
-.move-opts { display: none; gap: 6px; padding: 2px 0 4px 28px; flex-wrap: wrap; align-items: center; }
-.move-opts.open { display: flex; }
+.move-opts { display: flex; gap: 6px; padding: 2px 0 4px 28px; flex-wrap: wrap; align-items: center; }
 .mini-tog {
   display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
   font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--text-mute);

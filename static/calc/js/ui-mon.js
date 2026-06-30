@@ -5,6 +5,53 @@
   'use strict';
   const D = root.CalcData, E = root.Engine, Combo = root.Combo, esc = root.escHtml;
 
+  // ── Effective-stat modifiers (display): boost stage × item × ability × status ──
+  const BOOST_MULT = { '6':4,'5':3.5,'4':3,'3':2.5,'2':2,'1':1.5,'0':1,'-1':2/3,'-2':0.5,'-3':0.4,'-4':1/3,'-5':2/7,'-6':0.25 };
+  const _id = s => ('' + (s || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+  function itemMult(item, stat, sid) {
+    const it = _id(item);
+    if (it === 'choiceband'  && stat === 'atk') return 1.5;
+    if (it === 'choicespecs' && stat === 'spa') return 1.5;
+    if (it === 'choicescarf' && stat === 'spe') return 1.5;
+    if (it === 'assaultvest' && stat === 'spd') return 1.5;
+    if (it === 'eviolite' && (stat === 'def' || stat === 'spd')) return 1.5;
+    if (it === 'ironball' && stat === 'spe') return 0.5;
+    if (it === 'lightball' && sid === 'pikachu' && (stat === 'atk' || stat === 'spa')) return 2;
+    if (it === 'thickclub' && (sid === 'cubone' || sid === 'marowak' || sid === 'marowakalola') && stat === 'atk') return 2;
+    if (it === 'souldew' && (sid === 'latios' || sid === 'latias') && (stat === 'spa' || stat === 'spd')) return 1.5;
+    if (it === 'deepseatooth' && sid === 'clamperl' && stat === 'spa') return 2;
+    if (it === 'deepseascale' && sid === 'clamperl' && stat === 'spd') return 2;
+    if (it === 'metalpowder' && sid === 'ditto' && stat === 'def') return 1.5;
+    if (it === 'quickpowder' && sid === 'ditto' && stat === 'spe') return 2;
+    return 1;
+  }
+  function abilityMult(ability, stat, status) {
+    const a = _id(ability), s = status || '';
+    if ((a === 'hugepower' || a === 'purepower') && stat === 'atk') return 2;
+    if ((a === 'hustle' || a === 'gorillatactics') && stat === 'atk') return 1.5;
+    if (a === 'furcoat' && stat === 'def') return 2;
+    if (a === 'guts' && s && stat === 'atk') return 1.5;
+    if (a === 'flareboost' && s === 'brn' && stat === 'spa') return 1.5;
+    if (a === 'toxicboost' && (s === 'psn' || s === 'tox') && stat === 'atk') return 1.5;
+    if (a === 'marvelscale' && s && stat === 'def') return 1.5;
+    if (a === 'quickfeet' && s && stat === 'spe') return 1.5;
+    return 1;
+  }
+  function statusMult(status, stat, ability) {
+    const a = _id(ability);
+    if (status === 'brn' && stat === 'atk' && a !== 'guts') return 0.5;
+    if (status === 'par' && stat === 'spe' && a !== 'quickfeet') return 0.5;  // gen 7+
+    return 1;
+  }
+  // Apply all display modifiers to a raw (nature/EV/IV) stat.
+  function effectiveStat(stat, raw, st, sid) {
+    if (stat === 'hp') return raw;
+    let v = Math.floor(raw * (BOOST_MULT[String(st.boosts[stat] || 0)] || 1));
+    v = Math.floor(v * itemMult(st.item, stat, sid));
+    v = Math.floor(v * abilityMult(st.ability, stat, st.status) * statusMult(st.status, stat, st.ability));
+    return v;
+  }
+
   class MonPanel {
     constructor(role, state, onChange) {
       this.role = role;            // 'atk' | 'def'
@@ -108,7 +155,6 @@
             <div class="move-slot">
               <span class="mtype-dot" data-mtypedot="${i}" style="display:none"></span>
               <div class="combo"><input data-move="${i}"></div>
-              <button class="move-opt-btn" data-moveoptbtn="${i}" title="Crit · Z-Move · Max · multi-hit">⚙</button>
             </div>
             <div class="move-opts" data-moveopts="${i}">
               <label class="mini-tog"><input type="checkbox" data-mopt="isCrit" data-mi="${i}">CRIT</label>
@@ -170,15 +216,15 @@
       this.combos.ability = new Combo(this.q('[data-ability]'), {
         placeholder: 'Ability', allowFree: true,
         getList: () => E.lists().abilities,
-        onPick: (v) => { this.st.ability = v; this.changed(); }
+        onPick: (v) => { this.st.ability = v; this.refreshStats(); this.changed(); }
       });
       this.combos.item = new Combo(this.q('[data-item]'), {
         placeholder: 'Item', allowFree: true,
         getList: () => E.lists().items,
-        onPick: (v) => { this.st.item = v; this.changed(); }
+        onPick: (v) => { this.st.item = v; this.refreshStats(); this.changed(); }
       });
-      this.q('[data-ability]').addEventListener('change', () => { this.st.ability = this.q('[data-ability]').value; this.changed(); });
-      this.q('[data-item]').addEventListener('change', () => { this.st.item = this.q('[data-item]').value; this.changed(); });
+      this.q('[data-ability]').addEventListener('change', () => { this.st.ability = this.q('[data-ability]').value; this.refreshStats(); this.changed(); });
+      this.q('[data-item]').addEventListener('change', () => { this.st.item = this.q('[data-item]').value; this.refreshStats(); this.changed(); });
 
       // moves
       [0, 1, 2, 3].forEach(i => {
@@ -199,7 +245,7 @@
       // nature
       this.q('[data-nature]').addEventListener('change', () => { this.st.nature = this.q('[data-nature]').value; this.refreshStats(); this.changed(); });
       // status
-      this.q('[data-status]').addEventListener('change', () => { this.st.status = this.q('[data-status]').value; this.changed(); });
+      this.q('[data-status]').addEventListener('change', () => { this.st.status = this.q('[data-status]').value; this.refreshStats(); this.changed(); });
       // tera
       this.q('[data-tera]').addEventListener('change', () => {
         this.st.teraType = this.q('[data-tera]').value;
@@ -225,7 +271,7 @@
       });
       // boosts
       this.qa('[data-boost]').forEach(sel => {
-        sel.addEventListener('change', () => { this.st.boosts[sel.dataset.boost] = parseInt(sel.value) || 0; this.changed(); });
+        sel.addEventListener('change', () => { this.st.boosts[sel.dataset.boost] = parseInt(sel.value) || 0; this.refreshStats(); this.changed(); });
       });
 
       this.q('[data-act="import"]').addEventListener('click', () => root.CalcApp.openImport(this.role));
@@ -237,15 +283,7 @@
       // tera toggle
       this.q('[data-teraon]').addEventListener('change', (e) => { this.st.teraActive = e.target.checked; this.renderTypes(); this.changed(); });
 
-      // per-move option buttons + toggles
-      this.qa('[data-moveoptbtn]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const i = btn.dataset.moveoptbtn;
-          const opts = this.el.querySelector(`[data-moveopts="${i}"]`);
-          const open = opts.classList.toggle('open');
-          btn.classList.toggle('on', open);
-        });
-      });
+      // per-move option toggles (always visible)
       this.qa('[data-mopt]').forEach(inp => {
         const i = parseInt(inp.dataset.mi), key = inp.dataset.mopt;
         inp.addEventListener('change', () => {
@@ -372,18 +410,19 @@
       evleft.style.color = totalEv > 508 ? 'var(--red)' : 'var(--lime)';
       if (!info) return;
       const final = E.finalStats(this.st) || {};
-      let maxStat = 1;
-      D.STATS.forEach(s => { if (s.key !== 'hp') maxStat = Math.max(maxStat, final[s.key] || 0); });
+      const sid = E.toID(this.st.species);
       D.STATS.forEach(s => {
         const row = this.el.querySelector(`.stat-row.${s.key}`);
         const base = info.baseStats[s.key];
         row.querySelector('[data-base]').textContent = base;
-        const total = final[s.key];
+        const raw = final[s.key];
+        const eff = effectiveStat(s.key, raw, this.st, sid);   // boost × item × ability × status
         const totEl = row.querySelector('[data-total]');
-        const boosted = (this.st.boosts[s.key] || 0) !== 0;
-        totEl.innerHTML = `<span class="${boosted ? 'boosted' : ''}">${total}</span>`;
+        const modCol = eff > raw ? '#7bd88f' : eff < raw ? '#ff6b81' : '';
+        const title = (eff !== raw) ? ` title="base ${raw} → ${eff} (item/ability/boost/status)"` : '';
+        totEl.innerHTML = `<span${title} style="${modCol ? 'color:' + modCol + ';font-weight:700' : ''}">${eff}</span>`;
         const fill = row.querySelector('[data-fill]');
-        const pct = s.key === 'hp' ? Math.min(100, (base / 255) * 100) : Math.min(100, (total / 600) * 100);
+        const pct = s.key === 'hp' ? Math.min(100, (base / 255) * 100) : Math.min(100, (eff / 600) * 100);
         fill.style.width = pct + '%';
         // nature glyph
         const nat = row.querySelector('[data-nat]');
