@@ -60,6 +60,7 @@ def _migrate_db():
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
             "ALTER TABLE seasons ADD COLUMN season_num INTEGER DEFAULT 0",
             "ALTER TABLE match_games ADD COLUMN recap_json TEXT",
+            "ALTER TABLE draft_tiers ADD COLUMN is_mega INTEGER DEFAULT 0",
         ]:
             try:
                 db.execute(stmt)
