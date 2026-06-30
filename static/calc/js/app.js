@@ -247,8 +247,8 @@
       this.showModal('Import ' + (role === 'atk' ? 'Attacker' : 'Defender'), 'Import Set', true, false);
       const ta = document.getElementById('modal-text');
       ta.value = '';
-      ta.placeholder = 'Paste a Showdown set, e.g.\n\nGreat Tusk @ Booster Energy\nAbility: Protosynthesis\nTera Type: Ground\nEVs: 252 Atk / 4 HP / 252 Spe\nJolly Nature\n- Headlong Rush\n- Close Combat\n- Ice Spinner\n- Rapid Spin';
-      document.getElementById('modal-hint').textContent = 'Paste from Pokémon Showdown teambuilder or any standard set export.';
+      ta.placeholder = 'Paste one or two Showdown sets (blank line between them).\nFirst → this side, second → the other.\n\nGreat Tusk @ Booster Energy\nAbility: Protosynthesis\nEVs: 252 Atk / 4 HP / 252 Spe\nJolly Nature\n- Headlong Rush\n\nCorviknight @ Leftovers\nAbility: Pressure\n- Body Press';
+      document.getElementById('modal-hint').textContent = 'Paste 1 set, or 2 at once (blank line between) to fill both attacker and defender.';
       setTimeout(() => ta.focus(), 50);
     },
     openExport() {
@@ -295,23 +295,33 @@
         (role === 'atk' ? this.panelA : this.panelB).refreshSets();
         this.closeModal(); this.toast('Saved “' + name + '”'); return;
       }
-      // import
+      // import — supports MULTIPLE sets at once (blank-line separated):
+      // 1st → the role you clicked, 2nd → the other combatant.
       const text = document.getElementById('modal-text').value;
-      const set = D.parseSet(text);
-      if (!set || !set.species) { this.toast('Could not parse set'); return; }
-      const target = this.modalRole === 'atk' ? this.state.a : this.state.b;
-      const panel = this.modalRole === 'atk' ? this.panelA : this.panelB;
-      const info = E.speciesInfo(set.species);
-      target.species = info ? info.name : set.species;
-      target.level = set.level || 100; target.nature = set.nature || 'Hardy';
-      target.item = set.item || ''; target.ability = set.ability || (info ? (info.abilities[0] || '') : '');
-      target.teraType = set.teraType || ''; target.teraActive = !!set.teraType;
-      target.evs = {}; target.ivs = {}; target.boosts = {}; target.setName = '';
-      Object.assign(target.evs, set.evs); Object.assign(target.ivs, set.ivs);
-      target.moves = (set.moves || []).slice(0, 4); while (target.moves.length < 4) target.moves.push('');
-      target.moveOpts = [{}, {}, {}, {}];
-      panel.st = target; panel.syncFromState();
-      this.closeModal(); this.recompute(); this.toast('Imported ' + target.species);
+      const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+      const sets = blocks.map(b => D.parseSet(b)).filter(s => s && s.species);
+      if (!sets.length) { this.toast('Could not parse set'); return; }
+      const roles = this.modalRole === 'atk' ? ['atk', 'def'] : ['def', 'atk'];
+      const applied = [];
+      sets.slice(0, 2).forEach((set, i) => {
+        const role = roles[i];
+        const target = role === 'atk' ? this.state.a : this.state.b;
+        const panel = role === 'atk' ? this.panelA : this.panelB;
+        const info = E.speciesInfo(set.species);
+        target.species = info ? info.name : set.species;
+        target.level = set.level || 100; target.nature = set.nature || 'Hardy';
+        target.item = set.item || ''; target.ability = set.ability || (info ? (info.abilities[0] || '') : '');
+        target.teraType = set.teraType || ''; target.teraActive = !!set.teraType;
+        target.evs = {}; target.ivs = {}; target.boosts = {}; target.setName = '';
+        Object.assign(target.evs, set.evs); Object.assign(target.ivs, set.ivs);
+        target.moves = (set.moves || []).slice(0, 4); while (target.moves.length < 4) target.moves.push('');
+        target.moveOpts = [{}, {}, {}, {}];
+        panel.st = target; panel.syncFromState();
+        applied.push(target.species);
+      });
+      this.closeModal(); this.recompute();
+      const extra = sets.length > 2 ? ` (${sets.length - 2} more ignored — calc is 1v1)` : '';
+      this.toast(applied.length > 1 ? `Imported ${applied[0]} vs ${applied[1]}${extra}` : 'Imported ' + applied[0]);
     },
     closeModal() { document.getElementById('modal-back').classList.remove('open'); },
 
