@@ -6066,14 +6066,33 @@ def api_calc_teams():
     return jsonify(teams)
 
 
+_MEGA_STONES_CACHE = None
+
+
+def _mega_stones_map():
+    """{formeId -> 'Stone Name'} parsed from @smogon items (static/calc/mega-stones.json)."""
+    global _MEGA_STONES_CACHE
+    if _MEGA_STONES_CACHE is None:
+        try:
+            path = os.path.join(app.static_folder, "calc", "mega-stones.json")
+            with open(path, encoding="utf-8") as fh:
+                _MEGA_STONES_CACHE = json.load(fh)
+        except Exception:
+            _MEGA_STONES_CACHE = {}
+    return _MEGA_STONES_CACHE
+
+
 @app.route("/api/calc/megas")
 def api_calc_megas():
     """Custom-species data for every league Mega so the damage calc can build them.
 
     Gen 9 / @smogon-calc has NO megas, so each is injected via its base species
     plus stat/type/ability overrides. Returns: name (league display), base species
-    to build from, types, baseStats, ability.
+    to build from, types, baseStats, ability, sprite (animated GIF URL — Showdown
+    ani for canonical megas, self-hosted PNG for Z-A megas), spriteStatic (PNG
+    fallback), and stone (the mega stone item, auto-equipped on selection).
     """
+    stones = _mega_stones_map()
     with get_db() as db:
         rows = db.execute(
             "SELECT name, type1, type2, hp, atk, defense, spa, spd, spe, ability1 "
@@ -6084,9 +6103,12 @@ def api_calc_megas():
         name = (r["name"] or "").strip()
         base = name[5:].strip() if name.lower().startswith("mega ") else name
         # strip a trailing single-letter forme (X / Y / Z) to get the base species
+        suffix = ""
         parts = base.rsplit(" ", 1)
         if len(parts) == 2 and len(parts[1]) == 1 and parts[1].isalpha():
-            base = parts[0]
+            base, suffix = parts[0], parts[1]
+        # mega stone: match the @smogon forme id (e.g. "garchomp-mega-z" -> "garchompmegaz")
+        forme_id = re.sub(r"[^a-z0-9]+", "", (base + "mega" + suffix).lower())
         out.append({
             "name": name,
             "base": base,
@@ -6096,6 +6118,9 @@ def api_calc_megas():
                 "spa": r["spa"] or 0, "spd": r["spd"] or 0, "spe": r["spe"] or 0,
             },
             "ability": r["ability1"] or "",
+            "sprite": pokemon_sprite_url(name),
+            "spriteStatic": pokemon_static_sprite_url(name),
+            "stone": stones.get(forme_id, ""),
         })
     return jsonify(out)
 

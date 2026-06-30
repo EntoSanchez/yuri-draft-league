@@ -76,7 +76,8 @@
       return {
         name: c.name, types: c.types, baseStats: c.baseStats,
         weightkg: base ? base.weightkg : 100,
-        abilities: c.ability ? [c.ability] : (base && base.abilities ? Object.values(base.abilities) : [])
+        abilities: c.ability ? [c.ability] : (base && base.abilities ? Object.values(base.abilities) : []),
+        sprite: c.sprite || null, spriteStatic: c.spriteStatic || null, stone: c.stone || ''
       };
     }
     const s = GEN.species.get(toID(name));

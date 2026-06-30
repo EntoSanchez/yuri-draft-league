@@ -350,6 +350,18 @@
         this.st.ability = info.abilities[0] || '';
         this.combos.ability.setValue(this.st.ability);
         this.st.setName = '';
+        // Auto mega stone: equip the selected Mega's stone. First clear a stone we
+        // previously auto-equipped (so switching forme/base doesn't strand it), but
+        // leave a manually-chosen item untouched.
+        if (this.st._autoStone && this.st.item === this.st._autoStone) {
+          this.st.item = ''; this.combos.item.setValue('');
+        }
+        this.st._autoStone = '';
+        if (info.stone) {
+          this.st.item = info.stone;
+          this.combos.item.setValue(info.stone);
+          this.st._autoStone = info.stone;
+        }
       }
       this.renderTypes();
       this.renderSprite();
@@ -395,7 +407,11 @@
       sp.querySelectorAll('img,.ph').forEach(n => n.remove());
       if (!info) { const ph = document.createElement('span'); ph.className = 'ph'; ph.textContent = 'NO MON'; sp.appendChild(ph); return; }
       const animated = !!(root.CalcApp && root.CalcApp.animated);
-      const chain = D.spriteChain(info.name, animated);
+      let chain = D.spriteChain(info.name, animated);
+      // League Megas: the default chain collapses "Mega Garchomp" → "megagarchomp"
+      // (no such Showdown sprite). Use the backend-provided URLs (Showdown ani for
+      // canonical megas, self-hosted PNG for Z-A megas) ahead of the default chain.
+      if (info.sprite) chain = [info.sprite, info.spriteStatic].filter(Boolean).concat(chain);
       const img = document.createElement('img');
       img.alt = info.name;
       let idx = 0;
