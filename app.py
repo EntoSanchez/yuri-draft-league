@@ -3596,6 +3596,23 @@ def admin_board_template_load():
     return redirect(url_for("admin_board_templates"))
 
 
+@app.route("/admin/board-templates/<int:tid>/download")
+@admin_required
+def admin_board_template_download(tid):
+    with get_db() as db:
+        row = db.execute(
+            "SELECT name, board_json FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+    if not row:
+        flash("Template not found.", "warning")
+        return redirect(url_for("admin_board_templates"))
+    from flask import make_response          # local import (matches existing usage in app.py)
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_", row["name"])[:40] or "board"
+    resp = make_response(row["board_json"])
+    resp.headers["Content-Type"] = "application/json"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{safe}.json"'
+    return resp
+
+
 # ─── Admin: Draft Tiers ────────────────────────────────────────────────────────
 
 @app.route("/admin/tiers", methods=["GET", "POST"])

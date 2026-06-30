@@ -93,3 +93,14 @@ def test_load_requires_confirm_when_rosters_exist(client, app_mod):
     with app_mod.get_db() as db:
         names = {r["name"] for r in db.execute("SELECT name FROM draft_tiers")}
     assert names == {"Skeledirge"}                     # unchanged — needed confirm
+
+
+def test_download_returns_json_board(client, app_mod):
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM draft_tiers")
+        db.execute("INSERT INTO draft_tiers (name, points) VALUES ('Garchomp', 18)")
+        tid = app_mod.save_board_template(db, "DL Test")
+    resp = client.get(f"/admin/board-templates/{tid}/download")
+    import json as _j
+    assert resp.status_code == 200
+    assert any(m["name"] == "Garchomp" for m in _j.loads(resp.data))
