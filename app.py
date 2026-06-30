@@ -3671,6 +3671,39 @@ def admin_board_template_edit(tid):
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 
+# ─── Admin: DB Backups ─────────────────────────────────────────────────────────
+
+@app.route("/admin/backups", methods=["GET", "POST"])
+@admin_required
+def admin_backups():
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "create":
+            fn = create_db_backup(request.form.get("label", ""))
+            flash(f"Backup created: {fn}", "success")
+        elif action == "restore":
+            try:
+                restore_db_backup(request.form["filename"])
+                flash("Database restored (a pre-restore backup was saved first).", "success")
+            except ValueError:
+                flash("Backup file not found.", "warning")
+        elif action == "delete":
+            target = os.path.join(_backups_dir(), os.path.basename(request.form["filename"]))
+            if os.path.isfile(target):
+                os.remove(target)
+                flash("Backup deleted.", "warning")
+        return redirect(url_for("admin_backups"))
+    backups = list_db_backups()
+    return render_template("admin/backups.html", backups=backups,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+@app.route("/admin/backups/<name>/download")
+@admin_required
+def admin_backup_download(name):
+    return send_from_directory(_backups_dir(), os.path.basename(name), as_attachment=True)
+
+
 # ─── Admin: Draft Tiers ────────────────────────────────────────────────────────
 
 @app.route("/admin/tiers", methods=["GET", "POST"])

@@ -28,3 +28,22 @@ def test_restore_missing_raises(app_mod):
     import pytest
     with pytest.raises(ValueError):
         app_mod.restore_db_backup("does-not-exist.db")
+
+
+def test_create_via_route_then_list_page(client, app_mod):
+    client.post("/admin/backups", data={"action": "create", "label": "manual"}, follow_redirects=True)
+    resp = client.get("/admin/backups")
+    assert resp.status_code == 200 and b"league-" in resp.data
+
+
+def test_restore_via_route(client, app_mod):
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM draft_tiers")
+        db.execute("INSERT INTO draft_tiers (name, points) VALUES ('Snap', 4)")
+    fn = app_mod.create_db_backup("x")
+    with app_mod.get_db() as db:
+        db.execute("INSERT INTO draft_tiers (name, points) VALUES ('Later', 6)")
+    client.post("/admin/backups", data={"action": "restore", "filename": fn}, follow_redirects=True)
+    with app_mod.get_db() as db:
+        names = {r["name"] for r in db.execute("SELECT name FROM draft_tiers")}
+    assert names == {"Snap"}
