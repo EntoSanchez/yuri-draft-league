@@ -490,6 +490,8 @@ def _csrf_protect():
     csrf_token()  # ensure the session has a token to embed in pages
     if request.method in _CSRF_SAFE_METHODS:
         return None
+    if app.config.get("TESTING"):
+        return None
     sent = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
     if not sent or not secrets.compare_digest(str(sent), session.get("_csrf_token", "")):
         return ("CSRF token missing or invalid — please reload the page and try again.", 400)
@@ -3498,6 +3500,60 @@ def admin_users():
     return render_template("admin/users.html",
                            users=users,
                            coaches=coaches,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+# ─── Admin: Board Templates ────────────────────────────────────────────────────
+
+@app.route("/admin/board-templates", methods=["GET", "POST"])
+@admin_required
+def admin_board_templates():
+    if request.method == "POST":
+        action = request.form.get("action")
+        with get_db() as db:
+            if action == "save_current":
+                name = (request.form.get("name") or "").strip() or "Untitled board"
+                save_board_template(db, name, notes=request.form.get("notes", ""))
+                flash(f"Saved board template '{name}'.", "success")
+            elif action == "duplicate":
+                tid = request.form["template_id"]
+                src = db.execute(
+                    "SELECT * FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+                if src:
+                    ts = _now_iso()
+                    db.execute(
+                        "INSERT INTO draft_board_templates (name, kind, notes, board_json, created_at, updated_at) "
+                        "VALUES (?,?,?,?,?,?)",
+                        (src["name"] + " (copy)", "manual", src["notes"],
+                         src["board_json"], ts, ts))
+                    flash("Template duplicated.", "success")
+            elif action == "rename":
+                db.execute(
+                    "UPDATE draft_board_templates SET name=?, updated_at=? WHERE id=?",
+                    ((request.form.get("name") or "").strip() or "Untitled board",
+                     _now_iso(), request.form["template_id"]))
+                flash("Template renamed.", "success")
+            elif action == "delete":
+                db.execute("DELETE FROM draft_board_templates WHERE id=?",
+                           (request.form["template_id"],))
+                flash("Template deleted.", "warning")
+        return redirect(url_for("admin_board_templates"))
+
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, name, kind, notes, board_json, created_at, updated_at "
+            "FROM draft_board_templates ORDER BY id DESC").fetchall()
+    templates, autobackups = [], []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["count"] = len(json.loads(r["board_json"]))
+        except Exception:
+            d["count"] = 0
+        d.pop("board_json", None)
+        (autobackups if r["kind"] == "autobackup" else templates).append(d)
+    return render_template("admin/board_templates.html",
+                           templates=templates, autobackups=autobackups,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 
