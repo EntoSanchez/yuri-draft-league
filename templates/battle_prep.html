@@ -143,7 +143,7 @@
 .lp-title {
   font-family: var(--font-mono); font-size: 11px; font-weight: 700;
   letter-spacing: .14em; text-transform: uppercase; color: var(--cyan);
-  flex: 1;
+  flex: 0 0 auto;
 }
 .lp-btn {
   font-family: var(--font-mono); font-size: 9px; font-weight: 700;
@@ -561,7 +561,10 @@
 
   <!-- Top bar -->
   <div class="lp-topbar">
-    <span class="lp-title">// LINEUP_BUILDER · POKEPASTE_EXPORT</span>
+    <span class="lp-title">// LINEUP_BUILDER</span>
+    <input id="lp-team-name" class="lp-input" placeholder="Team name…" autocomplete="off"
+           style="flex:1;min-width:110px;max-width:260px" oninput="window._lpTeamName=this.value">
+    <button class="lp-btn ghost" onclick="startTour(window._LINEUP_TOUR)" title="Take a guided tour">? TOUR</button>
     <button class="lp-btn ghost" onclick="copyShowdown()">📋 COPY SHOWDOWN</button>
     <button id="lp-paste-btn" class="lp-btn primary" onclick="generatePokePaste()">⇪ POKEPASTE</button>
     <button class="lp-btn danger" onclick="clearLineup()">✕ CLEAR</button>
@@ -1546,11 +1549,6 @@ function renderSlots() {
   const wrap = document.getElementById('lp-slots-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
-  // Shared items datalist (all held items) — built once, referenced by every slot input.
-  const idl = document.createElement('datalist');
-  idl.id = 'lp-items-dl';
-  idl.innerHTML = LP_ITEMS.map(it => `<option value="${it}">`).join('');
-  wrap.appendChild(idl);
   lineup.forEach((slot, idx) => {
     const div = document.createElement('div');
     div.className = 'lp-slot' + (activeSlot === idx ? ' active-slot' : '');
@@ -1611,7 +1609,7 @@ function renderSlots() {
             <div class="lp-field-row"><label class="lp-field-label">Nickname</label>
               <input class="lp-input" value="${(slot.nickname||'').replace(/"/g,'&quot;')}" oninput="lineup[${idx}].nickname=this.value" placeholder="(optional)" maxlength="18" autocomplete="off"></div>
             <div class="lp-field-row"><label class="lp-field-label">Item</label>
-              <input class="lp-input" list="lp-items-dl" value="${(slot.item||'').replace(/"/g,'&quot;')}" data-dex="item" oninput="lineup[${idx}].item=this.value" placeholder="No Item" autocomplete="off"></div>
+              <input class="lp-input" value="${(slot.item||'').replace(/"/g,'&quot;')}" data-dex="item" data-slot="${idx}" oninput="lineup[${idx}].item=this.value" placeholder="No Item" autocomplete="off"></div>
             <div class="lp-field-row"><label class="lp-field-label">Ability</label>
               <select class="lp-input" onchange="lineup[${idx}].ability=this.value">${abilityOpts}</select></div>
             <div class="lp-field-row"><label class="lp-field-label">Nature</label>
@@ -1732,11 +1730,12 @@ async function generatePokePaste() {
   if (btn) { btn.textContent = '⏳ UPLOADING…'; btn.disabled = true; }
   setLpStatus('Uploading to pokepast.es…');
   const myCoachName = S.myCoach ? (S.myCoach.team_name || S.myCoach.name) : '';
+  const teamName = (window._lpTeamName || '').trim() || `${myCoachName} Battle Team`;
   try {
     const res = await fetch('/api/pokepaste', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ paste: text, title: `${myCoachName} Battle Team`, author: myCoachName }),
+      body: JSON.stringify({ paste: text, title: teamName, author: myCoachName }),
     });
     const data = await res.json();
     if (data.url) {
@@ -1809,6 +1808,35 @@ window._BATTLE_TOUR = [
     body: 'Left: speed tier breakdown — TIERS shows relative order, LADDER shows exact benchmarks, CREEP shows speed-creep ranges. Right: coverage moves by category — filter by Hazards, Priority, Doubles, etc. to prep for specific threats.'
   },
 ];
+
+// Tour for the LINEUP BUILDER modal (started from its own "? TOUR" button)
+window._LINEUP_TOUR = [
+  {
+    sel: '.lp-roster',
+    title: 'Your Roster',
+    body: 'Your drafted Pokémon live here. Click any one to drop it into the next open slot; already-used mons are dimmed.'
+  },
+  {
+    sel: '.lp-slots-wrap',
+    title: 'Set Builder · Identity',
+    body: 'Six slots. For each: the sprite, name and types on the left with a Tera Type picker, and Nickname / Item / Ability / Nature beside it. Hover the Item field to see what the item does.'
+  },
+  {
+    sel: '.lp-slots-wrap',
+    title: 'EVs, IVs & Moves',
+    body: 'Drag the neon EV sliders (capped at 508 total) — each row shows its IV and the live Lv100 stat, green/red for the nature boost/drop. Hover a move field — or any option in its dropdown — for its type, category, BP, accuracy, and effect.'
+  },
+  {
+    sel: '.lp-topbar',
+    title: 'Export',
+    body: 'When you\'re set: COPY SHOWDOWN puts the team on your clipboard in Showdown format, POKEPASTE uploads it and returns a shareable link, and CLEAR resets all six slots.'
+  },
+  {
+    sel: '.lp-paste-bar',
+    title: 'Share Link',
+    body: 'Your PokéPaste URL appears here — OPEN it in a new tab or COPY URL to share your team with others.'
+  },
+];
 </script>
 
 <!-- ============ Move/item hover descriptions ============ -->
@@ -1873,33 +1901,42 @@ window._BATTLE_TOUR = [
 
   // ---- custom move dropdown (options are hoverable for tooltips) ----
   let moveDD = null, ddInput = null;
-  const moveInput = el => el && el.closest && el.closest('input[data-slot][data-mi]');
+  const dropInput = el => el && el.closest && el.closest('input[data-slot]');
+  const isItemInput = inp => inp.dataset.mi === undefined;   // item field has no data-mi
   function ensureDD() {
     if (!moveDD) {
       moveDD = document.createElement('div'); moveDD.className = 'lp-move-dd'; document.body.appendChild(moveDD);
-      moveDD.addEventListener('mouseover', e => { const o = e.target.closest('.lp-move-opt'); if (o) showTip(tipHTML('move', o.dataset.move), o.getBoundingClientRect(), 'right'); });
+      moveDD.addEventListener('mouseover', e => { const o = e.target.closest('.lp-move-opt'); if (o) showTip(tipHTML(o.dataset.kind, o.dataset.opt), o.getBoundingClientRect(), 'right'); });
       moveDD.addEventListener('mouseleave', hideTip);
-      moveDD.addEventListener('mousedown', e => { const o = e.target.closest('.lp-move-opt'); if (o) { e.preventDefault(); pick(o.dataset.move); } });
+      moveDD.addEventListener('mousedown', e => { const o = e.target.closest('.lp-move-opt'); if (o) { e.preventDefault(); pick(o.dataset.opt); } });
     }
     return moveDD;
   }
   function openDD(input) {
     const idx = +input.dataset.slot;
     const slot = (typeof lineup !== 'undefined') && lineup[idx];
-    if (!slot || !slot.pokemon) { closeDD(); return; }
+    if (!slot) { closeDD(); return; }
+    const itemMode = isItemInput(input);
     const q = toID(input.value);
-    const matches = (slot.pokemon.moves || []).filter(m => !q || toID(m).includes(q)).slice(0, 80);
-    if (!matches.length) { closeDD(); return; }
+    let list;
+    if (itemMode) {
+      list = (typeof LP_ITEMS !== 'undefined' ? LP_ITEMS : []).filter(m => !q || toID(m).includes(q)).slice(0, 80);
+    } else {
+      if (!slot.pokemon) { closeDD(); return; }
+      list = (slot.pokemon.moves || []).filter(m => !q || toID(m).includes(q)).slice(0, 80);
+    }
+    if (!list.length) { closeDD(); return; }
     const dd = ensureDD(); ddInput = input;
     const mv = (window._DEX || {}).moves || {};
-    dd.innerHTML = matches.map(m => {
+    dd.innerHTML = list.map(m => {
+      if (itemMode) return `<div class="lp-move-opt" data-opt="${(m || '').replace(/"/g, '&quot;')}" data-kind="item">${m}</div>`;
       const d = mv[toID(m)];
       const meta = d ? `<span class="lp-move-opt-meta"><span style="color:${TYPE_C[d.t] || 'var(--text-dim)'}">${d.t || ''}</span><span style="color:${catCol(d.c)}">${d.bp ? d.bp : '—'}</span></span>` : '';
-      return `<div class="lp-move-opt" data-move="${(m || '').replace(/"/g, '&quot;')}">${m}${meta}</div>`;
+      return `<div class="lp-move-opt" data-opt="${(m || '').replace(/"/g, '&quot;')}" data-kind="move">${m}${meta}</div>`;
     }).join('');
     dd.style.display = 'block';
     const r = input.getBoundingClientRect();
-    dd.style.left = r.left + 'px'; dd.style.width = Math.max(140, r.width) + 'px';
+    dd.style.left = r.left + 'px'; dd.style.width = Math.max(150, r.width) + 'px';
     dd.style.top = (r.bottom + 2) + 'px';
     if (r.bottom + 2 + dd.offsetHeight > window.innerHeight - 6)
       dd.style.top = Math.max(6, r.top - dd.offsetHeight - 2) + 'px';
@@ -1907,26 +1944,29 @@ window._BATTLE_TOUR = [
   function closeDD() { if (moveDD) moveDD.style.display = 'none'; ddInput = null; hideTip(); }
   function pick(name) {
     if (!ddInput) return;
-    const idx = +ddInput.dataset.slot, mi = +ddInput.dataset.mi;
+    const idx = +ddInput.dataset.slot;
     ddInput.value = name;
-    if (typeof lineup !== 'undefined') lineup[idx].moves[mi] = name;
+    if (typeof lineup !== 'undefined') {
+      if (isItemInput(ddInput)) lineup[idx].item = name;
+      else lineup[idx].moves[+ddInput.dataset.mi] = name;
+    }
     const inp = ddInput; closeDD();
     if (inp && inp.focus) inp.focus();
   }
-  document.addEventListener('focusin', e => { const inp = moveInput(e.target); if (inp) openDD(inp); });
+  document.addEventListener('focusin', e => { const inp = dropInput(e.target); if (inp) openDD(inp); });
   document.addEventListener('input', e => {
-    const inp = moveInput(e.target);
+    const inp = dropInput(e.target);
     if (inp) { openDD(inp); return; }
     const di = e.target.closest && e.target.closest('input[data-dex]');
     if (di && tip && tip.style.display === 'block') showTip(tipHTML(di.dataset.dex, (di.value || '').trim()), di.getBoundingClientRect(), 'above');
   });
   document.addEventListener('focusout', e => {
-    const inp = moveInput(e.target);
+    const inp = dropInput(e.target);
     if (inp) setTimeout(() => { if (document.activeElement !== inp) closeDD(); }, 130);
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ddOpen()) closeDD(); });
   document.addEventListener('mousedown', e => {
-    if (ddOpen() && !e.target.closest('.lp-move-dd') && !moveInput(e.target)) closeDD();
+    if (ddOpen() && !e.target.closest('.lp-move-dd') && !dropInput(e.target)) closeDD();
   });
 })();
 </script>

@@ -6,7 +6,7 @@
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <script>
-  console.log("YDL build: lineup-redesign-v17");
+  console.log("YDL build: lineup-tour-items-v18");
   // ── CSRF: auto-attach the session token to every same-origin POST ──
   (function () {
     var TOKEN = "{{ csrf_token() }}";
@@ -682,7 +682,7 @@
 
     /* ── Guided Tour ── */
     #tour-spotlight {
-      position: fixed; z-index: 9001;
+      position: fixed; z-index: 99100;
       border: 2px solid var(--cp-cyan, #3de5ff); border-radius: 4px;
       box-shadow: 0 0 0 9999px rgba(2,4,12,.82), 0 0 24px rgba(61,229,255,.45);
       pointer-events: none;
@@ -691,7 +691,7 @@
                   opacity .15s;
     }
     #tour-tip {
-      position: fixed; z-index: 9002; width: 290px;
+      position: fixed; z-index: 99101; width: 290px;
       background: #0b0b14;
       border: 1px solid rgba(61,229,255,.45); border-radius: 4px;
       padding: 14px 16px;
