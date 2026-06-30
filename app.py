@@ -70,6 +70,21 @@ def _migrate_db():
                 created_at  TEXT NOT NULL,
                 updated_at  TEXT NOT NULL
             )""",
+            """CREATE TABLE IF NOT EXISTS draft_sessions (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                name            TEXT NOT NULL,
+                season          TEXT DEFAULT '',
+                status          TEXT DEFAULT 'setup',
+                snake_order     TEXT DEFAULT '[]',
+                current_round   INTEGER DEFAULT 0,
+                current_pick    INTEGER DEFAULT 0,
+                created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                current_pick_a  INTEGER DEFAULT 1,
+                current_pick_b  INTEGER DEFAULT 1,
+                bank_pending_a  INTEGER DEFAULT 0,
+                bank_pending_b  INTEGER DEFAULT 0,
+                banked_picks    TEXT DEFAULT '{}'
+            )""",
         ]:
             try:
                 db.execute(stmt)
@@ -3555,6 +3570,30 @@ def admin_board_templates():
     return render_template("admin/board_templates.html",
                            templates=templates, autobackups=autobackups,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+@app.route("/admin/board-templates/load", methods=["POST"])
+@admin_required
+def admin_board_template_load():
+    tid = request.form["template_id"]
+    with get_db() as db:
+        active = db.execute(
+            "SELECT COUNT(*) FROM draft_sessions WHERE status='active'").fetchone()[0]
+        if active:
+            flash("A draft session is active — cannot replace the board now.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        rosters = db.execute("SELECT COUNT(*) FROM pokemon_roster").fetchone()[0]
+        if rosters and request.form.get("confirm") != "yes":
+            flash("Rosters already exist — re-confirm to replace the board.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        save_board_template(db, f"Auto-backup before load {_now_iso()}", kind="autobackup")
+        prune_autobackups(db)
+        try:
+            n = load_board_template(db, tid)
+            flash(f"Loaded {n} Pokemon onto the live board (previous board saved as a restore point).", "success")
+        except ValueError:
+            flash("Template not found.", "warning")
+    return redirect(url_for("admin_board_templates"))
 
 
 # ─── Admin: Draft Tiers ────────────────────────────────────────────────────────
