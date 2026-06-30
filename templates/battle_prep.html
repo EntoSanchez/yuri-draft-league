@@ -250,6 +250,16 @@
 }
 .lp-input:focus { border-color: var(--cyan-dim); }
 .lp-input option { background: var(--panel-2); }
+.lp-stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+.lp-stat-hdr span { font-family: var(--font-mono); font-size: 7px; color: var(--text-dim); text-align: center; }
+.lp-stat-in {
+  width: 100%; box-sizing: border-box; padding: 2px 1px; text-align: center;
+  font-family: var(--font-mono); font-size: 9px;
+  background: var(--panel-2); border: 1px solid var(--hairline); border-radius: 2px; color: var(--text);
+  -moz-appearance: textfield;
+}
+.lp-stat-in:focus { outline: none; border-color: var(--cyan-dim); }
+.lp-stat-in::-webkit-outer-spin-button, .lp-stat-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* Bottom paste strip */
 .lp-paste-bar {
@@ -1277,20 +1287,84 @@ const LP_NATURES = [
   "Calm","Gentle","Sassy","Careful","Quirky",
 ];
 const LP_ITEMS = [
-  "","Choice Band","Choice Specs","Choice Scarf",
-  "Life Orb","Leftovers","Assault Vest","Rocky Helmet",
-  "Focus Sash","Eviolite","Expert Belt","Heavy-Duty Boots",
-  "Booster Energy","Throat Spray","Black Glasses","Flame Orb",
-  "Toxic Orb","Terrain Extender","Clear Amulet","Safety Goggles",
-  "Covert Cloak","Wide Lens","Protective Pads","Mirror Herb",
-  "Power Herb","White Herb","Weakness Policy","Lum Berry",
+  "Ability Shield","Abomasite","Absolite","Absolite Z","Absorb Bulb","Adamant Crystal",
+  "Adamant Orb","Adrenaline Orb","Aerodactylite","Aggronite","Aguav Berry","Air Balloon",
+  "Alakazite","Aloraichium Z","Altarianite","Ampharosite","Apicot Berry","Aspear Berry",
+  "Assault Vest","Audinite","Babiri Berry","Banettite","Barbaracite","Baxcalibrite",
+  "Beedrillite","Belue Berry","Big Nugget","Big Root","Binding Band","Black Belt",
+  "Black Glasses","Black Sludge","Blastoisinite","Blazikenite","Blue Orb","Bluk Berry",
+  "Blunder Policy","Booster Energy","Bright Powder","Bug Gem","Bug Memory","Buginium Z",
+  "Burn Drive","Cameruptite","Cell Battery","Chandelurite","Charcoal","Charizardite X",
+  "Charizardite Y","Charti Berry","Cheri Berry","Chesnaughtite","Chesto Berry","Chilan Berry",
+  "Chill Drive","Chimechite","Choice Band","Choice Scarf","Choice Specs","Chople Berry",
+  "Clear Amulet","Clefablite","Coba Berry","Colbur Berry","Cornerstone Mask","Cornn Berry",
+  "Covert Cloak","Crabominite","Crucibellite","Custap Berry","Damp Rock","Dark Gem",
+  "Dark Memory","Darkinium Z","Darkranite","Decidium Z","Deep Sea Scale","Deep Sea Tooth",
+  "Delphoxite","Destiny Knot","Diancite","Douse Drive","Draco Plate","Dragalgite",
+  "Dragon Fang","Dragon Gem","Dragon Memory","Dragoninite","Dragonium Z","Drampanite",
+  "Dread Plate","Durin Berry","Earth Plate","Eelektrossite","Eevium Z","Eject Button",
+  "Eject Pack","Electric Gem","Electric Memory","Electric Seed","Electrium Z","Emboarite",
+  "Enigma Berry","Eviolite","Excadrite","Expert Belt","Fairium Z","Fairy Feather",
+  "Fairy Gem","Fairy Memory","Falinksite","Feraligite","Fighting Gem","Fighting Memory",
+  "Fightinium Z","Figy Berry","Fire Gem","Fire Memory","Firium Z","Fist Plate",
+  "Flame Orb","Flame Plate","Float Stone","Floettite","Flying Gem","Flying Memory",
+  "Flyinium Z","Focus Band","Focus Sash","Froslassite","Full Incense","Galladite",
+  "Ganlon Berry","Garchompite","Garchompite Z","Gardevoirite","Gengarite","Ghost Gem",
+  "Ghost Memory","Ghostium Z","Glalitite","Glimmoranite","Golisopite","Golurkite",
+  "Grass Gem","Grass Memory","Grassium Z","Grassy Seed","Greninjite","Grepa Berry",
+  "Grip Claw","Griseous Core","Griseous Orb","Ground Gem","Ground Memory","Groundium Z",
+  "Gyaradosite","Haban Berry","Hard Stone","Hawluchanite","Hearthflame Mask","Heat Rock",
+  "Heatranite","Heavy-Duty Boots","Heracronite","Hondew Berry","Houndoominite","Iapapa Berry",
+  "Ice Gem","Ice Memory","Icicle Plate","Icium Z","Icy Rock","Incinium Z",
+  "Insect Plate","Iron Ball","Iron Plate","Jaboca Berry","Kangaskhanite","Kasib Berry",
+  "Kebia Berry","Kee Berry","Kelpsy Berry","King's Rock","Kommonium Z","Lagging Tail",
+  "Lansat Berry","Latiasite","Latiosite","Lax Incense","Leek","Leftovers",
+  "Leppa Berry","Liechi Berry","Life Orb","Light Ball","Light Clay","Loaded Dice",
+  "Lopunnite","Lucarionite","Lucarionite Z","Lucky Punch","Lum Berry","Luminous Moss",
+  "Lunalium Z","Lustrous Globe","Lustrous Orb","Lycanium Z","Macho Brace","Magearnite",
+  "Magnet","Mago Berry","Magost Berry","Mail","Malamarite","Manectite",
+  "Maranga Berry","Marshadium Z","Mawilite","Meadow Plate","Medichamite","Meganiumite",
+  "Mental Herb","Meowsticite","Metagrossite","Metal Coat","Metal Powder","Metronome",
+  "Mewnium Z","Mewtwonite X","Mewtwonite Y","Micle Berry","Mimikium Z","Mind Plate",
+  "Miracle Seed","Mirror Herb","Misty Seed","Muscle Band","Mystic Water","Nanab Berry",
+  "Never-Melt Ice","Nomel Berry","Normal Gem","Normalium Z","Occa Berry","Odd Incense",
+  "Oran Berry","Pamtre Berry","Passho Berry","Payapa Berry","Pecha Berry","Persim Berry",
+  "Petaya Berry","Pidgeotite","Pikanium Z","Pikashunium Z","Pinap Berry","Pinsirite",
+  "Pixie Plate","Poison Barb","Poison Gem","Poison Memory","Poisonium Z","Pomeg Berry",
+  "Power Anklet","Power Band","Power Belt","Power Bracer","Power Herb","Power Lens",
+  "Power Weight","Pretty Feather","Primarium Z","Protective Pads","Psychic Gem","Psychic Memory",
+  "Psychic Seed","Psychium Z","Punching Glove","Pyroarite","Qualot Berry","Quick Claw",
+  "Quick Powder","Rabuta Berry","Raichunite X","Raichunite Y","Rawst Berry","Razor Claw",
+  "Razor Fang","Razz Berry","Red Card","Red Orb","Rindo Berry","Ring Target",
+  "Rock Gem","Rock Incense","Rock Memory","Rockium Z","Rocky Helmet","Room Service",
+  "Rose Incense","Roseli Berry","Rowap Berry","Rusted Shield","Rusted Sword","Sablenite",
+  "Safety Goggles","Salac Berry","Salamencite","Sceptilite","Scizorite","Scolipite",
+  "Scope Lens","Scovillainite","Scraftinite","Sea Incense","Sharp Beak","Sharpedonite",
+  "Shed Shell","Shell Bell","Shock Drive","Shuca Berry","Silk Scarf","Silver Powder",
+  "Sitrus Berry","Skarmorite","Sky Plate","Slowbronite","Smooth Rock","Snorlium Z",
+  "Snowball","Soft Sand","Solganium Z","Soul Dew","Spell Tag","Spelon Berry",
+  "Splash Plate","Spooky Plate","Staraptite","Starf Berry","Starminite","Steel Gem",
+  "Steel Memory","Steelium Z","Steelixite","Stick","Sticky Barb","Stone Plate",
+  "Swampertite","Tamato Berry","Tanga Berry","Tapunium Z","Tatsugirinite","Terrain Extender",
+  "Thick Club","Throat Spray","Toxic Orb","Toxic Plate","Twisted Spoon","Tyranitarite",
+  "Ultranecrozium Z","Utility Umbrella","Venusaurite","Victreebelite","Vile Vial","Wacan Berry",
+  "Water Gem","Water Memory","Waterium Z","Watmel Berry","Wave Incense","Weakness Policy",
+  "Wellspring Mask","Wepear Berry","White Herb","Wide Lens","Wiki Berry","Wise Glasses",
+  "Yache Berry","Zap Plate","Zeraorite","Zoom Lens","Zygardite",
 ];
 const MAX_SLOTS = 6;
+// EV/IV stat keys + Showdown labels, in canonical order
+const EVIV_STATS = [['hp','HP'],['atk','Atk'],['def','Def'],['spa','SpA'],['spd','SpD'],['spe','Spe']];
 
-// lineup[i] = { pokemon: poke|null, item:'', ability:'', nature:'', moves:['','','',''] }
-let lineup = Array.from({length: MAX_SLOTS}, () => ({
-  pokemon: null, item: '', ability: '', nature: '', moves: ['','','',''],
-}));
+// lineup[i] = { pokemon, nickname, item, ability, nature, moves[4], evs{}, ivs{} }
+function emptySlot() {
+  return {
+    pokemon: null, nickname: '', item: '', ability: '', nature: '', moves: ['','','',''],
+    evs: {hp:0, atk:0, def:0, spa:0, spd:0, spe:0},
+    ivs: {hp:31, atk:31, def:31, spa:31, spd:31, spe:31},
+  };
+}
+let lineup = Array.from({length: MAX_SLOTS}, emptySlot);
 let activeSlot = -1;  // which slot is being edited (-1 = none)
 
 function openLineup() {
@@ -1332,12 +1406,10 @@ function addToLineup(pokemon) {
   // Fill the active slot if set, otherwise first empty slot
   let idx = activeSlot >= 0 ? activeSlot : lineup.findIndex(s => !s.pokemon);
   if (idx < 0) idx = 0;  // replace first if all full
-  const slot = lineup[idx];
+  const slot = emptySlot();
   slot.pokemon = pokemon;
   slot.ability = pokemon.ability1 || '';
-  slot.item = '';
-  slot.nature = '';
-  slot.moves = ['', '', '', ''];
+  lineup[idx] = slot;
   activeSlot = idx;
   renderSlots();
   renderLineupRoster();
@@ -1345,7 +1417,7 @@ function addToLineup(pokemon) {
 }
 
 function clearSlotAt(idx) {
-  lineup[idx] = { pokemon: null, item: '', ability: '', nature: '', moves: ['','','',''] };
+  lineup[idx] = emptySlot();
   if (activeSlot === idx) activeSlot = -1;
   renderSlots();
   renderLineupRoster();
@@ -1353,9 +1425,7 @@ function clearSlotAt(idx) {
 }
 
 function clearLineup() {
-  lineup = Array.from({length: MAX_SLOTS}, () => ({
-    pokemon: null, item: '', ability: '', nature: '', moves: ['','','',''],
-  }));
+  lineup = Array.from({length: MAX_SLOTS}, emptySlot);
   activeSlot = -1;
   document.getElementById('lp-url-out').value = '';
   renderSlots();
@@ -1367,11 +1437,16 @@ function renderSlots() {
   const wrap = document.getElementById('lp-slots-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
+  // Shared items datalist (all held items) — built once, referenced by every slot input.
+  const idl = document.createElement('datalist');
+  idl.id = 'lp-items-dl';
+  idl.innerHTML = LP_ITEMS.map(it => `<option value="${it}">`).join('');
+  wrap.appendChild(idl);
   lineup.forEach((slot, idx) => {
     const div = document.createElement('div');
     div.className = 'lp-slot' + (activeSlot === idx ? ' active-slot' : '');
     div.addEventListener('click', e => {
-      if (e.target.closest('.lp-input') || e.target.closest('.lp-clear-slot')) return;
+      if (e.target.closest('input, select, .lp-clear-slot')) return;
       activeSlot = idx;
       renderSlots();
     });
@@ -1387,7 +1462,6 @@ function renderSlots() {
       const abilities = [p.ability1, p.ability2, p.ability3].filter(Boolean);
       const abilityOpts = abilities.map(a => `<option value="${a}" ${slot.ability===a?'selected':''}>${a}</option>`).join('');
       const natureOpts  = LP_NATURES.map(n => `<option value="${n}" ${slot.nature===n?'selected':''}>${n}</option>`).join('');
-      const itemOpts    = LP_ITEMS.map(it => `<option value="${it}" ${slot.item===it?'selected':''}>${it||'— No Item —'}</option>`).join('');
 
       // Moves: use curated list as datalist
       const dlId = `lp-dl-${idx}`;
@@ -1401,6 +1475,12 @@ function renderSlots() {
             placeholder="e.g. Earthquake" autocomplete="off">
         </div>`).join('');
 
+      // EV/IV grids
+      const statHdr  = EVIV_STATS.map(([k,lbl]) => `<span>${lbl}</span>`).join('');
+      const evInputs = EVIV_STATS.map(([k]) => `<input class="lp-stat-in" type="number" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setStat(${idx},'evs','${k}',this.value)">`).join('');
+      const ivInputs = EVIV_STATS.map(([k]) => `<input class="lp-stat-in" type="number" min="0" max="31" value="${slot.ivs[k]}" oninput="setStat(${idx},'ivs','${k}',this.value)">`).join('');
+      const evTot = EVIV_STATS.reduce((s,[k]) => s + (slot.evs[k]||0), 0);
+
       div.innerHTML = `${numBar}
         <div class="lp-slot-mon">
           <img src="${p.sprite_anim||p.sprite||''}" onerror="if(this.dataset.fb){this.style.opacity='0.2'}else{this.dataset.fb=1;this.src='${p.sprite||''}'}">
@@ -1411,8 +1491,12 @@ function renderSlots() {
         </div>
         <div class="lp-slot-fields">
           <div class="lp-field-row">
+            <label class="lp-field-label">Nickname</label>
+            <input class="lp-input" value="${(slot.nickname||'').replace(/"/g,'&quot;')}" oninput="lineup[${idx}].nickname=this.value" placeholder="(optional)" maxlength="18" autocomplete="off">
+          </div>
+          <div class="lp-field-row">
             <label class="lp-field-label">Item</label>
-            <select class="lp-input" onchange="lineup[${idx}].item=this.value">${itemOpts}</select>
+            <input class="lp-input" list="lp-items-dl" value="${(slot.item||'').replace(/"/g,'&quot;')}" oninput="lineup[${idx}].item=this.value" placeholder="— No Item —" autocomplete="off">
           </div>
           <div class="lp-field-row" style="display:flex;gap:6px;">
             <div style="flex:1">
@@ -1426,6 +1510,15 @@ function renderSlots() {
               </select>
             </div>
           </div>
+          <div class="lp-field-row">
+            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" style="color:${evTot>508?'var(--red)':'var(--text-dim)'}">· ${evTot}/508</span></label>
+            <div class="lp-stat-grid lp-stat-hdr">${statHdr}</div>
+            <div class="lp-stat-grid">${evInputs}</div>
+          </div>
+          <div class="lp-field-row">
+            <label class="lp-field-label">IVs</label>
+            <div class="lp-stat-grid">${ivInputs}</div>
+          </div>
           ${datalist}
           ${moveFields}
         </div>`;
@@ -1434,13 +1527,37 @@ function renderSlots() {
   });
 }
 
+// Clamp + store an EV (0-252) or IV (0-31) value; live-update the EV total readout
+// without re-rendering (so the focused input keeps focus while typing).
+function setStat(idx, kind, key, val) {
+  let n = parseInt(val, 10);
+  if (isNaN(n)) n = 0;
+  n = Math.max(0, Math.min(kind === 'evs' ? 252 : 31, n));
+  lineup[idx][kind][key] = n;
+  if (kind === 'evs') {
+    const el = document.getElementById('lp-evtot-' + idx);
+    if (el) {
+      const tot = EVIV_STATS.reduce((s, [k]) => s + (lineup[idx].evs[k] || 0), 0);
+      el.textContent = '· ' + tot + '/508';
+      el.style.color = tot > 508 ? 'var(--red)' : 'var(--text-dim)';
+    }
+  }
+}
+
 function buildShowdownText() {
   return lineup.filter(s => s.pokemon).map(s => {
     const p = s.pokemon;
     const lines = [];
-    lines.push(s.item ? `${p.name} @ ${s.item}` : p.name);
+    // "Nickname (Species) @ Item"  /  "Species @ Item"  /  bare
+    const head = s.nickname && s.nickname.trim() && s.nickname.trim() !== p.name
+      ? `${s.nickname.trim()} (${p.name})` : p.name;
+    lines.push(s.item ? `${head} @ ${s.item}` : head);
     if (s.ability) lines.push(`Ability: ${s.ability}`);
+    const evParts = EVIV_STATS.filter(([k]) => (s.evs?.[k] || 0) > 0).map(([k,lbl]) => `${s.evs[k]} ${lbl}`);
+    if (evParts.length) lines.push(`EVs: ${evParts.join(' / ')}`);
     if (s.nature)  lines.push(`${s.nature} Nature`);
+    const ivParts = EVIV_STATS.filter(([k]) => (s.ivs?.[k] ?? 31) !== 31).map(([k,lbl]) => `${s.ivs[k]} ${lbl}`);
+    if (ivParts.length) lines.push(`IVs: ${ivParts.join(' / ')}`);
     s.moves.filter(Boolean).forEach(m => lines.push(`- ${m}`));
     return lines.join('\n');
   }).join('\n\n');
