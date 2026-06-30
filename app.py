@@ -490,7 +490,7 @@ def _csrf_protect():
     csrf_token()  # ensure the session has a token to embed in pages
     if request.method in _CSRF_SAFE_METHODS:
         return None
-    if app.config.get("TESTING"):
+    if app.config.get("TESTING"):  # test harness: conftest.py sets TESTING=True so POST fixtures bypass CSRF
         return None
     sent = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
     if not sent or not secrets.compare_digest(str(sent), session.get("_csrf_token", "")):

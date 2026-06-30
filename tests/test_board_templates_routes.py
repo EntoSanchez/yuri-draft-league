@@ -19,8 +19,16 @@ def test_rename_and_delete(client, app_mod):
     _seed(app_mod)
     with app_mod.get_db() as db:
         tid = app_mod.save_board_template(db, "Old Name")
-    client.post("/admin/board-templates",
-                data={"action": "rename", "template_id": tid, "name": "New Name"})
+    resp = client.post("/admin/board-templates",
+                       data={"action": "rename", "template_id": tid, "name": "New Name"})
+    assert resp.status_code in (200, 302), f"rename returned {resp.status_code}"
+    with app_mod.get_db() as db:
+        row = db.execute(
+            "SELECT name FROM draft_board_templates WHERE id=?", (tid,)
+        ).fetchone()
+    assert row is not None and row["name"] == "New Name", (
+        f"expected name='New Name' after rename, got {row}"
+    )
     client.post("/admin/board-templates",
                 data={"action": "delete", "template_id": tid})
     with app_mod.get_db() as db:
