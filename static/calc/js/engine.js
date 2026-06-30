@@ -106,11 +106,16 @@
   // Build a Pokemon from UI state object
   function buildPokemon(st) {
     const r = resolveSpecies(st.species);
+    // Only feed the engine an item it recognizes. League Mega stones (and any other
+    // item not in this gen's data) have no mechanical effect here, and passing an
+    // unknown item crashes @smogon/calc's Knock-Off check (it reads `.megaEvolves`
+    // on the undefined item lookup). The stone still shows in the UI via st.item.
+    const item = (st.item && itemExists(st.item)) ? st.item : undefined;
     const opts = {
       level: st.level || 100,
       ability: st.ability || undefined,
       abilityOn: !!st.abilityOn,
-      item: st.item || undefined,
+      item: item,
       nature: st.nature || 'Hardy',
       ivs: st.ivs || {},
       evs: st.evs || {},
