@@ -50,6 +50,7 @@ def _migrate_db():
             "ALTER TABLE coaches ADD COLUMN draft_mode TEXT",
             "ALTER TABLE draft_picks ADD COLUMN ticket_used TEXT",
             "ALTER TABLE coaches ADD COLUMN is_defending_champ INTEGER DEFAULT 0",
+            "ALTER TABLE coaches ADD COLUMN is_most_beta INTEGER DEFAULT 0",
             "ALTER TABLE draft_sessions ADD COLUMN current_pick_a INTEGER DEFAULT 1",
             "ALTER TABLE draft_sessions ADD COLUMN current_pick_b INTEGER DEFAULT 1",
             "ALTER TABLE draft_sessions ADD COLUMN bank_pending_a INTEGER DEFAULT 0",
@@ -1138,6 +1139,7 @@ def standings():
                 "logo_url": r["coach"].get("logo_url", "") or "",
                 "color": r["coach"].get("color", "") or "",
                 "is_champ": bool(r["coach"].get("is_defending_champ", 0)),
+                "is_beta": bool(r["coach"].get("is_most_beta", 0)),
             },
             "W": r["W"], "L": r["L"], "T": r["T"],
             "diff": int(round(float(r["diff"]))),
@@ -2131,9 +2133,9 @@ def schedule():
         matches = db.execute("""
             SELECT s.*,
                    c1.coach_name as c1_name, c1.team_name as c1_team, c1.color as c1_color, c1.logo_url as c1_logo,
-                   c1.is_defending_champ as c1_is_champ,
+                   c1.is_defending_champ as c1_is_champ, c1.is_most_beta as c1_is_beta,
                    c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo,
-                   c2.is_defending_champ as c2_is_champ
+                   c2.is_defending_champ as c2_is_champ, c2.is_most_beta as c2_is_beta
             FROM schedule s
             JOIN coaches c1 ON s.coach1_id = c1.id
             JOIN coaches c2 ON s.coach2_id = c2.id
@@ -2192,10 +2194,12 @@ def schedule():
                 "c1_team": m.get("c1_team") or "",
                 "c1_name": m.get("c1_name") or "",
                 "c1_logo": m.get("c1_logo") or "",
+                "c1_is_beta": bool(m.get("c1_is_beta")),
                 "c2_id": m["coach2_id"],
                 "c2_team": m.get("c2_team") or "",
                 "c2_name": m.get("c2_name") or "",
                 "c2_logo": m.get("c2_logo") or "",
+                "c2_is_beta": bool(m.get("c2_is_beta")),
                 "score1": s1, "score2": s2,
                 "vote1": vote1, "vote2": vote2,
                 "fav_id": fav_id,
@@ -2252,9 +2256,9 @@ def pickems():
         matches = db.execute("""
             SELECT s.*,
                    c1.coach_name as c1_name, c1.team_name as c1_team, c1.color as c1_color, c1.logo_url as c1_logo,
-                   c1.is_defending_champ as c1_is_champ,
+                   c1.is_defending_champ as c1_is_champ, c1.is_most_beta as c1_is_beta,
                    c2.coach_name as c2_name, c2.team_name as c2_team, c2.color as c2_color, c2.logo_url as c2_logo,
-                   c2.is_defending_champ as c2_is_champ
+                   c2.is_defending_champ as c2_is_champ, c2.is_most_beta as c2_is_beta
             FROM schedule s
             JOIN coaches c1 ON s.coach1_id = c1.id
             JOIN coaches c2 ON s.coach2_id = c2.id
@@ -2646,39 +2650,45 @@ def admin_teams():
             uploaded = _save_logo_file(request.files.get("logo_file"))
             logo_url = uploaded or request.form.get("logo_url", "")
             is_champ = 1 if request.form.get("is_defending_champ") else 0
+            is_beta = 1 if request.form.get("is_most_beta") else 0
             with get_db() as db:
                 if is_champ:
                     db.execute("UPDATE coaches SET is_defending_champ=0")
+                if is_beta:
+                    db.execute("UPDATE coaches SET is_most_beta=0")
                 db.execute(
-                    "INSERT INTO coaches (coach_name, team_name, pool, color, logo_url, showdown_name, battle_music_url, draft_mode, is_defending_champ) VALUES (?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO coaches (coach_name, team_name, pool, color, logo_url, showdown_name, battle_music_url, draft_mode, is_defending_champ, is_most_beta) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     (request.form["coach_name"], request.form["team_name"],
                      request.form["pool"], request.form.get("color", "#3b82f6"),
                      logo_url,
                      request.form.get("showdown_name", ""),
                      request.form.get("battle_music_url", ""),
                      request.form.get("draft_mode") or None,
-                     is_champ)
+                     is_champ, is_beta)
                 )
             flash("Team added!", "success")
         elif action == "edit":
             cid = request.form["coach_id"]
             uploaded = _save_logo_file(request.files.get("logo_file"))
             is_champ = 1 if request.form.get("is_defending_champ") else 0
+            is_beta = 1 if request.form.get("is_most_beta") else 0
             with get_db() as db:
                 existing = db.execute("SELECT logo_url FROM coaches WHERE id=?", (cid,)).fetchone()
                 existing_logo = existing["logo_url"] if existing else ""
                 logo_url = uploaded or request.form.get("logo_url", "") or existing_logo or ""
                 if is_champ:
                     db.execute("UPDATE coaches SET is_defending_champ=0 WHERE id!=?", (cid,))
+                if is_beta:
+                    db.execute("UPDATE coaches SET is_most_beta=0 WHERE id!=?", (cid,))
                 db.execute(
-                    "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=?, draft_mode=?, is_defending_champ=? WHERE id=?",
+                    "UPDATE coaches SET coach_name=?, team_name=?, pool=?, color=?, logo_url=?, showdown_name=?, battle_music_url=?, draft_mode=?, is_defending_champ=?, is_most_beta=? WHERE id=?",
                     (request.form["coach_name"], request.form["team_name"],
                      request.form["pool"], request.form.get("color", "#3b82f6"),
                      logo_url,
                      request.form.get("showdown_name", ""),
                      request.form.get("battle_music_url", ""),
                      request.form.get("draft_mode") or None,
-                     is_champ, cid)
+                     is_champ, is_beta, cid)
                 )
             flash("Team updated!", "success")
         elif action == "delete":

@@ -62,6 +62,10 @@
     font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; color: var(--amber);
     border: 1px solid rgba(255,184,77,.4); background: rgba(255,184,77,.08); padding: 2px 5px; white-space: nowrap; position: relative; z-index: 1;
   }
+  .lr-beta-badge {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; color: #b9c0c8;
+    border: 1px solid rgba(154,160,166,.4); background: rgba(154,160,166,.08); padding: 2px 5px; white-space: nowrap; position: relative; z-index: 1;
+  }
   .lr-pod-sweep {
     position: absolute; top: 0; bottom: 0; left: -30%; width: 22%;
     background: linear-gradient(90deg, transparent, rgba(255,255,255,.045), transparent);
@@ -106,6 +110,7 @@
   .lr-row { position: relative; transition: background .16s; }
   .lr-row:hover td { background: rgba(61,229,255,.04); }
   .lr-row.champ-row:hover td { background: rgba(255,184,77,.05); }
+  .lr-row.beta-row:hover td { background: rgba(154,160,166,.05); }
   .lr-row td:first-child { box-shadow: inset 3px 0 0 transparent; transition: box-shadow .16s; }
   .lr-row.r1 td:first-child { box-shadow: inset 3px 0 0 var(--magenta); }
   .lr-row.r2 td:first-child, .lr-row.r3 td:first-child { box-shadow: inset 3px 0 0 var(--cyan); }
@@ -316,6 +321,7 @@ function renderPodium(){
       <div class="lr-podteam-name" style="font-size:${isFirst?18:15}px">${esc(t.team_name)}</div>
       <div class="lr-coach">${esc(t.coach_name)} · POOL ${esc(t.pool)}</div>
       ${t.is_champ?'<span class="lr-champ-badge">★ DEF CHAMP</span>':''}
+      ${t.is_beta?'<span class="lr-beta-badge">🤡 MOST BETA</span>':''}
       <div class="lr-podteam-stats">
         <span class="chip lime" data-w="${r.W}">${r.W}W</span>
         <span class="chip">${r.L}L</span>
@@ -361,6 +367,7 @@ function renderLadder(){
     const rowCls = (rk===1||rk===2||rk===3)?rkCls:"";
     const t = r.coach;
     const champ = t.is_champ;
+    const beta = t.is_beta;
     const diffCls = r.diff>0?"lr-diff-pos":r.diff<0?"lr-diff-neg":"lr-diff-zero";
     const diffStr = (r.diff>0?"+":"")+r.diff;
     const pct = Math.abs(r.diff)/maxDiff*50; // half-width max
@@ -373,7 +380,7 @@ function renderLadder(){
       return `<span class="lr-pip ${cls}"></span>`;
     }).join("");
 
-    html += `<tr class="lr-row lr-reveal${rowCls?" "+rowCls:""}${champ?" champ-row":""}"
+    html += `<tr class="lr-row lr-reveal${rowCls?" "+rowCls:""}${champ?" champ-row":""}${beta?" beta-row":""}"
         style="animation-delay:${i*35}ms">
       <td class="lr-rowcell">
         <div style="display:flex;align-items:center;gap:8px">
@@ -388,6 +395,7 @@ function renderLadder(){
             <div class="lr-teamname">
               ${esc(t.team_name)}
               ${champ?'<span class="lr-champ-badge">★ DEF CHAMP</span>':''}
+              ${beta?'<span class="lr-beta-badge">🤡 MOST BETA</span>':''}
             </div>
             <div class="lr-coach">${esc(t.coach_name)} · POOL ${esc(t.pool)}</div>
           </div>

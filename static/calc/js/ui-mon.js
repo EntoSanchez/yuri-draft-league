@@ -78,6 +78,13 @@
     if (!d) return null;
     return `<div class="cdt-h" style="color:#ff8fe6">${esc(name)}</div>` + (d.d ? `<div class="cdt-d">${esc(d.d)}</div>` : '');
   }
+  function abilityTipHTML(name) {
+    if (!name) return null;
+    const dex = (root._DEX && root._DEX.abilities) || {};
+    const d = dex[_id(name)];
+    if (!d) return null;
+    return `<div class="cdt-h" style="color:#7bd88f">${esc(name)}</div>` + (d.d ? `<div class="cdt-d">${esc(d.d)}</div>` : '');
+  }
 
   class MonPanel {
     constructor(role, state, onChange) {
@@ -247,6 +254,7 @@
       this.combos.ability = new Combo(this.q('[data-ability]'), {
         placeholder: 'Ability', allowFree: true,
         getList: () => E.lists().abilities,
+        tip: abilityTipHTML,
         onPick: (v) => { this.st.ability = v; this.refreshStats(); this.changed(); }
       });
       this.combos.item = new Combo(this.q('[data-item]'), {

@@ -93,6 +93,17 @@
 }
 .yc-champion-banner { animation: yc-champ-pulse 3s ease-in-out infinite; }
 
+/* most-beta banner — parallel to the champion banner, in dull grey */
+.yc-beta-banner {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 5px 14px;
+  border: 1px solid rgba(154,160,166,0.5);
+  background: rgba(154,160,166,0.08);
+  font-family: var(--fm); font-size: 11px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: #b9c0c8;
+}
+.yc-beta-face { font-size: 14px; line-height: 1; }
+
 .yc-team .yc-panel {
   background: var(--panel);
   border: 1px solid var(--hairline);
@@ -389,6 +400,8 @@
             <path d="M 1 13 L 1 5 L 6 9 L 10 2 L 14 8 L 18 2 L 22 9 L 27 5 L 27 13 Z" stroke="#ffb84d" stroke-width="1.2" fill="none" stroke-linejoin="miter"/>
             <line x1="1" y1="13" x2="27" y2="13" stroke="#ffb84d" stroke-width="1.5"/>
           </svg>
+          {% elif coach.is_most_beta %}
+          <span style="font-size:22px;line-height:1;filter:grayscale(0.35);" aria-label="Most beta">&#129313;</span>
           {% endif %}
           <div class="yc-brackets mag" style="padding:6px;">
             <span class="yc-br-tr"></span><span class="yc-br-br"></span>
@@ -396,7 +409,7 @@
               <img src="{{ coach.logo_url }}" alt="{{ coach.team_name }}"
                    class="object-cover"
                    style="width:168px;height:168px;display:block;
-                          box-shadow:0 0 40px -8px {{ coach.color or '#ff2a8a' }}80;{% if coach.is_defending_champ %}box-shadow:0 0 40px -8px #ffb84d80;{% endif %}">
+                          box-shadow:0 0 40px -8px {{ coach.color or '#ff2a8a' }}80;{% if coach.is_defending_champ %}box-shadow:0 0 40px -8px #ffb84d80;{% elif coach.is_most_beta %}box-shadow:0 0 40px -8px #9aa0a680;{% endif %}">
             {% else %}
               <div class="flex items-center justify-center"
                    style="width:168px;height:168px;background:{{ coach.color or '#111' }};
@@ -416,6 +429,13 @@
             <span class="yc-champ-crown">&#9651;</span>
             <span>DEFENDING CHAMPION</span>
             <span class="yc-champ-crown">&#9651;</span>
+          </div>
+          {% endif %}
+          {% if coach.is_most_beta %}
+          <div class="yc-beta-banner" style="margin-top:8px;">
+            <span class="yc-beta-face">&#129313;</span>
+            <span>MOST BETA</span>
+            <span class="yc-beta-face">&#129313;</span>
           </div>
           {% endif %}
           <h1 class="yc-h1" style="font-size:clamp(24px,4vw,52px);margin-top:8px;word-break:break-word;overflow-wrap:break-word;color:var(--text);text-shadow:0 0 24px {{ coach.color or '#ff2a8a' }}40;{% if coach.is_defending_champ %}text-shadow:0 0 32px #ffb84d80,0 0 24px {{ coach.color or '#ff2a8a' }}40;{% endif %}">

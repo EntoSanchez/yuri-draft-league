@@ -204,7 +204,7 @@
           {% endif %}
         </div>
         <div>
-          <div class="pk-name">{{ m.c1_team }}</div>
+          <div class="pk-name">{{ m.c1_team }}{% if m.c1_is_beta %} <span title="Most Beta">&#129313;</span>{% endif %}</div>
           <div class="pk-coach">{{ m.c1_name.upper() }}</div>
           {% if result_known and m.winner_id == m.coach1_id %}
             <span class="pk-result-badge" style="margin-top:4px;display:inline-block;">WINNER</span>
@@ -263,7 +263,7 @@
           {% endif %}
         </div>
         <div style="text-align:right;">
-          <div class="pk-name">{{ m.c2_team }}</div>
+          <div class="pk-name">{{ m.c2_team }}{% if m.c2_is_beta %} <span title="Most Beta">&#129313;</span>{% endif %}</div>
           <div class="pk-coach">{{ m.c2_name.upper() }}</div>
           {% if result_known and m.winner_id == m.coach2_id %}
             <span class="pk-result-badge" style="margin-top:4px;display:inline-block;">WINNER</span>

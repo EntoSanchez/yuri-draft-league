@@ -92,6 +92,9 @@
                     {% if c.is_defending_champ %}
                     <span class="text-xs font-bold px-2 py-0.5 rounded" style="background:rgba(255,184,77,0.15);color:#ffb84d;border:1px solid rgba(255,184,77,0.4);">&#9651; CHAMP</span>
                     {% endif %}
+                    {% if c.is_most_beta %}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded" style="background:rgba(154,160,166,0.15);color:#b9c0c8;border:1px solid rgba(154,160,166,0.4);">&#129313; BETA</span>
+                    {% endif %}
                 </div>
                 <div class="text-sm text-gray-400">{{ c.coach_name }} · Pool {{ c.pool }}</div>
             </div>
@@ -175,7 +178,13 @@
                                class="w-4 h-4 accent-yellow-500">
                         <span class="text-sm font-semibold" style="color:#ffb84d;">&#9651; Defending Champion</span>
                     </label>
-                    <span class="text-xs text-gray-600">(only one team can hold this)</span>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" name="is_most_beta" value="1"
+                               {% if c.is_most_beta %}checked{% endif %}
+                               class="w-4 h-4 accent-gray-400">
+                        <span class="text-sm font-semibold" style="color:#b9c0c8;">&#129313; Most Beta</span>
+                    </label>
+                    <span class="text-xs text-gray-600">(only one team can hold each)</span>
                 </div>
                 <div>
                     <button type="submit" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded text-sm font-semibold">Save Changes</button>
