@@ -260,6 +260,19 @@
 }
 .lp-stat-in:focus { outline: none; border-color: var(--cyan-dim); }
 .lp-stat-in::-webkit-outer-spin-button, .lp-stat-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* EV slider rows: [name] [draggable slider] [number] [final stat] */
+.lp-ev-row { display: grid; grid-template-columns: 24px minmax(0,1fr) 30px 30px; align-items: center; gap: 4px; margin-bottom: 2px; }
+.lp-ev-name { font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); }
+.lp-ev-slider { width: 100%; height: 4px; margin: 0; cursor: pointer; accent-color: var(--cyan); }
+.lp-ev-num {
+  width: 100%; box-sizing: border-box; padding: 1px; text-align: center;
+  font-family: var(--font-mono); font-size: 8px;
+  background: var(--panel-2); border: 1px solid var(--hairline); border-radius: 2px; color: var(--text);
+  -moz-appearance: textfield;
+}
+.lp-ev-num:focus { outline: none; border-color: var(--cyan-dim); }
+.lp-ev-num::-webkit-outer-spin-button, .lp-ev-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.lp-ev-final { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-align: right; }
 
 /* Bottom paste strip */
 .lp-paste-bar {
@@ -1354,7 +1367,36 @@ const LP_ITEMS = [
 ];
 const MAX_SLOTS = 6;
 // EV/IV stat keys + Showdown labels, in canonical order
-const EVIV_STATS = [['hp','HP'],['atk','Atk'],['def','Def'],['spa','SpA'],['spd','SpD'],['spe','Spe']];
+// [ev/iv key, Showdown label, base-stat key on the pokemon object (DEF base is 'defense')]
+const EVIV_STATS = [['hp','HP','hp'],['atk','Atk','atk'],['def','Def','defense'],['spa','SpA','spa'],['spd','SpD','spd'],['spe','Spe','spe']];
+const LP_LEVEL = 100;  // lineup final stats are computed at level 100
+const STAT_SHORT = {hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe'};
+// nature -> [boosted stat, lowered stat] (ev/iv keys); natures not listed are neutral
+const NATURE_MODS = {
+  Adamant:['atk','spa'], Lonely:['atk','def'], Naughty:['atk','spd'], Brave:['atk','spe'],
+  Bold:['def','atk'], Impish:['def','spa'], Lax:['def','spd'], Relaxed:['def','spe'],
+  Modest:['spa','atk'], Mild:['spa','def'], Rash:['spa','spd'], Quiet:['spa','spe'],
+  Calm:['spd','atk'], Gentle:['spd','def'], Careful:['spd','spa'], Sassy:['spd','spe'],
+  Timid:['spe','atk'], Hasty:['spe','def'], Jolly:['spe','spa'], Naive:['spe','spd'],
+};
+function natureLabel(n) {
+  const m = NATURE_MODS[n];
+  return m ? `${n} (+${STAT_SHORT[m[0]]} −${STAT_SHORT[m[1]]})` : n;
+}
+// natChar: +1 boosted, -1 lowered, 0 neutral for this stat under the slot's nature
+function lpNatChar(slot, key) {
+  const m = NATURE_MODS[slot.nature];
+  return m ? (m[0] === key ? 1 : (m[1] === key ? -1 : 0)) : 0;
+}
+function lpFinalStat(key, base, iv, ev, natChar) {
+  base = base || 0; iv = iv ?? 31; ev = ev || 0;
+  if (key === 'hp') {
+    if (base === 1) return 1;  // Shedinja
+    return Math.floor((2*base + iv + Math.floor(ev/4)) * LP_LEVEL/100) + LP_LEVEL + 10;
+  }
+  const raw = Math.floor((2*base + iv + Math.floor(ev/4)) * LP_LEVEL/100) + 5;
+  return Math.floor(raw * (natChar > 0 ? 1.1 : natChar < 0 ? 0.9 : 1.0));
+}
 
 // lineup[i] = { pokemon, nickname, item, ability, nature, moves[4], evs{}, ivs{} }
 function emptySlot() {
@@ -1461,7 +1503,7 @@ function renderSlots() {
       const p = slot.pokemon;
       const abilities = [p.ability1, p.ability2, p.ability3].filter(Boolean);
       const abilityOpts = abilities.map(a => `<option value="${a}" ${slot.ability===a?'selected':''}>${a}</option>`).join('');
-      const natureOpts  = LP_NATURES.map(n => `<option value="${n}" ${slot.nature===n?'selected':''}>${n}</option>`).join('');
+      const natureOpts  = LP_NATURES.map(n => `<option value="${n}" ${slot.nature===n?'selected':''}>${natureLabel(n)}</option>`).join('');
 
       // Moves: use curated list as datalist
       const dlId = `lp-dl-${idx}`;
@@ -1475,10 +1517,20 @@ function renderSlots() {
             placeholder="e.g. Earthquake" autocomplete="off">
         </div>`).join('');
 
-      // EV/IV grids
+      // EVs: draggable slider + number + live Lv100 final stat, per stat
       const statHdr  = EVIV_STATS.map(([k,lbl]) => `<span>${lbl}</span>`).join('');
-      const evInputs = EVIV_STATS.map(([k]) => `<input class="lp-stat-in" type="number" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setStat(${idx},'evs','${k}',this.value)">`).join('');
-      const ivInputs = EVIV_STATS.map(([k]) => `<input class="lp-stat-in" type="number" min="0" max="31" value="${slot.ivs[k]}" oninput="setStat(${idx},'ivs','${k}',this.value)">`).join('');
+      const evRows = EVIV_STATS.map(([k,lbl,bk]) => {
+        const nc = lpNatChar(slot, k);
+        const fs = lpFinalStat(k, slot.pokemon[bk], slot.ivs[k], slot.evs[k], nc);
+        const col = nc>0 ? 'var(--lime)' : nc<0 ? 'var(--red)' : 'var(--text)';
+        return `<div class="lp-ev-row">
+          <span class="lp-ev-name">${lbl}</span>
+          <input type="range" class="lp-ev-slider" id="lp-evs-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setEV(${idx},'${k}',this.value)">
+          <input type="number" class="lp-ev-num" id="lp-evn-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setEV(${idx},'${k}',this.value)">
+          <span class="lp-ev-final" id="lp-fs-${idx}-${k}" style="color:${col}" title="Stat at Lv100">${fs}</span>
+        </div>`;
+      }).join('');
+      const ivInputs = EVIV_STATS.map(([k,lbl]) => `<input class="lp-stat-in" type="number" min="0" max="31" value="${slot.ivs[k]}" oninput="setIV(${idx},'${k}',this.value)" title="${lbl} IV">`).join('');
       const evTot = EVIV_STATS.reduce((s,[k]) => s + (slot.evs[k]||0), 0);
 
       div.innerHTML = `${numBar}
@@ -1505,15 +1557,14 @@ function renderSlots() {
             </div>
             <div style="flex:1">
               <label class="lp-field-label">Nature</label>
-              <select class="lp-input" onchange="lineup[${idx}].nature=this.value">
+              <select class="lp-input" onchange="setNature(${idx},this.value)">
                 <option value="">— None —</option>${natureOpts}
               </select>
             </div>
           </div>
           <div class="lp-field-row">
-            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" style="color:${evTot>508?'var(--red)':'var(--text-dim)'}">· ${evTot}/508</span></label>
-            <div class="lp-stat-grid lp-stat-hdr">${statHdr}</div>
-            <div class="lp-stat-grid">${evInputs}</div>
+            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" style="color:${evTot>508?'var(--red)':'var(--text-dim)'}">· ${evTot}/508</span> <span style="color:var(--text-dim);font-weight:400;font-size:7px">drag · Lv100 stat →</span></label>
+            ${evRows}
           </div>
           <div class="lp-field-row">
             <label class="lp-field-label">IVs</label>
@@ -1527,21 +1578,50 @@ function renderSlots() {
   });
 }
 
-// Clamp + store an EV (0-252) or IV (0-31) value; live-update the EV total readout
-// without re-rendering (so the focused input keeps focus while typing).
-function setStat(idx, kind, key, val) {
-  let n = parseInt(val, 10);
-  if (isNaN(n)) n = 0;
-  n = Math.max(0, Math.min(kind === 'evs' ? 252 : 31, n));
-  lineup[idx][kind][key] = n;
-  if (kind === 'evs') {
-    const el = document.getElementById('lp-evtot-' + idx);
+// Live-update the per-stat final-stat readouts (Lv100) for a slot without re-rendering.
+function updateFinalStats(idx) {
+  const slot = lineup[idx];
+  if (!slot.pokemon) return;
+  EVIV_STATS.forEach(([k, lbl, bk]) => {
+    const nc = lpNatChar(slot, k);
+    const fs = lpFinalStat(k, slot.pokemon[bk], slot.ivs[k], slot.evs[k], nc);
+    const el = document.getElementById(`lp-fs-${idx}-${k}`);
     if (el) {
-      const tot = EVIV_STATS.reduce((s, [k]) => s + (lineup[idx].evs[k] || 0), 0);
-      el.textContent = '· ' + tot + '/508';
-      el.style.color = tot > 508 ? 'var(--red)' : 'var(--text-dim)';
+      el.textContent = fs;
+      el.style.color = nc > 0 ? 'var(--lime)' : nc < 0 ? 'var(--red)' : 'var(--text)';
     }
-  }
+  });
+}
+function updateEVTotal(idx) {
+  const el = document.getElementById('lp-evtot-' + idx);
+  if (!el) return;
+  const tot = EVIV_STATS.reduce((s, [k]) => s + (lineup[idx].evs[k] || 0), 0);
+  el.textContent = '· ' + tot + '/508';
+  el.style.color = tot > 508 ? 'var(--red)' : 'var(--text-dim)';
+}
+// EV: clamp 0-252, keep the slider + number in sync, refresh final stat + total.
+function setEV(idx, key, val) {
+  let n = parseInt(val, 10); if (isNaN(n)) n = 0;
+  n = Math.max(0, Math.min(252, n));
+  lineup[idx].evs[key] = n;
+  const s = document.getElementById(`lp-evs-${idx}-${key}`);
+  const num = document.getElementById(`lp-evn-${idx}-${key}`);
+  if (s && +s.value !== n) s.value = n;
+  if (num && +num.value !== n) num.value = n;
+  updateFinalStats(idx);
+  updateEVTotal(idx);
+}
+// IV: clamp 0-31, refresh final stats.
+function setIV(idx, key, val) {
+  let n = parseInt(val, 10); if (isNaN(n)) n = 31;
+  n = Math.max(0, Math.min(31, n));
+  lineup[idx].ivs[key] = n;
+  updateFinalStats(idx);
+}
+// Nature: store + refresh final stats (nature multiplies two stats).
+function setNature(idx, val) {
+  lineup[idx].nature = val;
+  updateFinalStats(idx);
 }
 
 function buildShowdownText() {
