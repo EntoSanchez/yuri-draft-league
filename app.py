@@ -60,6 +60,7 @@ def _migrate_db():
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
             "ALTER TABLE seasons ADD COLUMN season_num INTEGER DEFAULT 0",
             "ALTER TABLE match_games ADD COLUMN recap_json TEXT",
+            "ALTER TABLE draft_tiers ADD COLUMN is_mega INTEGER DEFAULT 0",
             """CREATE TABLE IF NOT EXISTS draft_board_templates (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT NOT NULL,
@@ -606,6 +607,45 @@ def get_setting(key, default=""):
     with get_db() as db:
         row = db.execute("SELECT value FROM league_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def _now_iso():
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def save_board_template(db, name, kind="manual", notes=""):
+    """Snapshot the live draft_tiers into a template row; return its id."""
+    rows = [dict(r) for r in db.execute(
+        "SELECT * FROM draft_tiers ORDER BY points DESC, name")]
+    ts = _now_iso()
+    cur = db.execute(
+        "INSERT INTO draft_board_templates (name, kind, notes, board_json, created_at, updated_at) "
+        "VALUES (?,?,?,?,?,?)",
+        (name, kind, notes, json.dumps(rows), ts, ts))
+    return cur.lastrowid
+
+
+def load_board_template(db, template_id):
+    """Replace draft_tiers with the template's snapshot. Returns row count."""
+    row = db.execute(
+        "SELECT board_json FROM draft_board_templates WHERE id=?", (template_id,)).fetchone()
+    if not row:
+        raise ValueError("template not found")
+    rows = json.loads(row["board_json"])
+    db.execute("DELETE FROM draft_tiers")
+    for r in rows:
+        cols = [k for k in r.keys() if k != "id"]
+        ph = ",".join("?" for _ in cols)
+        db.execute(f"INSERT INTO draft_tiers ({','.join(cols)}) VALUES ({ph})",
+                   [r[k] for k in cols])
+    return len(rows)
+
+
+def prune_autobackups(db, keep=10):
+    ids = [r["id"] for r in db.execute(
+        "SELECT id FROM draft_board_templates WHERE kind='autobackup' ORDER BY id DESC")]
+    for old in ids[keep:]:
+        db.execute("DELETE FROM draft_board_templates WHERE id=?", (old,))
 
 
 def post_discord(webhook_url, content):
