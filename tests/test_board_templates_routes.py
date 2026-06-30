@@ -104,3 +104,32 @@ def test_download_returns_json_board(client, app_mod):
     import json as _j
     assert resp.status_code == 200
     assert any(m["name"] == "Garchomp" for m in _j.loads(resp.data))
+
+
+# ─── Task 6: Edit template in place ───────────────────────────────────────────
+
+def test_edit_get_renders_rows(client, app_mod):
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM draft_tiers")
+        db.execute("INSERT INTO draft_tiers (name, points) VALUES ('Garchomp', 18)")
+        tid = app_mod.save_board_template(db, "Edit Me")
+    resp = client.get(f"/admin/board-templates/{tid}/edit")
+    assert resp.status_code == 200 and b"Garchomp" in resp.data
+
+
+def test_edit_post_saves_blob_without_touching_live(client, app_mod):
+    import json as _j
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM draft_tiers")
+        db.execute("INSERT INTO draft_tiers (name, points) VALUES ('LiveMon', 5)")
+        tid = app_mod.save_board_template(db, "T")
+    new_board = _j.dumps([{"name": "EditedMon", "points": 22}])
+    client.post(f"/admin/board-templates/{tid}/edit",
+                data={"name": "T", "notes": "", "board_json": new_board},
+                follow_redirects=True)
+    with app_mod.get_db() as db:
+        tpl = _j.loads(db.execute(
+            "SELECT board_json FROM draft_board_templates WHERE id=?", (tid,)).fetchone()["board_json"])
+        live = {r["name"] for r in db.execute("SELECT name FROM draft_tiers")}
+    assert tpl[0]["name"] == "EditedMon"   # template updated
+    assert live == {"LiveMon"}             # live board untouched

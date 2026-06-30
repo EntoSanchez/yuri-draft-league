@@ -3613,6 +3613,34 @@ def admin_board_template_download(tid):
     return resp
 
 
+@app.route("/admin/board-templates/<int:tid>/edit", methods=["GET", "POST"])
+@admin_required
+def admin_board_template_edit(tid):
+    with get_db() as db:
+        row = db.execute(
+            "SELECT * FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+        if not row:
+            flash("Template not found.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        if request.method == "POST":
+            try:
+                board = json.loads(request.form.get("board_json") or "[]")
+                assert isinstance(board, list)
+            except Exception:
+                flash("Could not parse the edited board.", "warning")
+                return redirect(url_for("admin_board_template_edit", tid=tid))
+            db.execute(
+                "UPDATE draft_board_templates SET name=?, notes=?, board_json=?, updated_at=? WHERE id=?",
+                ((request.form.get("name") or row["name"]).strip(),
+                 request.form.get("notes", ""), json.dumps(board), _now_iso(), tid))
+            flash("Template saved.", "success")
+            return redirect(url_for("admin_board_templates"))
+        board = json.loads(row["board_json"])
+    return render_template("admin/board_template_edit.html",
+                           tpl=dict(row), board=board,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
 # ─── Admin: Draft Tiers ────────────────────────────────────────────────────────
 
 @app.route("/admin/tiers", methods=["GET", "POST"])
