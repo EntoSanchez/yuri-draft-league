@@ -60,6 +60,15 @@ def _migrate_db():
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
             "ALTER TABLE seasons ADD COLUMN season_num INTEGER DEFAULT 0",
             "ALTER TABLE match_games ADD COLUMN recap_json TEXT",
+            """CREATE TABLE IF NOT EXISTS draft_board_templates (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT NOT NULL,
+                kind        TEXT NOT NULL DEFAULT 'manual',
+                notes       TEXT DEFAULT '',
+                board_json  TEXT NOT NULL,
+                created_at  TEXT NOT NULL,
+                updated_at  TEXT NOT NULL
+            )""",
         ]:
             try:
                 db.execute(stmt)
