@@ -5,6 +5,7 @@ import json
 import math
 import re
 import secrets
+import shutil
 import uuid
 import urllib.request
 from datetime import datetime
@@ -663,6 +664,35 @@ def prune_autobackups(db, keep=10):
         "SELECT id FROM draft_board_templates WHERE kind='autobackup' ORDER BY id DESC")]
     for old in ids[keep:]:
         db.execute("DELETE FROM draft_board_templates WHERE id=?", (old,))
+
+
+def _backups_dir():
+    d = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), "backups")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def create_db_backup(label=""):
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "", label)[:40]
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    fn = f"league-{ts}{('-' + safe) if safe else ''}.db"
+    shutil.copy2(DB_PATH, os.path.join(_backups_dir(), fn))
+    return fn
+
+
+def list_db_backups():
+    return sorted([f for f in os.listdir(_backups_dir()) if f.endswith(".db")], reverse=True)
+
+
+def restore_db_backup(filename):
+    # No open connection to DB_PATH may be held here (Windows file lock on swap).
+    src = os.path.join(_backups_dir(), os.path.basename(filename))
+    if not os.path.isfile(src):
+        raise ValueError("backup not found")
+    create_db_backup("prerestore")                 # safety snapshot of current state
+    tmp = DB_PATH + ".restoring"
+    shutil.copy2(src, tmp)
+    os.replace(tmp, DB_PATH)                        # atomic swap
 
 
 def post_discord(webhook_url, content):
