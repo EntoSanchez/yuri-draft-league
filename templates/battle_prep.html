@@ -198,7 +198,7 @@
 .lp-slots-wrap {
   overflow-y: auto; padding: 14px 16px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
   gap: 10px; align-content: start;
 }
 
@@ -219,12 +219,19 @@
   font-size: 10px; line-height: 1; padding: 0;
 }
 .lp-slot-num .lp-clear-slot:hover { color: var(--red); }
-.lp-slot-mon {
-  display: flex; align-items: center; gap: 7px;
-  padding: 5px 8px 4px;
+/* Top block: identity (sprite + name + tera) beside the form fields */
+.lp-slot-top {
+  display: flex; gap: 9px; padding: 7px 8px 6px;
   border-bottom: 1px solid var(--hairline);
 }
-.lp-slot-mon img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.lp-slot-id {
+  width: 76px; flex-shrink: 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+}
+.lp-slot-id img { width: 46px; height: 46px; object-fit: contain; }
+.lp-slot-meta { font-family: var(--font-mono); font-size: 7.5px; color: var(--text-dim); line-height: 1.2; }
+.lp-tera { width: 100%; margin-top: 2px; font-size: 8px; font-weight: 700; padding: 1px 3px; text-align: center; }
+.lp-slot-form { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .lp-slot-mon-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .lp-slot-pname {
   font-family: var(--font-mono); font-size: 10px; font-weight: 600;
@@ -262,8 +269,18 @@
 .lp-stat-in:focus { outline: none; border-color: var(--cyan-dim); }
 .lp-stat-in::-webkit-outer-spin-button, .lp-stat-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 /* EV slider rows: [name] [neon draggable slider] [number] [final stat] */
-.lp-ev-row { display: grid; grid-template-columns: 24px minmax(0,1fr) 26px 28px; align-items: center; gap: 4px; margin-bottom: 1px; }
+.lp-ev-row { display: grid; grid-template-columns: 22px minmax(0,1fr) 26px 22px 30px; align-items: center; gap: 5px; margin-bottom: 1px; }
+.lp-ev-hdr { margin-bottom: 1px; }
+.lp-ev-hdr span { font-family: var(--font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: .04em; color: var(--text-dim); text-align: center; }
 .lp-ev-name { font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+.lp-iv-num {
+  width: 100%; box-sizing: border-box; padding: 2px 1px; text-align: center;
+  font-family: var(--font-mono); font-size: 8px;
+  background: var(--panel-2); border: 1px solid var(--hairline); border-radius: 2px; color: var(--text-mute);
+  -moz-appearance: textfield;
+}
+.lp-iv-num:focus { outline: none; border-color: var(--cyan-dim); color: var(--text); }
+.lp-iv-num::-webkit-outer-spin-button, .lp-iv-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 /* Neon range slider: stat-colored fill (--evcol / --evfill) + glowing thumb */
 .lp-ev-slider {
   -webkit-appearance: none; appearance: none;
@@ -307,6 +324,20 @@
 .dex-tip-meta { font-size: 8px; font-weight: 700; letter-spacing: .04em; margin-bottom: 4px; display: flex; gap: 7px; flex-wrap: wrap; }
 .dex-tip-meta b { color: var(--text); }
 .dex-tip-d { font-size: 9px; color: var(--text-mute); line-height: 1.4; }
+/* Custom move dropdown (so options can be hovered for tooltips) */
+.lp-move-dd {
+  position: fixed; z-index: 99990; display: none; max-height: 230px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--cyan-dim); border-radius: 3px;
+  box-shadow: 0 8px 26px -6px rgba(0,0,0,.85);
+  scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
+}
+.lp-move-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 8px; cursor: pointer; font-family: var(--font-mono); font-size: 9.5px;
+  color: var(--text); border-bottom: 1px solid rgba(255,255,255,.03); white-space: nowrap;
+}
+.lp-move-opt:hover { background: var(--cyan-soft); }
+.lp-move-opt-meta { display: flex; gap: 6px; font-size: 8px; font-weight: 700; flex-shrink: 0; }
 .lp-ev-final { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-align: right; }
 
 /* Bottom paste strip */
@@ -1434,9 +1465,10 @@ function lpFinalStat(key, base, iv, ev, natChar) {
 }
 
 // lineup[i] = { pokemon, nickname, item, ability, nature, moves[4], evs{}, ivs{} }
+const LP_TERA_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy","Stellar"];
 function emptySlot() {
   return {
-    pokemon: null, nickname: '', item: '', ability: '', nature: '', moves: ['','','',''],
+    pokemon: null, nickname: '', item: '', ability: '', nature: '', teraType: '', moves: ['','','',''],
     evs: {hp:0, atk:0, def:0, spa:0, spd:0, spe:0},
     ivs: {hp:31, atk:31, def:31, spa:31, spd:31, spe:31},
   };
@@ -1540,15 +1572,14 @@ function renderSlots() {
       const abilityOpts = abilities.map(a => `<option value="${a}" ${slot.ability===a?'selected':''}>${a}</option>`).join('');
       const natureOpts  = LP_NATURES.map(n => `<option value="${n}" ${slot.nature===n?'selected':''}>${natureLabel(n)}</option>`).join('');
 
-      // Moves: use curated list as datalist
-      const dlId = `lp-dl-${idx}`;
-      const moveList = p.moves || [];
-      const datalist  = `<datalist id="${dlId}">${moveList.map(m=>`<option value="${m}">`).join('')}</datalist>`;
+      // Moves use a CUSTOM dropdown (built in JS) so options can be hovered for a
+      // tooltip — data-slot/data-mi tell the dropdown which slot/move it edits.
       const moveFields = [0,1,2,3].map(mi =>
-        `<input class="lp-input" list="${dlId}" value="${(slot.moves[mi]||'').replace(/"/g,'&quot;')}" data-dex="move" oninput="lineup[${idx}].moves[${mi}]=this.value" placeholder="Move ${mi+1}" autocomplete="off">`).join('');
+        `<input class="lp-input" value="${(slot.moves[mi]||'').replace(/"/g,'&quot;')}" data-dex="move" data-slot="${idx}" data-mi="${mi}" oninput="lineup[${idx}].moves[${mi}]=this.value" placeholder="Move ${mi+1}" autocomplete="off">`).join('');
+      // Tera type select (Gen 9): default = primary type
+      const teraOpts = LP_TERA_TYPES.map(t => `<option value="${t}" ${slot.teraType===t?'selected':''} style="color:${TYPE_COLORS[t]||'var(--text)'}">${t}</option>`).join('');
 
-      // EVs: draggable slider + number + live Lv100 final stat, per stat
-      const statHdr  = EVIV_STATS.map(([k,lbl]) => `<span>${lbl}</span>`).join('');
+      // EV+IV rows: [stat] [neon slider] [EV#] [IV#] [Lv100 stat]
       const evRows = EVIV_STATS.map(([k,lbl,bk]) => {
         const nc = lpNatChar(slot, k);
         const fs = lpFinalStat(k, slot.pokemon[bk], slot.ivs[k], slot.evs[k], nc);
@@ -1559,55 +1590,40 @@ function renderSlots() {
           <span class="lp-ev-name" style="color:${sc}">${lbl}</span>
           <input type="range" class="lp-ev-slider" id="lp-evs-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" style="--evcol:${sc};--evfill:${fill}%" oninput="setEV(${idx},'${k}',this.value)">
           <input type="number" class="lp-ev-num" id="lp-evn-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setEV(${idx},'${k}',this.value)">
+          <input type="number" class="lp-iv-num" id="lp-ivn-${idx}-${k}" min="0" max="31" value="${slot.ivs[k]}" oninput="setIV(${idx},'${k}',this.value)" title="${lbl} IV">
           <span class="lp-ev-final" id="lp-fs-${idx}-${k}" style="color:${col}" title="Stat at Lv100">${fs}</span>
         </div>`;
       }).join('');
-      // IV column header (stat-colored) so each IV input is labelled with its stat
-      const ivHdr = EVIV_STATS.map(([k,lbl,bk]) => `<span style="color:${STAT_COLOR[bk]||'var(--text-dim)'}">${lbl}</span>`).join('');
-      const ivInputs = EVIV_STATS.map(([k,lbl]) => `<input class="lp-stat-in" type="number" min="0" max="31" value="${slot.ivs[k]}" oninput="setIV(${idx},'${k}',this.value)" title="${lbl} IV">`).join('');
       const evTot = EVIV_STATS.reduce((s,[k]) => s + (slot.evs[k]||0), 0);
+      const teraCol = slot.teraType ? (TYPE_COLORS[slot.teraType]||'var(--text)') : 'var(--text-dim)';
 
       div.innerHTML = `${numBar}
-        <div class="lp-slot-mon">
-          <img src="${p.sprite_anim||p.sprite||''}" onerror="if(this.dataset.fb){this.style.opacity='0.2'}else{this.dataset.fb=1;this.src='${p.sprite||''}'}">
-          <div class="lp-slot-mon-info">
-            <span class="lp-slot-pname">${p.name}</span>
-            <span style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);">${p.points}pt · ${p.type1||''}${p.type2?' / '+p.type2:''}</span>
+        <div class="lp-slot-top">
+          <div class="lp-slot-id">
+            <img src="${p.sprite_anim||p.sprite||''}" onerror="if(this.dataset.fb){this.style.opacity='0.2'}else{this.dataset.fb=1;this.src='${p.sprite||''}'}">
+            <div class="lp-slot-pname">${p.name}</div>
+            <div class="lp-slot-meta">${p.points}pt · ${p.type1||''}${p.type2?'/'+p.type2:''}</div>
+            <select class="lp-input lp-tera" onchange="setTera(${idx},this.value,this)" style="color:${teraCol}" title="Tera Type">
+              <option value="">Tera: ${p.type1||'—'}</option>${teraOpts}
+            </select>
+          </div>
+          <div class="lp-slot-form">
+            <div class="lp-field-row"><label class="lp-field-label">Nickname</label>
+              <input class="lp-input" value="${(slot.nickname||'').replace(/"/g,'&quot;')}" oninput="lineup[${idx}].nickname=this.value" placeholder="(optional)" maxlength="18" autocomplete="off"></div>
+            <div class="lp-field-row"><label class="lp-field-label">Item</label>
+              <input class="lp-input" list="lp-items-dl" value="${(slot.item||'').replace(/"/g,'&quot;')}" data-dex="item" oninput="lineup[${idx}].item=this.value" placeholder="No Item" autocomplete="off"></div>
+            <div class="lp-field-row"><label class="lp-field-label">Ability</label>
+              <select class="lp-input" onchange="lineup[${idx}].ability=this.value">${abilityOpts}</select></div>
+            <div class="lp-field-row"><label class="lp-field-label">Nature</label>
+              <select class="lp-input" onchange="setNature(${idx},this.value)"><option value="">— None —</option>${natureOpts}</select></div>
           </div>
         </div>
         <div class="lp-slot-fields">
-          <div class="lp-field-row" style="display:flex;gap:6px;">
-            <div style="flex:1;min-width:0">
-              <label class="lp-field-label">Nickname</label>
-              <input class="lp-input" value="${(slot.nickname||'').replace(/"/g,'&quot;')}" oninput="lineup[${idx}].nickname=this.value" placeholder="(optional)" maxlength="18" autocomplete="off">
-            </div>
-            <div style="flex:1;min-width:0">
-              <label class="lp-field-label">Item</label>
-              <input class="lp-input" list="lp-items-dl" value="${(slot.item||'').replace(/"/g,'&quot;')}" data-dex="item" oninput="lineup[${idx}].item=this.value" placeholder="No Item" autocomplete="off">
-            </div>
-          </div>
-          <div class="lp-field-row" style="display:flex;gap:6px;">
-            <div style="flex:1">
-              <label class="lp-field-label">Ability</label>
-              <select class="lp-input" onchange="lineup[${idx}].ability=this.value">${abilityOpts}</select>
-            </div>
-            <div style="flex:1">
-              <label class="lp-field-label">Nature</label>
-              <select class="lp-input" onchange="setNature(${idx},this.value)">
-                <option value="">— None —</option>${natureOpts}
-              </select>
-            </div>
-          </div>
           <div class="lp-field-row">
-            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" class="lp-ev-total" style="color:${evTot>508?'var(--red)':'var(--text-dim)'};border-color:${evTot>508?'var(--red)':'var(--hairline-2)'}">${evTot}/508</span> <span style="color:var(--text-dim);font-weight:400;font-size:7px">drag · Lv100 →</span></label>
+            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" class="lp-ev-total" style="color:${evTot>508?'var(--red)':'var(--text-dim)'};border-color:${evTot>508?'var(--red)':'var(--hairline-2)'}">${evTot}/508</span> <span style="color:var(--text-dim);font-weight:400;font-size:7px">drag · Lv100 stat</span></label>
+            <div class="lp-ev-row lp-ev-hdr"><span></span><span></span><span>EV</span><span>IV</span><span>&rarr;</span></div>
             ${evRows}
           </div>
-          <div class="lp-field-row">
-            <label class="lp-field-label">IVs</label>
-            <div class="lp-stat-grid lp-stat-hdr">${ivHdr}</div>
-            <div class="lp-stat-grid">${ivInputs}</div>
-          </div>
-          ${datalist}
           <div class="lp-field-row">
             <label class="lp-field-label">Moves</label>
             <div class="lp-moves-grid">${moveFields}</div>
@@ -1661,12 +1677,19 @@ function setIV(idx, key, val) {
   let n = parseInt(val, 10); if (isNaN(n)) n = 31;
   n = Math.max(0, Math.min(31, n));
   lineup[idx].ivs[key] = n;
+  const el = document.getElementById(`lp-ivn-${idx}-${key}`);
+  if (el && +el.value !== n) el.value = n;
   updateFinalStats(idx);
 }
 // Nature: store + refresh final stats (nature multiplies two stats).
 function setNature(idx, val) {
   lineup[idx].nature = val;
   updateFinalStats(idx);
+}
+// Tera type: store + recolor the select to the type color.
+function setTera(idx, val, el) {
+  lineup[idx].teraType = val;
+  if (el) el.style.color = val ? (TYPE_COLORS[val] || 'var(--text)') : 'var(--text-dim)';
 }
 
 function buildShowdownText() {
@@ -1678,6 +1701,7 @@ function buildShowdownText() {
       ? `${s.nickname.trim()} (${p.name})` : p.name;
     lines.push(s.item ? `${head} @ ${s.item}` : head);
     if (s.ability) lines.push(`Ability: ${s.ability}`);
+    if (s.teraType) lines.push(`Tera Type: ${s.teraType}`);
     const evParts = EVIV_STATS.filter(([k]) => (s.evs?.[k] || 0) > 0).map(([k,lbl]) => `${s.evs[k]} ${lbl}`);
     if (evParts.length) lines.push(`EVs: ${evParts.join(' / ')}`);
     if (s.nature)  lines.push(`${s.nature} Nature`);
@@ -1797,57 +1821,112 @@ window._BATTLE_TOUR = [
       .then(r => r.json()).then(d => { window._DEX = d; }).catch(() => {});
   }
   const toID = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  let tip = null;
-  const ensure = () => { if (!tip) { tip = document.createElement('div'); tip.className = 'dex-tip'; document.body.appendChild(tip); } return tip; };
   const TYPE_C = (typeof TYPE_COLORS !== 'undefined') ? TYPE_COLORS : {};
+  const catCol = c => c === 'Physical' ? '#ff7a8f' : c === 'Special' ? '#5fe0ff' : '#b0b3c0';
 
-  function show(input) {
-    const kind = input.dataset.dex;
-    const val = (input.value || '').trim();
+  // ---- shared tooltip ----
+  let tip = null;
+  const ensureTip = () => { if (!tip) { tip = document.createElement('div'); tip.className = 'dex-tip'; document.body.appendChild(tip); } return tip; };
+  function tipHTML(kind, val) {
     const dex = window._DEX || {};
-    const tbl = kind === 'item' ? (dex.items || {}) : (dex.moves || {});
-    const d = tbl[toID(val)];
-    if (!d) { hide(); return; }
-    const t = ensure();
+    const d = (kind === 'item' ? (dex.items || {}) : (dex.moves || {}))[toID(val)];
+    if (!d) return null;
     if (kind === 'move') {
-      const cat = d.c || 'Status';
-      const catCol = cat === 'Physical' ? '#ff7a8f' : cat === 'Special' ? '#5fe0ff' : '#b0b3c0';
-      const tc = TYPE_C[d.t] || 'var(--text-dim)';
-      t.innerHTML =
-        `<div class="dex-tip-h" style="color:var(--cyan)">${d.n || val}</div>` +
+      const cat = d.c || 'Status', tc = TYPE_C[d.t] || 'var(--text-dim)';
+      return `<div class="dex-tip-h" style="color:var(--cyan)">${d.n || val}</div>` +
         `<div class="dex-tip-meta"><span style="color:${tc}">${d.t || '?'}</span>` +
-        `<span style="color:${catCol}">${cat}</span>` +
+        `<span style="color:${catCol(cat)}">${cat}</span>` +
         `<span style="color:var(--text-dim)">BP <b>${d.bp ? d.bp : '—'}</b></span>` +
         `<span style="color:var(--text-dim)">ACC <b>${d.acc ? d.acc : '—'}</b></span></div>` +
         `<div class="dex-tip-d">${d.d || 'No description.'}</div>`;
-    } else {
-      t.innerHTML =
-        `<div class="dex-tip-h" style="color:var(--magenta)">${d.n || val}</div>` +
-        `<div class="dex-tip-d">${d.d || 'No description.'}</div>`;
     }
-    t.style.display = 'block';
-    const r = input.getBoundingClientRect();
-    const th = t.offsetHeight, tw = t.offsetWidth;
-    let left = Math.max(6, Math.min(window.innerWidth - tw - 6, r.left));
-    let top = r.top - th - 7;
-    if (top < 6) top = r.bottom + 7;   // flip below if no room above
-    t.style.left = left + 'px';
-    t.style.top = top + 'px';
+    return `<div class="dex-tip-h" style="color:var(--magenta)">${d.n || val}</div>` +
+      `<div class="dex-tip-d">${d.d || 'No description.'}</div>`;
   }
-  function hide() { if (tip) tip.style.display = 'none'; }
+  function showTip(html, rect, prefer) {
+    if (!html) { hideTip(); return; }
+    const t = ensureTip(); t.innerHTML = html; t.style.display = 'block';
+    const tw = t.offsetWidth, th = t.offsetHeight; let left, top;
+    if (prefer === 'right') {
+      left = rect.right + 8;
+      if (left + tw > window.innerWidth - 6) left = rect.left - tw - 8;
+      left = Math.max(6, Math.min(window.innerWidth - tw - 6, left));
+      top = Math.max(6, Math.min(window.innerHeight - th - 6, rect.top));
+    } else {
+      left = Math.max(6, Math.min(window.innerWidth - tw - 6, rect.left));
+      top = rect.top - th - 7; if (top < 6) top = rect.bottom + 7;
+    }
+    t.style.left = left + 'px'; t.style.top = top + 'px';
+  }
+  function hideTip() { if (tip) tip.style.display = 'none'; }
+  const ddOpen = () => moveDD && moveDD.style.display === 'block';
 
+  // ---- input hover (move/item fields) ----
   document.addEventListener('mouseover', e => {
     const inp = e.target.closest && e.target.closest('input[data-dex]');
-    if (inp) show(inp);
+    if (inp && !ddOpen()) showTip(tipHTML(inp.dataset.dex, (inp.value || '').trim()), inp.getBoundingClientRect(), 'above');
   });
   document.addEventListener('mouseout', e => {
     const inp = e.target.closest && e.target.closest('input[data-dex]');
-    if (inp) hide();
+    if (inp && !ddOpen()) hideTip();
   });
-  // Refresh the tip as you type/select a different move/item.
+
+  // ---- custom move dropdown (options are hoverable for tooltips) ----
+  let moveDD = null, ddInput = null;
+  const moveInput = el => el && el.closest && el.closest('input[data-slot][data-mi]');
+  function ensureDD() {
+    if (!moveDD) {
+      moveDD = document.createElement('div'); moveDD.className = 'lp-move-dd'; document.body.appendChild(moveDD);
+      moveDD.addEventListener('mouseover', e => { const o = e.target.closest('.lp-move-opt'); if (o) showTip(tipHTML('move', o.dataset.move), o.getBoundingClientRect(), 'right'); });
+      moveDD.addEventListener('mouseleave', hideTip);
+      moveDD.addEventListener('mousedown', e => { const o = e.target.closest('.lp-move-opt'); if (o) { e.preventDefault(); pick(o.dataset.move); } });
+    }
+    return moveDD;
+  }
+  function openDD(input) {
+    const idx = +input.dataset.slot;
+    const slot = (typeof lineup !== 'undefined') && lineup[idx];
+    if (!slot || !slot.pokemon) { closeDD(); return; }
+    const q = toID(input.value);
+    const matches = (slot.pokemon.moves || []).filter(m => !q || toID(m).includes(q)).slice(0, 80);
+    if (!matches.length) { closeDD(); return; }
+    const dd = ensureDD(); ddInput = input;
+    const mv = (window._DEX || {}).moves || {};
+    dd.innerHTML = matches.map(m => {
+      const d = mv[toID(m)];
+      const meta = d ? `<span class="lp-move-opt-meta"><span style="color:${TYPE_C[d.t] || 'var(--text-dim)'}">${d.t || ''}</span><span style="color:${catCol(d.c)}">${d.bp ? d.bp : '—'}</span></span>` : '';
+      return `<div class="lp-move-opt" data-move="${(m || '').replace(/"/g, '&quot;')}">${m}${meta}</div>`;
+    }).join('');
+    dd.style.display = 'block';
+    const r = input.getBoundingClientRect();
+    dd.style.left = r.left + 'px'; dd.style.width = Math.max(140, r.width) + 'px';
+    dd.style.top = (r.bottom + 2) + 'px';
+    if (r.bottom + 2 + dd.offsetHeight > window.innerHeight - 6)
+      dd.style.top = Math.max(6, r.top - dd.offsetHeight - 2) + 'px';
+  }
+  function closeDD() { if (moveDD) moveDD.style.display = 'none'; ddInput = null; hideTip(); }
+  function pick(name) {
+    if (!ddInput) return;
+    const idx = +ddInput.dataset.slot, mi = +ddInput.dataset.mi;
+    ddInput.value = name;
+    if (typeof lineup !== 'undefined') lineup[idx].moves[mi] = name;
+    const inp = ddInput; closeDD();
+    if (inp && inp.focus) inp.focus();
+  }
+  document.addEventListener('focusin', e => { const inp = moveInput(e.target); if (inp) openDD(inp); });
   document.addEventListener('input', e => {
-    const inp = e.target.closest && e.target.closest('input[data-dex]');
-    if (inp && tip && tip.style.display === 'block') show(inp);
+    const inp = moveInput(e.target);
+    if (inp) { openDD(inp); return; }
+    const di = e.target.closest && e.target.closest('input[data-dex]');
+    if (di && tip && tip.style.display === 'block') showTip(tipHTML(di.dataset.dex, (di.value || '').trim()), di.getBoundingClientRect(), 'above');
+  });
+  document.addEventListener('focusout', e => {
+    const inp = moveInput(e.target);
+    if (inp) setTimeout(() => { if (document.activeElement !== inp) closeDD(); }, 130);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ddOpen()) closeDD(); });
+  document.addEventListener('mousedown', e => {
+    if (ddOpen() && !e.target.closest('.lp-move-dd') && !moveInput(e.target)) closeDD();
   });
 })();
 </script>
