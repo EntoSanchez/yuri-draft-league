@@ -25,6 +25,14 @@
 
     init() {
       E.setGen(9);
+      // League Megas (custom species): gen 9 has no megas, so inject each via its
+      // base species + stat/type/ability overrides, then re-resolve any selection.
+      fetch('/api/calc/megas').then(r => r.json()).then(list => {
+        E.setCustomSpecies(list || []);
+        if (this.panelA) this.panelA.syncFromState();
+        if (this.panelB) this.panelB.syncFromState();
+        this.recompute();
+      }).catch(() => {});
       this.state = this.load() || this.seed();
       this.format = this.state.format || 'All';
       this.mode = this.state.mode || '1v1';

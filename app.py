@@ -6066,5 +6066,39 @@ def api_calc_teams():
     return jsonify(teams)
 
 
+@app.route("/api/calc/megas")
+def api_calc_megas():
+    """Custom-species data for every league Mega so the damage calc can build them.
+
+    Gen 9 / @smogon-calc has NO megas, so each is injected via its base species
+    plus stat/type/ability overrides. Returns: name (league display), base species
+    to build from, types, baseStats, ability.
+    """
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT name, type1, type2, hp, atk, defense, spa, spd, spe, ability1 "
+            "FROM draft_tiers WHERE is_mega=1 AND name IS NOT NULL"
+        ).fetchall()
+    out = []
+    for r in rows:
+        name = (r["name"] or "").strip()
+        base = name[5:].strip() if name.lower().startswith("mega ") else name
+        # strip a trailing single-letter forme (X / Y / Z) to get the base species
+        parts = base.rsplit(" ", 1)
+        if len(parts) == 2 and len(parts[1]) == 1 and parts[1].isalpha():
+            base = parts[0]
+        out.append({
+            "name": name,
+            "base": base,
+            "types": [t for t in [r["type1"], r["type2"]] if t],
+            "baseStats": {
+                "hp": r["hp"] or 0, "atk": r["atk"] or 0, "def": r["defense"] or 0,
+                "spa": r["spa"] or 0, "spd": r["spd"] or 0, "spe": r["spe"] or 0,
+            },
+            "ability": r["ability1"] or "",
+        })
+    return jsonify(out)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

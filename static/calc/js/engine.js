@@ -13,6 +13,24 @@
   // cached enumeration lists per gen
   const cache = {};
 
+  // Custom league species (Megas) — gen 9 has none, so they're injected via a
+  // base species + stat/type/ability overrides. Keyed by toID(name).
+  let CUSTOM = {};
+  function setCustomSpecies(list) {
+    CUSTOM = {};
+    (list || []).forEach(c => { if (c && c.name) CUSTOM[toID(c.name)] = c; });
+    for (const k in cache) delete cache[k];   // rebuild lists so autocomplete includes them
+    if (GEN) cache[GEN_NUM] = buildLists(GEN);
+  }
+  // → { realName: species to construct, overrides: partial species data | undefined }
+  function resolveSpecies(name) {
+    const c = CUSTOM[toID(name)];
+    if (!c) return { realName: name, overrides: undefined };
+    const ov = { name: c.name, types: c.types, baseStats: c.baseStats };
+    if (c.ability) ov.abilities = { 0: c.ability };
+    return { realName: c.base || c.name, overrides: ov };
+  }
+
   function setGen(num) {
     GEN_NUM = num;
     GEN = Generations.get(num);
@@ -25,6 +43,7 @@
   function buildLists(g) {
     const species = [];
     for (const s of g.species) if (s.nfe !== undefined || true) species.push(s.name);
+    Object.values(CUSTOM).forEach(c => species.push(c.name));   // league Megas
     const moves = [];
     for (const m of g.moves) moves.push(m.name);
     const items = [];
@@ -40,6 +59,15 @@
 
   function speciesInfo(name) {
     if (!name) return null;
+    const c = CUSTOM[toID(name)];
+    if (c) {
+      const base = GEN.species.get(toID(c.base || ''));
+      return {
+        name: c.name, types: c.types, baseStats: c.baseStats,
+        weightkg: base ? base.weightkg : 100,
+        abilities: c.ability ? [c.ability] : (base && base.abilities ? Object.values(base.abilities) : [])
+      };
+    }
     const s = GEN.species.get(toID(name));
     if (!s) return null;
     return {
@@ -65,6 +93,7 @@
 
   // Build a Pokemon from UI state object
   function buildPokemon(st) {
+    const r = resolveSpecies(st.species);
     const opts = {
       level: st.level || 100,
       ability: st.ability || undefined,
@@ -77,11 +106,12 @@
       status: st.status || '',
       teraType: (st.teraActive && st.teraType) ? st.teraType : undefined,
       moves: (st.moves || []).filter(Boolean),
+      overrides: r.overrides,
     };
     if (st.curHPpercent != null) {
       // set originalCurHP based on percent after we know maxHP — do a two-pass
     }
-    const p = new Pokemon(GEN, st.species, opts);
+    const p = new Pokemon(GEN, r.realName, opts);
     if (st.curHPpercent != null && st.curHPpercent < 100) {
       const hp = p.maxHP();
       p.originalCurHP = Math.max(1, Math.floor(hp * st.curHPpercent / 100));
@@ -229,6 +259,7 @@
 
   root.Engine = {
     setGen, gen, genNum, lists, speciesInfo, moveInfo,
-    abilityExists, itemExists, buildPokemon, run, runBest, stateFromSet, finalStats, toID
+    abilityExists, itemExists, buildPokemon, run, runBest, stateFromSet, finalStats, toID,
+    setCustomSpecies, resolveSpecies
   };
 })(window);
