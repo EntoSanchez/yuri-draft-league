@@ -132,4 +132,36 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script type="text/babel" src="{{ url_for('static', filename='calc/tweaks-panel.jsx') }}"></script>
 <script type="text/babel" src="{{ url_for('static', filename='calc/js/tweaks-app.jsx') }}"></script>
+
+<!-- ============ Guided tour ============ -->
+<button id="tour-fab" onclick="startTour(window._CALC_TOUR)" title="Take a guided tour">?</button>
+<script>
+window._CALC_TOUR = [
+  {
+    sel: '.page-head',
+    title: 'Damage Calculator',
+    body: 'A full @smogon/calc-powered calculator — mechanics-accurate for Gens 1–9. Set the Generation and Format/Metagame here; use Export to copy or import sets, and Reset to clear everything.'
+  },
+  {
+    sel: '.mode-tabs',
+    title: 'Calc Modes',
+    body: '1 v 1 calculates a single attacker against a single defender. 1 v All and All v 1 sweep one Pokémon against a whole team at once. Random Battle and Champions Meta load preset pools for quick matchup checks.'
+  },
+  {
+    sel: '#board',
+    title: 'Attacker & Defender',
+    body: 'Build each side: choose the species, then set its item, ability, nature, level, EVs/IVs, and moves. Click a move to calculate it against the other side.'
+  },
+  {
+    sel: '#results-row',
+    title: 'Damage & KO Chance',
+    body: 'Each move’s damage roll, percent of HP, and KO probability (e.g. “2HKO”) appear here — factoring in items, abilities, and the field conditions below.'
+  },
+  {
+    sel: '#field-row',
+    title: 'Field Conditions',
+    body: 'Toggle weather, terrain, screens (Reflect / Light Screen), hazards, and other battle effects — the results update live to match the situation.'
+  },
+];
+</script>
 {% endblock %}
