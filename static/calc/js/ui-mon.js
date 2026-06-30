@@ -146,6 +146,10 @@
                 <option value="">— Pokémon —</option>
               </select>
             </div>
+            <div class="mega-row" data-mega-row style="display:none;align-items:center;gap:6px;margin-top:3px">
+              <label style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--text-dim)">FORME</label>
+              <select class="field" data-mega style="flex:1;min-width:0"></select>
+            </div>
             <div class="type-tera">
               <div class="types" data-types></div>
               <select class="field" data-tera style="width:88px">${typeOpts}</select>
@@ -275,6 +279,11 @@
       this.q('[data-nature]').addEventListener('change', () => { this.st.nature = this.q('[data-nature]').value; this.refreshStats(); this.changed(); });
       // status
       this.q('[data-status]').addEventListener('change', () => { this.st.status = this.q('[data-status]').value; this.refreshStats(); this.changed(); });
+      // mega / forme toggle
+      this.q('[data-mega]').addEventListener('change', () => {
+        const v = this.q('[data-mega]').value;
+        if (v) { this.combos.species.setValue(v); this.setSpecies(v, true); }
+      });
       // tera
       this.q('[data-tera]').addEventListener('change', () => {
         this.st.teraType = this.q('[data-tera]').value;
@@ -344,9 +353,24 @@
       }
       this.renderTypes();
       this.renderSprite();
+      this.refreshMegaControl();
       this.refreshSets();
       this.refreshStats();
       this.changed();
+    }
+
+    // Show a Base/Mega forme switcher when the current mon has league Mega forme(s).
+    refreshMegaControl() {
+      const row = this.q('[data-mega-row]'); const sel = this.q('[data-mega]');
+      if (!row || !sel) return;
+      const base = E.baseOf(this.st.species);
+      const megas = E.megasForBase(base);
+      if (!megas.length) { row.style.display = 'none'; return; }
+      const cur = E.toID(this.st.species);
+      let opts = `<option value="${esc(base)}"${cur === E.toID(base) ? ' selected' : ''}>${esc(base)} (base)</option>`;
+      opts += megas.map(m => `<option value="${esc(m)}"${cur === E.toID(m) ? ' selected' : ''}>${esc(m)}</option>`).join('');
+      sel.innerHTML = opts;
+      row.style.display = 'flex';
     }
 
     renderTypes() {
@@ -466,7 +490,7 @@
     // push state → inputs (after import or init)
     syncFromState(skipSpecies) {
       const st = this.st;
-      if (st.species) { this.combos.species.setValue(st.species); this.renderTypes(); this.renderSprite(); }
+      if (st.species) { this.combos.species.setValue(st.species); this.renderTypes(); this.renderSprite(); this.refreshMegaControl(); }
       this.q('[data-level]').value = st.level || 100;
       this.combos.ability.setValue(st.ability || '');
       this.combos.item.setValue(st.item || '');

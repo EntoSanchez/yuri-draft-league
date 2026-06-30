@@ -22,6 +22,17 @@
     for (const k in cache) delete cache[k];   // rebuild lists so autocomplete includes them
     if (GEN) cache[GEN_NUM] = buildLists(GEN);
   }
+  // Megas (league custom species) available for a base species name.
+  function megasForBase(baseName) {
+    const bid = toID(baseName);
+    return Object.values(CUSTOM).filter(c => toID(c.base) === bid).map(c => c.name);
+  }
+  // The base species of a name (if it's a league mega → its base; else itself).
+  function baseOf(name) {
+    const c = CUSTOM[toID(name)];
+    return c ? c.base : name;
+  }
+
   // → { realName: species to construct, overrides: partial species data | undefined }
   function resolveSpecies(name) {
     const c = CUSTOM[toID(name)];
@@ -260,6 +271,6 @@
   root.Engine = {
     setGen, gen, genNum, lists, speciesInfo, moveInfo,
     abilityExists, itemExists, buildPokemon, run, runBest, stateFromSet, finalStats, toID,
-    setCustomSpecies, resolveSpecies
+    setCustomSpecies, resolveSpecies, megasForBase, baseOf
   };
 })(window);
