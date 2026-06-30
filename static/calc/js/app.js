@@ -33,6 +33,8 @@
         if (this.panelB) this.panelB.syncFromState();
         this.recompute();
       }).catch(() => {});
+      // Move/item hover tooltips (type/cat/BP/acc/effect + item effects)
+      if (!root._DEX) fetch('/static/dex-mini.json').then(r => r.json()).then(d => { root._DEX = d; }).catch(() => {});
       this.state = this.load() || this.seed();
       this.format = this.state.format || 'All';
       this.mode = this.state.mode || '1v1';

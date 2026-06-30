@@ -346,6 +346,17 @@ input[type=number] { -moz-appearance: textfield; }
 .move-opt-btn:hover { color: var(--text); border-color: var(--hairline-3); }
 .move-opt-btn.on { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
 .move-opts { display: flex; gap: 6px; padding: 2px 0 4px 28px; flex-wrap: wrap; align-items: center; }
+/* Move/item hover tooltip */
+.calc-dex-tip {
+  position: fixed; z-index: 100000; display: none; max-width: 252px; pointer-events: none;
+  background: var(--panel-2, #14161f); border: 1px solid var(--accent-dim, rgba(61,229,255,.45));
+  border-radius: 4px; padding: 7px 9px; box-shadow: 0 6px 22px -6px rgba(0,0,0,.85);
+  font-family: var(--font-mono); line-height: 1.4;
+}
+.calc-dex-tip .cdt-h { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--accent, #3de5ff); margin-bottom: 3px; }
+.calc-dex-tip .cdt-meta { font-size: 8.5px; font-weight: 700; display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; color: var(--text-dim); }
+.calc-dex-tip .cdt-meta b { color: var(--text); }
+.calc-dex-tip .cdt-d { font-size: 9.5px; color: var(--text-mute); }
 .mini-tog {
   display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
   font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--text-mute);

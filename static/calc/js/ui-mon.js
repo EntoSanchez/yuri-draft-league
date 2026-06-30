@@ -52,6 +52,33 @@
     return v;
   }
 
+  // ── Hover tooltips for move/item combos (uses bundled dex-mini.json) ──
+  const TIP_CAT = c => c === 'Physical' ? '#ff7a8f' : c === 'Special' ? '#5fe0ff' : '#b0b3c0';
+  function moveTipHTML(name) {
+    if (!name) return null;
+    const dex = (root._DEX && root._DEX.moves) || {};
+    const d = dex[_id(name)];
+    const e = E.moveInfo(name);
+    if (!d && !e) return null;
+    const type = (d && d.t) || (e && e.type) || '?';
+    const cat = (d && d.c) || (e && e.category) || 'Status';
+    const bp = (e && e.bp) || (d && d.bp) || 0;
+    const acc = (d && d.acc) || 0;
+    const eff = (d && d.d) || '';
+    const tc = D.TYPE_COLORS[type] || '#9099a1';
+    return `<div class="cdt-h">${esc(name)}</div>` +
+      `<div class="cdt-meta"><span style="color:${tc}">${type}</span><span style="color:${TIP_CAT(cat)}">${cat}</span>` +
+      `<span>BP <b>${bp || '—'}</b></span><span>ACC <b>${acc || '—'}</b></span></div>` +
+      (eff ? `<div class="cdt-d">${esc(eff)}</div>` : '');
+  }
+  function itemTipHTML(name) {
+    if (!name) return null;
+    const dex = (root._DEX && root._DEX.items) || {};
+    const d = dex[_id(name)];
+    if (!d) return null;
+    return `<div class="cdt-h" style="color:#ff8fe6">${esc(name)}</div>` + (d.d ? `<div class="cdt-d">${esc(d.d)}</div>` : '');
+  }
+
   class MonPanel {
     constructor(role, state, onChange) {
       this.role = role;            // 'atk' | 'def'
@@ -221,6 +248,7 @@
       this.combos.item = new Combo(this.q('[data-item]'), {
         placeholder: 'Item', allowFree: true,
         getList: () => E.lists().items,
+        tip: itemTipHTML,
         onPick: (v) => { this.st.item = v; this.refreshStats(); this.changed(); }
       });
       this.q('[data-ability]').addEventListener('change', () => { this.st.ability = this.q('[data-ability]').value; this.refreshStats(); this.changed(); });
@@ -232,6 +260,7 @@
           placeholder: 'Move ' + (i + 1), allowFree: true,
           getList: () => E.lists().moves,
           decorate: (v) => { const m = E.moveInfo(v); return m ? { dot: D.TYPE_COLORS[m.type], meta: m.category === 'Status' ? '—' : m.bp } : null; },
+          tip: moveTipHTML,
           onPick: (v) => { this.st.moves[i] = v; this.refreshMoveDot(i); this.changed(); }
         });
         this.q(`[data-move="${i}"]`).addEventListener('change', () => { this.st.moves[i] = this.q(`[data-move="${i}"]`).value; this.refreshMoveDot(i); this.changed(); });

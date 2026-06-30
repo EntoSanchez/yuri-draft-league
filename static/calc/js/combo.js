@@ -4,12 +4,33 @@
 (function (root) {
   'use strict';
 
+  // ── shared hover tooltip (moves/items) ──
+  let _tip = null;
+  function ensureTip() { if (!_tip) { _tip = document.createElement('div'); _tip.className = 'calc-dex-tip'; document.body.appendChild(_tip); } return _tip; }
+  function showTip(html, rect, side) {
+    if (!html) { hideTip(); return; }
+    const t = ensureTip(); t.innerHTML = html; t.style.display = 'block';
+    const tw = t.offsetWidth, th = t.offsetHeight; let left, top;
+    if (side === 'right') {
+      left = rect.right + 8;
+      if (left + tw > window.innerWidth - 6) left = rect.left - tw - 8;
+      left = Math.max(6, Math.min(window.innerWidth - tw - 6, left));
+      top = Math.max(6, Math.min(window.innerHeight - th - 6, rect.top));
+    } else {
+      left = Math.max(6, Math.min(window.innerWidth - tw - 6, rect.left));
+      top = rect.top - th - 7; if (top < 6) top = rect.bottom + 7;
+    }
+    t.style.left = left + 'px'; t.style.top = top + 'px';
+  }
+  function hideTip() { if (_tip) _tip.style.display = 'none'; }
+
   class Combo {
     constructor(input, opts) {
       this.input = input;
       this.getList = opts.getList;          // () => string[]
       this.onPick = opts.onPick;            // (value) => void
       this.decorate = opts.decorate;        // (value) => {dot?, meta?} | null
+      this.tip = opts.tip || null;          // (value) => html | null  (hover tooltip)
       this.allowFree = opts.allowFree || false;
       this.placeholder = opts.placeholder || '';
       this.input.setAttribute('autocomplete', 'off');
@@ -27,6 +48,13 @@
       input.addEventListener('input', () => this.open(input.value));
       input.addEventListener('keydown', (e) => this.key(e));
       input.addEventListener('blur', () => setTimeout(() => this.close(), 140));
+
+      if (this.tip) {
+        // tooltip on the field itself (when the dropdown isn't open)
+        input.addEventListener('mouseenter', () => { if (!this.menu.classList.contains('open')) showTip(this.tip(input.value), input.getBoundingClientRect(), 'above'); });
+        input.addEventListener('mouseleave', () => { if (!this.menu.classList.contains('open')) hideTip(); });
+        this.menu.addEventListener('mouseleave', hideTip);
+      }
     }
 
     setValue(v) { this.input.value = v || ''; this.input.setAttribute('value', v || ''); }
@@ -71,6 +99,7 @@
         if (dec && dec.meta) html += `<span class="meta">${esc(dec.meta)}</span>`;
         el.innerHTML = html;
         el.addEventListener('mousedown', (e) => { e.preventDefault(); this.pick(val); });
+        if (this.tip) el.addEventListener('mouseenter', () => showTip(this.tip(val), el.getBoundingClientRect(), 'right'));
         m.appendChild(el);
       });
       m.classList.add('open');
@@ -106,7 +135,7 @@
       if (this.onPick) this.onPick(val);
     }
 
-    close() { this.menu.classList.remove('open'); this.active = -1; }
+    close() { this.menu.classList.remove('open'); this.active = -1; hideTip(); }
   }
 
   function esc(s) { return ('' + s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
