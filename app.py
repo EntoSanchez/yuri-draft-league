@@ -5,6 +5,7 @@ import json
 import math
 import re
 import secrets
+import shutil
 import uuid
 import urllib.request
 from datetime import datetime
@@ -60,6 +61,31 @@ def _migrate_db():
             "ALTER TABLE pokemon_roster ADD COLUMN is_free_pick INTEGER DEFAULT 0",
             "ALTER TABLE seasons ADD COLUMN season_num INTEGER DEFAULT 0",
             "ALTER TABLE match_games ADD COLUMN recap_json TEXT",
+            "ALTER TABLE draft_tiers ADD COLUMN is_mega INTEGER DEFAULT 0",
+            """CREATE TABLE IF NOT EXISTS draft_board_templates (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT NOT NULL,
+                kind        TEXT NOT NULL DEFAULT 'manual',
+                notes       TEXT DEFAULT '',
+                board_json  TEXT NOT NULL,
+                created_at  TEXT NOT NULL,
+                updated_at  TEXT NOT NULL
+            )""",
+            """CREATE TABLE IF NOT EXISTS draft_sessions (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                name            TEXT NOT NULL,
+                season          TEXT DEFAULT '',
+                status          TEXT DEFAULT 'setup',
+                snake_order     TEXT DEFAULT '[]',
+                current_round   INTEGER DEFAULT 0,
+                current_pick    INTEGER DEFAULT 0,
+                created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                current_pick_a  INTEGER DEFAULT 1,
+                current_pick_b  INTEGER DEFAULT 1,
+                bank_pending_a  INTEGER DEFAULT 0,
+                bank_pending_b  INTEGER DEFAULT 0,
+                banked_picks    TEXT DEFAULT '{}'
+            )""",
         ]:
             try:
                 db.execute(stmt)
@@ -597,6 +623,75 @@ def get_setting(key, default=""):
     with get_db() as db:
         row = db.execute("SELECT value FROM league_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def _now_iso():
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def save_board_template(db, name, kind="manual", notes=""):
+    """Snapshot the live draft_tiers into a template row; return its id."""
+    rows = [dict(r) for r in db.execute(
+        "SELECT * FROM draft_tiers ORDER BY points DESC, name")]
+    ts = _now_iso()
+    cur = db.execute(
+        "INSERT INTO draft_board_templates (name, kind, notes, board_json, created_at, updated_at) "
+        "VALUES (?,?,?,?,?,?)",
+        (name, kind, notes, json.dumps(rows), ts, ts))
+    return cur.lastrowid
+
+
+def load_board_template(db, template_id):
+    """Replace draft_tiers with the template's snapshot. Returns row count."""
+    row = db.execute(
+        "SELECT board_json FROM draft_board_templates WHERE id=?", (template_id,)).fetchone()
+    if not row:
+        raise ValueError("template not found")
+    rows = json.loads(row["board_json"])
+    valid = {row["name"] for row in db.execute("PRAGMA table_info(draft_tiers)")}
+    db.execute("DELETE FROM draft_tiers")
+    for r in rows:
+        cols = [k for k in r.keys() if k != "id" and k in valid]
+        ph = ",".join("?" for _ in cols)
+        db.execute(f"INSERT INTO draft_tiers ({','.join(cols)}) VALUES ({ph})",
+                   [r[k] for k in cols])
+    return len(rows)
+
+
+def prune_autobackups(db, keep=10):
+    ids = [r["id"] for r in db.execute(
+        "SELECT id FROM draft_board_templates WHERE kind='autobackup' ORDER BY id DESC")]
+    for old in ids[keep:]:
+        db.execute("DELETE FROM draft_board_templates WHERE id=?", (old,))
+
+
+def _backups_dir():
+    d = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), "backups")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def create_db_backup(label=""):
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "", label)[:40]
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    fn = f"league-{ts}{('-' + safe) if safe else ''}.db"
+    shutil.copy2(DB_PATH, os.path.join(_backups_dir(), fn))
+    return fn
+
+
+def list_db_backups():
+    return sorted([f for f in os.listdir(_backups_dir()) if f.endswith(".db")], reverse=True)
+
+
+def restore_db_backup(filename):
+    # No open connection to DB_PATH may be held here (Windows file lock on swap).
+    src = os.path.join(_backups_dir(), os.path.basename(filename))
+    if not os.path.isfile(src):
+        raise ValueError("backup not found")
+    create_db_backup("prerestore")                 # safety snapshot of current state
+    tmp = DB_PATH + ".restoring"
+    shutil.copy2(src, tmp)
+    os.replace(tmp, DB_PATH)                        # atomic swap
 
 
 def post_discord(webhook_url, content):
@@ -3450,6 +3545,169 @@ def admin_users():
                            users=users,
                            coaches=coaches,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+# ─── Admin: Board Templates ────────────────────────────────────────────────────
+
+@app.route("/admin/board-templates", methods=["GET", "POST"])
+@admin_required
+def admin_board_templates():
+    if request.method == "POST":
+        action = request.form.get("action")
+        with get_db() as db:
+            if action == "save_current":
+                name = (request.form.get("name") or "").strip() or "Untitled board"
+                save_board_template(db, name, notes=request.form.get("notes", ""))
+                flash(f"Saved board template '{name}'.", "success")
+            elif action == "duplicate":
+                tid = request.form["template_id"]
+                src = db.execute(
+                    "SELECT * FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+                if src:
+                    ts = _now_iso()
+                    db.execute(
+                        "INSERT INTO draft_board_templates (name, kind, notes, board_json, created_at, updated_at) "
+                        "VALUES (?,?,?,?,?,?)",
+                        (src["name"] + " (copy)", "manual", src["notes"],
+                         src["board_json"], ts, ts))
+                    flash("Template duplicated.", "success")
+            elif action == "rename":
+                db.execute(
+                    "UPDATE draft_board_templates SET name=?, updated_at=? WHERE id=?",
+                    ((request.form.get("name") or "").strip() or "Untitled board",
+                     _now_iso(), request.form["template_id"]))
+                flash("Template renamed.", "success")
+            elif action == "delete":
+                db.execute("DELETE FROM draft_board_templates WHERE id=?",
+                           (request.form["template_id"],))
+                flash("Template deleted.", "warning")
+        return redirect(url_for("admin_board_templates"))
+
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, name, kind, notes, board_json, created_at, updated_at "
+            "FROM draft_board_templates ORDER BY id DESC").fetchall()
+    templates, autobackups = [], []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["count"] = len(json.loads(r["board_json"]))
+        except Exception:
+            d["count"] = 0
+        d.pop("board_json", None)
+        (autobackups if r["kind"] == "autobackup" else templates).append(d)
+    return render_template("admin/board_templates.html",
+                           templates=templates, autobackups=autobackups,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+@app.route("/admin/board-templates/load", methods=["POST"])
+@admin_required
+def admin_board_template_load():
+    tid = request.form["template_id"]
+    with get_db() as db:
+        active = db.execute(
+            "SELECT COUNT(*) FROM draft_sessions WHERE status='active'").fetchone()[0]
+        if active:
+            flash("A draft session is active — cannot replace the board now.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        rosters = db.execute("SELECT COUNT(*) FROM pokemon_roster").fetchone()[0]
+        if rosters and request.form.get("confirm") != "yes":
+            flash("Rosters already exist — re-confirm to replace the board.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        exists = db.execute(
+            "SELECT 1 FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+        if not exists:
+            flash("Template not found.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        save_board_template(db, f"Auto-backup before load {_now_iso()}", kind="autobackup")
+        prune_autobackups(db)
+        try:
+            n = load_board_template(db, tid)
+            flash(f"Loaded {n} Pokemon onto the live board (previous board saved as a restore point).", "success")
+        except (ValueError, sqlite3.Error):
+            flash("Template not found.", "warning")
+    return redirect(url_for("admin_board_templates"))
+
+
+@app.route("/admin/board-templates/<int:tid>/download")
+@admin_required
+def admin_board_template_download(tid):
+    with get_db() as db:
+        row = db.execute(
+            "SELECT name, board_json FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+    if not row:
+        flash("Template not found.", "warning")
+        return redirect(url_for("admin_board_templates"))
+    from flask import make_response          # local import (matches existing usage in app.py)
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_", row["name"])[:40] or "board"
+    resp = make_response(row["board_json"])
+    resp.headers["Content-Type"] = "application/json"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{safe}.json"'
+    return resp
+
+
+@app.route("/admin/board-templates/<int:tid>/edit", methods=["GET", "POST"])
+@admin_required
+def admin_board_template_edit(tid):
+    with get_db() as db:
+        row = db.execute(
+            "SELECT * FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+        if not row:
+            flash("Template not found.", "warning")
+            return redirect(url_for("admin_board_templates"))
+        if request.method == "POST":
+            try:
+                board = json.loads(request.form.get("board_json") or "[]")
+                assert isinstance(board, list)
+            except Exception:
+                flash("Could not parse the edited board.", "warning")
+                return redirect(url_for("admin_board_template_edit", tid=tid))
+            board = [m for m in board
+                     if isinstance(m, dict) and (m.get("name") or "").strip()]
+            db.execute(
+                "UPDATE draft_board_templates SET name=?, notes=?, board_json=?, updated_at=? WHERE id=?",
+                ((request.form.get("name") or row["name"]).strip(),
+                 request.form.get("notes", ""), json.dumps(board), _now_iso(), tid))
+            flash("Template saved.", "success")
+            return redirect(url_for("admin_board_templates"))
+        board = json.loads(row["board_json"])
+    return render_template("admin/board_template_edit.html",
+                           tpl=dict(row), board=board,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+# ─── Admin: DB Backups ─────────────────────────────────────────────────────────
+
+@app.route("/admin/backups", methods=["GET", "POST"])
+@admin_required
+def admin_backups():
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "create":
+            fn = create_db_backup(request.form.get("label", ""))
+            flash(f"Backup created: {fn}", "success")
+        elif action == "restore":
+            try:
+                restore_db_backup(request.form["filename"])
+                flash("Database restored (a pre-restore backup was saved first).", "success")
+            except ValueError:
+                flash("Backup file not found.", "warning")
+        elif action == "delete":
+            target = os.path.join(_backups_dir(), os.path.basename(request.form["filename"]))
+            if os.path.isfile(target):
+                os.remove(target)
+                flash("Backup deleted.", "warning")
+        return redirect(url_for("admin_backups"))
+    backups = list_db_backups()
+    return render_template("admin/backups.html", backups=backups,
+                           league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+@app.route("/admin/backups/<name>/download")
+@admin_required
+def admin_backup_download(name):
+    return send_from_directory(_backups_dir(), os.path.basename(name), as_attachment=True)
 
 
 # ─── Admin: Draft Tiers ────────────────────────────────────────────────────────

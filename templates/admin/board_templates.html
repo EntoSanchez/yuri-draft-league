@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Board Templates – Admin{% endblock %}
+{% block content %}
+<div class="flex items-center gap-3 mb-6">
+  <a href="/admin" class="text-gray-400 hover:text-white">← Admin</a>
+  <h1 class="text-2xl font-bold text-white">Draft Board Templates</h1>
+</div>
+
+<form method="POST" class="bg-gray-800 border border-gray-700 rounded-xl p-4 mb-6 flex flex-wrap gap-2 items-end">
+  <input type="hidden" name="action" value="save_current">
+  <div class="flex-1 min-w-[200px]">
+    <label class="block text-xs text-gray-400 mb-1">Save the current live board as a new template</label>
+    <input name="name" placeholder="Template name" required
+           class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+  </div>
+  <input name="notes" placeholder="Notes (optional)"
+         class="flex-1 min-w-[160px] bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+  <button class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-sm font-semibold">Save current board</button>
+</form>
+
+{% macro row(t, is_auto) %}
+<div class="bg-gray-800 border border-gray-700 rounded-lg p-3 flex flex-wrap items-center gap-2">
+  <div class="flex-1 min-w-0">
+    <div class="font-bold text-white truncate">{{ t.name }}</div>
+    <div class="text-xs text-gray-400">{{ t.count }} mons · {{ t.created_at }}{% if t.notes %} · {{ t.notes }}{% endif %}</div>
+  </div>
+  <a href="/admin/board-templates/{{ t.id }}/download"
+     class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Download</a>
+  {% if not is_auto %}
+  <a href="/admin/board-templates/{{ t.id }}/edit"
+     class="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded text-xs">Edit</a>
+  <form method="POST" class="inline" onsubmit="return confirm('Duplicate this template?')">
+    <input type="hidden" name="action" value="duplicate"><input type="hidden" name="template_id" value="{{ t.id }}">
+    <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Duplicate</button>
+  </form>
+  <form method="POST" class="inline flex items-center gap-1">
+    <input type="hidden" name="action" value="rename"><input type="hidden" name="template_id" value="{{ t.id }}">
+    <input name="name" value="{{ t.name }}"
+           class="w-28 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-xs">
+    <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Rename</button>
+  </form>
+  {% endif %}
+  <form method="POST" class="inline"
+        onsubmit="return loadBoard(this, {{ t.id }})">
+    <input type="hidden" name="action" value="load"><input type="hidden" name="template_id" value="{{ t.id }}">
+    <input type="hidden" name="confirm" value="">
+    <button formaction="/admin/board-templates/load"
+            class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-xs font-semibold">{{ "Restore to live" if is_auto else "Load to live" }}</button>
+  </form>
+  <form method="POST" class="inline" onsubmit="return confirm('Delete this template?')">
+    <input type="hidden" name="action" value="delete"><input type="hidden" name="template_id" value="{{ t.id }}">
+    <button class="px-3 py-1.5 bg-red-800 hover:bg-red-700 rounded text-xs">Delete</button>
+  </form>
+</div>
+{% endmacro %}
+
+<h2 class="text-lg font-bold text-gray-200 mb-2">Saved templates</h2>
+<div class="space-y-2 mb-8">
+  {% for t in templates %}{{ row(t, False) }}{% else %}
+  <div class="text-gray-500 text-sm">No saved templates yet.</div>{% endfor %}
+</div>
+
+<h2 class="text-lg font-bold text-gray-200 mb-2">Restore points <span class="text-xs text-gray-500">(auto-saved before loads)</span></h2>
+<div class="space-y-2">
+  {% for t in autobackups %}{{ row(t, True) }}{% else %}
+  <div class="text-gray-500 text-sm">No restore points yet.</div>{% endfor %}
+</div>
+
+<script>
+function loadBoard(form, id) {
+  if (!confirm('Replace the entire live board with this template? The current board is auto-saved as a restore point first.')) return false;
+  form.querySelector('[name=confirm]').value = 'yes';
+  return true;
+}
+</script>
+{% endblock %}

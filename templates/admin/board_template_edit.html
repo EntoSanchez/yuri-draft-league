@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Edit Board Template – Admin{% endblock %}
+{% block content %}
+<div class="flex items-center gap-3 mb-4">
+  <a href="/admin/board-templates" class="text-gray-400 hover:text-white">← Templates</a>
+  <h1 class="text-2xl font-bold text-white">Edit: {{ tpl.name }}</h1>
+</div>
+<p class="text-xs text-gray-400 mb-4">Editing this template does <b>not</b> change the live draft board. Other columns (stats, abilities, moves) are preserved.</p>
+
+<form method="POST" id="tplForm">
+  <div class="flex flex-wrap gap-2 mb-4">
+    <input name="name" value="{{ tpl.name }}" class="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+    <input name="notes" value="{{ tpl.notes }}" placeholder="Notes" class="flex-1 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+    <button type="button" onclick="addRow()" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm">+ Row</button>
+    <button class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-sm font-semibold">Save template</button>
+  </div>
+  <input type="hidden" name="board_json" id="board_json">
+  <table class="w-full text-sm"><thead class="text-gray-400 text-xs">
+    <tr><th class="text-left p-1">Name</th><th class="p-1">Pts</th><th class="p-1">Tier label</th>
+        <th class="p-1">Ban</th><th class="p-1">T-Ban</th><th class="p-1">Mega</th><th></th></tr>
+  </thead><tbody id="rows"></tbody></table>
+</form>
+
+<script>
+const BOARD = {{ board|tojson }};
+function cell(v){ const td=document.createElement('td'); td.className='p-1'; td.appendChild(v); return td; }
+function inp(val, w){ const i=document.createElement('input'); i.value=(val==null?'':val); i.className='bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white text-xs '+(w||'w-full'); return i; }
+function chk(val){ const i=document.createElement('input'); i.type='checkbox'; i.checked=!!Number(val); return i; }
+function makeRow(mon){
+  const tr=document.createElement('tr'); tr.className='border-b border-gray-800'; tr._mon=mon;
+  tr._name=inp(mon.name); tr._pts=inp(mon.points,'w-16'); tr._tier=inp(mon.tier_label);
+  tr._ban=chk(mon.is_banned); tr._tban=chk(mon.is_tera_banned); tr._mega=chk(mon.is_mega);
+  tr.appendChild(cell(tr._name)); tr.appendChild(cell(tr._pts)); tr.appendChild(cell(tr._tier));
+  tr.appendChild(cell(tr._ban)); tr.appendChild(cell(tr._tban)); tr.appendChild(cell(tr._mega));
+  const del=document.createElement('button'); del.type='button'; del.textContent='✕';
+  del.className='text-red-400 px-2'; del.onclick=()=>tr.remove();
+  tr.appendChild(cell(del));
+  return tr;
+}
+function addRow(){ document.getElementById('rows').appendChild(makeRow({})); }
+const tbody=document.getElementById('rows');
+BOARD.forEach(m=>tbody.appendChild(makeRow(m)));
+document.getElementById('tplForm').addEventListener('submit', e=>{
+  const out=[];
+  for(const tr of tbody.children){
+    const mon=Object.assign({}, tr._mon||{});   // preserve stats/abilities/moves
+    mon.name=tr._name.value.trim();
+    mon.points=parseInt(tr._pts.value)||0;
+    mon.tier_label=tr._tier.value.trim();
+    mon.is_banned=tr._ban.checked?1:0;
+    mon.is_tera_banned=tr._tban.checked?1:0;
+    mon.is_mega=tr._mega.checked?1:0;
+    delete mon.id;
+    if(mon.name) out.push(mon);
+  }
+  document.getElementById('board_json').value=JSON.stringify(out);
+});
+</script>
+{% endblock %}

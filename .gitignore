@@ -22,3 +22,5 @@ __pycache__/
 damage-calc/node_modules/
 damage-calc/calc/node_modules/
 damage-calc/build/
+
+backups/
