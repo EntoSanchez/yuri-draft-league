@@ -506,8 +506,6 @@ def _csrf_protect():
     csrf_token()  # ensure the session has a token to embed in pages
     if request.method in _CSRF_SAFE_METHODS:
         return None
-    if app.config.get("TESTING"):  # test harness: conftest.py sets TESTING=True so POST fixtures bypass CSRF
-        return None
     sent = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
     if not sent or not secrets.compare_digest(str(sent), session.get("_csrf_token", "")):
         return ("CSRF token missing or invalid — please reload the page and try again.", 400)
@@ -650,9 +648,10 @@ def load_board_template(db, template_id):
     if not row:
         raise ValueError("template not found")
     rows = json.loads(row["board_json"])
+    valid = {row["name"] for row in db.execute("PRAGMA table_info(draft_tiers)")}
     db.execute("DELETE FROM draft_tiers")
     for r in rows:
-        cols = [k for k in r.keys() if k != "id"]
+        cols = [k for k in r.keys() if k != "id" and k in valid]
         ph = ",".join("?" for _ in cols)
         db.execute(f"INSERT INTO draft_tiers ({','.join(cols)}) VALUES ({ph})",
                    [r[k] for k in cols])
@@ -3616,12 +3615,17 @@ def admin_board_template_load():
         if rosters and request.form.get("confirm") != "yes":
             flash("Rosters already exist — re-confirm to replace the board.", "warning")
             return redirect(url_for("admin_board_templates"))
+        exists = db.execute(
+            "SELECT 1 FROM draft_board_templates WHERE id=?", (tid,)).fetchone()
+        if not exists:
+            flash("Template not found.", "warning")
+            return redirect(url_for("admin_board_templates"))
         save_board_template(db, f"Auto-backup before load {_now_iso()}", kind="autobackup")
         prune_autobackups(db)
         try:
             n = load_board_template(db, tid)
             flash(f"Loaded {n} Pokemon onto the live board (previous board saved as a restore point).", "success")
-        except ValueError:
+        except (ValueError, sqlite3.Error):
             flash("Template not found.", "warning")
     return redirect(url_for("admin_board_templates"))
 
@@ -3659,6 +3663,8 @@ def admin_board_template_edit(tid):
             except Exception:
                 flash("Could not parse the edited board.", "warning")
                 return redirect(url_for("admin_board_template_edit", tid=tid))
+            board = [m for m in board
+                     if isinstance(m, dict) and (m.get("name") or "").strip()]
             db.execute(
                 "UPDATE draft_board_templates SET name=?, notes=?, board_json=?, updated_at=? WHERE id=?",
                 ((request.form.get("name") or row["name"]).strip(),

@@ -36,6 +36,20 @@ def test_rename_and_delete(client, app_mod):
     assert cnt == 0
 
 
+def test_duplicate_creates_copy(client, app_mod):
+    _seed(app_mod)
+    with app_mod.get_db() as db:
+        tid = app_mod.save_board_template(db, "Original")
+    client.post("/admin/board-templates",
+                data={"action": "duplicate", "template_id": tid},
+                follow_redirects=True)
+    with app_mod.get_db() as db:
+        copies = db.execute(
+            "SELECT COUNT(*) FROM draft_board_templates WHERE name LIKE '% (copy)'"
+        ).fetchone()[0]
+    assert copies == 1
+
+
 def test_list_page_renders(client, app_mod):
     _seed(app_mod)
     with app_mod.get_db() as db:
@@ -65,6 +79,20 @@ def test_load_replaces_board_and_makes_autobackup(client, app_mod):
         autos = db.execute(
             "SELECT COUNT(*) FROM draft_board_templates WHERE kind='autobackup'").fetchone()[0]
     assert names == {"Dragapult"} and autos == 1       # board swapped + restore point made
+
+
+def test_load_bogus_id_makes_no_autobackup(client, app_mod):
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM draft_tiers")
+        db.execute("INSERT INTO draft_tiers (name, points) VALUES ('LiveMon', 7)")
+    client.post("/admin/board-templates/load",
+                data={"template_id": 999999, "confirm": "yes"}, follow_redirects=True)
+    with app_mod.get_db() as db:
+        autos = db.execute(
+            "SELECT COUNT(*) FROM draft_board_templates WHERE kind='autobackup'").fetchone()[0]
+        names = {r["name"] for r in db.execute("SELECT name FROM draft_tiers")}
+    assert autos == 0                 # no orphan restore point created
+    assert names == {"LiveMon"}       # live board unchanged
 
 
 def test_load_blocked_during_active_session(client, app_mod):
@@ -104,6 +132,8 @@ def test_download_returns_json_board(client, app_mod):
     import json as _j
     assert resp.status_code == 200
     assert any(m["name"] == "Garchomp" for m in _j.loads(resp.data))
+    assert resp.headers["Content-Type"] == "application/json"
+    assert "attachment" in resp.headers["Content-Disposition"]
 
 
 # ─── Task 6: Edit template in place ───────────────────────────────────────────

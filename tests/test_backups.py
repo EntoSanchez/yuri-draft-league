@@ -47,3 +47,17 @@ def test_restore_via_route(client, app_mod):
     with app_mod.get_db() as db:
         names = {r["name"] for r in db.execute("SELECT name FROM draft_tiers")}
     assert names == {"Snap"}
+
+
+def test_delete_via_route(client, app_mod):
+    fn = app_mod.create_db_backup("todelete")
+    assert fn in app_mod.list_db_backups()
+    client.post("/admin/backups", data={"action": "delete", "filename": fn},
+                follow_redirects=True)
+    assert fn not in app_mod.list_db_backups()
+
+
+def test_download_via_route(client, app_mod):
+    fn = app_mod.create_db_backup("dl")
+    resp = client.get(f"/admin/backups/{fn}/download")
+    assert resp.status_code == 200

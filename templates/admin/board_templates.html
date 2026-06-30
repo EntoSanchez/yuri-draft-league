@@ -33,13 +33,19 @@
     <input type="hidden" name="action" value="duplicate"><input type="hidden" name="template_id" value="{{ t.id }}">
     <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Duplicate</button>
   </form>
+  <form method="POST" class="inline flex items-center gap-1">
+    <input type="hidden" name="action" value="rename"><input type="hidden" name="template_id" value="{{ t.id }}">
+    <input name="name" value="{{ t.name }}"
+           class="w-28 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-xs">
+    <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Rename</button>
+  </form>
   {% endif %}
   <form method="POST" class="inline"
         onsubmit="return loadBoard(this, {{ t.id }})">
     <input type="hidden" name="action" value="load"><input type="hidden" name="template_id" value="{{ t.id }}">
     <input type="hidden" name="confirm" value="">
     <button formaction="/admin/board-templates/load"
-            class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-xs font-semibold">Load to live</button>
+            class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-xs font-semibold">{{ "Restore to live" if is_auto else "Load to live" }}</button>
   </form>
   <form method="POST" class="inline" onsubmit="return confirm('Delete this template?')">
     <input type="hidden" name="action" value="delete"><input type="hidden" name="template_id" value="{{ t.id }}">

@@ -30,6 +30,24 @@ def test_load_missing_template_raises(app_mod):
             app_mod.load_board_template(db, 99999)
 
 
+def test_load_skips_unknown_columns(app_mod):
+    import json as _j
+    with app_mod.get_db() as db:
+        ts = app_mod._now_iso()
+        board = _j.dumps([{"name": "X", "points": 5, "bogus_col": "zzz"}])
+        cur = db.execute(
+            "INSERT INTO draft_board_templates (name, kind, notes, board_json, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?)",
+            ("Has bogus col", "manual", "", board, ts, ts))
+        tid = cur.lastrowid
+        db.execute("DELETE FROM draft_tiers")
+        n = app_mod.load_board_template(db, tid)   # must NOT raise on unknown key
+        row = db.execute(
+            "SELECT name, points FROM draft_tiers WHERE name='X'").fetchone()
+    assert n == 1
+    assert row is not None and row["name"] == "X" and row["points"] == 5
+
+
 def test_prune_keeps_only_recent_autobackups(app_mod):
     with app_mod.get_db() as db:
         _seed_board(db)

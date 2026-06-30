@@ -3,10 +3,28 @@ import os
 import sys
 
 import pytest
+from flask.testing import FlaskClient
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
+
+TEST_CSRF_TOKEN = "testtoken"
+
+
+class CSRFClient(FlaskClient):
+    """Test client that sends a real CSRF token on every POST.
+
+    The session is seeded with _csrf_token = TEST_CSRF_TOKEN (see the client
+    fixture); app.csrf_token() preserves a pre-set session token, so injecting
+    the matching X-CSRFToken header lets POSTs pass real CSRF validation.
+    """
+
+    def post(self, *args, **kwargs):
+        headers = kwargs.pop("headers", None) or {}
+        headers.setdefault("X-CSRFToken", TEST_CSRF_TOKEN)
+        kwargs["headers"] = headers
+        return super().post(*args, **kwargs)
 
 
 @pytest.fixture()
@@ -31,8 +49,10 @@ def app_mod(db_path, monkeypatch):
 
 @pytest.fixture()
 def client(app_mod):
+    app_mod.app.test_client_class = CSRFClient
     c = app_mod.app.test_client()
     with c.session_transaction() as s:
         s["user_id"] = 1
         s["role"] = "admin"
+        s["_csrf_token"] = TEST_CSRF_TOKEN
     return c

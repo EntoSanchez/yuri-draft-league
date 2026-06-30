@@ -23,7 +23,6 @@
 
 <script>
 const BOARD = {{ board|tojson }};
-const KEYS = ['name','points','tier_label','is_banned','is_tera_banned','is_mega'];
 function cell(v){ const td=document.createElement('td'); td.className='p-1'; td.appendChild(v); return td; }
 function inp(val, w){ const i=document.createElement('input'); i.value=(val==null?'':val); i.className='bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white text-xs '+(w||'w-full'); return i; }
 function chk(val){ const i=document.createElement('input'); i.type='checkbox'; i.checked=!!Number(val); return i; }
