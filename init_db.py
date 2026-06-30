@@ -100,7 +100,24 @@ def init_db():
             points INTEGER NOT NULL,
             tier_label TEXT DEFAULT '',
             is_banned INTEGER DEFAULT 0,
-            is_tera_banned INTEGER DEFAULT 0
+            is_tera_banned INTEGER DEFAULT 0,
+            is_mega INTEGER DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS draft_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            season TEXT DEFAULT '',
+            status TEXT DEFAULT 'setup',
+            snake_order TEXT DEFAULT '[]',
+            current_round INTEGER DEFAULT 0,
+            current_pick INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            current_pick_a INTEGER DEFAULT 1,
+            current_pick_b INTEGER DEFAULT 1,
+            bank_pending_a INTEGER DEFAULT 0,
+            bank_pending_b INTEGER DEFAULT 0,
+            banked_picks TEXT DEFAULT '{}'
         );
     """)
 
