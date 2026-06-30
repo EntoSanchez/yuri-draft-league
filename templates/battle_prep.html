@@ -260,18 +260,41 @@
 }
 .lp-stat-in:focus { outline: none; border-color: var(--cyan-dim); }
 .lp-stat-in::-webkit-outer-spin-button, .lp-stat-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-/* EV slider rows: [name] [draggable slider] [number] [final stat] */
-.lp-ev-row { display: grid; grid-template-columns: 24px minmax(0,1fr) 30px 30px; align-items: center; gap: 4px; margin-bottom: 2px; }
-.lp-ev-name { font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); }
-.lp-ev-slider { width: 100%; height: 4px; margin: 0; cursor: pointer; accent-color: var(--cyan); }
+/* EV slider rows: [name] [neon draggable slider] [number] [final stat] */
+.lp-ev-row { display: grid; grid-template-columns: 26px minmax(0,1fr) 28px 30px; align-items: center; gap: 5px; margin-bottom: 3px; }
+.lp-ev-name { font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+/* Neon range slider: stat-colored fill (--evcol / --evfill) + glowing thumb */
+.lp-ev-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 5px; margin: 0; cursor: pointer; border-radius: 3px; outline: none;
+  background: linear-gradient(to right,
+    var(--evcol, var(--cyan)) 0%, var(--evcol, var(--cyan)) var(--evfill, 0%),
+    rgba(255,255,255,.06) var(--evfill, 0%), rgba(255,255,255,.06) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.lp-ev-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--evcol, var(--cyan)); border: 1px solid rgba(4,4,10,.65);
+  box-shadow: 0 0 6px var(--evcol, var(--cyan)); cursor: pointer; transition: box-shadow .12s;
+}
+.lp-ev-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 10px var(--evcol, var(--cyan)); }
+.lp-ev-slider::-moz-range-thumb {
+  width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(4,4,10,.65);
+  background: var(--evcol, var(--cyan)); box-shadow: 0 0 6px var(--evcol, var(--cyan)); cursor: pointer;
+}
+.lp-ev-slider::-moz-range-track { background: rgba(255,255,255,.06); height: 5px; border-radius: 3px; }
+.lp-ev-slider::-moz-range-progress { background: var(--evcol, var(--cyan)); height: 5px; border-radius: 3px; }
 .lp-ev-num {
-  width: 100%; box-sizing: border-box; padding: 1px; text-align: center;
+  width: 100%; box-sizing: border-box; padding: 2px 1px; text-align: center;
   font-family: var(--font-mono); font-size: 8px;
-  background: var(--panel-2); border: 1px solid var(--hairline); border-radius: 2px; color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--hairline); border-radius: 2px; color: var(--text-mute);
   -moz-appearance: textfield;
 }
-.lp-ev-num:focus { outline: none; border-color: var(--cyan-dim); }
+.lp-ev-num:focus { outline: none; border-color: var(--cyan-dim); color: var(--text); }
 .lp-ev-num::-webkit-outer-spin-button, .lp-ev-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.lp-ev-final { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-align: right; letter-spacing: .02em; }
+/* EV total chip */
+.lp-ev-total { font-family: var(--font-mono); font-size: 7px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border: 1px solid var(--hairline-2); border-radius: 999px; }
 .lp-ev-final { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-align: right; }
 
 /* Bottom paste strip */
@@ -1523,13 +1546,17 @@ function renderSlots() {
         const nc = lpNatChar(slot, k);
         const fs = lpFinalStat(k, slot.pokemon[bk], slot.ivs[k], slot.evs[k], nc);
         const col = nc>0 ? 'var(--lime)' : nc<0 ? 'var(--red)' : 'var(--text)';
+        const sc = STAT_COLOR[bk] || 'var(--cyan)';
+        const fill = (slot.evs[k]||0) / 252 * 100;
         return `<div class="lp-ev-row">
-          <span class="lp-ev-name">${lbl}</span>
-          <input type="range" class="lp-ev-slider" id="lp-evs-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setEV(${idx},'${k}',this.value)">
+          <span class="lp-ev-name" style="color:${sc}">${lbl}</span>
+          <input type="range" class="lp-ev-slider" id="lp-evs-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" style="--evcol:${sc};--evfill:${fill}%" oninput="setEV(${idx},'${k}',this.value)">
           <input type="number" class="lp-ev-num" id="lp-evn-${idx}-${k}" min="0" max="252" step="4" value="${slot.evs[k]}" oninput="setEV(${idx},'${k}',this.value)">
           <span class="lp-ev-final" id="lp-fs-${idx}-${k}" style="color:${col}" title="Stat at Lv100">${fs}</span>
         </div>`;
       }).join('');
+      // IV column header (stat-colored) so each IV input is labelled with its stat
+      const ivHdr = EVIV_STATS.map(([k,lbl,bk]) => `<span style="color:${STAT_COLOR[bk]||'var(--text-dim)'}">${lbl}</span>`).join('');
       const ivInputs = EVIV_STATS.map(([k,lbl]) => `<input class="lp-stat-in" type="number" min="0" max="31" value="${slot.ivs[k]}" oninput="setIV(${idx},'${k}',this.value)" title="${lbl} IV">`).join('');
       const evTot = EVIV_STATS.reduce((s,[k]) => s + (slot.evs[k]||0), 0);
 
@@ -1563,11 +1590,12 @@ function renderSlots() {
             </div>
           </div>
           <div class="lp-field-row">
-            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" style="color:${evTot>508?'var(--red)':'var(--text-dim)'}">· ${evTot}/508</span> <span style="color:var(--text-dim);font-weight:400;font-size:7px">drag · Lv100 stat →</span></label>
+            <label class="lp-field-label">EVs <span id="lp-evtot-${idx}" class="lp-ev-total" style="color:${evTot>508?'var(--red)':'var(--text-dim)'};border-color:${evTot>508?'var(--red)':'var(--hairline-2)'}">${evTot}/508</span> <span style="color:var(--text-dim);font-weight:400;font-size:7px">drag · Lv100 →</span></label>
             ${evRows}
           </div>
           <div class="lp-field-row">
             <label class="lp-field-label">IVs</label>
+            <div class="lp-stat-grid lp-stat-hdr">${ivHdr}</div>
             <div class="lp-stat-grid">${ivInputs}</div>
           </div>
           ${datalist}
@@ -1596,18 +1624,23 @@ function updateEVTotal(idx) {
   const el = document.getElementById('lp-evtot-' + idx);
   if (!el) return;
   const tot = EVIV_STATS.reduce((s, [k]) => s + (lineup[idx].evs[k] || 0), 0);
-  el.textContent = '· ' + tot + '/508';
-  el.style.color = tot > 508 ? 'var(--red)' : 'var(--text-dim)';
+  el.textContent = tot + '/508';
+  const over = tot > 508;
+  el.style.color = over ? 'var(--red)' : 'var(--text-dim)';
+  el.style.borderColor = over ? 'var(--red)' : 'var(--hairline-2)';
 }
-// EV: clamp 0-252, keep the slider + number in sync, refresh final stat + total.
+// EV: clamp 0-252 AND to the remaining 508-total budget (slider can't exceed it),
+// keep the slider fill + number in sync, refresh final stat + total.
 function setEV(idx, key, val) {
   let n = parseInt(val, 10); if (isNaN(n)) n = 0;
   n = Math.max(0, Math.min(252, n));
+  const others = EVIV_STATS.reduce((s, [k2]) => s + (k2 === key ? 0 : (lineup[idx].evs[k2] || 0)), 0);
+  n = Math.min(n, Math.max(0, 508 - others));   // never let the team total exceed 508
   lineup[idx].evs[key] = n;
   const s = document.getElementById(`lp-evs-${idx}-${key}`);
   const num = document.getElementById(`lp-evn-${idx}-${key}`);
-  if (s && +s.value !== n) s.value = n;
-  if (num && +num.value !== n) num.value = n;
+  if (s)   { s.value = n; s.style.setProperty('--evfill', (n / 252 * 100) + '%'); }
+  if (num) num.value = n;
   updateFinalStats(idx);
   updateEVTotal(idx);
 }
