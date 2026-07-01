@@ -156,7 +156,7 @@
 .lp-btn.danger  { background: transparent; border: 1px solid var(--red); color: var(--red); }
 
 .lp-body {
-  flex: 1; display: grid; grid-template-columns: 200px 1fr 236px;
+  flex: 1; display: grid; grid-template-columns: 200px 1fr 300px;
   min-height: 0; overflow: hidden;
 }
 .lp-body.opp-off { grid-template-columns: 200px 1fr 34px; }
@@ -220,10 +220,10 @@
   scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
 }
 .lp-opp-mon {
-  display: flex; align-items: center; gap: 7px;
-  padding: 5px 7px; background: var(--panel-2); border: 1px solid var(--hairline);
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 6px 7px; background: var(--panel-2); border: 1px solid var(--hairline);
 }
-.lp-opp-mon img { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+.lp-opp-mon img { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
 .lp-opp-name {
   font-family: var(--font-mono); font-size: 9px; color: var(--text-mute);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize;
@@ -1557,16 +1557,37 @@ function renderOppPanel() {
   el.innerHTML = team.map(p => {
     const types = [p.type1, p.type2].filter(Boolean).map(t =>
       `<span style="font-size:7px;font-weight:700;font-family:var(--font-mono);background:${(TYPE_COLORS[t]||'#374151')}20;color:${TYPE_COLORS[t]||'#9ca3af'};border:1px solid ${(TYPE_COLORS[t]||'#374151')}30;padding:0 3px;border-radius:1px">${t}</span>`).join('');
+    const abils = [p.ability1, p.ability2, p.ability3].filter(Boolean).join(' · ');
     const bst = STAT_KEYS.reduce((s, k) => s + (p[k] || 0), 0);
-    const stats = STAT_KEYS.map(k =>
-      `<span title="${STAT_LABEL[k]}" style="color:${STAT_COLOR[k]};font-weight:${k === 'spe' ? 700 : 500}">${p[k] || 0}</span>`
-    ).join('<span style="color:var(--text-dim)">/</span>');
+    // Per-stat bars (scaled so ~200 fills the track)
+    const bars = STAT_KEYS.map(k => {
+      const v = p[k] || 0, pct = Math.min(100, v / 200 * 100), c = STAT_COLOR[k];
+      return `<div style="display:flex;align-items:center;gap:4px;line-height:1">
+        <span style="width:26px;color:${c};font-size:7px;font-family:var(--font-mono);font-weight:700">${STAT_LABEL[k]}</span>
+        <div style="flex:1;height:4px;background:rgba(255,255,255,.06)"><div style="height:100%;width:${pct}%;background:${c};box-shadow:0 0 4px ${c}66"></div></div>
+        <span style="width:20px;text-align:right;font-size:8px;font-family:var(--font-mono);color:${c};font-weight:${k === 'spe' ? 700 : 500}">${v}</span>
+      </div>`;
+    }).join('');
+    // Speed-creep benchmarks: what final Speed you need to outrun this mon
+    const s0 = spdTarget(p, ''), sMax = spdTarget(p, 'fast'), sPlus = spdTarget(p, 'max'), sScarf = Math.floor(sPlus * 1.5);
+    const spdLine = `<div style="font-family:var(--font-mono);font-size:7.5px;color:var(--text-dim);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <span style="color:var(--magenta);font-weight:700">SPE&#9656;</span>
+      <span title="0 EV, neutral nature">0 <b style="color:var(--text-mute)">${s0}</b></span>
+      <span title="252 EV, neutral nature">252 <b style="color:var(--text-mute)">${sMax}</b></span>
+      <span title="252 EV, positive nature">+ <b style="color:#ff6fae">${sPlus}</b></span>
+      <span title="Choice Scarf on 252+ (x1.5)">scarf <b style="color:#ffce6b">${sScarf}</b></span>
+    </div>`;
     return `<div class="lp-opp-mon">
       <img src="${p.sprite_anim || p.sprite || ''}" onerror="if(this.dataset.fb){this.style.opacity='0.2'}else{this.dataset.fb=1;this.src='${p.sprite || ''}'}">
       <div style="min-width:0;flex:1">
-        <div class="lp-opp-name">${p.name}</div>
-        <div class="lp-opp-types">${types}</div>
-        <div class="lp-opp-stats">${stats}<span style="color:var(--text-dim);margin-left:auto">${bst}</span></div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
+          <span class="lp-opp-name">${p.name}</span>
+          <span style="font-family:var(--font-mono);font-size:7px;color:var(--text-dim);flex-shrink:0">BST ${bst}</span>
+        </div>
+        <div class="lp-opp-types" style="margin:2px 0">${types}</div>
+        ${abils ? `<div style="font-family:var(--font-mono);font-size:7.5px;color:var(--text-mute);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${abils}">${abils}</div>` : ''}
+        <div style="display:flex;flex-direction:column;gap:2px">${bars}</div>
+        ${spdLine}
       </div>
     </div>`;
   }).join('');
