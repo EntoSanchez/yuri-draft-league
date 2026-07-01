@@ -6270,8 +6270,10 @@ def api_pokepaste():
         "notes":  "",
     }).encode("utf-8")
     try:
+        # pokepast.es has no JSON API — POST the form to /create, which 303-redirects
+        # to the new paste. urllib follows the redirect, so resp.geturl() is the URL.
         req = _ur.Request(
-            "https://pokepast.es/api/new",
+            "https://pokepast.es/create",
             data=payload,
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -6279,10 +6281,9 @@ def api_pokepaste():
             },
         )
         with _ur.urlopen(req, timeout=12) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-        url = result.get("url") or result.get("link") or ""
-        if not url:
-            return jsonify({"error": "pokepast.es returned no URL", "raw": result}), 502
+            url = resp.geturl() or ""
+        if not url or "pokepast.es/" not in url or url.rstrip("/").endswith("create"):
+            return jsonify({"error": "pokepast.es did not return a paste URL"}), 502
         return jsonify({"url": url})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 502
