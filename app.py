@@ -4785,6 +4785,19 @@ def _build_draft_grid(coaches_pool, roster_rows, tier_order=None):
 
 # ─── Plan Griffin helpers ──────────────────────────────────────────────────────
 
+# Legal uber pairings are UNORDERED (from the uber_combination options):
+# {Platinum} solo, {Gold, Bronze}, {Silver, Bronze}, {Silver, Silver}, {Bronze, Bronze}.
+# This map MUST stay symmetric — if A is a valid partner for B, then B must be a valid
+# partner for A — otherwise a legal combo gets rejected depending on draft order
+# (the Bronze→Gold case was the bug: Gold+Bronze was only accepted Gold-first).
+_UBER_VALID_SECONDS = {
+    "Platinum": set(),
+    "Gold":     {"Bronze"},
+    "Silver":   {"Silver", "Bronze"},
+    "Bronze":   {"Gold", "Silver", "Bronze"},
+}
+
+
 def _can_add_uber(existing_named, new_named):
     """True if new_named is a valid next uber pick given existing uber named tiers."""
     if new_named not in UBER_NAMED_TIERS:
@@ -4795,13 +4808,7 @@ def _can_add_uber(existing_named, new_named):
     if slots_used == 0:
         return True
     first = existing_named[0]
-    valid_seconds = {
-        "Platinum": set(),
-        "Gold":     {"Bronze"},
-        "Silver":   {"Silver", "Bronze"},
-        "Bronze":   {"Silver", "Bronze"},
-    }
-    return new_named in valid_seconds.get(first, set())
+    return new_named in _UBER_VALID_SECONDS.get(first, set())
 
 
 def _valid_uber_second_choices(existing_named):
@@ -4812,12 +4819,7 @@ def _valid_uber_second_choices(existing_named):
     if slots_used == 0:
         return set(UBER_NAMED_TIERS)
     first = existing_named[0]
-    return {
-        "Platinum": set(),
-        "Gold":     {"Bronze"},
-        "Silver":   {"Silver", "Bronze"},
-        "Bronze":   {"Silver", "Bronze"},
-    }.get(first, set())
+    return set(_UBER_VALID_SECONDS.get(first, set()))
 
 
 def _get_coach_uber_named_tiers(db, coach_id, session_id):
