@@ -156,11 +156,9 @@
 .lp-btn.danger  { background: transparent; border: 1px solid var(--red); color: var(--red); }
 
 .lp-body {
-  flex: 1; display: grid; grid-template-columns: 200px 1fr 300px;
+  flex: 1; display: grid; grid-template-columns: 200px 1fr;
   min-height: 0; overflow: hidden;
 }
-.lp-body.opp-off { grid-template-columns: 200px 1fr 34px; }
-.lp-body.opp-off .lp-opp-list, .lp-body.opp-off #lp-opp-title { display: none; }
 
 /* Roster sidebar */
 .lp-roster {
@@ -196,13 +194,16 @@
   text-transform: capitalize;
 }
 
-/* Opponent reference panel (right column of the builder) */
+/* Opponent reference strip (full-width bottom of the builder) */
 .lp-opp {
-  background: var(--panel); border-left: 1px solid var(--hairline-2);
-  display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  flex-shrink: 0; background: var(--panel);
+  border-top: 1px solid var(--hairline-2);
+  display: flex; flex-direction: column; overflow: hidden;
+  max-height: 210px;
 }
+.lp-opp.collapsed .lp-opp-list { display: none; }
 .lp-opp-head {
-  padding: 8px 10px; border-bottom: 1px solid var(--hairline);
+  padding: 6px 12px; border-bottom: 1px solid var(--hairline);
   font-family: var(--font-mono); font-size: 10px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; color: var(--magenta);
   flex-shrink: 0; display: flex; align-items: center; gap: 8px;
@@ -211,17 +212,18 @@
 .lp-opp-tog {
   background: var(--panel-2); border: 1px solid var(--hairline-2); color: var(--text-dim);
   font-family: var(--font-mono); font-size: 13.5px; line-height: 1; cursor: pointer;
-  width: 20px; height: 18px; flex-shrink: 0; padding: 0;
+  width: 22px; height: 20px; flex-shrink: 0; padding: 0;
 }
 .lp-opp-tog:hover { color: var(--magenta); border-color: var(--magenta-dim); }
 .lp-opp-list {
-  flex: 1; overflow-y: auto; padding: 6px;
-  display: flex; flex-direction: column; gap: 4px;
+  flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; padding: 8px 10px;
+  display: flex; flex-direction: row; gap: 7px; align-items: stretch;
   scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
 }
 .lp-opp-mon {
-  display: flex; align-items: flex-start; gap: 7px;
-  padding: 6px 7px; background: var(--panel-2); border: 1px solid var(--hairline);
+  flex: 0 0 250px; box-sizing: border-box;
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 10px; background: var(--panel-2); border: 1px solid var(--hairline);
 }
 .lp-opp-mon img { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
 .lp-opp-name {
@@ -422,10 +424,10 @@
   #hm-content { overflow-x: auto !important; }
   #bp-type-chart { min-width: 500px; }
 
-  /* Lineup modal: stack roster / slots / opponent vertically */
-  .lp-body, .lp-body.opp-off { grid-template-columns: 1fr !important; grid-template-rows: auto 1fr auto !important; }
+  /* Lineup modal: roster above slots; opponent strip stays full-width at the bottom */
+  .lp-body { grid-template-columns: 1fr !important; grid-template-rows: auto 1fr !important; }
   .lp-roster { max-height: 160px; border-right: none !important; border-bottom: 1px solid var(--hairline-2); }
-  .lp-opp { max-height: 200px; border-left: none !important; border-top: 1px solid var(--hairline-2); }
+  .lp-opp { max-height: 44vh; }
   .lp-topbar { flex-wrap: wrap; gap: 6px; }
 
   /* Team selector: full width */
@@ -628,15 +630,15 @@
       <!-- rendered by JS -->
     </div>
 
-    <!-- Opponent reference (full drafted roster + stats) -->
-    <div class="lp-opp" id="lp-opp-panel">
-      <div class="lp-opp-head">
-        <span id="lp-opp-title">// OPPONENT</span>
-        <button class="lp-opp-tog" id="lp-opp-tog" onclick="toggleOppPanel()" title="Show/hide opponent">–</button>
-      </div>
-      <div class="lp-opp-list" id="lp-opp-list"></div>
-    </div>
+  </div>
 
+  <!-- Opponent reference strip (full drafted roster + stats) -->
+  <div class="lp-opp" id="lp-opp-panel">
+    <div class="lp-opp-head">
+      <span id="lp-opp-title">// OPPONENT</span>
+      <button class="lp-opp-tog" id="lp-opp-tog" onclick="toggleOppPanel()" title="Show/hide opponent">–</button>
+    </div>
+    <div class="lp-opp-list" id="lp-opp-list"></div>
   </div>
 
   <!-- Paste bar -->
@@ -1536,11 +1538,11 @@ function openLineup() {
   renderSlots();
 }
 function toggleOppPanel() {
-  const body = document.querySelector('#lp-modal .lp-body');
+  const panel = document.getElementById('lp-opp-panel');
   const tog = document.getElementById('lp-opp-tog');
-  if (!body) return;
-  body.classList.toggle('opp-off');
-  if (tog) tog.textContent = body.classList.contains('opp-off') ? '+' : '–';
+  if (!panel) return;
+  panel.classList.toggle('collapsed');
+  if (tog) tog.textContent = panel.classList.contains('collapsed') ? '+' : '–';
 }
 function renderOppPanel() {
   const el = document.getElementById('lp-opp-list');
