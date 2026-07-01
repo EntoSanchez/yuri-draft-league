@@ -46,3 +46,27 @@ def test_unchecked_mechanic_checkboxes_force_zero(client, app_mod):
         got = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM league_settings")}
     assert got.get("mechanic_mega") == "0"
     assert got.get("mechanic_uber") == "0"
+
+
+def test_has_section_headings(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    for heading in ["League Identity", "Schedule & Matches", "Battle Mechanics",
+                    "Uber Picks", "Draft Format", "Mega Tiers", "Playoffs",
+                    "At a Glance"]:
+        assert heading in html, f"missing section: {heading}"
+
+
+def test_surfaces_mega_tier_inputs(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    for f in ["mega_platinum_pts", "mega_gold_pts", "mega_silver_pts", "mega_bronze_pts"]:
+        assert f'name="{f}"' in html, f"missing mega input: {f}"
+
+
+def test_mega_tiers_persist(client, app_mod):
+    client.post("/admin/settings", data={
+        "league_name": "X", "mega_platinum_pts": "30", "mega_gold_pts": "29",
+        "mega_silver_pts": "28", "mega_bronze_pts": "27",
+    })
+    with app_mod.get_db() as db:
+        got = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM league_settings")}
+    assert got.get("mega_platinum_pts") == "30" and got.get("mega_bronze_pts") == "27"
