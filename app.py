@@ -4734,24 +4734,31 @@ DEFAULT_ROUND_STRUCTURE = [
 ]
 
 
-def _get_snake_pick_sequence(snake_order, round_structure):
-    """Return flat list of (pick_number, round_idx, slot_name, coach_id) tuples."""
+def _get_snake_pick_sequence(snake_order, round_structure, order_method=None):
+    """Flat list of (pick_number, round_idx, slot_name, coach_id).
+    order_method 'snake' reverses each alternate pass; 'linear' keeps the same order.
+    None resolves to the configured draft_order_method (default 'snake')."""
+    if order_method is None:
+        order_method = get_draft_order_method()
     picks = []
     pick_num = 1
     for round_idx, rnd in enumerate(round_structure):
         picks_per = rnd["picks_per_coach"]
         for pass_num in range(picks_per):
-            order = snake_order if (round_idx * picks_per + pass_num) % 2 == 0 else list(reversed(snake_order))
+            if order_method == "linear":
+                order = snake_order
+            else:
+                order = snake_order if (round_idx * picks_per + pass_num) % 2 == 0 else list(reversed(snake_order))
             for coach_id in order:
                 picks.append((pick_num, round_idx, rnd["name"], coach_id))
                 pick_num += 1
     return picks
 
 
-def _get_pool_sequence(snake_order, pool_coach_ids, round_structure):
-    """Return snake sequence for a single pool (filters snake_order to pool coaches only)."""
+def _get_pool_sequence(snake_order, pool_coach_ids, round_structure, order_method=None):
+    """Snake/linear sequence for a single pool (filters snake_order to pool coaches)."""
     pool_order = [c for c in snake_order if c in pool_coach_ids]
-    return _get_snake_pick_sequence(pool_order, round_structure)
+    return _get_snake_pick_sequence(pool_order, round_structure, order_method)
 
 
 def _auto_slot(pokemon_name, poke_pts, mega_names_set, existing_roster_rows):
