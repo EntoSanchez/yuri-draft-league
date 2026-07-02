@@ -5417,17 +5417,18 @@ def draft_live_pick():
             is_uber = False
             effective_uber_tier = ""
 
-        # First overall pick must be a regular-tier pokemon (not mega, must have pts ≥ 1)
-        if pick_num == 1 and (is_mega or points < 1):
+        # First overall pick must be a regular-tier pokemon (not mega, pts ≥ 1) — configurable.
+        if get_first_pick_regular(db) and pick_num == 1 and (is_mega or points < 1):
             flash("The first pick must be a regular-tier Pokemon (not Mega).", "warning")
             return redirect(url_for("draft_live"))
 
-        # Enforce max 10 picks per team (8 regular + 2 uber)
+        # Enforce the roster cap (configurable; default 10).
+        roster_size = get_roster_size(db)
         team_pick_count = db.execute(
             "SELECT COUNT(*) FROM pokemon_roster WHERE coach_id=?", (coach_id,)
         ).fetchone()[0]
-        if team_pick_count >= 10:
-            flash(f"This team already has {team_pick_count} picks (max 10).", "warning")
+        if team_pick_count >= roster_size:
+            flash(f"This team already has {team_pick_count} picks (max {roster_size}).", "warning")
             return redirect(url_for("draft_live"))
 
         # ── Plan Griffin validation ──────────────────────────────────────────
@@ -5540,7 +5541,7 @@ def draft_live_pick():
             (ck, session_row["id"]),
         ).fetchone()
         owed = (cnt_row[0] or 0) if cnt_row else 0
-        has_room = (team_pick_count + 1) < 10
+        has_room = (team_pick_count + 1) < roster_size
         if owed > 0 and has_room:
             db.execute(
                 "UPDATE draft_sessions SET banked_picks = "
