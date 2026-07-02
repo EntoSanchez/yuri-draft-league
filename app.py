@@ -2577,13 +2577,18 @@ def admin_tiers_quick_pts():
 # ─── Draft Board ─────────────────────────────────────────────────────────────
 
 def _regular_tier_label(pts):
-    """Map point value to Tier 1–5 label for regular (non-Mega) Pokemon."""
-    if pts >= 16: return "Tier 1"
-    if pts >= 13: return "Tier 2"
-    if pts >= 9:  return "Tier 3"
-    if pts >= 5:  return "Tier 4"
-    if pts >= 0:  return "Tier 5"
-    return ""
+    """Map point value to a regular tier name via configured tier_definitions.
+    Points explicitly listed in a tier's columns map to it; points outside all
+    listed columns fall back to the highest tier whose smallest column is <= pts
+    (threshold semantics). The default definitions reproduce the 16/13/9/5 tiers."""
+    defs = get_tier_definitions()
+    for t in defs:
+        if pts in t["columns"]:
+            return t["name"]
+    for t in defs:  # defs are ordered best->worst; first match is the highest tier
+        if t["columns"] and pts >= min(t["columns"]):
+            return t["name"]
+    return defs[-1]["name"] if defs else ""
 
 
 def _mega_tier_label(pts, settings):

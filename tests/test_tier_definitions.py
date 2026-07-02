@@ -29,3 +29,35 @@ def test_stored_definitions_override_and_derive(app_mod):
                    (json.dumps(stored),))
     assert app_mod.get_ticket_alloc()["T1"] == 3
     assert app_mod.get_tier_to_ticket()["Tier 1"] == "T1"
+
+
+def _old_regular_tier_label(pts):
+    if pts >= 16: return "Tier 1"
+    if pts >= 13: return "Tier 2"
+    if pts >= 9:  return "Tier 3"
+    if pts >= 5:  return "Tier 4"
+    if pts >= 0:  return "Tier 5"
+    return ""
+
+
+def test_regular_tier_label_matches_old_for_0_to_30(app_mod):
+    for pts in range(0, 31):
+        assert app_mod._regular_tier_label(pts) == _old_regular_tier_label(pts), f"diff at {pts}"
+
+
+def test_regular_tier_label_honors_custom_columns(app_mod):
+    import json
+    # Inverted columns (low pts -> Tier 1, high pts -> Tier 5) so results DIFFER from
+    # the old thresholds — the test must fail against old code and pass after the refactor.
+    stored = [
+        {"name": "Tier 1", "columns": [0, 1], "ticket_alloc": 1},     # old would call 0 -> Tier 5
+        {"name": "Tier 2", "columns": [2, 3], "ticket_alloc": 1},
+        {"name": "Tier 3", "columns": [4, 5], "ticket_alloc": 1},
+        {"name": "Tier 4", "columns": [6, 7], "ticket_alloc": 1},
+        {"name": "Tier 5", "columns": [16, 17], "ticket_alloc": 1},   # old would call 16 -> Tier 1
+    ]
+    with app_mod.get_db() as db:
+        db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('tier_definitions', ?)",
+                   (json.dumps(stored),))
+    assert app_mod._regular_tier_label(0) == "Tier 1"    # old code: "Tier 5"
+    assert app_mod._regular_tier_label(16) == "Tier 5"   # old code: "Tier 1"
