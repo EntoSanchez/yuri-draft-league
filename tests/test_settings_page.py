@@ -125,3 +125,16 @@ def test_tier_field_rows_not_stored_raw(client, app_mod):
         keys = {r["key"] for r in db.execute("SELECT key FROM league_settings")}
     assert "tier_cols_1" not in keys and "tier_alloc_1" not in keys
     assert "tier_definitions" in keys
+
+
+def test_has_draft_mode_policy(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    assert "Draft Mode Policy" in html
+    assert 'name="draft_mode_policy"' in html
+
+
+def test_draft_mode_policy_persists(client, app_mod):
+    client.post("/admin/settings", data={"league_name": "X", "draft_mode_policy": "only_points"})
+    with app_mod.get_db() as db:
+        got = db.execute("SELECT value FROM league_settings WHERE key='draft_mode_policy'").fetchone()["value"]
+    assert got == "only_points"
