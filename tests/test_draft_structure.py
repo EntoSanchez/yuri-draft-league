@@ -115,3 +115,15 @@ def test_randomize_order_permutes_snake(client, app_mod):
         so = _json.loads(db.execute("SELECT snake_order FROM draft_sessions WHERE id=7").fetchone()["snake_order"])
     assert sorted(so) == [1, 2, 3, 4, 5, 6, 7, 8]  # same members, permutation preserved
     assert so != [1, 2, 3, 4, 5, 6, 7, 8]  # order must actually change (seeded shuffle != identity)
+
+
+def test_randomize_order_blocked_when_not_setup(client, app_mod):
+    # Reshuffling an in-progress draft would scramble slots — must be refused.
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM draft_sessions")
+        db.execute("INSERT INTO draft_sessions (id, name, status, snake_order) "
+                   "VALUES (8,'S','active','[1, 2, 3, 4, 5, 6, 7, 8]')")
+    client.post("/admin/draft", data={"action": "randomize_order", "session_id": "8"})
+    with app_mod.get_db() as db:
+        so = _json.loads(db.execute("SELECT snake_order FROM draft_sessions WHERE id=8").fetchone()["snake_order"])
+    assert so == [1, 2, 3, 4, 5, 6, 7, 8]  # unchanged — active draft not randomizable

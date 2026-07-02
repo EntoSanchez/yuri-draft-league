@@ -5534,7 +5534,7 @@ def draft_live_pick():
         #    (json_set), so a concurrent pick in the OTHER pool can't clobber it.
         #  - only re-arm if the coach still has roster room (team_pick_count was the
         #    PRE-insert count, so they now hold team_pick_count+1); otherwise the
-        #    makeup could never satisfy the 10-pick cap and would freeze the pool.
+        #    makeup could never satisfy the roster cap and would freeze the pool.
         ck = str(coach_id)
         cnt_row = db.execute(
             "SELECT json_extract(COALESCE(banked_picks,'{}'), '$.\"'||?||'\"') FROM draft_sessions WHERE id=?",
@@ -5821,8 +5821,12 @@ def admin_draft():
         elif action == "randomize_order":
             sid = request.form.get("session_id")
             with get_db() as db:
-                row = db.execute("SELECT snake_order FROM draft_sessions WHERE id=?", (sid,)).fetchone()
-                if row:
+                row = db.execute("SELECT snake_order, status FROM draft_sessions WHERE id=?", (sid,)).fetchone()
+                if row and row["status"] != "setup":
+                    # Reshuffling mid-draft would scramble already-consumed and future
+                    # slots (the sequence is recomputed from snake_order each pick).
+                    flash("Can only randomize order before the draft starts (status: setup).", "warning")
+                elif row:
                     ids = json.loads(row["snake_order"] or "[]")
                     random.shuffle(ids)
                     db.execute("UPDATE draft_sessions SET snake_order=? WHERE id=?",
