@@ -145,6 +145,27 @@
     {{ txt('points_budget', 'Points Budget (Legacy)', 'number', 'e.g. 45') }}
   </section>
 
+  <!-- ── Tier Definitions ── -->
+  <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3">
+    <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Tier Definitions</h2>
+    <p class="text-xs text-gray-500">Which point values belong to each tier, and how many tickets each tier gets. Default reproduces T1 ≥16 · T2 13–15 · T3 9–12 · T4 5–8 · T5 0–4.</p>
+    <div class="space-y-2">
+      <div class="grid grid-cols-[70px_1fr_70px] gap-2 text-xs text-gray-500 font-semibold">
+        <span>Tier</span><span>Point columns (comma-separated)</span><span>Tickets</span>
+      </div>
+      {% for t in tier_defs %}
+      <div class="grid grid-cols-[70px_1fr_70px] gap-2 items-center">
+        <span class="text-sm text-gray-300 font-semibold">{{ t.name }}</span>
+        <input type="text" name="tier_cols_{{ loop.index }}" value="{{ t.columns | join(', ') }}"
+               class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+        <input type="number" name="tier_alloc_{{ loop.index }}" value="{{ t.ticket_alloc }}" min="0"
+               class="bg-gray-800 border border-gray-600 rounded px-2 py-2 text-white text-sm">
+      </div>
+      {% endfor %}
+    </div>
+    <p class="text-xs text-gray-600">Uber points (27–30) are handled by the Uber system regardless of tier columns.</p>
+  </section>
+
   <!-- ── Draft Structure ── -->
   <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-4">
     <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Draft Structure</h2>

@@ -2737,10 +2737,22 @@ def admin_settings():
                         "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                         (checkbox_key, "0")
                     )
+            # Assemble tier_definitions from the per-tier editor fields (fixed 5 tiers).
+            if any(k.startswith("tier_cols_") for k in request.form):
+                tdefs = []
+                for i, name in enumerate(["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"], start=1):
+                    cols_raw = request.form.get(f"tier_cols_{i}", "")
+                    cols = [int(x) for x in re.split(r"[,\s]+", cols_raw.strip())
+                            if x.strip().lstrip("-").isdigit()]
+                    alloc = int(request.form.get(f"tier_alloc_{i}", "0") or 0)
+                    tdefs.append({"name": name, "columns": cols, "ticket_alloc": alloc})
+                db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('tier_definitions', ?)",
+                           (json.dumps(tdefs),))
         flash("Settings saved!", "success")
         return redirect(url_for("admin_settings"))
     return render_template("admin/settings.html",
                            settings=settings,
+                           tier_defs=get_tier_definitions(),
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
