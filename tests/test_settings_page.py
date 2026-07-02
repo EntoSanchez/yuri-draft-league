@@ -1,6 +1,7 @@
 # tests/test_settings_page.py
 """B1: the settings page must keep every existing key editable and persist it.
 Guards the section reorg against silently dropping a field."""
+import json as _json
 
 # Every editable input name currently on /admin/settings.
 EDITABLE_FIELDS = [
@@ -89,3 +90,38 @@ def test_draft_structure_persists(client, app_mod):
     assert got.get("roster_size") == "12"
     assert got.get("draft_order_method") == "linear"
     assert got.get("first_pick_regular") == "0"
+
+
+def test_has_tier_definitions_editor(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    assert "Tier Definitions" in html
+    for i in (1, 2, 3, 4, 5):
+        assert f'name="tier_cols_{i}"' in html
+        assert f'name="tier_alloc_{i}"' in html
+
+
+def test_tier_definitions_assembled_and_persisted(client, app_mod):
+    client.post("/admin/settings", data={
+        "league_name": "X",
+        "tier_cols_1": "16,17,18", "tier_alloc_1": "2",
+        "tier_cols_2": "13,14,15", "tier_alloc_2": "1",
+        "tier_cols_3": "9,10,11,12", "tier_alloc_3": "2",
+        "tier_cols_4": "5,6,7,8", "tier_alloc_4": "2",
+        "tier_cols_5": "0,1,2,3,4", "tier_alloc_5": "2",
+    })
+    with app_mod.get_db() as db:
+        raw = db.execute("SELECT value FROM league_settings WHERE key='tier_definitions'").fetchone()["value"]
+    defs = _json.loads(raw)
+    assert defs[0] == {"name": "Tier 1", "columns": [16, 17, 18], "ticket_alloc": 2}
+    assert len(defs) == 5 and defs[4]["columns"] == [0, 1, 2, 3, 4]
+
+
+def test_tier_field_rows_not_stored_raw(client, app_mod):
+    # The per-tier form fields are assembled into tier_definitions, not persisted raw.
+    client.post("/admin/settings", data={
+        "league_name": "X", "tier_cols_1": "16,17", "tier_alloc_1": "2",
+    })
+    with app_mod.get_db() as db:
+        keys = {r["key"] for r in db.execute("SELECT key FROM league_settings")}
+    assert "tier_cols_1" not in keys and "tier_alloc_1" not in keys
+    assert "tier_definitions" in keys

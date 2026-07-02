@@ -2577,13 +2577,18 @@ def admin_tiers_quick_pts():
 # ─── Draft Board ─────────────────────────────────────────────────────────────
 
 def _regular_tier_label(pts):
-    """Map point value to Tier 1–5 label for regular (non-Mega) Pokemon."""
-    if pts >= 16: return "Tier 1"
-    if pts >= 13: return "Tier 2"
-    if pts >= 9:  return "Tier 3"
-    if pts >= 5:  return "Tier 4"
-    if pts >= 0:  return "Tier 5"
-    return ""
+    """Map point value to a regular tier name via configured tier_definitions.
+    Points explicitly listed in a tier's columns map to it; points outside all
+    listed columns fall back to the highest tier whose smallest column is <= pts
+    (threshold semantics). The default definitions reproduce the 16/13/9/5 tiers."""
+    defs = get_tier_definitions()
+    for t in defs:
+        if pts in t["columns"]:
+            return t["name"]
+    for t in defs:  # defs are ordered best->worst; first match is the highest tier
+        if t["columns"] and pts >= min(t["columns"]):
+            return t["name"]
+    return defs[-1]["name"] if defs else ""
 
 
 def _mega_tier_label(pts, settings):
@@ -2715,6 +2720,8 @@ def admin_settings():
             for key, value in request.form.items():
                 if key == "uber_combination":
                     continue  # handled separately below
+                if key.startswith("tier_cols_") or key.startswith("tier_alloc_"):
+                    continue  # assembled into tier_definitions below, not stored raw
                 db.execute(
                     "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                     (key, value)
@@ -2732,10 +2739,22 @@ def admin_settings():
                         "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                         (checkbox_key, "0")
                     )
+            # Assemble tier_definitions from the per-tier editor fields (fixed 5 tiers).
+            if any(k.startswith("tier_cols_") for k in request.form):
+                tdefs = []
+                for i, name in enumerate(["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"], start=1):
+                    cols_raw = request.form.get(f"tier_cols_{i}", "")
+                    cols = [int(x) for x in re.split(r"[,\s]+", cols_raw.strip())
+                            if x.strip().lstrip("-").isdigit()]
+                    alloc = int(request.form.get(f"tier_alloc_{i}", "0") or 0)
+                    tdefs.append({"name": name, "columns": cols, "ticket_alloc": alloc})
+                db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('tier_definitions', ?)",
+                           (json.dumps(tdefs),))
         flash("Settings saved!", "success")
         return redirect(url_for("admin_settings"))
     return render_template("admin/settings.html",
                            settings=settings,
+                           tier_defs=get_tier_definitions(),
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
@@ -4722,6 +4741,53 @@ TICKET_ALLOC   = {"T1": 1, "T2": 1, "T3": 2, "T4": 2, "T5": 2}
 TICKET_RANK    = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "T5": 5}
 TIER_TO_TICKET = {"Tier 1": "T1", "Tier 2": "T2", "Tier 3": "T3", "Tier 4": "T4", "Tier 5": "T5"}
 
+# Configurable tier definitions (B3). DEFAULT reproduces the constants above and the
+# 16/13/9/5 thresholds: columns partition points 0..30 so _regular_tier_label matches.
+DEFAULT_TIER_DEFINITIONS = [
+    {"name": "Tier 1", "columns": list(range(16, 31)), "ticket_alloc": 1},  # 16-30
+    {"name": "Tier 2", "columns": [13, 14, 15],        "ticket_alloc": 1},
+    {"name": "Tier 3", "columns": [9, 10, 11, 12],     "ticket_alloc": 2},
+    {"name": "Tier 4", "columns": [5, 6, 7, 8],        "ticket_alloc": 2},
+    {"name": "Tier 5", "columns": [0, 1, 2, 3, 4],     "ticket_alloc": 2},
+]
+
+
+def get_tier_definitions():
+    """Ordered tier list [{name, columns:[int], ticket_alloc:int}]. Default reproduces
+    the 16/13/9/5 thresholds + TICKET_ALLOC. Malformed stored JSON falls back to default."""
+    raw = get_setting("tier_definitions", "")
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, list) and data:
+                out = []
+                for d in data:
+                    out.append({
+                        "name": str(d.get("name", "")),
+                        "columns": [int(c) for c in d.get("columns", [])],
+                        "ticket_alloc": int(d.get("ticket_alloc", 0) or 0),
+                    })
+                return out
+        except Exception:
+            pass
+    return [{**d, "columns": list(d["columns"])} for d in DEFAULT_TIER_DEFINITIONS]
+
+
+def get_ticket_alloc():
+    """{ticket_key -> allocation}, e.g. {'T1':1,...}. Derived from tier_definitions order."""
+    return {f"T{i+1}": t["ticket_alloc"] for i, t in enumerate(get_tier_definitions())}
+
+
+def get_ticket_rank():
+    """{ticket_key -> rank} (1 = best tier)."""
+    return {f"T{i+1}": i + 1 for i, t in enumerate(get_tier_definitions())}
+
+
+def get_tier_to_ticket():
+    """{tier name -> ticket_key}, e.g. {'Tier 1':'T1',...}."""
+    return {t["name"]: f"T{i+1}" for i, t in enumerate(get_tier_definitions())}
+
+
 DEFAULT_ROUND_STRUCTURE = [
     {"name": "Uber 1",    "tier_filter": "uber",    "picks_per_coach": 2},
     {"name": "Uber 2",    "tier_filter": "uber",    "picks_per_coach": 2},
@@ -4909,7 +4975,8 @@ def _get_coach_draft_state(db, coach_id, session_id):
             t = p["ticket_used"]
             if t and t != "uber":
                 used[t] = used.get(t, 0) + 1
-        remaining_tickets = {t: TICKET_ALLOC[t] - used.get(t, 0) for t in TICKET_ALLOC}
+        _alloc = get_ticket_alloc()
+        remaining_tickets = {t: _alloc[t] - used.get(t, 0) for t in _alloc}
         return {**base, "remaining_tickets": remaining_tickets}
 
 
@@ -5271,8 +5338,8 @@ def draft_live():
         current_draft_state_b=current_draft_state_b,
         last_pick_a=dict(last_pick_a) if last_pick_a else None,
         last_pick_b=dict(last_pick_b) if last_pick_b else None,
-        ticket_alloc=TICKET_ALLOC,
-        tier_to_ticket=TIER_TO_TICKET,
+        ticket_alloc=get_ticket_alloc(),
+        tier_to_ticket=get_tier_to_ticket(),
         mechanic_tera=settings.get("mechanic_tera", "0"),
         mechanic_zmove=settings.get("mechanic_zmove", "0"),
         league_name=settings.get("league_name", "Pokemon Draft League"),
@@ -5467,14 +5534,17 @@ def draft_live_pick():
                 return redirect(url_for("draft_live"))
 
         elif coach_mode == "tier_tickets":
+            _tier_to_ticket = get_tier_to_ticket()
+            _ticket_rank = get_ticket_rank()
+            _ticket_alloc = get_ticket_alloc()
             poke_tier = _regular_tier_label(points)
-            poke_ticket = TIER_TO_TICKET.get(poke_tier)
+            poke_ticket = _tier_to_ticket.get(poke_tier)
             if not poke_ticket:
                 flash("Cannot determine ticket tier for this Pokémon.", "warning")
                 return redirect(url_for("draft_live"))
             chosen_ticket = request.form.get("ticket_used") or poke_ticket
-            chosen_rank = TICKET_RANK.get(chosen_ticket, 999)
-            poke_rank = TICKET_RANK[poke_ticket]
+            chosen_rank = _ticket_rank.get(chosen_ticket, 999)
+            poke_rank = _ticket_rank[poke_ticket]
             if chosen_rank > poke_rank:
                 flash("You cannot use a lower-tier ticket on a higher-tier Pokémon.", "warning")
                 return redirect(url_for("draft_live"))
@@ -5485,7 +5555,7 @@ def draft_live_pick():
                 (session_row["id"], coach_id),
             ).fetchall()
             used_map = {r["ticket_used"]: r["cnt"] for r in used_rows}
-            avail = TICKET_ALLOC.get(chosen_ticket, 0) - used_map.get(chosen_ticket, 0)
+            avail = _ticket_alloc.get(chosen_ticket, 0) - used_map.get(chosen_ticket, 0)
             if avail <= 0:
                 flash(f"No {chosen_ticket} tickets remaining.", "warning")
                 return redirect(url_for("draft_live"))
@@ -6124,7 +6194,7 @@ def admin_draft():
         last_pick_b=dict(last_pick_b) if last_pick_b else None,
         avail_pokemon_a=avail_pokemon_a,
         avail_pokemon_b=avail_pokemon_b,
-        ticket_alloc=TICKET_ALLOC,
+        ticket_alloc=get_ticket_alloc(),
         mechanic_tera=settings.get("mechanic_tera", "0"),
         mechanic_zmove=settings.get("mechanic_zmove", "0"),
         round_structure=round_structure,
