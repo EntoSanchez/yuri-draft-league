@@ -4722,6 +4722,53 @@ TICKET_ALLOC   = {"T1": 1, "T2": 1, "T3": 2, "T4": 2, "T5": 2}
 TICKET_RANK    = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "T5": 5}
 TIER_TO_TICKET = {"Tier 1": "T1", "Tier 2": "T2", "Tier 3": "T3", "Tier 4": "T4", "Tier 5": "T5"}
 
+# Configurable tier definitions (B3). DEFAULT reproduces the constants above and the
+# 16/13/9/5 thresholds: columns partition points 0..30 so _regular_tier_label matches.
+DEFAULT_TIER_DEFINITIONS = [
+    {"name": "Tier 1", "columns": list(range(16, 31)), "ticket_alloc": 1},  # 16-30
+    {"name": "Tier 2", "columns": [13, 14, 15],        "ticket_alloc": 1},
+    {"name": "Tier 3", "columns": [9, 10, 11, 12],     "ticket_alloc": 2},
+    {"name": "Tier 4", "columns": [5, 6, 7, 8],        "ticket_alloc": 2},
+    {"name": "Tier 5", "columns": [0, 1, 2, 3, 4],     "ticket_alloc": 2},
+]
+
+
+def get_tier_definitions():
+    """Ordered tier list [{name, columns:[int], ticket_alloc:int}]. Default reproduces
+    the 16/13/9/5 thresholds + TICKET_ALLOC. Malformed stored JSON falls back to default."""
+    raw = get_setting("tier_definitions", "")
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, list) and data:
+                out = []
+                for d in data:
+                    out.append({
+                        "name": str(d.get("name", "")),
+                        "columns": [int(c) for c in d.get("columns", [])],
+                        "ticket_alloc": int(d.get("ticket_alloc", 0) or 0),
+                    })
+                return out
+        except Exception:
+            pass
+    return [dict(d) for d in DEFAULT_TIER_DEFINITIONS]
+
+
+def get_ticket_alloc():
+    """{ticket_key -> allocation}, e.g. {'T1':1,...}. Derived from tier_definitions order."""
+    return {f"T{i+1}": t["ticket_alloc"] for i, t in enumerate(get_tier_definitions())}
+
+
+def get_ticket_rank():
+    """{ticket_key -> rank} (1 = best tier)."""
+    return {f"T{i+1}": i + 1 for i, t in enumerate(get_tier_definitions())}
+
+
+def get_tier_to_ticket():
+    """{tier name -> ticket_key}, e.g. {'Tier 1':'T1',...}."""
+    return {t["name"]: f"T{i+1}" for i, t in enumerate(get_tier_definitions())}
+
+
 DEFAULT_ROUND_STRUCTURE = [
     {"name": "Uber 1",    "tier_filter": "uber",    "picks_per_coach": 2},
     {"name": "Uber 2",    "tier_filter": "uber",    "picks_per_coach": 2},
