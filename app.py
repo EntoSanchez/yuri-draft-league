@@ -125,6 +125,18 @@ def _migrate_db():
         """)
 
 
+def _apply_mode_policy(mode, draft_format):
+    """Override a per-coach draft mode when the league forces one. Only applies to
+    Griffin format; the default 'combination' policy returns mode unchanged."""
+    if draft_format == "griffin":
+        policy = get_draft_mode_policy()
+        if policy == "only_points":
+            return "points"
+        if policy == "only_tickets":
+            return "tier_tickets"
+    return mode
+
+
 def _effective_draft_mode(coach, draft_format):
     if draft_format != "griffin":
         return "legacy"
@@ -624,6 +636,14 @@ def get_setting(key, default=""):
     with get_db() as db:
         row = db.execute("SELECT value FROM league_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def get_draft_mode_policy():
+    """League draft-mode policy: 'combination' (per-coach, default), 'only_points',
+    or 'only_tickets'. Only 'only_points'/'only_tickets' change behavior, and only
+    for Griffin coaches (see _apply_mode_policy)."""
+    v = get_setting("draft_mode_policy", "combination")
+    return v if v in ("combination", "only_points", "only_tickets") else "combination"
 
 
 def get_roster_size(db):
