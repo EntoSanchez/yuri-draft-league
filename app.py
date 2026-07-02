@@ -5818,6 +5818,18 @@ def admin_draft():
                 )
             flash("Draft session created.", "success")
 
+        elif action == "randomize_order":
+            sid = request.form.get("session_id")
+            with get_db() as db:
+                row = db.execute("SELECT snake_order FROM draft_sessions WHERE id=?", (sid,)).fetchone()
+                if row:
+                    ids = json.loads(row["snake_order"] or "[]")
+                    random.shuffle(ids)
+                    db.execute("UPDATE draft_sessions SET snake_order=? WHERE id=?",
+                               (json.dumps(ids), sid))
+                    flash("Draft order randomized.", "success")
+            return redirect(url_for("admin_draft"))
+
         elif action == "save_rounds":
             rounds_json = request.form.get("rounds_json", "[]")
             with get_db() as db:
