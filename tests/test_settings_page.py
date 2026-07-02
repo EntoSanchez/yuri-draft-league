@@ -114,3 +114,14 @@ def test_tier_definitions_assembled_and_persisted(client, app_mod):
     defs = _json.loads(raw)
     assert defs[0] == {"name": "Tier 1", "columns": [16, 17, 18], "ticket_alloc": 2}
     assert len(defs) == 5 and defs[4]["columns"] == [0, 1, 2, 3, 4]
+
+
+def test_tier_field_rows_not_stored_raw(client, app_mod):
+    # The per-tier form fields are assembled into tier_definitions, not persisted raw.
+    client.post("/admin/settings", data={
+        "league_name": "X", "tier_cols_1": "16,17", "tier_alloc_1": "2",
+    })
+    with app_mod.get_db() as db:
+        keys = {r["key"] for r in db.execute("SELECT key FROM league_settings")}
+    assert "tier_cols_1" not in keys and "tier_alloc_1" not in keys
+    assert "tier_definitions" in keys

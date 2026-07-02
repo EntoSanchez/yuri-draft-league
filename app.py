@@ -2720,6 +2720,8 @@ def admin_settings():
             for key, value in request.form.items():
                 if key == "uber_combination":
                     continue  # handled separately below
+                if key.startswith("tier_cols_") or key.startswith("tier_alloc_"):
+                    continue  # assembled into tier_definitions below, not stored raw
                 db.execute(
                     "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                     (key, value)
@@ -4768,7 +4770,7 @@ def get_tier_definitions():
                 return out
         except Exception:
             pass
-    return [dict(d) for d in DEFAULT_TIER_DEFINITIONS]
+    return [{**d, "columns": list(d["columns"])} for d in DEFAULT_TIER_DEFINITIONS]
 
 
 def get_ticket_alloc():
