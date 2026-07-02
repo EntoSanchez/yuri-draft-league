@@ -2726,7 +2726,7 @@ def admin_settings():
                 ("uber_combination", ",".join(uber_combos) if uber_combos else "")
             )
             # Checkboxes not submitted when unchecked — force to '0' if missing
-            for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber"):
+            for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber", "first_pick_regular"):
                 if checkbox_key not in request.form:
                     db.execute(
                         "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",

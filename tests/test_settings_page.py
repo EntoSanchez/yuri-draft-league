@@ -70,3 +70,22 @@ def test_mega_tiers_persist(client, app_mod):
     with app_mod.get_db() as db:
         got = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM league_settings")}
     assert got.get("mega_platinum_pts") == "30" and got.get("mega_bronze_pts") == "27"
+
+
+def test_has_draft_structure_inputs(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    assert "Draft Structure" in html
+    for f in ["roster_size", "first_pick_regular", "draft_order_method"]:
+        assert f'name="{f}"' in html
+
+
+def test_draft_structure_persists(client, app_mod):
+    client.post("/admin/settings", data={
+        "league_name": "X", "roster_size": "12",
+        "draft_order_method": "linear",  # first_pick_regular omitted -> stored "0"
+    })
+    with app_mod.get_db() as db:
+        got = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM league_settings")}
+    assert got.get("roster_size") == "12"
+    assert got.get("draft_order_method") == "linear"
+    assert got.get("first_pick_regular") == "0"
