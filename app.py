@@ -1,6 +1,7 @@
 import sqlite3
 import hashlib
 import os
+import random
 import json
 import math
 import re
@@ -623,6 +624,27 @@ def get_setting(key, default=""):
     with get_db() as db:
         row = db.execute("SELECT value FROM league_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def get_roster_size(db):
+    """Max picks per team (default 10 — reproduces the hardcoded cap)."""
+    row = db.execute("SELECT value FROM league_settings WHERE key='roster_size'").fetchone()
+    try:
+        return int(row["value"]) if row and row["value"] else 10
+    except (ValueError, TypeError):
+        return 10
+
+
+def get_first_pick_regular(db):
+    """Whether the first overall pick must be a regular-tier mon (default True)."""
+    row = db.execute("SELECT value FROM league_settings WHERE key='first_pick_regular'").fetchone()
+    return (row["value"] if row else "1") != "0"
+
+
+def get_draft_order_method():
+    """'snake' (default, reverses each pass) or 'linear' (same order every pass).
+    No db arg — resolves via get_setting so the pure sequence fns can call it."""
+    return "linear" if get_setting("draft_order_method", "snake") == "linear" else "snake"
 
 
 def _now_iso():
