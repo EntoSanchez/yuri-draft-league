@@ -4961,7 +4961,8 @@ def _get_coach_draft_state(db, coach_id, session_id):
             t = p["ticket_used"]
             if t and t != "uber":
                 used[t] = used.get(t, 0) + 1
-        remaining_tickets = {t: TICKET_ALLOC[t] - used.get(t, 0) for t in TICKET_ALLOC}
+        _alloc = get_ticket_alloc()
+        remaining_tickets = {t: _alloc[t] - used.get(t, 0) for t in _alloc}
         return {**base, "remaining_tickets": remaining_tickets}
 
 
@@ -5323,8 +5324,8 @@ def draft_live():
         current_draft_state_b=current_draft_state_b,
         last_pick_a=dict(last_pick_a) if last_pick_a else None,
         last_pick_b=dict(last_pick_b) if last_pick_b else None,
-        ticket_alloc=TICKET_ALLOC,
-        tier_to_ticket=TIER_TO_TICKET,
+        ticket_alloc=get_ticket_alloc(),
+        tier_to_ticket=get_tier_to_ticket(),
         mechanic_tera=settings.get("mechanic_tera", "0"),
         mechanic_zmove=settings.get("mechanic_zmove", "0"),
         league_name=settings.get("league_name", "Pokemon Draft League"),
@@ -5519,14 +5520,17 @@ def draft_live_pick():
                 return redirect(url_for("draft_live"))
 
         elif coach_mode == "tier_tickets":
+            _tier_to_ticket = get_tier_to_ticket()
+            _ticket_rank = get_ticket_rank()
+            _ticket_alloc = get_ticket_alloc()
             poke_tier = _regular_tier_label(points)
-            poke_ticket = TIER_TO_TICKET.get(poke_tier)
+            poke_ticket = _tier_to_ticket.get(poke_tier)
             if not poke_ticket:
                 flash("Cannot determine ticket tier for this Pokémon.", "warning")
                 return redirect(url_for("draft_live"))
             chosen_ticket = request.form.get("ticket_used") or poke_ticket
-            chosen_rank = TICKET_RANK.get(chosen_ticket, 999)
-            poke_rank = TICKET_RANK[poke_ticket]
+            chosen_rank = _ticket_rank.get(chosen_ticket, 999)
+            poke_rank = _ticket_rank[poke_ticket]
             if chosen_rank > poke_rank:
                 flash("You cannot use a lower-tier ticket on a higher-tier Pokémon.", "warning")
                 return redirect(url_for("draft_live"))
@@ -5537,7 +5541,7 @@ def draft_live_pick():
                 (session_row["id"], coach_id),
             ).fetchall()
             used_map = {r["ticket_used"]: r["cnt"] for r in used_rows}
-            avail = TICKET_ALLOC.get(chosen_ticket, 0) - used_map.get(chosen_ticket, 0)
+            avail = _ticket_alloc.get(chosen_ticket, 0) - used_map.get(chosen_ticket, 0)
             if avail <= 0:
                 flash(f"No {chosen_ticket} tickets remaining.", "warning")
                 return redirect(url_for("draft_live"))
@@ -6176,7 +6180,7 @@ def admin_draft():
         last_pick_b=dict(last_pick_b) if last_pick_b else None,
         avail_pokemon_a=avail_pokemon_a,
         avail_pokemon_b=avail_pokemon_b,
-        ticket_alloc=TICKET_ALLOC,
+        ticket_alloc=get_ticket_alloc(),
         mechanic_tera=settings.get("mechanic_tera", "0"),
         mechanic_zmove=settings.get("mechanic_zmove", "0"),
         round_structure=round_structure,
