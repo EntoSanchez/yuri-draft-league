@@ -140,7 +140,7 @@ def _apply_mode_policy(mode, draft_format):
 def _effective_draft_mode(coach, draft_format):
     if draft_format != "griffin":
         return "legacy"
-    return (coach["draft_mode"] or "tier_tickets")
+    return _apply_mode_policy(coach["draft_mode"] or "tier_tickets", draft_format)
 
 
 def _name_to_slug(name):
@@ -4960,6 +4960,7 @@ def _get_coach_draft_state(db, coach_id, session_id):
     """Returns remaining budget or tickets for a coach, plus uber pick status."""
     coach = db.execute("SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)).fetchone()
     mode = (coach["draft_mode"] or "legacy") if coach else "legacy"
+    mode = _apply_mode_policy(mode, get_setting("draft_format", ""))
 
     picks = db.execute(
         "SELECT points, ticket_used, slot_name FROM draft_picks WHERE session_id=? AND coach_id=?",
@@ -5523,6 +5524,7 @@ def draft_live_pick():
             "SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)
         ).fetchone()
         coach_mode = (coach_mode_row["draft_mode"] or "legacy") if coach_mode_row else "legacy"
+        coach_mode = _apply_mode_policy(coach_mode, get_setting("draft_format", ""))
         ticket_used_val = None
 
         if is_uber:
