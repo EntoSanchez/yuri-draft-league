@@ -459,6 +459,13 @@ function skipPick(pool, sid) {
       <input type="hidden" name="session_id" value="{{ active_session.id }}">
       <button type="submit" class="ad-btn ad-btn-danger">RESET DRAFT</button>
     </form>
+    {% if active_session.status == 'setup' %}
+    <form method="POST" onsubmit="return confirm('Randomize the draft order for this session?')">
+      <input type="hidden" name="action" value="randomize_order">
+      <input type="hidden" name="session_id" value="{{ active_session.id }}">
+      <button type="submit" class="ad-btn ad-btn-ghost">🎲 RANDOMIZE ORDER</button>
+    </form>
+    {% endif %}
   </div>
 </details>
 

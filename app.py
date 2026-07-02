@@ -1,6 +1,7 @@
 import sqlite3
 import hashlib
 import os
+import random
 import json
 import math
 import re
@@ -623,6 +624,27 @@ def get_setting(key, default=""):
     with get_db() as db:
         row = db.execute("SELECT value FROM league_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def get_roster_size(db):
+    """Max picks per team (default 10 — reproduces the hardcoded cap)."""
+    row = db.execute("SELECT value FROM league_settings WHERE key='roster_size'").fetchone()
+    try:
+        return int(row["value"]) if row and row["value"] else 10
+    except (ValueError, TypeError):
+        return 10
+
+
+def get_first_pick_regular(db):
+    """Whether the first overall pick must be a regular-tier mon (default True)."""
+    row = db.execute("SELECT value FROM league_settings WHERE key='first_pick_regular'").fetchone()
+    return (row["value"] if row else "1") != "0"
+
+
+def get_draft_order_method():
+    """'snake' (default, reverses each pass) or 'linear' (same order every pass).
+    No db arg — resolves via get_setting so the pure sequence fns can call it."""
+    return "linear" if get_setting("draft_order_method", "snake") == "linear" else "snake"
 
 
 def _now_iso():
@@ -2704,7 +2726,7 @@ def admin_settings():
                 ("uber_combination", ",".join(uber_combos) if uber_combos else "")
             )
             # Checkboxes not submitted when unchecked — force to '0' if missing
-            for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber"):
+            for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber", "first_pick_regular"):
                 if checkbox_key not in request.form:
                     db.execute(
                         "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
@@ -4712,24 +4734,31 @@ DEFAULT_ROUND_STRUCTURE = [
 ]
 
 
-def _get_snake_pick_sequence(snake_order, round_structure):
-    """Return flat list of (pick_number, round_idx, slot_name, coach_id) tuples."""
+def _get_snake_pick_sequence(snake_order, round_structure, order_method=None):
+    """Flat list of (pick_number, round_idx, slot_name, coach_id).
+    order_method 'snake' reverses each alternate pass; 'linear' keeps the same order.
+    None resolves to the configured draft_order_method (default 'snake')."""
+    if order_method is None:
+        order_method = get_draft_order_method()
     picks = []
     pick_num = 1
     for round_idx, rnd in enumerate(round_structure):
         picks_per = rnd["picks_per_coach"]
         for pass_num in range(picks_per):
-            order = snake_order if (round_idx * picks_per + pass_num) % 2 == 0 else list(reversed(snake_order))
+            if order_method == "linear":
+                order = snake_order
+            else:
+                order = snake_order if (round_idx * picks_per + pass_num) % 2 == 0 else list(reversed(snake_order))
             for coach_id in order:
                 picks.append((pick_num, round_idx, rnd["name"], coach_id))
                 pick_num += 1
     return picks
 
 
-def _get_pool_sequence(snake_order, pool_coach_ids, round_structure):
-    """Return snake sequence for a single pool (filters snake_order to pool coaches only)."""
+def _get_pool_sequence(snake_order, pool_coach_ids, round_structure, order_method=None):
+    """Snake/linear sequence for a single pool (filters snake_order to pool coaches)."""
     pool_order = [c for c in snake_order if c in pool_coach_ids]
-    return _get_snake_pick_sequence(pool_order, round_structure)
+    return _get_snake_pick_sequence(pool_order, round_structure, order_method)
 
 
 def _auto_slot(pokemon_name, poke_pts, mega_names_set, existing_roster_rows):
@@ -5388,17 +5417,18 @@ def draft_live_pick():
             is_uber = False
             effective_uber_tier = ""
 
-        # First overall pick must be a regular-tier pokemon (not mega, must have pts ≥ 1)
-        if pick_num == 1 and (is_mega or points < 1):
+        # First overall pick must be a regular-tier pokemon (not mega, pts ≥ 1) — configurable.
+        if get_first_pick_regular(db) and pick_num == 1 and (is_mega or points < 1):
             flash("The first pick must be a regular-tier Pokemon (not Mega).", "warning")
             return redirect(url_for("draft_live"))
 
-        # Enforce max 10 picks per team (8 regular + 2 uber)
+        # Enforce the roster cap (configurable; default 10).
+        roster_size = get_roster_size(db)
         team_pick_count = db.execute(
             "SELECT COUNT(*) FROM pokemon_roster WHERE coach_id=?", (coach_id,)
         ).fetchone()[0]
-        if team_pick_count >= 10:
-            flash(f"This team already has {team_pick_count} picks (max 10).", "warning")
+        if team_pick_count >= roster_size:
+            flash(f"This team already has {team_pick_count} picks (max {roster_size}).", "warning")
             return redirect(url_for("draft_live"))
 
         # ── Plan Griffin validation ──────────────────────────────────────────
@@ -5504,14 +5534,14 @@ def draft_live_pick():
         #    (json_set), so a concurrent pick in the OTHER pool can't clobber it.
         #  - only re-arm if the coach still has roster room (team_pick_count was the
         #    PRE-insert count, so they now hold team_pick_count+1); otherwise the
-        #    makeup could never satisfy the 10-pick cap and would freeze the pool.
+        #    makeup could never satisfy the roster cap and would freeze the pool.
         ck = str(coach_id)
         cnt_row = db.execute(
             "SELECT json_extract(COALESCE(banked_picks,'{}'), '$.\"'||?||'\"') FROM draft_sessions WHERE id=?",
             (ck, session_row["id"]),
         ).fetchone()
         owed = (cnt_row[0] or 0) if cnt_row else 0
-        has_room = (team_pick_count + 1) < 10
+        has_room = (team_pick_count + 1) < roster_size
         if owed > 0 and has_room:
             db.execute(
                 "UPDATE draft_sessions SET banked_picks = "
@@ -5787,6 +5817,22 @@ def admin_draft():
                     (name, season, "setup", snake_json, 1, 1, 1, 1)
                 )
             flash("Draft session created.", "success")
+
+        elif action == "randomize_order":
+            sid = request.form.get("session_id")
+            with get_db() as db:
+                row = db.execute("SELECT snake_order, status FROM draft_sessions WHERE id=?", (sid,)).fetchone()
+                if row and row["status"] != "setup":
+                    # Reshuffling mid-draft would scramble already-consumed and future
+                    # slots (the sequence is recomputed from snake_order each pick).
+                    flash("Can only randomize order before the draft starts (status: setup).", "warning")
+                elif row:
+                    ids = json.loads(row["snake_order"] or "[]")
+                    random.shuffle(ids)
+                    db.execute("UPDATE draft_sessions SET snake_order=? WHERE id=?",
+                               (json.dumps(ids), sid))
+                    flash("Draft order randomized.", "success")
+            return redirect(url_for("admin_draft"))
 
         elif action == "save_rounds":
             rounds_json = request.form.get("rounds_json", "[]")

@@ -145,6 +145,32 @@
     {{ txt('points_budget', 'Points Budget (Legacy)', 'number', 'e.g. 45') }}
   </section>
 
+  <!-- ── Draft Structure ── -->
+  <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-4">
+    <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Draft Structure</h2>
+    {{ txt('roster_size', 'Roster Size (max picks per team)', 'number', '10') }}
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" name="first_pick_regular" value="1" {% if settings.get('first_pick_regular','1') != '0' %}checked{% endif %} class="w-4 h-4 accent-yellow-500">
+      <span class="text-sm text-gray-300">First overall pick must be a regular-tier Pokémon (not Mega / 0-pt)</span>
+    </label>
+    <div>
+      <label class="block text-sm font-semibold text-gray-300 mb-1">Draft Order</label>
+      <div class="flex gap-3">
+        <label class="flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
+                      {% if settings.get('draft_order_method','snake') != 'linear' %}border-yellow-500 bg-yellow-500/10{% else %}border-gray-600 bg-gray-800{% endif %}">
+          <input type="radio" name="draft_order_method" value="snake" {% if settings.get('draft_order_method','snake') != 'linear' %}checked{% endif %} class="accent-yellow-500">
+          <span class="text-white font-semibold">Snake</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
+                      {% if settings.get('draft_order_method') == 'linear' %}border-yellow-500 bg-yellow-500/10{% else %}border-gray-600 bg-gray-800{% endif %}">
+          <input type="radio" name="draft_order_method" value="linear" {% if settings.get('draft_order_method') == 'linear' %}checked{% endif %} class="accent-yellow-500">
+          <span class="text-white font-semibold">Linear</span>
+        </label>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">Snake reverses each pass; Linear keeps the same order every round. Use <a href="/admin/draft" class="text-yellow-400 hover:underline">Admin → Draft</a> to randomize the order.</p>
+    </div>
+  </section>
+
   <!-- ── Mega Tiers (NEW: previously invisible) ── -->
   <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3">
     <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Mega Tiers</h2>
@@ -176,7 +202,7 @@
       <li>Regular tiers: T1 ≥16 · T2 ≥13 · T3 ≥9 · T4 ≥5 · T5 ≥0 pts</li>
       <li>Uber points: 27 Bronze · 28 Silver · 29 Gold · 30 Platinum</li>
       <li>Ticket allocation: T1:1 · T2:1 · T3:2 · T4:2 · T5:2</li>
-      <li>Roster cap: 10 picks · Uber slots: 2 · First pick must be regular-tier</li>
+      <li>Uber slots per team: 2</li>
     </ul>
   </section>
 
