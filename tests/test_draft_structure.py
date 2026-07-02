@@ -102,11 +102,16 @@ def test_first_pick_rule_off_allows_zero_point(client, app_mod):
 
 
 def test_randomize_order_permutes_snake(client, app_mod):
+    import random as _random
+
     with app_mod.get_db() as db:
         db.execute("DELETE FROM draft_sessions")
         db.execute("INSERT INTO draft_sessions (id, name, status, snake_order) "
                    "VALUES (7,'S','setup','[1, 2, 3, 4, 5, 6, 7, 8]')")
+    # Seed the shared RNG so the shuffle is deterministic; seed(42) produces [4,5,7,8,3,6,1,2].
+    _random.seed(42)
     client.post("/admin/draft", data={"action": "randomize_order", "session_id": "7"})
     with app_mod.get_db() as db:
         so = _json.loads(db.execute("SELECT snake_order FROM draft_sessions WHERE id=7").fetchone()["snake_order"])
     assert sorted(so) == [1, 2, 3, 4, 5, 6, 7, 8]  # same members, permutation preserved
+    assert so != [1, 2, 3, 4, 5, 6, 7, 8]  # order must actually change (seeded shuffle != identity)
