@@ -125,10 +125,22 @@ def _migrate_db():
         """)
 
 
+def _apply_mode_policy(mode, draft_format):
+    """Override a per-coach draft mode when the league forces one. Only applies to
+    Griffin format; the default 'combination' policy returns mode unchanged."""
+    if draft_format == "griffin":
+        policy = get_draft_mode_policy()
+        if policy == "only_points":
+            return "points"
+        if policy == "only_tickets":
+            return "tier_tickets"
+    return mode
+
+
 def _effective_draft_mode(coach, draft_format):
     if draft_format != "griffin":
         return "legacy"
-    return (coach["draft_mode"] or "tier_tickets")
+    return _apply_mode_policy(coach["draft_mode"] or "tier_tickets", draft_format)
 
 
 def _name_to_slug(name):
@@ -624,6 +636,14 @@ def get_setting(key, default=""):
     with get_db() as db:
         row = db.execute("SELECT value FROM league_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def get_draft_mode_policy():
+    """League draft-mode policy: 'combination' (per-coach, default), 'only_points',
+    or 'only_tickets'. Only 'only_points'/'only_tickets' change behavior, and only
+    for Griffin coaches (see _apply_mode_policy)."""
+    v = get_setting("draft_mode_policy", "combination")
+    return v if v in ("combination", "only_points", "only_tickets") else "combination"
 
 
 def get_roster_size(db):
@@ -4940,6 +4960,7 @@ def _get_coach_draft_state(db, coach_id, session_id):
     """Returns remaining budget or tickets for a coach, plus uber pick status."""
     coach = db.execute("SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)).fetchone()
     mode = (coach["draft_mode"] or "legacy") if coach else "legacy"
+    mode = _apply_mode_policy(mode, get_setting("draft_format", ""))
 
     picks = db.execute(
         "SELECT points, ticket_used, slot_name FROM draft_picks WHERE session_id=? AND coach_id=?",
@@ -5503,6 +5524,7 @@ def draft_live_pick():
             "SELECT draft_mode FROM coaches WHERE id=?", (coach_id,)
         ).fetchone()
         coach_mode = (coach_mode_row["draft_mode"] or "legacy") if coach_mode_row else "legacy"
+        coach_mode = _apply_mode_policy(coach_mode, get_setting("draft_format", ""))
         ticket_used_val = None
 
         if is_uber:

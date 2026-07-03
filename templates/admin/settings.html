@@ -145,6 +145,26 @@
     {{ txt('points_budget', 'Points Budget (Legacy)', 'number', 'e.g. 45') }}
   </section>
 
+  <!-- ── Draft Mode Policy ── -->
+  <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3">
+    <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Draft Mode Policy</h2>
+    <p class="text-xs text-gray-500">Under Plan Griffin, force every coach to one draft mode, or leave it per-coach.</p>
+    <div class="flex flex-col gap-2">
+      {% set pol = settings.get('draft_mode_policy', 'combination') %}
+      {% for val, label, desc in [
+        ('combination', 'Combination (per-coach)', 'Each coach uses their own Tier Tickets / Points setting (default).'),
+        ('only_points', 'Only Points', 'All coaches draft with a points budget.'),
+        ('only_tickets', 'Only Tier Tickets', 'All coaches draft with tier tickets.'),
+      ] %}
+      <label class="flex items-center gap-3 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
+                    {% if pol == val %}border-yellow-500 bg-yellow-500/10{% else %}border-gray-700 bg-gray-800{% endif %}">
+        <input type="radio" name="draft_mode_policy" value="{{ val }}" {% if pol == val %}checked{% endif %} class="accent-yellow-500">
+        <div><span class="text-white font-semibold block text-sm">{{ label }}</span><span class="text-xs text-gray-500">{{ desc }}</span></div>
+      </label>
+      {% endfor %}
+    </div>
+  </section>
+
   <!-- ── Tier Definitions ── -->
   <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3">
     <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Tier Definitions</h2>
