@@ -18,14 +18,16 @@
   }
   @media (max-width: 767px) { #yc-tabbar { display: flex; } }
   .yc-tab {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    background: none; border: none; padding: 0; cursor: pointer;
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; padding: 0 2px; cursor: pointer;
     text-decoration: none; position: relative;
     color: rgba(232,232,240,0.42);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
     -webkit-tap-highlight-color: transparent;
   }
+  .yc-tab span { white-space: nowrap; }
+  @media (max-width: 360px) { .yc-tab { font-size: 8px; letter-spacing: 0.02em; } }
   .yc-tab svg { width: 20px; height: 20px; }
   .yc-tab.on { color: #00F5FF; }
   .yc-tab.on::before {
@@ -41,7 +43,7 @@
   </a>
   <a href="/standings" class="yc-tab {% if _p in ['/standings', '/mvp', '/stats', '/history', '/h2h'] %}on{% endif %}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-    <span>BOARD</span>
+    <span>STANDINGS</span>
   </a>
   <a href="/schedule" class="yc-tab {% if _p in ['/schedule', '/replays'] or _p.startswith('/my-matches') %}on{% endif %}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>

@@ -296,6 +296,21 @@
 }
 .yc-strip-row:last-child { border-bottom: none; }
 
+/* ── Unit Matrix — mobile tap-to-expand rows (hidden on desktop) ── */
+.yc-um-mob { display: none; }
+.yc-um-row { border-bottom: 1px solid var(--hairline); }
+.yc-um-row:last-child { border-bottom: none; }
+.yc-um-sum {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 54px; padding: 8px 12px;
+  cursor: pointer; list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.yc-um-sum::-webkit-details-marker { display: none; }
+.yc-um-chev { transition: transform .2s; color: var(--text-dim); flex-shrink: 0; }
+.yc-um-row[open] .yc-um-chev { transform: rotate(180deg); }
+.yc-um-detail { padding: 12px; background: var(--panel-2); border-top: 1px dashed var(--hairline); }
+
 /* ══ Mobile responsive ══ */
 @media (max-width: 767px) {
 
@@ -345,18 +360,25 @@
   /* ── Strip rows: tighten ── */
   .yc-strip-row { padding: 8px 10px; }
 
-  /* ── Stop the wide Unit Matrix table from blowing out page width ──
-     Grid/flex children default to min-width:auto; without this the 16-col
-     nowrap table expands the whole page instead of scrolling in its panel. */
+  /* ── Keep wide grid/flex children from blowing out page width ──
+     Grid/flex children default to min-width:auto. */
   .yc-team section,
   .yc-team .grid { min-width: 0; }
   .yc-team .yc-panel.overflow-x-auto { max-width: 100%; }
+
+  /* ── Unit Matrix: swap the 16-column table for tap-to-expand rows ── */
+  .yc-um-desk { display: none; }
+  .yc-um-mob { display: block; }
+
+  /* ── Season schedule table: tighter cells ── */
+  .yc-tbl th, .yc-tbl td { padding: 8px 8px; }
 
   /* ── This Week bar: tighten score blocks so it needs less sideways swipe ── */
   .yc-tw-bar [style*="min-width:80px"] { min-width: 60px !important; }
   .yc-tw-bar [style*="min-width:56px"] { min-width: 46px !important; }
 
-  /* ── Battle-music widget: never exceed the viewport ── */
+  /* ── Battle-music widget: clear the bottom tab bar + never exceed viewport ── */
+  #music-widget { bottom: calc(92px + env(safe-area-inset-bottom)) !important; right: 10px !important; }
   #music-widget #music-expanded { width: min(300px, calc(100vw - 28px)) !important; }
   #music-widget iframe { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
 }
@@ -1163,6 +1185,7 @@
           <span class="yc-br-tr"></span><span class="yc-br-br"></span>
           <div class="yc-panel overflow-x-auto">
             {% if roster %}
+            <div class="yc-um-desk">
             <table class="yc-tbl" style="font-size:11px;white-space:nowrap;">
               <thead>
                 <tr>
@@ -1232,6 +1255,56 @@
                 {% endfor %}
               </tbody>
             </table>
+            </div>
+
+            <!-- Mobile: condensed tap-to-expand unit rows (same data as the table) -->
+            <div class="yc-um-mob">
+              {% for p in roster %}
+              <details class="yc-um-row">
+                <summary class="yc-um-sum">
+                  <img src="{{ pokemon_sprite_url(p.name) }}"
+                       onerror="this.onerror=function(){this.style.display='none';};this.src='{{ pokemon_static_sprite_url(p.name) }}';"
+                       class="object-contain flex-shrink-0" style="width:34px;height:34px;image-rendering:pixelated;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-family:var(--fd);font-weight:600;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                      {{ p.name }}{% if p.is_tera_captain and settings.get('mechanic_tera','0')=='1' %} <span style="color:#c084fc;">★</span>{% endif %}{% if p.is_zmove_captain and settings.get('mechanic_zmove','0')=='1' %} <span style="color:#fbbf24;">⚡</span>{% endif %}
+                    </div>
+                    <div class="flex gap-1" style="margin-top:3px;">
+                      {% if p.type1 %}<span class="type-{{ p.type1|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ p.type1[:3].upper() }}</span>{% endif %}
+                      {% if p.type2 %}<span class="type-{{ p.type2|lower }}" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;">{{ p.type2[:3].upper() }}</span>{% endif %}
+                    </div>
+                  </div>
+                  <span class="yc-mono flex-shrink-0" style="font-size:11px;color:#facc15;">{{ p.points }}pt</span>
+                  <span class="yc-mono flex-shrink-0" style="font-size:11px;color:var(--text-mute);">{% if p.gp %}<span style="color:var(--lime);">{{ p.k }}</span>/<span style="color:var(--red);">{{ p.d }}</span>{% else %}—{% endif %}</span>
+                  <svg class="yc-um-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </summary>
+                <div class="yc-um-detail">
+                  <div class="grid grid-cols-2 gap-x-5 gap-y-2">
+                    {% for stat_lbl, stat_val, stat_color in [
+                      ('HP',   p.hp,   '#ef4444'),
+                      ('ATK',  p.atk,  '#f97316'),
+                      ('DEF',  p.def_, '#3b82f6'),
+                      ('SP.A', p.spa,  '#8b5cf6'),
+                      ('SP.D', p.spd,  '#22c55e'),
+                      ('SPE',  p.spe,  '#eab308'),
+                    ] %}
+                    <div>
+                      <div class="flex items-center justify-between" style="margin-bottom:2px;">
+                        <span class="yc-mono" style="font-size:9px;color:var(--text-dim);">{{ stat_lbl }}</span>
+                        <span class="yc-mono" style="font-size:11px;color:{{ stat_color }};">{{ stat_val or '—' }}</span>
+                      </div>
+                      <div class="yc-bar"><i style="width:{{ ([ (stat_val or 0)/255*100, 100]|min)|round }}%;background:{{ stat_color }};box-shadow:0 0 6px {{ stat_color }}80;"></i></div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  <div class="flex items-center justify-between yc-mono" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--hairline);font-size:10px;color:var(--text-dim);flex-wrap:wrap;gap:6px;">
+                    <span>GP <b style="color:var(--text-mute);">{{ p.gp or '—' }}</b> · K <b style="color:var(--lime);">{{ p.k if p.gp else '—' }}</b> · D <b style="color:var(--red);">{{ p.d if p.gp else '—' }}</b>{% if p.gp %} · <b style="color:{% if p.kd > 0 %}var(--lime){% elif p.kd < 0 %}var(--red){% else %}var(--text-mute){% endif %};">{% if p.kd > 0 %}+{% endif %}{{ p.kd }}</b>{% endif %}</span>
+                    {% if p.spe_0 %}<span>SPE@100 <b style="color:var(--text-mute);">{{ p.spe_0 }}</b> / <b style="color:var(--text-mute);">{{ p.spe_252 }}</b> / <b style="color:var(--magenta);">{{ p.spe_252p }}</b></span>{% endif %}
+                  </div>
+                </div>
+              </details>
+              {% endfor %}
+            </div>
             {% else %}
             <p class="yc-mono text-center" style="padding:32px 0;color:var(--text-dim);font-size:11px;">No Pokemon on this roster yet.</p>
             {% endif %}

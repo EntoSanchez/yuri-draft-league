@@ -73,10 +73,250 @@
   /* ── 3. Shared page-hero pattern ─────────────────────────── */
   .yc-page-title { font-size: 26px !important; }
   .yc-page-sub { font-size: 12.5px !important; }
+  .yc-page-hero .py-12 { padding-top: 2rem !important; padding-bottom: 2rem !important; }
 
   /* ── 4. Cards: lighter chrome on phones ──────────────────── */
   .cp-card::before, .cp-card::after { display: none !important; } /* corner accents */
   .card-hover:hover { transform: none !important; } /* no lift on touch */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BATTLE PREP (/battle-prep) — phone layout
+   The page is a fixed-height dashboard on desktop; on phones it
+   becomes a normal scrolling page with stacked panels. No template
+   edit needed — everything below targets existing ids/classes and
+   the inline grid signatures of the three bands.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* dashboard → normal scrolling page */
+  .vd-app {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 12px 12px 24px !important;
+  }
+  .vd-app > div { flex: none !important; min-height: 0 !important; }
+
+  /* band 1: [my team | verdict | opponent] → stacked */
+  .vd-app div[style*="1fr 360px 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+  /* opponent pill: un-mirror so both pills read the same way */
+  .glow-mag div[style*="row-reverse"] { flex-direction: row !important; }
+  .glow-mag div[style*="text-align:right"] { text-align: left !important; }
+  .glow-mag #meta-b { justify-content: flex-start !important; }
+  .vd-team-sel { max-width: none !important; width: 100%; }
+
+  /* bands 2 + 3: two panels side by side → stacked */
+  .vd-app div[style*="minmax(0,1.3fr)"],
+  .vd-app div[style*="minmax(0,1.25fr)"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* panel content: natural height (page scrolls), matrices swipe */
+  #stats-content, #hm-content, #speed-content, #mv-content {
+    overflow: visible !important;
+  }
+  #hm-content > div:last-child,
+  #speed-content { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+  /* stats: my-team / opp-team columns → stacked */
+  #stats-content > div { grid-template-columns: minmax(0, 1fr) !important; }
+
+  /* defense heatmap: pin the Pokémon column while the 18 type
+     columns swipe (matrix can't stack) */
+  #bp-type-chart td:first-child,
+  #bp-type-chart th:first-child {
+    position: sticky; left: 0; z-index: 3;
+    background: var(--panel, #0b0b12);
+  }
+
+  /* move coverage rows: tighter centre column */
+  .vd-mv-row {
+    grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr) !important;
+    padding: 5px 4px !important;
+  }
+
+  /* ── lineup builder modal ── */
+  .lp-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 148px minmax(0, 1fr);
+  }
+  .lp-roster { border-right: 0 !important; border-bottom: 1px solid var(--hairline-2, rgba(232,232,248,.18)); }
+  .lp-roster-list { display: grid !important; grid-template-columns: 1fr 1fr; align-content: start; }
+  .lp-slots-wrap { grid-template-columns: minmax(0, 1fr) !important; padding: 12px !important; }
+  .lp-topbar { flex-wrap: wrap; gap: 8px !important; padding: 10px 12px !important; }
+  .lp-topbar .lp-title { flex-basis: 100%; }
+  .lp-paste-bar { flex-wrap: wrap; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important; }
+  .lp-paste-url { flex-basis: 100%; order: 2; }
+  #lp-status { order: 1; }
+  .lp-paste-bar .lp-btn { order: 3; }
+
+  /* iOS: text inputs under 16px trigger auto-zoom on focus */
+  .lp-paste-url { font-size: 16px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCHEDULE (/schedule) — phone layout
+   Match rows reflow from a 5-column desktop grid into stacked
+   cards (team over team, score box on the right, meta row under)
+   via grid-template-areas. Spotlight stacks. No template edit.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .sr-page { padding: 16px 12px 24px !important; min-height: 0 !important; }
+  .sr-scroll { flex: none !important; overflow: visible !important; }
+
+  /* ── match rows: [wk | team1 | score | team2 | status] →
+        t1 | sc
+        t2 | sc
+        wk | status ── */
+  .sr-row {
+    grid-template-columns: minmax(0, 1fr) 88px !important;
+    grid-template-areas: "t1 sc" "t2 sc" "wk st" !important;
+    row-gap: 9px !important;
+    column-gap: 10px !important;
+    padding: 12px 10px !important;
+  }
+  .sr-row .sr-wktag { grid-area: wk; align-self: center; }
+  .sr-row .sr-side { grid-area: t2; }
+  .sr-row .sr-side.right {
+    grid-area: t1;
+    flex-direction: row-reverse !important;
+    justify-content: flex-end !important;
+  }
+  .sr-row .sr-side.right div[style*="text-align:right"] { text-align: left !important; }
+  .sr-row .sr-score {
+    grid-area: sc; align-self: center; justify-self: stretch;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0 !important; font-size: 15px !important;
+    min-height: 44px;
+  }
+  .sr-row .sr-status { grid-area: st; align-self: center; }
+  .sr-status a {
+    display: inline-block !important;
+    padding: 6px 10px !important;
+    font-size: 9px !important;
+    margin-top: 6px !important;
+  }
+  .sr-name { font-size: 12.5px !important; }
+
+  /* ── spotlight: 3 columns → stacked ── */
+  .sr-spotlight { padding: 14px !important; }
+  .sr-spotlight div[style*="1fr auto 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+  .sr-spotlight div[style*="justify-content:flex-end"] {
+    flex-direction: row-reverse !important;
+    justify-content: flex-start !important;
+  }
+  .sr-spotlight div[style*="text-align:right"] { text-align: left !important; }
+  .sr-spotlight div[style*="min-width:150px"] { min-width: 0 !important; }
+  .sr-spotlight div[style*="font-size:56px"] { font-size: 38px !important; }
+  .sr-spotlight div[style*="font-size:19px"] { font-size: 15px !important; }
+  .sr-logo.xl { width: 54px !important; height: 54px !important; font-size: 15px !important; }
+
+  /* ── week tabs: tighter, still swipeable ── */
+  .sr-tab { padding: 8px 13px 7px !important; }
+  .sr-tab-n { font-size: 15px !important; }
+
+  /* ── controls: segmented full-width, filters on second row ── */
+  .sr-controls { gap: 8px !important; }
+  .sr-seg { display: flex; width: 100%; }
+  .sr-seg button { flex: 1; padding: 10px 0 !important; }
+  .sr-select { flex: 1; min-width: 0; padding: 9px 26px 9px 10px !important; }
+  .sr-spacer { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATS & META HUB (/stats) — phone layout
+   meta-styles.css has no media queries; everything here stacks the
+   desktop grids and tightens row templates. No template edit.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .mh-page { padding: 16px 12px 32px !important; gap: 20px !important; }
+  .mh-titlebar { flex-wrap: wrap; gap: 8px !important; }
+  .mh-titlebar .h1 { font-size: 26px !important; white-space: normal !important; }
+  .mh-sechead { flex-wrap: wrap; row-gap: 4px; }
+
+  /* all inline two-column section wrappers (05+06, 07 pools, 09+10,
+     top-performers grid) → single column */
+  .mh-page div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* top performers: podium stacks */
+  #podium-container { grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; }
+
+  /* KO/faint scatter: shorter so corner labels stay readable */
+  .mh-quad { height: 300px !important; }
+
+  /* diverging type-value bars */
+  .mh-voe-row { grid-template-columns: 62px minmax(0, 1fr) 56px !important; gap: 8px !important; }
+  .mh-voe-lbl { font-size: 10px !important; }
+
+  /* team firepower rows: smaller bar column */
+  .mh-fp-row { grid-template-columns: 20px 26px minmax(0, 1fr) 64px 44px !important; gap: 8px !important; padding: 8px 6px !important; }
+
+  /* draft economy bars + speed tier rows */
+  .mh-econ { height: 120px !important; gap: 5px !important; }
+  .mh-page div[style*="grid-template-columns:100px 1fr"] { grid-template-columns: 76px minmax(0, 1fr) !important; gap: 10px !important; }
+
+  /* records / clutch cards + roster archetypes stack */
+  .mh-page .mh-cards { grid-template-columns: minmax(0, 1fr) !important; }
+  .mh-arch { grid-template-columns: minmax(0, 1fr) !important; }
+
+  /* terminal lines */
+  .mh-term-line { grid-template-columns: 92px minmax(0, 1fr) 46px !important; gap: 8px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAFT BOARD (/draftboard) — phone additions
+   The template already has a mobile block (scrolling board, 150px
+   tier columns, wrapped controls). Only gap: the fixed compare tray
+   landed under the new bottom tab bar.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  #compare-tray { bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAFT LIVE (/draft/live) — phone layout
+   Pool A / Pool B side-by-side grids stack; the admin dual pick
+   panels stack; the status strip wraps; the pick-history table
+   swipes. Selectors target the unique inline grid signatures, so
+   no template edit is needed.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* two-pool grid → stacked pools */
+  div[style*="grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* admin: simultaneous A/B pick panels → stacked */
+  div[style*="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* status strip → wrapping flex */
+  div[style*="grid-template-columns:auto auto auto 1fr auto"] {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 10px 18px !important;
+  }
+
+  /* pick-history log: table swipes sideways */
+  #pick-log-body { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  #pick-log-body table { min-width: 560px; }
 }
 
 /* small phones */

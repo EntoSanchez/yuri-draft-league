@@ -579,3 +579,70 @@ input[type=number] { -moz-appearance: textfield; }
   .res-row .res-pct { grid-column: 2; text-align: left; }
   .nav-items { display: none; }
 }
+
+
+/* =====================================================================
+   PHONES (<= 640px) — Yuri Cup mobile overhaul
+   ===================================================================== */
+@media (max-width: 640px) {
+
+  /* ambience off on phones (GPU + visual noise) */
+  body::before, body::after { display: none; }
+
+  /* ── page head: title + 2-per-row controls ── */
+  .page-head { padding: 16px 14px 12px; gap: 12px; }
+  .page-title { font-size: 26px; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; align-items: end; }
+  .ctl .field, .ctl .btn { width: 100%; }
+
+  /* ── mode tabs: swipeable strip ── */
+  .mode-tabs { overflow-x: auto; scrollbar-width: none; }
+  .mode-tabs::-webkit-scrollbar { display: none; }
+  .mode-tab { flex: 1 0 auto; height: 38px; }
+  div[style*="padding:0 24px 14px"] { padding: 0 14px 12px !important; }
+
+  /* ── gutters ── */
+  .board { padding: 0 14px 18px; gap: 12px; }
+  #results-row { padding: 0 14px 14px !important; }
+  #field-row { padding: 0 14px 22px !important; }
+  .readout { margin: 4px 14px 14px; font-size: 12px; }
+  .foot { padding: 14px 14px 32px; }
+
+  /* ── inputs: ≥16px text stops iOS focus-zoom; 38px tap targets ── */
+  .field { font-size: 16px; height: 38px; }
+  .btn { height: 38px; }
+  .move-opt-btn, .set-line .save-set, .swap-btn { width: 38px; height: 38px; }
+  .tera-tog { height: 38px; }
+  .stat-row input.field { height: 30px; font-size: 16px; padding: 0 2px; }
+  .stat-row .nat { height: 30px; }
+  .boost-stage select.field { height: 30px; }
+
+  /* ── stat grid: tighter columns so the bar keeps room ── */
+  .stats-head, .stat-row { grid-template-columns: 34px 30px 1fr 46px 46px 28px 50px; gap: 4px; }
+  .stat-row .stot { font-size: 12px; }
+
+  /* ── species row ── */
+  .species-row { grid-template-columns: 60px 1fr; gap: 10px; }
+  .sprite { width: 60px; height: 60px; }
+
+  /* ── results: move name / bar / numbers stack per row ── */
+  .res-row { grid-template-columns: 1fr; gap: 8px; padding: 10px 12px; }
+  .res-row .res-pct { grid-column: auto; text-align: left; display: flex; align-items: baseline; gap: 10px; }
+  .res-pct .ko { margin-top: 0; }
+  .results-head { gap: 10px; }
+  .matchup { font-size: 13px; flex-wrap: wrap; }
+
+  /* ── 1vAll / Allv1 pool table: swipe sideways ── */
+  .pool-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ptbl { min-width: 600px; }
+  .pool-bar input.field { flex: 1; width: auto; }
+  .pool-bar .meta { margin-left: 0; flex-basis: 100%; }
+
+  /* ── field panel ── */
+  .field-global { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* ── modal + toast (toast clears the league tab bar) ── */
+  .modal { max-width: calc(100vw - 20px); }
+  .modal-body textarea { height: 160px; font-size: 16px; }
+  .toast { bottom: calc(96px + env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); text-align: center; }
+}
