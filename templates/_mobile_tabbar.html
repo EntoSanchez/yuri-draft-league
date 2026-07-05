@@ -1,0 +1,58 @@
+{# ═══════════════════════════════════════════════════════════════
+   YURI CUP — MOBILE BOTTOM TAB BAR (Phase A)
+   Include once in templates/base.html, just before </body>:
+     {% include "_mobile_tabbar.html" %}
+   Hidden on ≥768px. "More" opens the existing mobile drawer by
+   programmatically clicking the (hidden) #mobile-btn, so all the
+   existing drawer markup/JS keeps working unchanged.
+   ═══════════════════════════════════════════════════════════════ #}
+{% set _p = request.path %}
+<style>
+  #yc-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+    display: none;
+    background: rgba(8,8,12,0.95);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0,245,255,0.16);
+    padding: 9px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  @media (max-width: 767px) { #yc-tabbar { display: flex; } }
+  .yc-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; padding: 0; cursor: pointer;
+    text-decoration: none; position: relative;
+    color: rgba(232,232,240,0.42);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .yc-tab svg { width: 20px; height: 20px; }
+  .yc-tab.on { color: #00F5FF; }
+  .yc-tab.on::before {
+    content: ''; position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+    width: 26px; height: 2px; border-radius: 2px;
+    background: #00F5FF; box-shadow: 0 0 8px #00F5FF;
+  }
+</style>
+<nav id="yc-tabbar" aria-label="Primary">
+  <a href="/" class="yc-tab {% if _p == '/' %}on{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    <span>HOME</span>
+  </a>
+  <a href="/standings" class="yc-tab {% if _p in ['/standings', '/mvp', '/stats', '/history', '/h2h'] %}on{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    <span>BOARD</span>
+  </a>
+  <a href="/schedule" class="yc-tab {% if _p in ['/schedule', '/replays'] or _p.startswith('/my-matches') %}on{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    <span>MATCHES</span>
+  </a>
+  <a href="/teams" class="yc-tab {% if _p.startswith('/team') %}on{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    <span>TEAMS</span>
+  </a>
+  <button type="button" class="yc-tab" onclick="var b = document.getElementById('mobile-btn'); if (b) b.click();">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" d="M6 12h.01M12 12h.01M18 12h.01"/></svg>
+    <span>MORE</span>
+  </button>
+</nav>

@@ -1,0 +1,86 @@
+/* ═══════════════════════════════════════════════════════════════
+   YURI CUP — MOBILE OVERRIDES (Phase A)
+   Load AFTER the base <style> block in templates/base.html:
+     <link rel="stylesheet" href="/static/mobile.css">
+   Desktop is untouched: every rule lives inside max-width media
+   queries. !important is used deliberately — page-level <style>
+   blocks render later in the document and would otherwise win.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── 0. Global calm-down ─────────────────────────────────── */
+
+  /* circuit grid + scanlines off on phones (visual noise + GPU cost) */
+  body { background-image: none !important; }
+  body::after { display: none !important; }
+
+  /* neon gimmick animations off */
+  .glitch, .flicker { animation: none !important; }
+
+  /* clearance for the fixed bottom tab bar */
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
+
+  /* ── 1. Top nav: slimmer, hamburger replaced by More tab ─── */
+  #nav-inner { height: 52px !important; }
+  #main-nav.scrolled #nav-inner { height: 48px !important; }
+  #mobile-btn { display: none !important; } /* still click()-able by the More tab */
+
+  /* ── 2. Home page ────────────────────────────────────────── */
+
+  /* marquee logo bands + animated grid + orbs + particles + bg logos */
+  .logo-band { display: none !important; }
+  .hero-grid { display: none !important; }
+  .orb, .particle { display: none !important; }
+  #bg-logos, .bg-logo, .bg-logo-swatch { display: none !important; }
+  .scroll-cue { display: none !important; }
+
+  /* hero: no giant logo image; tighter type; 2 CTAs side by side */
+  .hero-right { display: none !important; }
+  .hero-body { min-height: unset !important; }
+  .hero-left { flex: none !important; padding: 1.75rem 1rem 1.5rem !important; }
+  .hero-title-l1, .hero-title-l2 { font-size: 2.1rem !important; }
+  .hero-badges { gap: 6px !important; margin-bottom: 1rem !important; }
+  .hero-sub-text { font-size: 0.85rem !important; margin-bottom: 1.3rem !important; }
+  .hero-ctas { flex-direction: row !important; gap: 10px !important; }
+  .hero-ctas .btn-pm,
+  .hero-ctas .btn-sc { flex: 1 !important; width: auto !important; justify-content: center !important; padding: 13px 10px !important; }
+  .hero-ctas .btn-ghost { display: none !important; } /* dupe of Pick'ems card below */
+
+  /* ticker: no auto-marquee — finger-scrollable, calmer */
+  .ticker-inner { animation: none !important; }
+  .ticker-track { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .result-ticker::before, .result-ticker::after { width: 24px !important; }
+
+  /* stats strip: smaller numerals */
+  .stat-num { font-size: 2rem !important; }
+  .stat-item { padding: 0.9rem 1rem !important; }
+
+  /* quick-nav grid: icon + title only, and hide the 4 duplicate/desktop-tool cards
+     (Standings + Schedule duplicate the hero CTAs; Draft Prep + Damage Calc are
+     desktop-oriented tools that stay reachable via the drawer) */
+  .nav-card { padding: 0.9rem !important; }
+  .nav-card-icon { width: 34px !important; height: 34px !important; margin-bottom: 0.5rem !important; }
+  .nav-card-desc { display: none !important; }
+  .stagger > .nav-card:nth-child(1),
+  .stagger > .nav-card:nth-child(2),
+  .stagger > .nav-card:nth-child(6),
+  .stagger > .nav-card:nth-child(8) { display: none !important; }
+
+  /* footer CTA block duplicates nav + hero — drop it on phones */
+  .footer-cta { display: none !important; }
+
+  /* ── 3. Shared page-hero pattern ─────────────────────────── */
+  .yc-page-title { font-size: 26px !important; }
+  .yc-page-sub { font-size: 12.5px !important; }
+
+  /* ── 4. Cards: lighter chrome on phones ──────────────────── */
+  .cp-card::before, .cp-card::after { display: none !important; } /* corner accents */
+  .card-hover:hover { transform: none !important; } /* no lift on touch */
+}
+
+/* small phones */
+@media (max-width: 380px) {
+  .hero-title-l1, .hero-title-l2 { font-size: 1.8rem !important; }
+  .stat-num { font-size: 1.7rem !important; }
+}
