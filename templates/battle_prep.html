@@ -2070,12 +2070,15 @@ window._LINEUP_TOUR = [
     const di = e.target.closest && e.target.closest('input[data-dex]');
     if (di && tip && tip.style.display === 'block') showTip(tipHTML(di.dataset.dex, (di.value || '').trim()), di.getBoundingClientRect(), 'above');
   });
-  document.addEventListener('focusout', e => {
-    const inp = dropInput(e.target);
-    if (inp) setTimeout(() => { if (document.activeElement !== inp) closeDD(); }, 130);
-  });
+  // NOTE: we intentionally do NOT close on focusout/blur. A blur fires transiently
+  // when the pointer presses a .lp-move-opt (before mousedown's preventDefault restores
+  // focus) and when hover/tooltip machinery runs — the old 130ms activeElement poll
+  // raced with those and tore the dropdown down "almost immediately" on click. The
+  // dropdown is instead closed deterministically by: picking an option, Escape, or an
+  // outside mousedown (below). That covers every real dismissal without the race.
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ddOpen()) closeDD(); });
   document.addEventListener('mousedown', e => {
+    // Close only on a genuine click outside both the dropdown and any lineup input.
     if (ddOpen() && !e.target.closest('.lp-move-dd') && !dropInput(e.target)) closeDD();
   });
 })();
