@@ -139,27 +139,49 @@
     padding: 5px 4px !important;
   }
 
-  /* ── lineup builder modal ── */
+  /* ══ lineup builder modal — one scrolling column ══
+     The desktop modal is a fixed-height (inset:0; overflow:hidden) 3-region
+     flex with an internal grid, so on a phone the regions fight for a single
+     viewport and content gets clipped with no way to scroll. On phones we
+     turn the WHOLE modal into a normal vertically-scrolling page: topbar
+     sticks to the top, everything else flows, nothing traps an inner
+     scrollbox. */
+  #lp-modal.open {
+    display: block !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 
-  /* topbar: title row + 2×2 action buttons with real tap targets */
+  /* topbar: sticky title row + 2×2 action buttons with real tap targets */
   .lp-topbar {
+    position: sticky; top: 0; z-index: 5;
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 8px !important;
     padding: 10px 12px !important;
   }
   .lp-topbar .lp-title { grid-column: 1 / -1; }
-  .lp-btn { height: 42px; font-size: 10.5px !important; padding: 0 10px !important; }
+  .lp-btn { height: 44px; font-size: 10.5px !important; padding: 0 10px !important; }
 
-  /* body: roster becomes a horizontal swipe strip, slots get the rest */
+  /* body: stop being a fixed grid — let roster + slots stack and flow */
   .lp-body {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr);
+    display: block !important;
+    flex: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
-  .lp-roster { border-right: 0 !important; border-bottom: 1px solid var(--hairline-2, rgba(232,232,248,.18)); }
+
+  /* roster: a short horizontal swipe strip to pick mons from */
+  .lp-roster {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--hairline-2, rgba(232,232,248,.18));
+    overflow: visible !important;
+  }
   .lp-roster-head { padding: 6px 12px 4px; }
   .lp-roster-list {
     flex-direction: row !important;
+    flex: none !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     gap: 6px !important;
@@ -172,12 +194,17 @@
   .lp-roster-mon img { width: 30px !important; height: 30px !important; }
   .lp-roster-name { font-size: 10px !important; max-width: 88px; }
 
-  /* slots: single column, fields 2-up so cards stay short */
-  .lp-slots-wrap { grid-template-columns: minmax(0, 1fr) !important; padding: 10px 12px !important; gap: 8px !important; }
+  /* slots: single column that FLOWS into the page scroll (no inner scrollbox) */
+  .lp-slots-wrap {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
   .lp-slot-mon img { width: 36px !important; height: 36px !important; }
   .lp-slot-pname { font-size: 12px !important; }
   .lp-slot-num { padding: 6px 10px 5px !important; }
-  .lp-slot-num .lp-clear-slot { font-size: 16px; padding: 4px 6px !important; }
+  .lp-slot-num .lp-clear-slot { font-size: 18px; padding: 4px 8px !important; }
   .lp-slot-fields {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
@@ -188,11 +215,15 @@
   .lp-input { font-size: 16px !important; height: 40px !important; padding: 0 10px !important; }
   .lp-field-label { font-size: 8.5px !important; }
 
-  /* paste bar: status, then full-width URL, then buttons */
-  .lp-paste-bar { flex-wrap: wrap; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important; }
+  /* opponent reference: a small collapsible strip, not half the screen */
+  .lp-opp { max-height: none !important; overflow: visible !important; }
+  .lp-opp-list { max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  /* paste bar: flows at the very bottom; status, full-width URL, then buttons */
+  .lp-paste-bar { flex-wrap: wrap; padding: 10px 12px calc(14px + env(safe-area-inset-bottom)) !important; }
   .lp-paste-url { flex-basis: 100%; order: 2; font-size: 16px !important; height: 40px; }
   #lp-status { order: 1; }
-  .lp-paste-bar .lp-btn { order: 3; flex: 1; }
+  .lp-paste-bar .lp-btn { order: 3; flex: 1; height: 44px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

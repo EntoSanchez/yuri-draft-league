@@ -6,7 +6,7 @@
   <title>{% block title %}{{ league_name }}{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <script>
-  console.log("YDL build: mobile-calc-fixes-v42");
+  console.log("YDL build: lineup-mobile-scroll-v43");
   // ── CSRF: auto-attach the session token to every same-origin POST ──
   (function () {
     var TOKEN = "{{ csrf_token() }}";
@@ -716,7 +716,7 @@
   img[src*="46d00f8bbcb4405d88a7114aff7f446b"] { object-fit: contain !important; }
   [style*="46d00f8bbcb4405d88a7114aff7f446b"]  { background-size: contain !important; }
   </style>
-  <link rel="stylesheet" href="/static/mobile.css">
+  <link rel="stylesheet" href="/static/mobile.css?v=43">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="min-h-screen flex flex-col text-gray-100 antialiased" style="background-color:#000;">

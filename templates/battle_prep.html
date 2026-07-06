@@ -424,11 +424,9 @@
   #hm-content { overflow-x: auto !important; }
   #bp-type-chart { min-width: 500px; }
 
-  /* Lineup modal: roster above slots; opponent strip stays full-width at the bottom */
-  .lp-body { grid-template-columns: 1fr !important; grid-template-rows: auto 1fr !important; }
-  .lp-roster { max-height: 160px; border-right: none !important; border-bottom: 1px solid var(--hairline-2); }
-  .lp-opp { max-height: 44vh; }
-  .lp-topbar { flex-wrap: wrap; gap: 6px; }
+  /* Lineup modal mobile layout lives in static/mobile.css (single source of
+     truth) — keeping rules here too caused two @media blocks to fight over
+     .lp-body/.lp-roster/.lp-topbar. */
 
   /* Team selector: full width */
   .vd-team-sel { max-width: 100% !important; font-size: 15.5px; }
