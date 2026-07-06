@@ -24,7 +24,6 @@
     {{ txt('league_name', 'League Name', 'text', 'e.g. Yuri Cup Season 8') }}
     {{ txt('season', 'Season Number', 'text', 'e.g. 8') }}
     {{ txt('format', 'Battle Format', 'text', 'e.g. Gen 9 National Dex Ubers') }}
-    {{ txt('mechanic', 'Battle Mechanic (label)', 'text', 'e.g. Terastallization') }}
     <div class="grid grid-cols-2 gap-4">
       {{ txt('num_pools', 'Number of Pools', 'number', 'e.g. 2') }}
       {{ txt('num_players', 'Number of Players', 'number', 'e.g. 18') }}
@@ -38,7 +37,6 @@
       {{ txt('current_week', 'Current Week', 'number', 'e.g. 7') }}
       {{ txt('fa_limit', 'FA Limit per season', 'number', 'e.g. 3') }}
     </div>
-    {{ txt('mechanic_tax', 'Mechanic Tax (pts)', 'number', 'e.g. 0') }}
     <div>
       <label class="block text-sm font-semibold text-gray-300 mb-1">Match Format</label>
       <div class="flex gap-3">
@@ -62,46 +60,84 @@
     {% endif %}
   </section>
 
-  <!-- ── Battle Mechanics ── -->
-  <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3">
-    <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Battle Mechanics</h2>
-    <p class="text-xs text-gray-500">Which special mechanics are in use this season. (Per-mechanic captain / tax rules arrive in a later phase.)</p>
-    <div class="flex flex-wrap gap-3">
-      <label class="flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
-                    {% if settings.get('mechanic_mega','0') == '1' %}border-blue-500 bg-blue-500/10{% else %}border-gray-600 bg-gray-800{% endif %}">
-        <input type="checkbox" name="mechanic_mega" value="1" {% if settings.get('mechanic_mega','0') == '1' %}checked{% endif %} class="w-4 h-4 accent-blue-500">
-        <span class="text-white font-semibold">Mega Evolution</span>
+  <!-- ── Battle Mechanics & Captains ── -->
+  <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-4">
+    <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Battle Mechanics &amp; Captains</h2>
+    <p class="text-xs text-gray-500">Enable each mechanic and (for captain mechanics) set how many captains, a point cap, and which tiers may be captains. Tax is coming in a later phase.</p>
+    {% for m in [
+        {'key':'mega','label':'Mega Evolution','accent':'blue'},
+        {'key':'tera','label':'Tera','accent':'purple'},
+        {'key':'zmove','label':'Z-Move','accent':'yellow'},
+        {'key':'dynamax','label':'Dynamax','accent':'red'}] %}
+    {% set b = mechanic_config[m.key] %}
+    <div class="border border-gray-700 rounded-lg p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-white">{{ m.label }}</span>
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+          <input type="checkbox" name="mech_{{ m.key }}_enabled" value="1"
+                 {% if b.enabled %}checked{% endif %} class="w-4 h-4 accent-{{ m.accent }}-500">
+          Enabled
+        </label>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+        <input type="checkbox" name="mech_{{ m.key }}_captain" value="1"
+               {% if b.is_captain_mechanic %}checked{% endif %} class="w-4 h-4 accent-cyan-500">
+        Captain mechanic (designate specific Pokémon)
       </label>
-      <label class="flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
-                    {% if settings.get('mechanic_tera','0') == '1' %}border-purple-500 bg-purple-500/10{% else %}border-gray-600 bg-gray-800{% endif %}">
-        <input type="checkbox" name="mechanic_tera" value="1" {% if settings.get('mechanic_tera','0') == '1' %}checked{% endif %} class="w-4 h-4 accent-purple-500">
-        <span class="text-white font-semibold">Tera Captain</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
-                    {% if settings.get('mechanic_zmove','0') == '1' %}border-yellow-500 bg-yellow-500/10{% else %}border-gray-600 bg-gray-800{% endif %}">
-        <input type="checkbox" name="mechanic_zmove" value="1" {% if settings.get('mechanic_zmove','0') == '1' %}checked{% endif %} class="w-4 h-4 accent-yellow-500">
-        <span class="text-white font-semibold">Z-Move Captain</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border transition-colors
-                    {% if settings.get('mechanic_uber','0') == '1' %}border-red-500 bg-red-500/10{% else %}border-gray-600 bg-gray-800{% endif %}">
-        <input type="checkbox" name="mechanic_uber" value="1" id="mechanic_uber_chk" {% if settings.get('mechanic_uber','0') == '1' %}checked{% endif %}
-               class="w-4 h-4 accent-red-500" onchange="document.getElementById('uber_combo_row').style.display=this.checked?'block':'none'">
-        <span class="text-white font-semibold">Uber Picks</span>
-      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="text-xs text-gray-400 space-y-1 block">Captains per team
+          <input type="number" name="mech_{{ m.key }}_count" value="{{ b.captain_count }}" min="0"
+                 class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-2 text-white text-sm">
+        </label>
+        <label class="text-xs text-gray-400 space-y-1 block">Max points (0 = no cap)
+          <input type="number" name="mech_{{ m.key }}_maxpts" value="{{ b.max_pts }}" min="0"
+                 class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-2 text-white text-sm">
+        </label>
+      </div>
+      <div class="text-xs text-gray-400 space-y-1">
+        <span>Restrict to tiers (none checked = any tier)</span>
+        <div class="flex flex-wrap gap-3">
+          {% for t in tier_defs %}
+          <label class="flex items-center gap-1 cursor-pointer text-gray-300">
+            <input type="checkbox" name="mech_{{ m.key }}_tiers" value="{{ t.name }}"
+                   {% if t.name in b.restrict_tiers %}checked{% endif %} class="w-4 h-4 accent-cyan-500">
+            {{ t.name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 opacity-40 pointer-events-none text-xs text-gray-500">
+        <span>Tax</span>
+        <select disabled class="bg-gray-800 border border-gray-600 rounded px-2 py-1"><option>none</option></select>
+        <input type="number" disabled value="0" class="w-16 bg-gray-800 border border-gray-600 rounded px-2 py-1">
+        <span class="italic">— coming in a later phase</span>
+      </div>
     </div>
+    {% endfor %}
   </section>
 
   <!-- ── Uber Picks ── -->
-  <section id="uber_combo_row" class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3" {% if settings.get('mechanic_uber','0') != '1' %}style="display:none"{% endif %}>
-    <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Uber Picks</h2>
-    <p class="text-xs text-gray-500">Allowed uber combinations. Point values: Platinum 30 · Gold 29 · Silver 28 · Bronze 27. <span class="text-gray-600">(Enforcement is opt-in in a later phase.)</span></p>
-    {% set combo_list = settings.get('uber_combination', '2_bronze').split(',') %}
-    <div class="flex flex-col gap-2">
-      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_platinum"        class="w-4 h-4 accent-red-500" {% if '1_platinum'        in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Platinum (30) — 1 slot</span></label>
-      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_gold_1_bronze"   class="w-4 h-4 accent-red-500" {% if '1_gold_1_bronze'   in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Gold (29) + 1 Bronze (27) — 2 slots</span></label>
-      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_silver_1_bronze" class="w-4 h-4 accent-red-500" {% if '1_silver_1_bronze' in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Silver (28) + 1 Bronze (27) — 2 slots</span></label>
-      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_silver"          class="w-4 h-4 accent-red-500" {% if '2_silver'          in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">2 Silver (28 each) — 2 slots</span></label>
-      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_bronze"          class="w-4 h-4 accent-red-500" {% if '2_bronze'          in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">2 Bronze (27 each) — 2 slots</span></label>
+  <section class="bg-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-bold text-yellow-400 uppercase tracking-wide">Uber Picks</h2>
+      <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+        <input type="checkbox" name="mechanic_uber" value="1" id="mechanic_uber_chk"
+               {% if settings.get('mechanic_uber','0') == '1' %}checked{% endif %}
+               class="w-4 h-4 accent-red-500"
+               onchange="document.getElementById('uber_combo_row').style.display=this.checked?'block':'none'">
+        Enabled
+      </label>
+    </div>
+    <div id="uber_combo_row" {% if settings.get('mechanic_uber','0') != '1' %}style="display:none"{% endif %}>
+      <p class="text-xs text-gray-500">Allowed uber combinations. Point values: Platinum 30 · Gold 29 · Silver 28 · Bronze 27. <span class="text-gray-600">(Enforcement is opt-in in a later phase.)</span></p>
+      {% set combo_list = settings.get('uber_combination', '2_bronze').split(',') %}
+      <div class="flex flex-col gap-2 mt-2">
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_platinum"        class="w-4 h-4 accent-red-500" {% if '1_platinum'        in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Platinum (30) — 1 slot</span></label>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_gold_1_bronze"   class="w-4 h-4 accent-red-500" {% if '1_gold_1_bronze'   in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Gold (29) + 1 Bronze (27) — 2 slots</span></label>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="1_silver_1_bronze" class="w-4 h-4 accent-red-500" {% if '1_silver_1_bronze' in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">1 Silver (28) + 1 Bronze (27) — 2 slots</span></label>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_silver"          class="w-4 h-4 accent-red-500" {% if '2_silver'          in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">2 Silver (28 each) — 2 slots</span></label>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uber_combination" value="2_bronze"          class="w-4 h-4 accent-red-500" {% if '2_bronze'          in combo_list %}checked{% endif %}><span class="text-sm text-gray-300">2 Bronze (27 each) — 2 slots</span></label>
+      </div>
     </div>
   </section>
 
@@ -244,6 +280,12 @@
       <li>Uber points: 27 Bronze · 28 Silver · 29 Gold · 30 Platinum</li>
       <li>Ticket allocation: T1:1 · T2:1 · T3:2 · T4:2 · T5:2</li>
       <li>Uber slots per team: 2</li>
+      {% for m in [{'key':'tera','label':'Tera'}, {'key':'zmove','label':'Z-Move'}] %}
+      {% set b = mechanic_config[m.key] %}
+      {% if b.enabled and b.is_captain_mechanic %}
+      <li>{{ m.label }} captains: {{ b.captain_count }} per team{% if b.max_pts %}, ≤{{ b.max_pts }} pts{% endif %}{% if b.restrict_tiers %}, {{ b.restrict_tiers | join('/') }} only{% endif %}.</li>
+      {% endif %}
+      {% endfor %}
     </ul>
   </section>
 

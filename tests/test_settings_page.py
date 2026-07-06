@@ -5,10 +5,9 @@ import json as _json
 
 # Every editable input name currently on /admin/settings.
 EDITABLE_FIELDS = [
-    "league_name", "season", "points_budget", "fa_limit", "mechanic",
-    "mechanic_tax", "num_players", "num_pools", "current_week", "format",
-    "match_format", "mechanic_mega", "mechanic_tera", "mechanic_zmove",
-    "mechanic_uber", "uber_combination", "draft_format",
+    "league_name", "season", "points_budget", "fa_limit",
+    "num_players", "num_pools", "current_week", "format",
+    "match_format", "mechanic_uber", "uber_combination", "draft_format",
     "draft_free_pick_type", "points_budget_griffin", "discord_webhook_url",
 ]
 
@@ -22,10 +21,9 @@ def test_get_exposes_every_editable_field(client):
 def test_post_persists_scalar_keys(client, app_mod):
     form = {
         "league_name": "Yuri Cup S9", "season": "9", "points_budget": "45",
-        "fa_limit": "3", "mechanic": "Terastallization", "mechanic_tax": "0",
+        "fa_limit": "3",
         "num_players": "18", "num_pools": "2", "current_week": "5",
         "format": "Gen 9 NatDex", "match_format": "BO3",
-        "mechanic_mega": "1", "mechanic_tera": "1",
         "draft_format": "griffin", "draft_free_pick_type": "four_any",
         "points_budget_griffin": "70", "discord_webhook_url": "",
         "uber_combination": "2_bronze",
@@ -51,7 +49,7 @@ def test_unchecked_mechanic_checkboxes_force_zero(client, app_mod):
 
 def test_has_section_headings(client):
     html = client.get("/admin/settings").get_data(as_text=True)
-    for heading in ["League Identity", "Schedule & Matches", "Battle Mechanics",
+    for heading in ["League Identity", "Schedule & Matches", "Battle Mechanics & Captains",
                     "Uber Picks", "Draft Format", "Mega Tiers", "Playoffs",
                     "At a Glance"]:
         assert heading in html, f"missing section: {heading}"
@@ -138,3 +136,35 @@ def test_draft_mode_policy_persists(client, app_mod):
     with app_mod.get_db() as db:
         got = db.execute("SELECT value FROM league_settings WHERE key='draft_mode_policy'").fetchone()["value"]
     assert got == "only_points"
+
+
+def test_has_mechanic_cards(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    assert "Battle Mechanics & Captains" in html
+    for name in ("mega", "tera", "zmove", "dynamax"):
+        assert f'name="mech_{name}_enabled"' in html
+        assert f'name="mech_{name}_captain"' in html
+        assert f'name="mech_{name}_maxpts"' in html
+        assert f'name="mech_{name}_count"' in html
+        assert f'name="mech_{name}_tiers"' in html
+
+
+def test_removed_dead_inputs(client):
+    html = client.get("/admin/settings").get_data(as_text=True)
+    # the inert free-text label + dead tax input are gone
+    assert 'name="mechanic"' not in html
+    assert 'name="mechanic_tax"' not in html
+
+
+def test_tera_card_reflects_stored_config(client, app_mod):
+    import json
+    stored = {n: {"enabled": n == "tera", "is_captain_mechanic": n in ("tera", "zmove"),
+                  "restrict_tiers": ["Tier 5"] if n == "tera" else [],
+                  "max_pts": 11 if n == "tera" else 0, "captain_count": 2 if n == "tera" else 0,
+                  "tax": {"type": "none", "value": 0}}
+              for n in ("mega", "tera", "zmove", "dynamax")}
+    with app_mod.get_db() as db:
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_config', ?)",
+                   (json.dumps(stored),))
+    html = client.get("/admin/settings").get_data(as_text=True)
+    assert 'value="11"' in html  # tera max_pts prefilled

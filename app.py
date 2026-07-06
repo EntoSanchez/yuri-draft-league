@@ -2742,6 +2742,8 @@ def admin_settings():
                     continue  # handled separately below
                 if key.startswith("tier_cols_") or key.startswith("tier_alloc_"):
                     continue  # assembled into tier_definitions below, not stored raw
+                if key.startswith("mech_"):
+                    continue  # assembled into mechanic_config below, not stored raw
                 db.execute(
                     "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                     (key, value)
@@ -2752,8 +2754,10 @@ def admin_settings():
                 "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                 ("uber_combination", ",".join(uber_combos) if uber_combos else "")
             )
-            # Checkboxes not submitted when unchecked — force to '0' if missing
-            for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber", "first_pick_regular"):
+            # Checkboxes not submitted when unchecked — force to '0' if missing.
+            # mechanic_mega/tera/zmove are written by the mechanic_config dual-write
+            # below (authoritative), so only mechanic_uber + first_pick_regular here.
+            for checkbox_key in ("mechanic_uber", "first_pick_regular"):
                 if checkbox_key not in request.form:
                     db.execute(
                         "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
@@ -2770,11 +2774,33 @@ def admin_settings():
                     tdefs.append({"name": name, "columns": cols, "ticket_alloc": alloc})
                 db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('tier_definitions', ?)",
                            (json.dumps(tdefs),))
+            # Assemble mechanic_config from the per-mechanic card fields and dual-write
+            # the legacy mechanic_<name> keys so the ~40 template sites keep working.
+            mcfg = {}
+            for name in ("mega", "tera", "zmove", "dynamax"):
+                enabled = request.form.get(f"mech_{name}_enabled") == "1"
+                mcfg[name] = {
+                    "enabled": enabled,
+                    "is_captain_mechanic": request.form.get(f"mech_{name}_captain") == "1",
+                    "restrict_tiers": request.form.getlist(f"mech_{name}_tiers"),
+                    "max_pts": int(request.form.get(f"mech_{name}_maxpts", "0") or 0),
+                    "captain_count": int(request.form.get(f"mech_{name}_count", "0") or 0),
+                    "tax": {"type": "none", "value": 0},
+                }
+            db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('mechanic_config', ?)",
+                       (json.dumps(mcfg),))
+            # Dual-write legacy keys (mechanic_uber stays owned by the Uber section).
+            for name in ("mega", "tera", "zmove"):
+                db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
+                           (f"mechanic_{name}", "1" if mcfg[name]["enabled"] else "0"))
         flash("Settings saved!", "success")
         return redirect(url_for("admin_settings"))
+    with get_db() as db:
+        mechanic_config = get_mechanic_config(db)
     return render_template("admin/settings.html",
                            settings=settings,
                            tier_defs=get_tier_definitions(),
+                           mechanic_config=mechanic_config,
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
@@ -4793,6 +4819,66 @@ def get_tier_definitions():
     return [{**d, "columns": list(d["columns"])} for d in DEFAULT_TIER_DEFINITIONS]
 
 
+DEFAULT_MECHANIC_CONFIG = {
+    "mega":    {"enabled": False, "is_captain_mechanic": False,
+                "restrict_tiers": [], "max_pts": 0, "captain_count": 0,
+                "tax": {"type": "none", "value": 0}},
+    "tera":    {"enabled": False, "is_captain_mechanic": True,
+                "restrict_tiers": ["Tier 4", "Tier 5"], "max_pts": 13,
+                "captain_count": 1, "tax": {"type": "none", "value": 0}},
+    "zmove":   {"enabled": False, "is_captain_mechanic": True,
+                "restrict_tiers": ["Tier 4", "Tier 5"], "max_pts": 13,
+                "captain_count": 1, "tax": {"type": "none", "value": 0}},
+    "dynamax": {"enabled": False, "is_captain_mechanic": False,
+                "restrict_tiers": [], "max_pts": 0, "captain_count": 0,
+                "tax": {"type": "none", "value": 0}},
+}
+
+_MECHANIC_NAMES = ("mega", "tera", "zmove", "dynamax")
+
+
+def _mechanic_block(d):
+    """Normalize one stored/derived mechanic block into the canonical shape,
+    deep-copying the list field so the caller can't mutate a shared default."""
+    tax = d.get("tax") or {}
+    return {
+        "enabled": bool(d.get("enabled", False)),
+        "is_captain_mechanic": bool(d.get("is_captain_mechanic", False)),
+        "restrict_tiers": [str(t) for t in (d.get("restrict_tiers") or [])],
+        "max_pts": int(d.get("max_pts", 0) or 0),
+        "captain_count": int(d.get("captain_count", 0) or 0),
+        "tax": {"type": str(tax.get("type", "none") or "none"),
+                "value": int(tax.get("value", 0) or 0)},
+    }
+
+
+def get_mechanic_config(db):
+    """Per-mechanic config {mega,tera,zmove,dynamax} → block. When the
+    'mechanic_config' setting is absent, DERIVE it so behavior is preserved:
+    `enabled` comes from the legacy mechanic_<name> key; captain rules default
+    to today's effective client rules (tera/zmove: Tier 4/5, <=13 pts, count 1).
+    Lists are deep-copied. Malformed stored JSON falls back to the derived form."""
+    row = db.execute("SELECT value FROM league_settings WHERE key='mechanic_config'").fetchone()
+    if row and row["value"]:
+        try:
+            data = json.loads(row["value"])
+            if isinstance(data, dict):
+                return {name: _mechanic_block(data.get(name, DEFAULT_MECHANIC_CONFIG[name]))
+                        for name in _MECHANIC_NAMES}
+        except Exception:
+            pass
+    # Derive from legacy keys.
+    out = {}
+    for name in _MECHANIC_NAMES:
+        block = _mechanic_block(DEFAULT_MECHANIC_CONFIG[name])
+        if name != "dynamax":
+            leg = db.execute("SELECT value FROM league_settings WHERE key=?",
+                             (f"mechanic_{name}",)).fetchone()
+            block["enabled"] = bool(leg and leg["value"] == "1")
+        out[name] = block
+    return out
+
+
 def get_ticket_alloc():
     """{ticket_key -> allocation}, e.g. {'T1':1,...}. Derived from tier_definitions order."""
     return {f"T{i+1}": t["ticket_alloc"] for i, t in enumerate(get_tier_definitions())}
@@ -5750,6 +5836,48 @@ def draft_live_status():
     }
 
 
+_CAPTAIN_LABELS = {"tera": "Tera", "zmove": "Z-Move"}
+
+
+def _captain_eligibility_error(db, mechanic, coach_id, pokemon_name, session_id):
+    """Return a flash message if designating `pokemon_name` as a `mechanic`
+    captain for `coach_id` is illegal per mechanic_config, else None. Checks:
+    enabled → restrict_tiers → max_pts → captain_count (excluding this mon)."""
+    cfg = get_mechanic_config(db)
+    block = cfg.get(mechanic)
+    label = _CAPTAIN_LABELS.get(mechanic, mechanic)
+    if not block:
+        return None
+    if not block["enabled"]:
+        return f"{label} is not enabled this season."
+
+    row = db.execute(
+        "SELECT points FROM pokemon_roster WHERE coach_id=? AND pokemon_name=?",
+        (coach_id, pokemon_name),
+    ).fetchone()
+    pts = (row["points"] if row and row["points"] is not None else 0)
+
+    tiers = block["restrict_tiers"]
+    if tiers:
+        tier = _regular_tier_label(pts)
+        if tier not in tiers:
+            return f"Only {' / '.join(tiers)} Pokémon can be a {label} captain."
+
+    if block["max_pts"] and pts > block["max_pts"]:
+        return f"{label} captain must be ≤{block['max_pts']} pts."
+
+    cap = block["captain_count"]
+    if cap:
+        col = "is_tera_captain" if mechanic == "tera" else "is_zmove_captain"
+        others = db.execute(
+            f"SELECT COUNT(*) FROM pokemon_roster WHERE coach_id=? AND {col}=1 AND pokemon_name != ?",
+            (coach_id, pokemon_name),
+        ).fetchone()[0]
+        if others >= cap:
+            return f"You already have {cap} {label} captain(s)."
+    return None
+
+
 @app.route("/draft/live/set_captain", methods=["POST"])
 def draft_live_set_captain():
     if not session.get("user_id"):
@@ -5779,6 +5907,11 @@ def draft_live_set_captain():
 
     col = "is_tera_captain" if captain_type == "tera" else "is_zmove_captain"
     with get_db() as db:
+        if value == 1:
+            err = _captain_eligibility_error(db, captain_type, target_coach_id, pokemon_name, None)
+            if err:
+                flash(err, "warning")
+                return redirect(url_for("draft_live"))
         db.execute(
             f"UPDATE pokemon_roster SET {col}=? WHERE coach_id=? AND pokemon_name=?",
             (value, target_coach_id, pokemon_name)
