@@ -461,9 +461,11 @@ input[type=number] { -moz-appearance: textfield; }
 .res-pct .big { font-family: var(--font-mono); font-weight: 700; font-size: 17px; color: var(--text); display: block; line-height: 1; }
 .res-pct .range { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text); display: block; line-height: 1.15; }
 .res-pct .ko { font-family: var(--font-mono); font-size: 10px; letter-spacing: .03em; margin-top: 4px; display: block; }
-.ko.guaranteed { color: var(--red); }
+/* KO coloring from the ATTACKER's view: a stronger hit is "better" → greener.
+   guaranteed KO = green, likely (≥50%) = amber, unlikely (<50%) = red, none = dim. */
+.ko.guaranteed { color: var(--lime); }
 .ko.likely { color: var(--amber); }
-.ko.unlikely { color: var(--lime); }
+.ko.unlikely { color: var(--red); }
 .ko.none { color: var(--text-dim); }
 
 /* full desc readout */

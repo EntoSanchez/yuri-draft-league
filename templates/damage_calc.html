@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='calc/styles/calc.css', v='m2') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='calc/styles/calc.css', v='m3') }}">
 <style>
   /* Override the calc's body/html assumptions so it sits inside the Flask nav */
   .wrap { background: transparent; }
@@ -115,7 +115,7 @@
 <!-- ============ Engine + app (load order matters) ============ -->
 <script src="https://unpkg.com/@smogon/calc@0.10.0/dist/data/production.min.js"></script>
 <script src="https://unpkg.com/@smogon/calc@0.10.0/dist/production.min.js"></script>
-<script src="{{ url_for('static', filename='calc/js/data.js', v='44') }}"></script>
+<script src="{{ url_for('static', filename='calc/js/data.js', v='45') }}"></script>
 <script src="{{ url_for('static', filename='calc/js/combo.js') }}"></script>
 <script src="{{ url_for('static', filename='calc/js/sets.js') }}"></script>
 <script src="{{ url_for('static', filename='calc/js/engine.js') }}"></script>

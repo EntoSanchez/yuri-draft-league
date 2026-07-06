@@ -86,19 +86,21 @@
     return Math.floor(val * natureMod(nature, stat));
   }
 
-  // Showdown sprite id: lowercase, drop punctuation & spaces, KEEP forme hyphens.
-  // Showdown hosts regional/alt formes hyphenated (e.g. zoroark-hisui.png,
-  // landorus-therian.png); the collapsed form (zoroarkhisui) 404s.
+  // Showdown sprite id: lowercase, drop punctuation AND spaces, KEEP forme hyphens.
+  // Showdown hosts multi-word BASE names collapsed (greattusk, roaringmoon, mrmime)
+  // but regional/alt FORMES hyphenated (zoroark-hisui, landorus-therian). @smogon/calc
+  // uses a hyphen for both the space in a base name and the forme separator, so we
+  // can't distinguish them from the id alone — spriteChain tries both spellings.
   function spriteId(speciesName) {
     return (speciesName || '').toLowerCase()
       .replace(/[’'.]/g, '').replace(/é/g, 'e').replace(/♀/g, 'f').replace(/♂/g, 'm')
-      .replace(/[:%]/g, '').replace(/\s+/g, '-')   // spaces → hyphen so "Zoroark Hisui" also works
+      .replace(/[:%]/g, '').replace(/\s+/g, '')    // remove spaces (base names like "Great Tusk" → greattusk)
       .replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
   // Ordered list of candidate sprite URLs (animated first if requested), most-preferred
-  // first. Tries the hyphenated id AND a fully-collapsed id (some base-forme sprites are
-  // hosted without the hyphen), so hyphenated formes like Zoroark-Hisui resolve regardless
-  // of how @smogon/calc happens to name them.
+  // first. Because a hyphen in the name may be a collapsed base-name space (greattusk)
+  // OR a forme separator (zoroark-hisui), we try BOTH the hyphenated and fully-collapsed
+  // ids, so every case resolves regardless of Showdown's per-mon convention.
   function spriteChain(speciesName, animated) {
     const id = spriteId(speciesName);
     const flat = id.replace(/-/g, '');
