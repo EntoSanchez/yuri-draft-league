@@ -5907,6 +5907,11 @@ def draft_live_set_captain():
 
     col = "is_tera_captain" if captain_type == "tera" else "is_zmove_captain"
     with get_db() as db:
+        if value == 1:
+            err = _captain_eligibility_error(db, captain_type, target_coach_id, pokemon_name, None)
+            if err:
+                flash(err, "warning")
+                return redirect(url_for("draft_live"))
         db.execute(
             f"UPDATE pokemon_roster SET {col}=? WHERE coach_id=? AND pokemon_name=?",
             (value, target_coach_id, pokemon_name)

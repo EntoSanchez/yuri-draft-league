@@ -183,3 +183,51 @@ def test_eligibility_rejects_disabled(app_mod):
     with app_mod.get_db() as db:
         err = app_mod._captain_eligibility_error(db, "tera", 1, "Weakmon", 1)
     assert err and "not enabled" in err.lower()
+
+
+def test_set_captain_rejects_illegal_designation(client, app_mod):
+    import json
+    cfg = _cfg(restrict_tiers=["Tier 4", "Tier 5"], max_pts=13, captain_count=1)
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM coaches"); db.execute("DELETE FROM pokemon_roster")
+        db.execute("INSERT INTO coaches (id, coach_name, team_name, pool) VALUES (1,'C','T','A')")
+        db.execute("INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (1,'Bigmon',20,'',0,0,0)")
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_config', ?)", (json.dumps(cfg),))
+    client.post("/draft/live/set_captain",
+                data={"pokemon_name": "Bigmon", "captain_type": "tera", "value": "1", "coach_id": "1"},
+                headers={"X-CSRFToken": "testtoken"})
+    with app_mod.get_db() as db:
+        flag = db.execute("SELECT is_tera_captain FROM pokemon_roster WHERE pokemon_name='Bigmon'").fetchone()[0]
+    assert flag == 0  # Tier-1 mon rejected → flag NOT set
+
+
+def test_set_captain_allows_legal_designation(client, app_mod):
+    import json
+    cfg = _cfg(restrict_tiers=["Tier 4", "Tier 5"], max_pts=13, captain_count=1)
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM coaches"); db.execute("DELETE FROM pokemon_roster")
+        db.execute("INSERT INTO coaches (id, coach_name, team_name, pool) VALUES (1,'C','T','A')")
+        db.execute("INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (1,'Weakmon',5,'',0,0,0)")
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_config', ?)", (json.dumps(cfg),))
+    client.post("/draft/live/set_captain",
+                data={"pokemon_name": "Weakmon", "captain_type": "tera", "value": "1", "coach_id": "1"},
+                headers={"X-CSRFToken": "testtoken"})
+    with app_mod.get_db() as db:
+        flag = db.execute("SELECT is_tera_captain FROM pokemon_roster WHERE pokemon_name='Weakmon'").fetchone()[0]
+    assert flag == 1  # Tier-5 5pt mon accepted
+
+
+def test_set_captain_undesignation_always_allowed(client, app_mod):
+    import json
+    cfg = _cfg(enabled=False)  # even disabled, un-designating must work
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM coaches"); db.execute("DELETE FROM pokemon_roster")
+        db.execute("INSERT INTO coaches (id, coach_name, team_name, pool) VALUES (1,'C','T','A')")
+        db.execute("INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (1,'Cap',5,'',1,0,0)")
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_config', ?)", (json.dumps(cfg),))
+    client.post("/draft/live/set_captain",
+                data={"pokemon_name": "Cap", "captain_type": "tera", "value": "0", "coach_id": "1"},
+                headers={"X-CSRFToken": "testtoken"})
+    with app_mod.get_db() as db:
+        flag = db.execute("SELECT is_tera_captain FROM pokemon_roster WHERE pokemon_name='Cap'").fetchone()[0]
+    assert flag == 0  # cleared regardless of config
