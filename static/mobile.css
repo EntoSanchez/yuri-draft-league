@@ -140,22 +140,59 @@
   }
 
   /* ── lineup builder modal ── */
+
+  /* topbar: title row + 2×2 action buttons with real tap targets */
+  .lp-topbar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  .lp-topbar .lp-title { grid-column: 1 / -1; }
+  .lp-btn { height: 42px; font-size: 10.5px !important; padding: 0 10px !important; }
+
+  /* body: roster becomes a horizontal swipe strip, slots get the rest */
   .lp-body {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: 148px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .lp-roster { border-right: 0 !important; border-bottom: 1px solid var(--hairline-2, rgba(232,232,248,.18)); }
-  .lp-roster-list { display: grid !important; grid-template-columns: 1fr 1fr; align-content: start; }
-  .lp-slots-wrap { grid-template-columns: minmax(0, 1fr) !important; padding: 12px !important; }
-  .lp-topbar { flex-wrap: wrap; gap: 8px !important; padding: 10px 12px !important; }
-  .lp-topbar .lp-title { flex-basis: 100%; }
-  .lp-paste-bar { flex-wrap: wrap; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important; }
-  .lp-paste-url { flex-basis: 100%; order: 2; }
-  #lp-status { order: 1; }
-  .lp-paste-bar .lp-btn { order: 3; }
+  .lp-roster-head { padding: 6px 12px 4px; }
+  .lp-roster-list {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 6px !important;
+    padding: 6px 10px 10px !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .lp-roster-list::-webkit-scrollbar { display: none; }
+  .lp-roster-mon { flex: 0 0 auto; padding: 7px 10px !important; min-height: 44px; }
+  .lp-roster-mon img { width: 30px !important; height: 30px !important; }
+  .lp-roster-name { font-size: 10px !important; max-width: 88px; }
 
-  /* iOS: text inputs under 16px trigger auto-zoom on focus */
-  .lp-paste-url { font-size: 16px !important; }
+  /* slots: single column, fields 2-up so cards stay short */
+  .lp-slots-wrap { grid-template-columns: minmax(0, 1fr) !important; padding: 10px 12px !important; gap: 8px !important; }
+  .lp-slot-mon img { width: 36px !important; height: 36px !important; }
+  .lp-slot-pname { font-size: 12px !important; }
+  .lp-slot-num { padding: 6px 10px 5px !important; }
+  .lp-slot-num .lp-clear-slot { font-size: 16px; padding: 4px 6px !important; }
+  .lp-slot-fields {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+  /* ≥16px text: no iOS focus-zoom; comfortable to tap */
+  .lp-input { font-size: 16px !important; height: 40px !important; padding: 0 10px !important; }
+  .lp-field-label { font-size: 8.5px !important; }
+
+  /* paste bar: status, then full-width URL, then buttons */
+  .lp-paste-bar { flex-wrap: wrap; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important; }
+  .lp-paste-url { flex-basis: 100%; order: 2; font-size: 16px !important; height: 40px; }
+  #lp-status { order: 1; }
+  .lp-paste-bar .lp-btn { order: 3; flex: 1; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

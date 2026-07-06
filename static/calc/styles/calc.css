@@ -582,7 +582,7 @@ input[type=number] { -moz-appearance: textfield; }
 
 
 /* =====================================================================
-   PHONES (<= 640px) — Yuri Cup mobile overhaul
+   PHONES (<= 640px) — Yuri Cup mobile overhaul (fix round 2)
    ===================================================================== */
 @media (max-width: 640px) {
 
@@ -624,11 +624,19 @@ input[type=number] { -moz-appearance: textfield; }
   /* ── species row ── */
   .species-row { grid-template-columns: 60px 1fr; gap: 10px; }
   .sprite { width: 60px; height: 60px; }
+  /* 16px input text gives the species combo a large intrinsic min-width;
+     without these the LV field gets pushed outside the panel */
+  .combo { min-width: 0; }
+  .species-line { gap: 6px; }
+  .species-line .combo .field { width: 100%; }
+  .species-line .lvl { width: 52px; }
 
-  /* ── results: move name / bar / numbers stack per row ── */
-  .res-row { grid-template-columns: 1fr; gap: 8px; padding: 10px 12px; }
-  .res-row .res-pct { grid-column: auto; text-align: left; display: flex; align-items: baseline; gap: 10px; }
-  .res-pct .ko { margin-top: 0; }
+  /* ── results: move name / bar / numbers stack per row ──
+     (!important — ui-results.js writes inline grid templates on rows) */
+  .res-row { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; padding: 10px 12px !important; }
+  .res-row .res-pct { grid-column: auto !important; text-align: left !important; display: flex !important; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .res-pct .ko { margin-top: 0 !important; }
+  .res-move .mname { white-space: normal !important; }
   .results-head { gap: 10px; }
   .matchup { font-size: 13px; flex-wrap: wrap; }
 
