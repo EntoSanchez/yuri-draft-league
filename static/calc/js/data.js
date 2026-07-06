@@ -86,18 +86,26 @@
     return Math.floor(val * natureMod(nature, stat));
   }
 
-  // Showdown sprite id: lowercase, drop spaces & punctuation, keep forme hyphens
+  // Showdown sprite id: lowercase, drop punctuation & spaces, KEEP forme hyphens.
+  // Showdown hosts regional/alt formes hyphenated (e.g. zoroark-hisui.png,
+  // landorus-therian.png); the collapsed form (zoroarkhisui) 404s.
   function spriteId(speciesName) {
     return (speciesName || '').toLowerCase()
       .replace(/[’'.]/g, '').replace(/é/g, 'e').replace(/♀/g, 'f').replace(/♂/g, 'm')
-      .replace(/[:%]/g, '').replace(/\s+/g, '');
+      .replace(/[:%]/g, '').replace(/\s+/g, '-')   // spaces → hyphen so "Zoroark Hisui" also works
+      .replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
-  // Ordered list of candidate sprite URLs (animated first if requested), most-preferred first.
+  // Ordered list of candidate sprite URLs (animated first if requested), most-preferred
+  // first. Tries the hyphenated id AND a fully-collapsed id (some base-forme sprites are
+  // hosted without the hyphen), so hyphenated formes like Zoroark-Hisui resolve regardless
+  // of how @smogon/calc happens to name them.
   function spriteChain(speciesName, animated) {
     const id = spriteId(speciesName);
-    const gen5 = `https://play.pokemonshowdown.com/sprites/gen5/${id}.png`;
-    const ani = `https://play.pokemonshowdown.com/sprites/ani/${id}.gif`;
-    return animated ? [ani, gen5] : [gen5];
+    const flat = id.replace(/-/g, '');
+    const ids = flat === id ? [id] : [id, flat];
+    const gen5 = ids.map(x => `https://play.pokemonshowdown.com/sprites/gen5/${x}.png`);
+    const ani = ids.map(x => `https://play.pokemonshowdown.com/sprites/ani/${x}.gif`);
+    return animated ? ani.concat(gen5) : gen5.concat(ani);
   }
   function spriteUrl(speciesName) {
     if (!speciesName) return null;

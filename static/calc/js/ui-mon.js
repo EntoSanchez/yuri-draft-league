@@ -375,8 +375,24 @@
       this.renderSprite();
       this.refreshMegaControl();
       this.refreshSets();
+      // On a fresh species pick, auto-apply the first available preset set so the
+      // panel loads a real spread/moves (and the stat bars reflect it) instead of a
+      // blank 0-EV default. applySetByName handles stats + recompute; if there are no
+      // presets, fall back to just refreshing the stat display.
+      if (resetDefaults) {
+        const firstSet = this._firstSetName();
+        if (firstSet) { this.applySetByName(firstSet); return; }
+      }
       this.refreshStats();
       this.changed();
+    }
+
+    // The first preset-set name currently in the dropdown (skips the placeholder).
+    _firstSetName() {
+      const sel = this.q('[data-set]');
+      if (!sel) return '';
+      for (const opt of sel.options) { if (opt.value) return opt.value; }
+      return '';
     }
 
     // Show a Base/Mega forme switcher when the current mon has league Mega forme(s).
@@ -471,7 +487,10 @@
       const st = this.st;
       st.setName = name;
       st.level = norm.level; st.ability = norm.ability; st.item = norm.item;
-      st.nature = norm.nature; st.teraType = norm.teraType; st.teraActive = !!norm.teraType;
+      // Load the set's tera type as a suggestion but do NOT terastallize automatically —
+      // the user opts in via the Tera toggle. (Auto-teraing on every set/species change
+      // silently changed defensive typing and damage numbers.)
+      st.nature = norm.nature; st.teraType = norm.teraType; st.teraActive = false;
       st.status = ''; st.evs = {}; st.ivs = {}; st.boosts = {};
       Object.assign(st.evs, norm.evs); Object.assign(st.ivs, norm.ivs);
       st.moves = norm.moves.slice(); st.moveOpts = [{}, {}, {}, {}];
