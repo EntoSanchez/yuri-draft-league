@@ -231,3 +231,24 @@ def test_set_captain_undesignation_always_allowed(client, app_mod):
     with app_mod.get_db() as db:
         flag = db.execute("SELECT is_tera_captain FROM pokemon_roster WHERE pokemon_name='Cap'").fetchone()[0]
     assert flag == 0  # cleared regardless of config
+
+
+def test_current_season_unchanged_end_to_end(client, app_mod):
+    """A DB with no mechanic_config (today's state): the migrated config's captain
+    rules match the old effective client rules, and legacy keys round-trip."""
+    # legacy keys as a live season would have them
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM coaches"); db.execute("DELETE FROM pokemon_roster")
+        db.execute("INSERT INTO coaches (id, coach_name, team_name, pool) VALUES (1,'C','T','A')")
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_tera','1')")
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_zmove','1')")
+        # a Tier-5 5pt mon — legal captain under the old ≤13 + Tier4/5 rule
+        db.execute("INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (1,'Weakmon',5,'',0,0,0)")
+    # migrated config must accept that mon as a tera captain
+    with app_mod.get_db() as db:
+        assert app_mod._captain_eligibility_error(db, "tera", 1, "Weakmon", 1) is None
+    # and a Tier-1 20pt mon must be rejected (old rule)
+    with app_mod.get_db() as db:
+        db.execute("INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (1,'Bigmon',20,'',0,0,0)")
+    with app_mod.get_db() as db:
+        assert app_mod._captain_eligibility_error(db, "tera", 1, "Bigmon", 1) is not None
