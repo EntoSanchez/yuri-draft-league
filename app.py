@@ -2795,9 +2795,12 @@ def admin_settings():
                            (f"mechanic_{name}", "1" if mcfg[name]["enabled"] else "0"))
         flash("Settings saved!", "success")
         return redirect(url_for("admin_settings"))
+    with get_db() as db:
+        mechanic_config = get_mechanic_config(db)
     return render_template("admin/settings.html",
                            settings=settings,
                            tier_defs=get_tier_definitions(),
+                           mechanic_config=mechanic_config,
                            league_name=settings.get("league_name", "Pokemon Draft League"))
 
 
