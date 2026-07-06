@@ -5836,6 +5836,48 @@ def draft_live_status():
     }
 
 
+_CAPTAIN_LABELS = {"tera": "Tera", "zmove": "Z-Move"}
+
+
+def _captain_eligibility_error(db, mechanic, coach_id, pokemon_name, session_id):
+    """Return a flash message if designating `pokemon_name` as a `mechanic`
+    captain for `coach_id` is illegal per mechanic_config, else None. Checks:
+    enabled → restrict_tiers → max_pts → captain_count (excluding this mon)."""
+    cfg = get_mechanic_config(db)
+    block = cfg.get(mechanic)
+    label = _CAPTAIN_LABELS.get(mechanic, mechanic)
+    if not block:
+        return None
+    if not block["enabled"]:
+        return f"{label} is not enabled this season."
+
+    row = db.execute(
+        "SELECT points FROM pokemon_roster WHERE coach_id=? AND pokemon_name=?",
+        (coach_id, pokemon_name),
+    ).fetchone()
+    pts = (row["points"] if row and row["points"] is not None else 0)
+
+    tiers = block["restrict_tiers"]
+    if tiers:
+        tier = _regular_tier_label(pts)
+        if tier not in tiers:
+            return f"Only {' / '.join(tiers)} Pokémon can be a {label} captain."
+
+    if block["max_pts"] and pts > block["max_pts"]:
+        return f"{label} captain must be ≤{block['max_pts']} pts."
+
+    cap = block["captain_count"]
+    if cap:
+        col = "is_tera_captain" if mechanic == "tera" else "is_zmove_captain"
+        others = db.execute(
+            f"SELECT COUNT(*) FROM pokemon_roster WHERE coach_id=? AND {col}=1 AND pokemon_name != ?",
+            (coach_id, pokemon_name),
+        ).fetchone()[0]
+        if others >= cap:
+            return f"You already have {cap} {label} captain(s)."
+    return None
+
+
 @app.route("/draft/live/set_captain", methods=["POST"])
 def draft_live_set_captain():
     if not session.get("user_id"):

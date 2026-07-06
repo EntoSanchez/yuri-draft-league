@@ -112,3 +112,74 @@ def test_post_does_not_store_mech_field_rows_raw(client, app_mod):
         keys = {r["key"] for r in db.execute("SELECT key FROM league_settings")}
     assert not any(k.startswith("mech_") for k in keys)  # assembled, not stored raw
     assert "mechanic_config" in keys
+
+
+def _seed_captain_case(app_mod, cfg_overrides=None, roster=None):
+    """Seed coaches + roster + optional mechanic_config; return nothing (uses id 1)."""
+    import json
+    with app_mod.get_db() as db:
+        db.execute("DELETE FROM coaches"); db.execute("DELETE FROM pokemon_roster")
+        db.execute("INSERT INTO coaches (id, coach_name, team_name, pool) VALUES (1,'C','T','A')")
+        for name, pts, tera, zmove in (roster or []):
+            db.execute("INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) VALUES (1,?,?,?,?,?,0)",
+                       (name, pts, "", tera, zmove))
+        if cfg_overrides is not None:
+            db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_config', ?)",
+                       (json.dumps(cfg_overrides),))
+        # enable tera by default so the 'enabled' check passes unless overridden
+        db.execute("INSERT OR REPLACE INTO league_settings (key,value) VALUES ('mechanic_tera','1')")
+
+
+def _cfg(**tera):
+    base = {"enabled": True, "is_captain_mechanic": True, "restrict_tiers": ["Tier 4", "Tier 5"],
+            "max_pts": 13, "captain_count": 1, "tax": {"type": "none", "value": 0}}
+    base.update(tera)
+    other = {"enabled": False, "is_captain_mechanic": False, "restrict_tiers": [],
+             "max_pts": 0, "captain_count": 0, "tax": {"type": "none", "value": 0}}
+    return {"mega": dict(other), "tera": base, "zmove": dict(other), "dynamax": dict(other)}
+
+
+def test_eligibility_accepts_tier5_lowpts(app_mod):
+    _seed_captain_case(app_mod, _cfg(), roster=[("Weakmon", 5, 0, 0)])
+    with app_mod.get_db() as db:
+        err = app_mod._captain_eligibility_error(db, "tera", 1, "Weakmon", 1)
+    assert err is None  # Tier 5 (5 pts), <=13, count ok
+
+
+def test_eligibility_rejects_wrong_tier(app_mod):
+    _seed_captain_case(app_mod, _cfg(), roster=[("Bigmon", 20, 0, 0)])
+    with app_mod.get_db() as db:
+        err = app_mod._captain_eligibility_error(db, "tera", 1, "Bigmon", 1)
+    assert err and "Tier" in err  # 20 pts → Tier 1, not in Tier 4/5
+
+
+def test_eligibility_rejects_over_maxpts(app_mod):
+    _seed_captain_case(app_mod, _cfg(restrict_tiers=[], max_pts=13), roster=[("Midmon", 14, 0, 0)])
+    with app_mod.get_db() as db:
+        err = app_mod._captain_eligibility_error(db, "tera", 1, "Midmon", 1)
+    assert err and "13" in err
+
+
+def test_eligibility_rejects_over_count(app_mod):
+    # count=1; one OTHER mon is already a tera captain
+    _seed_captain_case(app_mod, _cfg(restrict_tiers=[], max_pts=0, captain_count=1),
+                       roster=[("Cap", 5, 1, 0), ("New", 5, 0, 0)])
+    with app_mod.get_db() as db:
+        err = app_mod._captain_eligibility_error(db, "tera", 1, "New", 1)
+    assert err and "captain" in err.lower()
+
+
+def test_eligibility_reaffirm_existing_not_over_count(app_mod):
+    # toggling a mon that is ALREADY the captain must not trip the count cap
+    _seed_captain_case(app_mod, _cfg(restrict_tiers=[], max_pts=0, captain_count=1),
+                       roster=[("Cap", 5, 1, 0)])
+    with app_mod.get_db() as db:
+        err = app_mod._captain_eligibility_error(db, "tera", 1, "Cap", 1)
+    assert err is None
+
+
+def test_eligibility_rejects_disabled(app_mod):
+    _seed_captain_case(app_mod, _cfg(enabled=False), roster=[("Weakmon", 5, 0, 0)])
+    with app_mod.get_db() as db:
+        err = app_mod._captain_eligibility_error(db, "tera", 1, "Weakmon", 1)
+    assert err and "not enabled" in err.lower()
