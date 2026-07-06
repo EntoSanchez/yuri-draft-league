@@ -22,10 +22,9 @@ def test_get_exposes_every_editable_field(client):
 def test_post_persists_scalar_keys(client, app_mod):
     form = {
         "league_name": "Yuri Cup S9", "season": "9", "points_budget": "45",
-        "fa_limit": "3", "mechanic": "Terastallization", "mechanic_tax": "0",
+        "fa_limit": "3",
         "num_players": "18", "num_pools": "2", "current_week": "5",
         "format": "Gen 9 NatDex", "match_format": "BO3",
-        "mechanic_mega": "1", "mechanic_tera": "1",
         "draft_format": "griffin", "draft_free_pick_type": "four_any",
         "points_budget_griffin": "70", "discord_webhook_url": "",
         "uber_combination": "2_bronze",

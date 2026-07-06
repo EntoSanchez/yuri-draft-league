@@ -65,3 +65,50 @@ def test_stored_config_is_returned_and_lists_deepcopied(app_mod):
     with app_mod.get_db() as db:
         cfg2 = app_mod.get_mechanic_config(db)
     assert cfg2["tera"]["restrict_tiers"] == ["Tier 5"]
+
+
+def _mech_form(**over):
+    """Minimal settings POST form with the mechanic-card fields. Defaults: all
+    four disabled, no captain fields. Override per test."""
+    f = {"league_name": "X"}
+    f.update(over)
+    return f
+
+
+def test_post_assembles_mechanic_config(client, app_mod):
+    client.post("/admin/settings", data=_mech_form(
+        mech_tera_enabled="1", mech_tera_captain="1",
+        mech_tera_count="1", mech_tera_maxpts="13",
+        mech_tera_tiers=["Tier 4", "Tier 5"],
+        mech_mega_enabled="1",
+    ), headers={"X-CSRFToken": "testtoken"})
+    with app_mod.get_db() as db:
+        raw = db.execute("SELECT value FROM league_settings WHERE key='mechanic_config'").fetchone()["value"]
+    import json
+    cfg = json.loads(raw)
+    assert cfg["tera"]["enabled"] is True and cfg["tera"]["is_captain_mechanic"] is True
+    assert cfg["tera"]["restrict_tiers"] == ["Tier 4", "Tier 5"]
+    assert cfg["tera"]["max_pts"] == 13 and cfg["tera"]["captain_count"] == 1
+    assert cfg["mega"]["enabled"] is True
+    assert cfg["zmove"]["enabled"] is False
+    assert cfg["tera"]["tax"] == {"type": "none", "value": 0}
+
+
+def test_post_dual_writes_legacy_keys(client, app_mod):
+    client.post("/admin/settings", data=_mech_form(
+        mech_tera_enabled="1", mech_mega_enabled="0",  # mega omitted-as-off below
+    ), headers={"X-CSRFToken": "testtoken"})
+    with app_mod.get_db() as db:
+        got = {r["key"]: r["value"] for r in db.execute("SELECT key,value FROM league_settings")}
+    assert got.get("mechanic_tera") == "1"
+    assert got.get("mechanic_mega") == "0"   # unchecked → dual-written 0
+    assert got.get("mechanic_zmove") == "0"
+
+
+def test_post_does_not_store_mech_field_rows_raw(client, app_mod):
+    client.post("/admin/settings", data=_mech_form(mech_tera_enabled="1", mech_tera_count="1"),
+                headers={"X-CSRFToken": "testtoken"})
+    with app_mod.get_db() as db:
+        keys = {r["key"] for r in db.execute("SELECT key FROM league_settings")}
+    assert not any(k.startswith("mech_") for k in keys)  # assembled, not stored raw
+    assert "mechanic_config" in keys

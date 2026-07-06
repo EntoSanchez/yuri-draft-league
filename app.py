@@ -2742,6 +2742,8 @@ def admin_settings():
                     continue  # handled separately below
                 if key.startswith("tier_cols_") or key.startswith("tier_alloc_"):
                     continue  # assembled into tier_definitions below, not stored raw
+                if key.startswith("mech_"):
+                    continue  # assembled into mechanic_config below, not stored raw
                 db.execute(
                     "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                     (key, value)
@@ -2752,8 +2754,10 @@ def admin_settings():
                 "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
                 ("uber_combination", ",".join(uber_combos) if uber_combos else "")
             )
-            # Checkboxes not submitted when unchecked — force to '0' if missing
-            for checkbox_key in ("mechanic_mega", "mechanic_tera", "mechanic_zmove", "mechanic_uber", "first_pick_regular"):
+            # Checkboxes not submitted when unchecked — force to '0' if missing.
+            # mechanic_mega/tera/zmove are written by the mechanic_config dual-write
+            # below (authoritative), so only mechanic_uber + first_pick_regular here.
+            for checkbox_key in ("mechanic_uber", "first_pick_regular"):
                 if checkbox_key not in request.form:
                     db.execute(
                         "INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
@@ -2770,6 +2774,25 @@ def admin_settings():
                     tdefs.append({"name": name, "columns": cols, "ticket_alloc": alloc})
                 db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('tier_definitions', ?)",
                            (json.dumps(tdefs),))
+            # Assemble mechanic_config from the per-mechanic card fields and dual-write
+            # the legacy mechanic_<name> keys so the ~40 template sites keep working.
+            mcfg = {}
+            for name in ("mega", "tera", "zmove", "dynamax"):
+                enabled = request.form.get(f"mech_{name}_enabled") == "1"
+                mcfg[name] = {
+                    "enabled": enabled,
+                    "is_captain_mechanic": request.form.get(f"mech_{name}_captain") == "1",
+                    "restrict_tiers": request.form.getlist(f"mech_{name}_tiers"),
+                    "max_pts": int(request.form.get(f"mech_{name}_maxpts", "0") or 0),
+                    "captain_count": int(request.form.get(f"mech_{name}_count", "0") or 0),
+                    "tax": {"type": "none", "value": 0},
+                }
+            db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES ('mechanic_config', ?)",
+                       (json.dumps(mcfg),))
+            # Dual-write legacy keys (mechanic_uber stays owned by the Uber section).
+            for name in ("mega", "tera", "zmove"):
+                db.execute("INSERT OR REPLACE INTO league_settings (key, value) VALUES (?, ?)",
+                           (f"mechanic_{name}", "1" if mcfg[name]["enabled"] else "0"))
         flash("Settings saved!", "success")
         return redirect(url_for("admin_settings"))
     return render_template("admin/settings.html",
