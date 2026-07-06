@@ -4793,6 +4793,66 @@ def get_tier_definitions():
     return [{**d, "columns": list(d["columns"])} for d in DEFAULT_TIER_DEFINITIONS]
 
 
+DEFAULT_MECHANIC_CONFIG = {
+    "mega":    {"enabled": False, "is_captain_mechanic": False,
+                "restrict_tiers": [], "max_pts": 0, "captain_count": 0,
+                "tax": {"type": "none", "value": 0}},
+    "tera":    {"enabled": False, "is_captain_mechanic": True,
+                "restrict_tiers": ["Tier 4", "Tier 5"], "max_pts": 13,
+                "captain_count": 1, "tax": {"type": "none", "value": 0}},
+    "zmove":   {"enabled": False, "is_captain_mechanic": True,
+                "restrict_tiers": ["Tier 4", "Tier 5"], "max_pts": 13,
+                "captain_count": 1, "tax": {"type": "none", "value": 0}},
+    "dynamax": {"enabled": False, "is_captain_mechanic": False,
+                "restrict_tiers": [], "max_pts": 0, "captain_count": 0,
+                "tax": {"type": "none", "value": 0}},
+}
+
+_MECHANIC_NAMES = ("mega", "tera", "zmove", "dynamax")
+
+
+def _mechanic_block(d):
+    """Normalize one stored/derived mechanic block into the canonical shape,
+    deep-copying the list field so the caller can't mutate a shared default."""
+    tax = d.get("tax") or {}
+    return {
+        "enabled": bool(d.get("enabled", False)),
+        "is_captain_mechanic": bool(d.get("is_captain_mechanic", False)),
+        "restrict_tiers": [str(t) for t in (d.get("restrict_tiers") or [])],
+        "max_pts": int(d.get("max_pts", 0) or 0),
+        "captain_count": int(d.get("captain_count", 0) or 0),
+        "tax": {"type": str(tax.get("type", "none") or "none"),
+                "value": int(tax.get("value", 0) or 0)},
+    }
+
+
+def get_mechanic_config(db):
+    """Per-mechanic config {mega,tera,zmove,dynamax} → block. When the
+    'mechanic_config' setting is absent, DERIVE it so behavior is preserved:
+    `enabled` comes from the legacy mechanic_<name> key; captain rules default
+    to today's effective client rules (tera/zmove: Tier 4/5, <=13 pts, count 1).
+    Lists are deep-copied. Malformed stored JSON falls back to the derived form."""
+    row = db.execute("SELECT value FROM league_settings WHERE key='mechanic_config'").fetchone()
+    if row and row["value"]:
+        try:
+            data = json.loads(row["value"])
+            if isinstance(data, dict):
+                return {name: _mechanic_block(data.get(name, DEFAULT_MECHANIC_CONFIG[name]))
+                        for name in _MECHANIC_NAMES}
+        except Exception:
+            pass
+    # Derive from legacy keys.
+    out = {}
+    for name in _MECHANIC_NAMES:
+        block = _mechanic_block(DEFAULT_MECHANIC_CONFIG[name])
+        if name != "dynamax":
+            leg = db.execute("SELECT value FROM league_settings WHERE key=?",
+                             (f"mechanic_{name}",)).fetchone()
+            block["enabled"] = bool(leg and leg["value"] == "1")
+        out[name] = block
+    return out
+
+
 def get_ticket_alloc():
     """{ticket_key -> allocation}, e.g. {'T1':1,...}. Derived from tier_definitions order."""
     return {f"T{i+1}": t["ticket_alloc"] for i, t in enumerate(get_tier_definitions())}
