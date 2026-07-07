@@ -71,11 +71,18 @@ def parse_log(log: str) -> dict:
 
         elif cmd in ("switch", "drag", "replace") and len(parts) >= 4:
             slot = _extract_slot(parts[2])
-            # Use slot-descriptor name so mega-evolved forms stay as base name.
-            poke_name = _extract_name(parts[2])
+            # parts[2] is "p1a: NICKNAME"; parts[3] is "SPECIES, L50, F" — use the
+            # SPECIES so a nicknamed Pokémon's kills/deaths are attributed to the
+            # real mon (not the nickname), which the roster leaderboard can match.
+            # Fall back to the slot-descriptor name if the species field is absent.
+            poke_name = _norm(parts[3].split(",")[0].strip()) or _extract_name(parts[2])
             if slot and poke_name:
                 active[slot] = poke_name
                 used[_slot_player(slot)].add(poke_name)
+                # A fresh Pokémon occupies this slot — clear any stale "last hit by"
+                # so an indirect faint (hazards/status) on switch-in can't wrongly
+                # credit whoever last hit the PREVIOUS occupant of the slot.
+                last_hit_by.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange"):
             # Intentionally ignored — kills/deaths stay attributed to base name.
@@ -108,9 +115,18 @@ def parse_log(log: str) -> dict:
             rest = "|".join(parts[3:])
             of_m = re.search(r"\[of\]\s*(p[12][ab]):\s*(.+)", rest)
             if of_m:
+                # Damage credited to an opponent (Rocky Helmet, Rough Skin, etc.).
+                # Prefer the species we're tracking for that slot over the [of]
+                # line's name (which is the nickname), so credit lands on the mon.
                 src_slot = of_m.group(1)
-                src_name = _norm(of_m.group(2).strip().split(",")[0])
+                src_name = active.get(src_slot) or _norm(of_m.group(2).strip().split(",")[0])
                 last_hit_by[victim_slot] = (_slot_player(src_slot), src_name)
+            elif "[from]" in rest:
+                # Indirect self-damage with no attacker: entry hazards, poison/burn/
+                # weather, Life Orb, recoil, crash. If the mon faints from this, no
+                # opponent earned the KO — clear any stale attacker so it's credited
+                # to no one rather than to whoever last hit it directly.
+                last_hit_by.pop(victim_slot, None)
 
         elif cmd == "faint" and len(parts) >= 3:
             slot = _extract_slot(parts[2])
@@ -1821,13 +1837,16 @@ def parse_log_recap(log: str) -> dict:
 
         elif cmd in ("switch", "drag", "replace") and len(parts) >= 4:
             slot = _extract_slot(parts[2])
-            poke_name = _extract_name(parts[2])
+            # Use the SPECIES from parts[3], not the nickname in parts[2], so recap
+            # rosters/KO-log attribute to the real mon (matches parse_log).
+            poke_name = _norm_forme(_norm(parts[3].split(",")[0].strip())) or _extract_name(parts[2])
             if slot and poke_name:
                 active[slot] = poke_name
                 pside = _slot_player(slot)
                 brought[pside].add(poke_name)
                 if not _leads_locked[pside] and poke_name not in leads[pside]:
                     leads[pside].append(poke_name)
+                last_hit.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange"):
             pass  # stay with base name
@@ -1868,8 +1887,20 @@ def parse_log_recap(log: str) -> dict:
             if not victim_slot:
                 continue
             rest = "|".join(parts[3:])
-            indirect = "[from]" in rest
-            if indirect:
+            of_m = re.search(r"\[of\]\s*(p[12][ab]):\s*(.+)", rest)
+            if of_m:
+                # [from] X |[of] p2a: Ferrothorn — a mon (Rocky Helmet, Rough Skin,
+                # Iron Barbs, poison from Toxic Spikes set by a mon, etc.) DID cause
+                # this; credit that attacker, not "no one". Check [of] BEFORE [from].
+                src_slot = of_m.group(1)
+                src_name = active.get(src_slot) or _norm_forme(_norm(of_m.group(2).strip().split(",")[0]))
+                fm = re.search(r"\[from\]\s*([^|]+)", rest)
+                source = fm.group(1).strip() if fm else "?"
+                last_hit[victim_slot] = {
+                    "bySide": _slot_player(src_slot), "by": src_name, "move": source,
+                    "se": False, "indirect": False,
+                }
+            elif "[from]" in rest:
                 fm = re.search(r"\[from\]\s*([^|]+)", rest)
                 source = fm.group(1).strip() if fm else "passive"
                 last_hit[victim_slot] = {
