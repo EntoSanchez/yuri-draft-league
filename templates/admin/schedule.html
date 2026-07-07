@@ -97,6 +97,13 @@
             <button type="submit" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded text-sm font-semibold">Save</button>
             <button type="button" onclick="toggleResult({{ m.id }})" class="px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm">Cancel</button>
         </form>
+        {% if m.score1 is not none or m.score2 is not none %}
+        <form method="POST" class="inline mt-2" onsubmit="return confirm('Clear this result? The match will show as unplayed and any imported games will be removed.')">
+            <input type="hidden" name="action" value="clear_result">
+            <input type="hidden" name="match_id" value="{{ m.id }}">
+            <button type="submit" class="px-3 py-2 bg-red-800 hover:bg-red-700 rounded text-sm font-semibold">Clear result</button>
+        </form>
+        {% endif %}
     </div>
 </div>
 {% endfor %}

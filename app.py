@@ -3000,6 +3000,15 @@ def admin_schedule():
                 post_discord(webhook["value"],
                     f"📣 **{league}** — Week {match_row['week']} Result (Pool {match_row['pool']})\n{result_line}"
                 )
+        elif action == "clear_result":
+            mid = request.form["match_id"]
+            with get_db() as db:
+                # Null the recorded score AND remove any parsed games, so the match
+                # reads as unplayed and a later replay import can't silently re-record
+                # it via _recalc_match_score.
+                db.execute("UPDATE schedule SET score1=NULL, score2=NULL WHERE id=?", (mid,))
+                db.execute("DELETE FROM match_games WHERE schedule_id=?", (mid,))
+            flash("Result cleared — match is now unplayed.", "warning")
         elif action == "delete_match":
             mid = request.form["match_id"]
             with get_db() as db:
