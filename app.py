@@ -754,46 +754,55 @@ def post_discord(webhook_url, content):
         pass  # Never let Discord errors break the app
 
 
-def gemini_commentary(recap, api_key, timeout=12):
-    """Ask Google Gemini (free tier) to write creative match commentary from the
-    recap's structured facts. Returns {"summary": str, "plays": [str], "source":
-    "gemini"} on success, or None on ANY failure (missing key, network, bad
+def ai_commentary(recap, api_key, timeout=15):
+    """Ask Groq (free tier, Llama-3.3-70B) to write creative match commentary from
+    the recap's structured facts. Returns {"summary": str, "plays": [str],
+    "source": "ai"} on success, or None on ANY failure (missing key, network, bad
     response) so the caller keeps the deterministic template commentary.
 
     Data-only: we send parsed facts (KOs, moves, score), never remote code.
+    Groq's endpoint is OpenAI-compatible.
     """
     if not api_key:
         return None
     try:
         from replay_utils import commentary_facts
         facts = commentary_facts(recap)
-        prompt = (
+        system = (
             "You are an esports caster recapping a Pokemon draft-league battle. "
-            "Using ONLY the facts below, write JSON with two keys: \"summary\" (a "
-            "3-5 sentence narrative of how the match unfolded — the opening, the "
-            "turning point, and who carried it, naming Pokemon and trainers) and "
-            "\"plays\" (an array of short, punchy play-by-play lines, one per "
-            "knockout in turn order, calling out super-effective hits and swings). "
-            "Be vivid but accurate; do not invent events not in the facts. Return "
-            "ONLY raw JSON, no markdown fences.\n\nFACTS:\n" + json.dumps(facts)
+            "Using ONLY the facts given, respond with a JSON object with exactly two "
+            "keys: \"summary\" (a 3-5 sentence narrative of how the match unfolded — "
+            "the opening, the turning point, and who carried it, naming Pokemon and "
+            "trainers) and \"plays\" (an array of short, punchy play-by-play strings, "
+            "one per knockout in turn order, calling out super-effective hits and "
+            "momentum swings). Be vivid but accurate; never invent events not in the "
+            "facts. Output ONLY the JSON object."
         )
         body = json.dumps({
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.9, "responseMimeType": "application/json"},
+            "model": "llama-3.3-70b-versatile",
+            "temperature": 0.9,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": "FACTS:\n" + json.dumps(facts)},
+            ],
         }).encode("utf-8")
-        url = ("https://generativelanguage.googleapis.com/v1beta/models/"
-               "gemini-2.0-flash:generateContent?key=" + api_key)
         req = urllib.request.Request(
-            url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=body,
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer " + api_key},
+            method="POST",
+        )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
-        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        text = data["choices"][0]["message"]["content"]
         parsed = json.loads(text)
         summary = str(parsed.get("summary", "")).strip()
         plays = [str(x).strip() for x in parsed.get("plays", []) if str(x).strip()]
         if not summary:
             return None
-        return {"summary": summary, "plays": plays, "source": "gemini"}
+        return {"summary": summary, "plays": plays, "source": "ai"}
     except Exception:
         return None  # Any failure -> caller falls back to template commentary
 
@@ -3219,10 +3228,10 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                 # Gemini enhancement (replaces it only if the call succeeds).
                 recap["commentary"] = _replay_build_commentary(recap)
                 gkey = db.execute(
-                    "SELECT value FROM league_settings WHERE key='gemini_api_key'"
+                    "SELECT value FROM league_settings WHERE key='groq_api_key'"
                 ).fetchone()
                 if gkey and gkey["value"]:
-                    enhanced = gemini_commentary(recap, gkey["value"])
+                    enhanced = ai_commentary(recap, gkey["value"])
                     if enhanced:
                         recap["commentary"] = enhanced
                 recap_json_str = json.dumps(recap)
