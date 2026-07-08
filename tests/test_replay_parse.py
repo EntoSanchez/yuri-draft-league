@@ -186,3 +186,25 @@ def test_toxic_spikes_kill_credits_the_setter():
     p = R.parse_log(log)
     assert p["kills"]["p2"] == {"Glimmora": 1}
     assert p["deaths"]["p1"] == {"Togekiss": 1}
+
+
+def test_future_sight_credits_the_user_even_after_it_leaves():
+    # Slowking uses Future Sight, then switches out; 2 turns later it lands and KOs
+    # Kingambit. Slowking must still get the KO.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p1a: Slowking|Slowking-Galar|100/100",
+        "|switch|p2a: Kingambit|Kingambit, M|50/100",
+        "|move|p1a: Slowking|Future Sight|p2a: Kingambit",
+        "|-start|p1a: Slowking|move: Future Sight",
+        "|switch|p1a: Ferrothorn|Ferrothorn, M|100/100",
+        "|turn|3",
+        "|-end|p2a: Kingambit|move: Future Sight",
+        "|-damage|p2a: Kingambit|0 fnt|[from] move: Future Sight",
+        "|faint|p2a: Kingambit",
+        "|win|Alice",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p1"] == {"Slowking-Galar": 1}
+    assert p["deaths"]["p2"] == {"Kingambit": 1}

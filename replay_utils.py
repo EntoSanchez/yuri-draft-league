@@ -75,6 +75,8 @@ def parse_log(log: str) -> dict:
     hazard_setter = {"p1": {}, "p2": {}}   # side -> {hazard_id: (player, name)}
     status_by = {}                         # victim slot -> (player, name)
     last_move_actor = None                 # (player, name) of the most recent |move|
+    future_move_by = {"p1": None, "p2": None}  # target side -> (player, name) of a
+                                           # pending Future Sight / Doom Desire user
 
     for raw in log.splitlines():
         line = raw.strip()
@@ -147,6 +149,14 @@ def parse_log(log: str) -> dict:
                         targets.add(sm.group(1))
             for tgt in targets:
                 last_hit_by[tgt] = (atk_player, atk_name)
+            # Future Sight / Doom Desire land ~2 turns later on the TARGET's side,
+            # by which point the user may be gone. Remember the user keyed by the
+            # target side so the delayed KO still credits them.
+            move_name = parts[3].strip() if len(parts) >= 4 else ""
+            if move_name in ("Future Sight", "Doom Desire"):
+                tgt_side = _slot_player(primary) if primary else (
+                    "p2" if atk_player == "p1" else "p1")
+                future_move_by[tgt_side] = (atk_player, atk_name)
 
         elif cmd == "-sidestart" and len(parts) >= 4:
             # "|-sidestart|p1: user|move: Stealth Rock" — the mon that just moved
@@ -221,6 +231,10 @@ def parse_log(log: str) -> dict:
                         cause = status_by[victim_slot]
                     elif source in ("psn", "tox") and "toxic spikes" in hazard_setter.get(victim_side, {}):
                         cause = hazard_setter[victim_side]["toxic spikes"]
+                elif source in ("move: Future Sight", "move: Doom Desire"):
+                    # Delayed attack landing now — credit the mon that used it 2
+                    # turns ago (recorded by target side), even if it's since gone.
+                    cause = future_move_by.get(victim_side)
                 if cause:
                     last_hit_by[victim_slot] = cause
                 else:
@@ -1910,6 +1924,8 @@ def parse_log_recap(log: str) -> dict:
     ko_log = []                       # raw chronological faints
     hazard_setter = {"p1": {}, "p2": {}}   # side -> {hazard_id: {side,name}}
     status_by = {}                    # victim slot -> {side, name} that inflicted status
+    future_move_by = {"p1": None, "p2": None}  # target side -> {side,name} of a
+                                      # pending Future Sight / Doom Desire user
     winner_player = None
     leads = {"p1": [], "p2": []}      # first 2 switch-ins per side before turn 2
     _leads_locked = {"p1": False, "p2": False}
@@ -1981,6 +1997,10 @@ def parse_log_recap(log: str) -> dict:
                         "bySide": atk_side, "by": atk_name,
                         "move": move_name, "se": False, "indirect": False,
                     }
+                if move_name in ("Future Sight", "Doom Desire"):
+                    tgt_side = _slot_player(primary) if primary else (
+                        "p2" if atk_side == "p1" else "p1")
+                    future_move_by[tgt_side] = {"side": atk_side, "name": atk_name}
 
         elif cmd == "-sidestart" and len(parts) >= 4:
             side = parts[2].split(":")[0].strip()
@@ -2053,6 +2073,8 @@ def parse_log_recap(log: str) -> dict:
                         cause = status_by[victim_slot]
                     elif source in ("psn", "tox") and "toxic spikes" in hazard_setter.get(vside, {}):
                         cause = hazard_setter[vside]["toxic spikes"]
+                elif source in ("move: Future Sight", "move: Doom Desire"):
+                    cause = future_move_by.get(vside)
                 last_hit[victim_slot] = {
                     "bySide": cause["side"] if cause else None,
                     "by": cause["name"] if cause else None,
