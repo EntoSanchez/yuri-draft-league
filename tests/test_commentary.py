@@ -42,3 +42,20 @@ def test_commentary_handles_empty_kolog():
     c = R.build_commentary(fake)
     assert c["plays"] == []
     assert "A" in c["summary"] and "B" in c["summary"]
+
+
+def test_coerce_play_handles_dicts_and_strings():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("app", "app.py")
+    # app import has side effects (DB); use the function via a light import guard
+    import app as A  # conftest already sets DATABASE for the suite
+    assert A._coerce_play("  hello  ") == "hello"
+    assert A._coerce_play({"text": "Pika KOs Chomp"}) == "Pika KOs Chomp"
+    assert A._coerce_play({"play": "x"}) == "x"
+    assert A._coerce_play({"nope": 1}) == ""  # unknown dict -> empty (dropped by caller)
+
+
+def test_ai_commentary_no_key_returns_none(app_mod):
+    rc = _recap("https://replay.pokemonshowdown.com/gen9nationaldexubers-2501799475")
+    assert app_mod.ai_commentary(rc, "") is None
+    assert app_mod.ai_commentary(rc, None) is None

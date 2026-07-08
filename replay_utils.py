@@ -2462,7 +2462,8 @@ def commentary_facts(recap: dict) -> dict:
         if wl < 0:
             max_deficit = min(max_deficit, wl)
     stars = [
-        {"name": s["mon"]["name"], "team": home if s["side"] == "HOME" else away,
+        {"name": (s.get("mon") or {}).get("name", "?"),
+         "team": home if s.get("side") == "HOME" else away,
          "kos": s.get("line", "")}
         for s in recap.get("stars", [])
     ]

@@ -754,7 +754,15 @@ def post_discord(webhook_url, content):
         pass  # Never let Discord errors break the app
 
 
-def ai_commentary(recap, api_key, timeout=15):
+def _coerce_play(x):
+    """Model 'plays' items should be strings; coerce a stray dict to its most
+    likely text field rather than dumping a Python repr into the page."""
+    if isinstance(x, dict):
+        return str(x.get("text") or x.get("play") or x.get("description") or "").strip()
+    return str(x).strip()
+
+
+def ai_commentary(recap, api_key, timeout=8):
     """Ask Groq (free tier, Llama-3.3-70B) to write creative match commentary from
     the recap's structured facts. Returns {"summary": str, "plays": [str],
     "source": "ai"} on success, or None on ANY failure (missing key, network, bad
@@ -801,8 +809,18 @@ def ai_commentary(recap, api_key, timeout=15):
             data = json.loads(resp.read())
         text = data["choices"][0]["message"]["content"]
         parsed = json.loads(text)
-        summary = str(parsed.get("summary", "")).strip()
-        plays = [str(x).strip() for x in parsed.get("plays", []) if str(x).strip()]
+        if not isinstance(parsed, dict):
+            return None  # json_object should guarantee this, but be explicit
+        summary_raw = parsed.get("summary", "")
+        if not isinstance(summary_raw, str):
+            return None  # a dict/list summary would render as ugly repr
+        summary = summary_raw.strip()[:1000]
+        raw_plays = parsed.get("plays", [])
+        plays = [p for p in (_coerce_play(x) for x in (raw_plays if isinstance(raw_plays, list) else [])) if p]
+        # Cap count (to ~the real KO count) and per-line length so a verbose or
+        # runaway model can't bloat recap_json / the page.
+        cap = len(recap.get("koLog", [])) + 3
+        plays = [p[:300] for p in plays[:cap]]
         if not summary:
             return None
         return {"summary": summary, "plays": plays, "source": "ai"}
@@ -3114,6 +3132,12 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         if not c1_row or not c2_row:
             errors.append("Could not load coach rows from DB.")
             return errors
+        # Read the AI-commentary key once (not per game). NOTE: the Groq call
+        # still runs inside this db context; that's fine for BO1 (one ~1-2s call).
+        # Before enabling BO3 imports, move ai_commentary OUTSIDE this get_db()
+        # block so 3 sequential API calls can't hold the write connection ~45s.
+        _gk = db.execute("SELECT value FROM league_settings WHERE key='groq_api_key'").fetchone()
+        _groq_key = _gk["value"] if _gk and _gk["value"] else None
         c1 = dict(c1_row)
         c2 = dict(c2_row)
 
@@ -3220,6 +3244,9 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             replay_meta["logo_away"] = by_pkey[away_pid].get("logo_url")
             replay_meta["id_home"] = by_pkey[home_pid].get("id")
             replay_meta["id_away"] = by_pkey[away_pid].get("id")
+            # Build + serialize the recap FIRST, so nothing after it can null a
+            # good recap (C1). Commentary is added best-effort and re-serialized
+            # only on success — a commentary bug never destroys the recap.
             try:
                 recap = _replay_build_recap(
                     parsed_recap,
@@ -3227,19 +3254,28 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                     name_map_p1=name_maps.get("p1", {}),
                     name_map_p2=name_maps.get("p2", {}),
                 )
-                # Commentary: deterministic template floor, then try a free-tier
-                # Gemini enhancement (replaces it only if the call succeeds).
-                recap["commentary"] = _replay_build_commentary(recap)
-                gkey = db.execute(
-                    "SELECT value FROM league_settings WHERE key='groq_api_key'"
-                ).fetchone()
-                if gkey and gkey["value"]:
-                    enhanced = ai_commentary(recap, gkey["value"])
-                    if enhanced:
-                        recap["commentary"] = enhanced
                 recap_json_str = json.dumps(recap)
             except Exception:
+                recap = None
                 recap_json_str = None
+
+            if recap is not None:
+                # Deterministic template commentary (the floor), then optionally the
+                # free-tier Groq AI enhancement. Each in its own guard; on any error
+                # we keep the last good recap_json_str.
+                try:
+                    recap["commentary"] = _replay_build_commentary(recap)
+                    recap_json_str = json.dumps(recap)
+                except Exception:
+                    pass
+                if _groq_key:
+                    try:
+                        enhanced = ai_commentary(recap, _groq_key)
+                        if enhanced:
+                            recap["commentary"] = enhanced
+                            recap_json_str = json.dumps(recap)
+                    except Exception:
+                        pass
 
             # Upsert match_games
             existing = db.execute(

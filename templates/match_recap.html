@@ -431,7 +431,7 @@
   {# ===== 05 THREE STARS ===== #}
   <section class="mh-sec">
     <div class="mh-sechead">
-      <span class="num">04</span>
+      <span class="num">05</span>
       <span class="ttl">Three Stars</span>
       <span class="rule"></span>
       <span class="meta">PLAYERS OF THE MATCH</span>
@@ -465,14 +465,14 @@
 
   {% endfor %}{# end for M in all_recaps #}
 
-  {# ===== 05 WHAT IT MEANS — shown once using the featured (deciding) game ===== #}
+  {# ===== 06 WHAT IT MEANS — shown once using the featured (deciding) game ===== #}
   {% set M = featured %}
   {% set home_win = M.totals.winner == "HOME" %}
   {% set win_team = M.home if home_win else M.away %}
   {% set lose_team = M.away if home_win else M.home %}
   <section class="mh-sec">
     <div class="mh-sechead">
-      <span class="num">{{ '06' if all_recaps|length > 1 else '05' }}</span>
+      <span class="num">{{ '07' if all_recaps|length > 1 else '06' }}</span>
       <span class="ttl">What It Means</span>
       <span class="rule"></span>
       <span class="meta">HEAD-TO-HEAD · STANDINGS</span>
