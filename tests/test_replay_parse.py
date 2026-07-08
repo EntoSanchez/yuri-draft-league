@@ -99,3 +99,90 @@ def test_rocky_helmet_of_credits_opponent():
     p = R.parse_log(log)
     assert p["kills"]["p1"] == {"Ferrothorn": 1}
     assert p["deaths"]["p2"] == {"Rattata": 1}
+
+
+def test_flame_orb_self_burn_ko_credits_no_one():
+    # A mon burned by its OWN Flame Orb, then fainting to burn, credits no one —
+    # even though the opponent moved last that turn.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p1a: Torkoal|Torkoal, M|10/100",
+        "|switch|p2a: Pikachu|Pikachu, F|100/100",
+        "|move|p2a: Pikachu|Thunderbolt|p1a: Torkoal",   # opponent moved last
+        "|-damage|p1a: Torkoal|8/100",
+        "|-status|p1a: Torkoal|brn|[from] item: Flame Orb",
+        "|-damage|p1a: Torkoal|0 fnt|[from] brn",
+        "|faint|p1a: Torkoal",
+        "|win|Bob",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p2"] == {}   # Pikachu did NOT earn this KO
+    assert p["deaths"]["p1"] == {"Torkoal": 1}
+
+
+def test_flame_body_ability_burn_credits_the_of_mon():
+    # Contact-move burn via Flame Body: [of] names the ability holder — credit it,
+    # not whoever moved last.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p2a: Volcarona|Volcarona, F|100/100",
+        "|switch|p1a: Arcanine|Arcanine, M|10/100",
+        "|move|p1a: Arcanine|Extreme Speed|p2a: Volcarona",
+        "|-status|p1a: Arcanine|brn|[from] ability: Flame Body|[of] p2a: Volcarona",
+        "|-damage|p1a: Arcanine|0 fnt|[from] brn",
+        "|faint|p1a: Arcanine",
+        "|win|Bob",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p2"] == {"Volcarona": 1}
+    assert p["deaths"]["p1"] == {"Arcanine": 1}
+
+
+def test_zoroark_illusion_kills_reattributed_on_reveal():
+    # Zoroark disguised as Garchomp KOs Pikachu, then is revealed on faint. Its
+    # kill must land on Zoroark, and the disguise must not appear in used.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p1a: Garchomp|Garchomp, M|100/100",     # Zoroark disguised
+        "|switch|p2a: Pikachu|Pikachu, F|100/100",
+        "|move|p1a: Garchomp|Sucker Punch|p2a: Pikachu",
+        "|-damage|p2a: Pikachu|0 fnt",
+        "|faint|p2a: Pikachu",
+        "|switch|p2a: Snorlax|Snorlax, M|100/100",
+        "|move|p2a: Snorlax|Body Slam|p1a: Garchomp",
+        "|-damage|p1a: Garchomp|0 fnt",
+        "|replace|p1a: Zoroark|Zoroark, M|0 fnt",         # revealed
+        "|faint|p1a: Zoroark",
+        "|win|Bob",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p1"] == {"Zoroark": 1}      # kill moved off the disguise
+    assert "Garchomp" not in p["kills"]["p1"]
+    assert p["deaths"]["p1"] == {"Zoroark": 1}
+    assert "Garchomp" not in p["p1"]["pokemon_used"]
+    assert "Zoroark" in p["p1"]["pokemon_used"]
+
+
+def test_toxic_spikes_kill_credits_the_setter():
+    # p2's Glimmora sets Toxic Spikes; p1's mon switches in, is poisoned, and later
+    # faints to it. Credit Glimmora (the setter), not whoever moved last.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p1a: Lead|Skarmory, M|100/100",
+        "|switch|p2a: Glimmora|Glimmora, M|100/100",
+        "|move|p2a: Glimmora|Toxic Spikes|p1a: Lead",
+        "|-sidestart|p1: Alice|move: Toxic Spikes",
+        "|move|p2a: Glimmora|Power Gem|p1a: Lead",         # a later, unrelated move
+        "|switch|p1a: Togekiss|Togekiss, F|30/100",
+        "|-status|p1a: Togekiss|psn|[from] move: Toxic Spikes",
+        "|-damage|p1a: Togekiss|0 fnt|[from] psn",
+        "|faint|p1a: Togekiss",
+        "|win|Bob",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p2"] == {"Glimmora": 1}
+    assert p["deaths"]["p1"] == {"Togekiss": 1}

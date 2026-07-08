@@ -98,14 +98,28 @@ def parse_log(log: str) -> dict:
             # Fall back to the slot-descriptor name if the species field is absent.
             poke_name = _norm(parts[3].split(",")[0].strip()) or _extract_name(parts[2])
             if slot and poke_name:
+                sider = _slot_player(slot)
+                if cmd == "replace":
+                    # Illusion (Zoroark/Zorua) reveal: the mon that has been in this
+                    # slot was actually `poke_name` all along, disguised as the old
+                    # `active[slot]`. Move that disguise's kills to the real species
+                    # and drop the phantom disguise from this side's used-list.
+                    disguise = active.get(slot)
+                    if disguise and disguise != poke_name:
+                        moved = kills[sider].pop(disguise, 0)
+                        if moved:
+                            kills[sider][poke_name] = kills[sider].get(poke_name, 0) + moved
+                        used[sider].discard(disguise)
                 active[slot] = poke_name
-                used[_slot_player(slot)].add(poke_name)
+                used[sider].add(poke_name)
                 # A fresh Pokémon occupies this slot — clear any stale attribution
                 # (direct last-hit AND inherited status) so it can't wrongly credit
                 # whoever acted on the PREVIOUS occupant. Hazard credit persists on
                 # the SIDE (hazard_setter), so it survives the switch correctly.
-                last_hit_by.pop(slot, None)
-                status_by.pop(slot, None)
+                # (A `replace` reveal keeps the slot's own attribution intact.)
+                if cmd != "replace":
+                    last_hit_by.pop(slot, None)
+                    status_by.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange"):
             # Intentionally ignored — kills/deaths stay attributed to base name.
@@ -137,9 +151,12 @@ def parse_log(log: str) -> dict:
         elif cmd == "-sidestart" and len(parts) >= 4:
             # "|-sidestart|p1: user|move: Stealth Rock" — the mon that just moved
             # set this hazard on side p1. Credit future hazard faints on p1 to it.
+            # Guard: only credit when the hazard lands on the OPPONENT's side. Court
+            # Change / a redirected hazard landing on the mover's own side must not
+            # credit the mover for a teammate's later hazard faint.
             side = parts[2].split(":")[0].strip()
             hz = _hazard_id(parts[3])
-            if side in ("p1", "p2") and hz and last_move_actor:
+            if side in ("p1", "p2") and hz and last_move_actor and last_move_actor[0] != side:
                 hazard_setter[side][hz] = last_move_actor
 
         elif cmd == "-sideend" and len(parts) >= 4:
@@ -149,9 +166,25 @@ def parse_log(log: str) -> dict:
                 hazard_setter[side].pop(hz, None)
 
         elif cmd == "-status" and len(parts) >= 4:
-            # "|-status|p1a: Mon|brn" — the mon that just moved inflicted it.
+            # "|-status|p1a: Mon|brn" — attribute the status to the mon responsible.
             victim_slot = _extract_slot(parts[2])
-            if victim_slot and last_move_actor and last_move_actor[0] != _slot_player(victim_slot):
+            rest = "|".join(parts[4:])
+            of_m = re.search(r"\[of\]\s*(p[12][ab]):", rest)
+            if not victim_slot:
+                pass
+            elif of_m and of_m.group(1) != victim_slot:
+                # Ability-inflicted (Flame Body, Static, Poison Point): [of] names
+                # the culprit — use it, not whoever moved last.
+                src = of_m.group(1)
+                if active.get(src):
+                    status_by[victim_slot] = (_slot_player(src), active[src])
+            elif "[from]" in rest:
+                # Self-inflicted (Flame Orb / Toxic Orb / Rest) or hazard-set status
+                # (Toxic Spikes) — NOT the last mover's doing. Credit no one here
+                # (a hazard status is handled via hazard_setter on the damage tick).
+                pass
+            elif last_move_actor and last_move_actor[0] != _slot_player(victim_slot):
+                # Plain opponent-move status: Will-O-Wisp, Toxic, Nuzzle, Thunder Wave.
                 status_by[victim_slot] = last_move_actor
 
         elif cmd == "-damage" and len(parts) >= 3:
@@ -180,8 +213,14 @@ def parse_log(log: str) -> dict:
                 cause = None
                 if hz and hz in hazard_setter.get(victim_side, {}):
                     cause = hazard_setter[victim_side][hz]
-                elif source in ("brn", "psn", "tox") and victim_slot in status_by:
-                    cause = status_by[victim_slot]
+                elif source in ("brn", "psn", "tox"):
+                    # Poison/burn tick: prefer the recorded status applier; if the
+                    # poison came from Toxic Spikes (no applier recorded), credit the
+                    # hazard setter instead.
+                    if victim_slot in status_by:
+                        cause = status_by[victim_slot]
+                    elif source in ("psn", "tox") and "toxic spikes" in hazard_setter.get(victim_side, {}):
+                        cause = hazard_setter[victim_side]["toxic spikes"]
                 if cause:
                     last_hit_by[victim_slot] = cause
                 else:
@@ -204,6 +243,10 @@ def parse_log(log: str) -> dict:
                     k = kills[kplayer]
                     k[kname] = k.get(kname, 0) + 1
             active.pop(slot, None)
+            # A mon that just fainted can't be the culprit for a status/hazard
+            # applied AFTER its faint line — invalidate stale actor credit.
+            if last_move_actor and last_move_actor == (fplayer, fainted):
+                last_move_actor = None
 
         elif cmd == "win" and len(parts) >= 3:
             winner_uname = parts[2].strip()
@@ -1942,7 +1985,8 @@ def parse_log_recap(log: str) -> dict:
         elif cmd == "-sidestart" and len(parts) >= 4:
             side = parts[2].split(":")[0].strip()
             hz = _hazard_id(parts[3])
-            if side in ("p1", "p2") and hz and cur_move:
+            # Only credit a hazard set on the OPPONENT's side (Court Change guard).
+            if side in ("p1", "p2") and hz and cur_move and cur_move["side"] != side:
                 hazard_setter[side][hz] = {"side": cur_move["side"], "name": cur_move["user"]}
 
         elif cmd == "-sideend" and len(parts) >= 4:
@@ -1953,7 +1997,20 @@ def parse_log_recap(log: str) -> dict:
 
         elif cmd == "-status" and len(parts) >= 4:
             vslot = _extract_slot(parts[2])
-            if vslot and cur_move and cur_move["side"] != _slot_player(vslot):
+            rest = "|".join(parts[4:])
+            of_m = re.search(r"\[of\]\s*(p[12][ab]):", rest)
+            if not vslot:
+                pass
+            elif of_m and of_m.group(1) != vslot:
+                # Ability-inflicted (Flame Body etc.) — credit the [of] mon.
+                src = of_m.group(1)
+                if active.get(src):
+                    status_by[vslot] = {"side": _slot_player(src), "name": active[src]}
+            elif "[from]" in rest:
+                # Self-inflicted (Flame/Toxic Orb, Rest) or hazard status — not the
+                # last mover; credit no one here.
+                pass
+            elif cur_move and cur_move["side"] != _slot_player(vslot):
                 status_by[vslot] = {"side": cur_move["side"], "name": cur_move["user"]}
 
         elif cmd == "-supereffective" and len(parts) >= 3:
@@ -1991,8 +2048,11 @@ def parse_log_recap(log: str) -> dict:
                 cause = None
                 if hz and hz in hazard_setter.get(vside, {}):
                     cause = hazard_setter[vside][hz]
-                elif source in ("brn", "psn", "tox") and victim_slot in status_by:
-                    cause = status_by[victim_slot]
+                elif source in ("brn", "psn", "tox"):
+                    if victim_slot in status_by:
+                        cause = status_by[victim_slot]
+                    elif source in ("psn", "tox") and "toxic spikes" in hazard_setter.get(vside, {}):
+                        cause = hazard_setter[vside]["toxic spikes"]
                 last_hit[victim_slot] = {
                     "bySide": cause["side"] if cause else None,
                     "by": cause["name"] if cause else None,
@@ -2025,6 +2085,10 @@ def parse_log_recap(log: str) -> dict:
                     "indirect": bool(k.get("indirect")),
                 })
             active.pop(slot, None)
+            # Invalidate a just-fainted mon as the "last mover" so it can't be
+            # credited for a status/hazard applied after its faint line.
+            if cur_move and cur_move.get("side") == fplayer and cur_move.get("user") == fainted:
+                cur_move = None
 
         elif cmd == "win" and len(parts) >= 3:
             winner_uname = parts[2].strip()
@@ -2233,12 +2297,15 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
 
     # Three stars
     def _victims_of(pside: str, name: str):
+        # Match kills_by_mon / build_roster.victims: an indirect KO with a known
+        # attacker (hazard setter / status applier) counts. Only truly unattributed
+        # faints (by=None) are excluded — keep this predicate in sync with L2134/L2157.
         return [
             resolve(e["victimSide"], e["victim"])
             for e in raw["ko_log"]
             if e["bySide"] == pside
             and resolve(pside, e.get("by") or "") == name
-            and not e["indirect"]
+            and e["by"]
         ]
 
     sorted_home = sorted(home_roster, key=lambda m: -m["kos"])
