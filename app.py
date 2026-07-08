@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from replay_utils import (fetch_replay as _replay_fetch, parse_log as _replay_parse_log,
                           resolve_poke_name as _replay_resolve_poke, remap_dict as _replay_remap,
                           parse_log_recap as _replay_parse_recap, build_recap as _replay_build_recap,
+                          build_commentary as _replay_build_commentary,
                           TYPE_COLORS as _RECAP_TYPE_COLORS)
 
 app = Flask(__name__)
@@ -751,6 +752,50 @@ def post_discord(webhook_url, content):
         urllib.request.urlopen(req, timeout=5)
     except Exception:
         pass  # Never let Discord errors break the app
+
+
+def gemini_commentary(recap, api_key, timeout=12):
+    """Ask Google Gemini (free tier) to write creative match commentary from the
+    recap's structured facts. Returns {"summary": str, "plays": [str], "source":
+    "gemini"} on success, or None on ANY failure (missing key, network, bad
+    response) so the caller keeps the deterministic template commentary.
+
+    Data-only: we send parsed facts (KOs, moves, score), never remote code.
+    """
+    if not api_key:
+        return None
+    try:
+        from replay_utils import commentary_facts
+        facts = commentary_facts(recap)
+        prompt = (
+            "You are an esports caster recapping a Pokemon draft-league battle. "
+            "Using ONLY the facts below, write JSON with two keys: \"summary\" (a "
+            "3-5 sentence narrative of how the match unfolded — the opening, the "
+            "turning point, and who carried it, naming Pokemon and trainers) and "
+            "\"plays\" (an array of short, punchy play-by-play lines, one per "
+            "knockout in turn order, calling out super-effective hits and swings). "
+            "Be vivid but accurate; do not invent events not in the facts. Return "
+            "ONLY raw JSON, no markdown fences.\n\nFACTS:\n" + json.dumps(facts)
+        )
+        body = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.9, "responseMimeType": "application/json"},
+        }).encode("utf-8")
+        url = ("https://generativelanguage.googleapis.com/v1beta/models/"
+               "gemini-2.0-flash:generateContent?key=" + api_key)
+        req = urllib.request.Request(
+            url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        parsed = json.loads(text)
+        summary = str(parsed.get("summary", "")).strip()
+        plays = [str(x).strip() for x in parsed.get("plays", []) if str(x).strip()]
+        if not summary:
+            return None
+        return {"summary": summary, "plays": plays, "source": "gemini"}
+    except Exception:
+        return None  # Any failure -> caller falls back to template commentary
 
 
 def get_standings(pool=None):
@@ -3170,6 +3215,16 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                     name_map_p1=name_maps.get("p1", {}),
                     name_map_p2=name_maps.get("p2", {}),
                 )
+                # Commentary: deterministic template floor, then try a free-tier
+                # Gemini enhancement (replaces it only if the call succeeds).
+                recap["commentary"] = _replay_build_commentary(recap)
+                gkey = db.execute(
+                    "SELECT value FROM league_settings WHERE key='gemini_api_key'"
+                ).fetchone()
+                if gkey and gkey["value"]:
+                    enhanced = gemini_commentary(recap, gkey["value"])
+                    if enhanced:
+                        recap["commentary"] = enhanced
                 recap_json_str = json.dumps(recap)
             except Exception:
                 recap_json_str = None

@@ -401,7 +401,34 @@
     </div>
   </section>
 
-  {# ===== 04 THREE STARS ===== #}
+  {# ===== 04 COMMENTARY ===== #}
+  {% if M.commentary and (M.commentary.summary or M.commentary.plays) %}
+  <section class="mh-sec">
+    <div class="mh-sechead">
+      <span class="num">04</span>
+      <span class="ttl">The Story</span>
+      <span class="rule"></span>
+      <span class="meta">{% if M.commentary.source == 'gemini' %}AI COMMENTARY{% else %}MATCH COMMENTARY{% endif %}</span>
+    </div>
+    {% if M.commentary.summary %}
+    <p style="font-family:var(--font-display);font-size:15px;line-height:1.6;color:var(--text);margin-bottom:16px;max-width:70ch">
+      {{ M.commentary.summary }}
+    </p>
+    {% endif %}
+    {% if M.commentary.plays %}
+    <ol style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+      {% for line in M.commentary.plays %}
+      <li style="font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--text-dim);
+                 padding:6px 10px;border-left:2px solid var(--hairline-2);background:var(--panel)">
+        {{ line }}
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {# ===== 05 THREE STARS ===== #}
   <section class="mh-sec">
     <div class="mh-sechead">
       <span class="num">04</span>

@@ -2429,3 +2429,105 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
         "homeRec": nm.get("homeRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
         "awayRec": nm.get("awayRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
     }
+
+
+def commentary_facts(recap: dict) -> dict:
+    """Distill a finished build_recap dict into the compact fact set both the
+    template commentary and an LLM prompt work from. Kept separate so the LLM
+    path can hand the model clean structured data, not the whole recap."""
+    home = recap.get("home", {}).get("name", "Home")
+    away = recap.get("away", {}).get("name", "Away")
+    totals = recap.get("totals", {})
+    winner_side = totals.get("winner")  # "HOME"/"AWAY"
+    winner = home if winner_side == "HOME" else away
+    loser = away if winner_side == "HOME" else home
+    plays = []
+    for k in recap.get("koLog", []):
+        by_name = home if k.get("side") == "HOME" else away
+        plays.append({
+            "turn": k.get("t"),
+            "attacker_team": by_name,
+            "attacker": k.get("by") or None,
+            "victim": k.get("vs"),
+            "move": k.get("move"),
+            "super_effective": bool(k.get("se")),
+            "indirect": bool(k.get("indirect")),
+        })
+    # Biggest lead the eventual loser held (a comeback signal).
+    max_deficit = 0
+    for m in recap.get("momentum", []):
+        h, a = m.get("home", 0), m.get("away", 0)
+        # deficit from the winner's perspective (mons remaining)
+        wl = (h - a) if winner_side == "HOME" else (a - h)
+        if wl < 0:
+            max_deficit = min(max_deficit, wl)
+    stars = [
+        {"name": s["mon"]["name"], "team": home if s["side"] == "HOME" else away,
+         "kos": s.get("line", "")}
+        for s in recap.get("stars", [])
+    ]
+    return {
+        "home": home, "away": away, "winner": winner, "loser": loser,
+        "score": f"{totals.get('home', {}).get('ko', 0)}-{totals.get('away', {}).get('ko', 0)}",
+        "turns": recap.get("facts", {}).get("turns"),
+        "comeback_from": -max_deficit,  # how many mons down the winner was at worst
+        "plays": plays,
+        "stars": stars,
+    }
+
+
+def _ordinal_move_phrase(p: dict) -> str:
+    """One KO play → a punchy sentence. Varies phrasing by index-free signals
+    (super-effective, indirect, move) so lines don't read identically."""
+    atk, vic, mv = p["attacker"], p["victim"], p["move"]
+    if p["indirect"] or not atk:
+        # hazard / status / self chip
+        if atk:
+            return f"T{p['turn']}: {vic} went down to {atk}'s {mv}."
+        return f"T{p['turn']}: {vic} was worn down by {mv}."
+    if p["super_effective"]:
+        verbs = ["crashed through", "blew past", "melted", "steamrolled"]
+        v = verbs[(p["turn"] or 0) % len(verbs)]
+        return f"T{p['turn']}: {atk}'s {mv} {v} {vic} (super effective)."
+    verbs = ["took down", "put away", "removed", "finished off"]
+    v = verbs[(p["turn"] or 0) % len(verbs)]
+    return f"T{p['turn']}: {atk}'s {mv} {v} {vic}."
+
+
+def build_commentary(recap: dict) -> dict:
+    """Deterministic 'both' commentary from a finished recap: a short narrative
+    summary + a KO-by-KO play-by-play. Always available (no network/model). An
+    LLM enhancement can replace `summary`/`plays` later; `source` marks which.
+    Returns {"summary": str, "plays": [str], "source": "template"}."""
+    f = commentary_facts(recap)
+    winner, loser, score = f["winner"], f["loser"], f["score"]
+    turns, comeback = f["turns"], f["comeback_from"]
+    n_plays = len(f["plays"])
+
+    # ── narrative summary ──
+    if n_plays == 0:
+        summary = f"{winner} defeated {loser} {score}."
+    else:
+        opener_side = f["plays"][0]["attacker_team"]
+        first_vic = f["plays"][0]["victim"]
+        first_atk = f["plays"][0]["attacker"] or "chip damage"
+        parts = [f"{winner} beat {loser} {score}"
+                 + (f" over {turns} turns." if turns else ".")]
+        if opener_side == loser and comeback >= 2:
+            # loser struck first / led, winner came back
+            parts.append(f"{loser} drew first blood when {first_atk} took out {first_vic}, "
+                         f"and pulled ahead by {comeback}, but {winner} clawed all the way back.")
+        elif opener_side == winner:
+            parts.append(f"{winner} set the tone early — {first_atk} opened the scoring on {first_vic} — "
+                         f"and never let the lead go.")
+        else:
+            parts.append(f"{loser} landed the first blow ({first_atk} on {first_vic}), "
+                         f"but {winner} answered and took control.")
+        # top star
+        if f["stars"]:
+            s0 = f["stars"][0]
+            parts.append(f"{s0['name']} was the difference-maker for {s0['team']} ({s0['kos']}).")
+        summary = " ".join(parts)
+
+    plays = [_ordinal_move_phrase(p) for p in f["plays"]]
+    return {"summary": summary, "plays": plays, "source": "template"}

@@ -58,6 +58,11 @@
     {% if settings.get('discord_webhook_url') %}
     <p class="text-xs text-green-500">✓ Webhook configured — results will post to Discord</p>
     {% endif %}
+    {{ txt('gemini_api_key', 'Gemini API Key (match commentary)', 'password', 'AIza...',
+           'Optional. A free Google Gemini key (aistudio.google.com) enables AI-written match commentary on recaps. Without it, recaps use built-in commentary.') }}
+    {% if settings.get('gemini_api_key') %}
+    <p class="text-xs text-green-500">✓ Gemini key set — recaps get AI commentary (falls back to built-in if the API is unavailable)</p>
+    {% endif %}
   </section>
 
   <!-- ── Battle Mechanics & Captains ── -->
