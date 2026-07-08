@@ -25,6 +25,21 @@ def _extract_name(s: str) -> str:
     return _norm(s.split(",")[0].strip())
 
 
+# Entry-hazard identifiers used to match a hazard-set to its later chip damage.
+_HAZARDS = {"stealth rock", "spikes", "toxic spikes", "g-max steelsurge",
+            "gmax steelsurge", "steelsurge"}
+
+
+def _hazard_id(s: str) -> str:
+    """Normalize a hazard reference ('move: Stealth Rock', 'Stealth Rock') to a
+    lowercase id, or '' if it isn't an entry hazard."""
+    x = s.strip()
+    if x.lower().startswith("move:"):
+        x = x.split(":", 1)[1].strip()
+    xl = x.lower()
+    return xl if xl in _HAZARDS else ""
+
+
 def fetch_replay(url: str) -> dict:
     url = url.rstrip("/")
     if not url.endswith(".json"):
@@ -54,6 +69,12 @@ def parse_log(log: str) -> dict:
     kills  = {"p1": {}, "p2": {}}
     deaths = {"p1": {}, "p2": {}}
     winner_player = None
+    # For indirect-KO attribution: who set each hazard on each side, and who
+    # inflicted each mon's status. Indirect faints (hazards/poison/burn) are
+    # credited to the responsible Pokémon, not to no one.
+    hazard_setter = {"p1": {}, "p2": {}}   # side -> {hazard_id: (player, name)}
+    status_by = {}                         # victim slot -> (player, name)
+    last_move_actor = None                 # (player, name) of the most recent |move|
 
     for raw in log.splitlines():
         line = raw.strip()
@@ -79,10 +100,12 @@ def parse_log(log: str) -> dict:
             if slot and poke_name:
                 active[slot] = poke_name
                 used[_slot_player(slot)].add(poke_name)
-                # A fresh Pokémon occupies this slot — clear any stale "last hit by"
-                # so an indirect faint (hazards/status) on switch-in can't wrongly
-                # credit whoever last hit the PREVIOUS occupant of the slot.
+                # A fresh Pokémon occupies this slot — clear any stale attribution
+                # (direct last-hit AND inherited status) so it can't wrongly credit
+                # whoever acted on the PREVIOUS occupant. Hazard credit persists on
+                # the SIDE (hazard_setter), so it survives the switch correctly.
                 last_hit_by.pop(slot, None)
+                status_by.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange"):
             # Intentionally ignored — kills/deaths stay attributed to base name.
@@ -94,6 +117,9 @@ def parse_log(log: str) -> dict:
             if not (atk_slot and atk_name):
                 continue
             atk_player = _slot_player(atk_slot)
+            # Remember who just acted — a -status or -sidestart on the next line(s)
+            # is attributed to this mon.
+            last_move_actor = (atk_player, atk_name)
             primary = _extract_slot(parts[4]) if len(parts) > 4 else ""
             targets = set()
             if primary and primary != atk_slot:
@@ -107,6 +133,26 @@ def parse_log(log: str) -> dict:
                         targets.add(sm.group(1))
             for tgt in targets:
                 last_hit_by[tgt] = (atk_player, atk_name)
+
+        elif cmd == "-sidestart" and len(parts) >= 4:
+            # "|-sidestart|p1: user|move: Stealth Rock" — the mon that just moved
+            # set this hazard on side p1. Credit future hazard faints on p1 to it.
+            side = parts[2].split(":")[0].strip()
+            hz = _hazard_id(parts[3])
+            if side in ("p1", "p2") and hz and last_move_actor:
+                hazard_setter[side][hz] = last_move_actor
+
+        elif cmd == "-sideend" and len(parts) >= 4:
+            side = parts[2].split(":")[0].strip()
+            hz = _hazard_id(parts[3])
+            if side in ("p1", "p2") and hz:
+                hazard_setter[side].pop(hz, None)
+
+        elif cmd == "-status" and len(parts) >= 4:
+            # "|-status|p1a: Mon|brn" — the mon that just moved inflicted it.
+            victim_slot = _extract_slot(parts[2])
+            if victim_slot and last_move_actor and last_move_actor[0] != _slot_player(victim_slot):
+                status_by[victim_slot] = last_move_actor
 
         elif cmd == "-damage" and len(parts) >= 3:
             victim_slot = _extract_slot(parts[2])
@@ -122,11 +168,26 @@ def parse_log(log: str) -> dict:
                 src_name = active.get(src_slot) or _norm(of_m.group(2).strip().split(",")[0])
                 last_hit_by[victim_slot] = (_slot_player(src_slot), src_name)
             elif "[from]" in rest:
-                # Indirect self-damage with no attacker: entry hazards, poison/burn/
-                # weather, Life Orb, recoil, crash. If the mon faints from this, no
-                # opponent earned the KO — clear any stale attacker so it's credited
-                # to no one rather than to whoever last hit it directly.
-                last_hit_by.pop(victim_slot, None)
+                # Indirect damage with no [of] attacker. Attribute the eventual KO
+                # to the Pokémon responsible for the source:
+                #   - entry hazards  -> the mon that set that hazard on this side
+                #   - poison/burn    -> the mon that inflicted the status
+                #   - Life Orb/recoil/crash/weather -> self-inflicted, credit no one
+                fm = re.search(r"\[from\]\s*([^|]+)", rest)
+                source = fm.group(1).strip() if fm else ""
+                victim_side = _slot_player(victim_slot)
+                hz = _hazard_id(source)
+                cause = None
+                if hz and hz in hazard_setter.get(victim_side, {}):
+                    cause = hazard_setter[victim_side][hz]
+                elif source in ("brn", "psn", "tox") and victim_slot in status_by:
+                    cause = status_by[victim_slot]
+                if cause:
+                    last_hit_by[victim_slot] = cause
+                else:
+                    # Truly self-inflicted (Life Orb, recoil) or unknown source —
+                    # clear any stale direct attacker so no one is wrongly credited.
+                    last_hit_by.pop(victim_slot, None)
 
         elif cmd == "faint" and len(parts) >= 3:
             slot = _extract_slot(parts[2])
@@ -1804,6 +1865,8 @@ def parse_log_recap(log: str) -> dict:
     pending_se = {}                   # slot → bool
     last_hit = {}                     # slot → {bySide, by, move, se, indirect}
     ko_log = []                       # raw chronological faints
+    hazard_setter = {"p1": {}, "p2": {}}   # side -> {hazard_id: {side,name}}
+    status_by = {}                    # victim slot -> {side, name} that inflicted status
     winner_player = None
     leads = {"p1": [], "p2": []}      # first 2 switch-ins per side before turn 2
     _leads_locked = {"p1": False, "p2": False}
@@ -1847,6 +1910,7 @@ def parse_log_recap(log: str) -> dict:
                 if not _leads_locked[pside] and poke_name not in leads[pside]:
                     leads[pside].append(poke_name)
                 last_hit.pop(slot, None)
+                status_by.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange"):
             pass  # stay with base name
@@ -1874,6 +1938,23 @@ def parse_log_recap(log: str) -> dict:
                         "bySide": atk_side, "by": atk_name,
                         "move": move_name, "se": False, "indirect": False,
                     }
+
+        elif cmd == "-sidestart" and len(parts) >= 4:
+            side = parts[2].split(":")[0].strip()
+            hz = _hazard_id(parts[3])
+            if side in ("p1", "p2") and hz and cur_move:
+                hazard_setter[side][hz] = {"side": cur_move["side"], "name": cur_move["user"]}
+
+        elif cmd == "-sideend" and len(parts) >= 4:
+            side = parts[2].split(":")[0].strip()
+            hz = _hazard_id(parts[3])
+            if side in ("p1", "p2") and hz:
+                hazard_setter[side].pop(hz, None)
+
+        elif cmd == "-status" and len(parts) >= 4:
+            vslot = _extract_slot(parts[2])
+            if vslot and cur_move and cur_move["side"] != _slot_player(vslot):
+                status_by[vslot] = {"side": cur_move["side"], "name": cur_move["user"]}
 
         elif cmd == "-supereffective" and len(parts) >= 3:
             slot = _extract_slot(parts[2])
@@ -1903,9 +1984,19 @@ def parse_log_recap(log: str) -> dict:
             elif "[from]" in rest:
                 fm = re.search(r"\[from\]\s*([^|]+)", rest)
                 source = fm.group(1).strip() if fm else "passive"
+                # Attribute the cause: hazards -> setter, poison/burn -> applier.
+                # Life Orb / recoil / weather stay unattributed (by=None).
+                vside = _slot_player(victim_slot)
+                hz = _hazard_id(source)
+                cause = None
+                if hz and hz in hazard_setter.get(vside, {}):
+                    cause = hazard_setter[vside][hz]
+                elif source in ("brn", "psn", "tox") and victim_slot in status_by:
+                    cause = status_by[victim_slot]
                 last_hit[victim_slot] = {
-                    "bySide": None, "by": None, "move": source,
-                    "se": False, "indirect": True,
+                    "bySide": cause["side"] if cause else None,
+                    "by": cause["name"] if cause else None,
+                    "move": source, "se": False, "indirect": True,
                 }
             elif cur_move:
                 is_se = bool(pending_se.get(victim_slot))
@@ -2037,7 +2128,10 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
     for entry in raw["ko_log"]:
         vs_key = (entry["victimSide"], resolve(entry["victimSide"], entry["victim"]))
         fainted_mons[vs_key] = True
-        if not entry["indirect"] and entry["bySide"] and entry["by"]:
+        # Credit the KO whenever an attacker is known — direct hits AND indirect
+        # faints attributed to a hazard-setter / status-applier. Only genuinely
+        # unattributed indirect faints (Life Orb, recoil; by=None) are excluded.
+        if entry["bySide"] and entry["by"]:
             by_key = (entry["bySide"], resolve(entry["bySide"], entry["by"]))
             kills_by_mon[by_key] = kills_by_mon.get(by_key, 0) + 1
 
@@ -2061,7 +2155,7 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
                 resolve(e["victimSide"], e["victim"])
                 for e in raw["ko_log"]
                 if e["bySide"] == pside and resolve(pside, e.get("by") or "") == name
-                and not e["indirect"]
+                and e["by"]
             ]
             if kos:
                 note = "KO " + ", ".join(victims)

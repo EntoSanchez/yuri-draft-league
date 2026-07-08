@@ -1,17 +1,16 @@
 """Regression tests for the Showdown replay parser (replay_utils.parse_log).
 
-Covers two accuracy bugs found by auditing against real replays:
-  B2 — a nicknamed Pokémon's kills/deaths must attribute to the SPECIES
-       (from the switch line's parts[3]), not the nickname.
-  B3 — a Pokémon that faints to an INDIRECT source (entry hazards / status /
-       recoil, i.e. `[from] ...` with no `[of]` attacker) must credit the KO
-       to NO ONE, not to whoever last hit the slot's previous occupant.
+Covers accuracy bugs found by auditing against real replays:
+  B2 — a nicknamed Pokémon's kills/deaths attribute to the SPECIES (switch-line
+       parts[3]), not the nickname.
+  Indirect KOs — a faint from an entry hazard or poison/burn is credited to the
+       Pokémon RESPONSIBLE (the hazard setter / status applier), while a purely
+       self-inflicted faint (Life Orb, recoil) is credited to no one.
 """
 import replay_utils as R
 
 
 def test_nickname_attributes_to_species():
-    # p1's "Chompy" is really Garchomp; it KOs p2's Pikachu.
     log = "\n".join([
         "|player|p1|Alice",
         "|player|p2|Bob",
@@ -23,40 +22,70 @@ def test_nickname_attributes_to_species():
         "|win|Alice",
     ])
     p = R.parse_log(log)
-    # kill credited to Garchomp, not "Chompy"
     assert p["kills"]["p1"] == {"Garchomp": 1}
     assert "Chompy" not in p["kills"]["p1"]
     assert p["deaths"]["p2"] == {"Pikachu": 1}
     assert "Garchomp" in p["p1"]["pokemon_used"]
 
 
-def test_hazard_faint_credits_no_one():
-    # p2's Pikachu directly KOs nothing; p1's Mamoswine faints to Stealth Rock
-    # on switch-in — no opponent should get that kill.
+def test_stealth_rock_kill_credits_the_setter():
+    # p2's Bronzong sets Stealth Rock on p1's side; p1's Mamoswine later switches
+    # in and faints to it. Bronzong should get that KO.
     log = "\n".join([
         "|player|p1|Alice",
         "|player|p2|Bob",
-        "|switch|p1a: Ninjask|Ninjask, M|100/100",
-        "|switch|p2a: Pikachu|Pikachu, F|100/100",
-        "|move|p2a: Pikachu|Thunderbolt|p1a: Ninjask",
-        "|-damage|p1a: Ninjask|0 fnt",
-        "|faint|p1a: Ninjask",
-        "|switch|p1a: Mamoswine|Mamoswine, M|100/100",
+        "|switch|p1a: Slowking|Slowking, M|100/100",
+        "|switch|p2a: Bronzong|Bronzong, M|100/100",
+        "|move|p2a: Bronzong|Stealth Rock|p1a: Slowking",
+        "|-sidestart|p1: Alice|move: Stealth Rock",
+        "|switch|p1a: Mamoswine|Mamoswine, M|5/100",
         "|-damage|p1a: Mamoswine|0 fnt|[from] Stealth Rock",
         "|faint|p1a: Mamoswine",
         "|win|Bob",
     ])
     p = R.parse_log(log)
-    # Pikachu earned exactly the Ninjask KO — NOT the Mamoswine hazard faint.
-    assert p["kills"]["p2"] == {"Pikachu": 1}
-    # both p1 mons fainted; Mamoswine's death is recorded but credited to no one
-    assert p["deaths"]["p1"] == {"Ninjask": 1, "Mamoswine": 1}
-    # total kills (1) < total deaths (2): the hazard KO is correctly uncredited
-    assert sum(p["kills"]["p2"].values()) == 1
+    assert p["kills"]["p2"] == {"Bronzong": 1}  # setter credited
+    assert p["deaths"]["p1"] == {"Mamoswine": 1}
+    assert sum(p["kills"]["p2"].values()) == sum(p["deaths"]["p1"].values())  # balanced
+
+
+def test_burn_kill_credits_the_status_applier():
+    # p1's Rotom burns p2's Tauros with Will-O-Wisp; Tauros later faints to burn.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p1a: Rotom|Rotom-Wash|100/100",
+        "|switch|p2a: Tauros|Tauros, M|100/100",
+        "|move|p1a: Rotom|Will-O-Wisp|p2a: Tauros",
+        "|-status|p2a: Tauros|brn",
+        "|-damage|p2a: Tauros|0 fnt|[from] brn",
+        "|faint|p2a: Tauros",
+        "|win|Alice",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p1"] == {"Rotom-Wash": 1}  # burn-applier credited
+    assert p["deaths"]["p2"] == {"Tauros": 1}
+
+
+def test_life_orb_self_ko_credits_no_one():
+    # A mon faints to its own Life Orb recoil — no opponent earned that.
+    log = "\n".join([
+        "|player|p1|Alice",
+        "|player|p2|Bob",
+        "|switch|p1a: Chomp|Garchomp, M|1/100",
+        "|switch|p2a: Blissey|Blissey, F|100/100",
+        "|move|p1a: Chomp|Earthquake|p2a: Blissey",
+        "|-damage|p2a: Blissey|80/100",
+        "|-damage|p1a: Chomp|0 fnt|[from] item: Life Orb",
+        "|faint|p1a: Chomp",
+        "|win|Bob",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p2"] == {}              # Blissey did NOT KO Garchomp
+    assert p["deaths"]["p1"] == {"Garchomp": 1}
 
 
 def test_rocky_helmet_of_credits_opponent():
-    # Indirect damage WITH an [of] attacker (Rocky Helmet) still credits them.
     log = "\n".join([
         "|player|p1|Alice",
         "|player|p2|Bob",
