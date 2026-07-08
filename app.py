@@ -791,7 +791,10 @@ def ai_commentary(recap, api_key, timeout=15):
             "https://api.groq.com/openai/v1/chat/completions",
             data=body,
             headers={"Content-Type": "application/json",
-                     "Authorization": "Bearer " + api_key},
+                     "Authorization": "Bearer " + api_key,
+                     # Groq is behind Cloudflare, which 403s (error 1010) the
+                     # default urllib User-Agent — send an explicit one.
+                     "User-Agent": "yuri-draft-league/1.0"},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
