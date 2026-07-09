@@ -725,7 +725,7 @@
     <div class="dbl-filters">
 
       <!-- Pool segmented -->
-      <div class="dbl-seg">
+      <div class="dbl-seg" id="db-pool-seg">
         <button onclick="setPool('')"  id="pool-all" class="dbl-seg-btn pool-btn active">All</button>
         <button onclick="setPool('A')" id="pool-A"   class="dbl-seg-btn pool-btn">Pool A</button>
         <button onclick="setPool('B')" id="pool-B"   class="dbl-seg-btn pool-btn">Pool B</button>
@@ -1808,6 +1808,15 @@ document.addEventListener('click', e => {
 // ── Multi-Pokémon compare ─────────────────────────────────────────────────────
 const MAX_COMPARE = 4;
 let _pinned = [];
+
+// Expose the star/pin/type state to the external mobile-draftboard.js action
+// sheet. These are top-level let/const, so they are NOT window properties by
+// default; the sheet reads window._starred/_pinned/_typeColors to show the
+// correct type-chip colors and STAR/COMPARE on-states. Getters (not one-time
+// aliases) so they follow reassignment — _pinned is reset to [] in clearCompare().
+Object.defineProperty(window, '_starred', { get: function () { return _starred; }, configurable: true });
+Object.defineProperty(window, '_pinned', { get: function () { return _pinned; }, configurable: true });
+Object.defineProperty(window, '_typeColors', { get: function () { return _typeColors; }, configurable: true });
 
 function pinPoke(e, name) {
   e.stopPropagation();

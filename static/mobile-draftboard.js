@@ -150,9 +150,13 @@
       "</div>";
     document.body.appendChild(drawerOverlay);
     document.body.appendChild(drawer);
-    // Move the REAL filter inputs into the drawer body so we reuse them directly
-    // (no proxy/mirroring — they keep their ids, listeners, and autocomplete).
+    // Move the REAL filter controls into the drawer body so we reuse them
+    // directly (no proxy/mirroring — they keep ids, listeners, autocomplete).
+    // The Pool All/A/B segmented control goes first (it's not a filter input but
+    // is essential for a two-pool draft; on desktop it lives in the hidden row).
     var body = drawer.querySelector("#mdb-drawer-body");
+    var pool = $("db-pool-seg");
+    if (pool) { var pwrap = document.createElement("div"); pwrap.className = "mdb-pool"; pwrap.appendChild(pool); body.appendChild(pwrap); }
     ["db-search", "db-type", "db-status", "db-speed", "db-ability", "db-move"].forEach(function (id) {
       var el = $(id);
       if (el) { var wrap = document.createElement("div"); wrap.className = "mdb-field"; wrap.appendChild(el); body.appendChild(wrap); }

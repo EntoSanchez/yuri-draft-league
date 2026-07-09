@@ -499,6 +499,9 @@
 .mdb-drawer-body { display: flex; flex-direction: column; gap: 10px; }
 .mdb-field { display: flex; flex-direction: column; }
 .mdb-field input, .mdb-field select { font-size: 16px !important; min-height: 44px; width: 100% !important; max-width: none !important; }
+/* Relocated Pool All/A/B segmented control in the drawer: full-width, 44px buttons */
+.mdb-pool .dbl-seg { display: flex !important; width: 100%; }
+.mdb-pool .dbl-seg-btn { flex: 1; min-height: 44px !important; }
 .mdb-drawer-foot { display: flex; gap: 10px; margin-top: 14px; }
 .mdb-btn.clear { flex: 0 0 110px; background: none; border: 1px solid var(--magenta); color: var(--magenta); }
 .mdb-btn.show { flex: 1; height: 46px; background: var(--cyan); border: 1px solid var(--cyan); color: #000; }
