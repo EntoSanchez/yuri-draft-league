@@ -738,9 +738,11 @@ def restore_db_backup(filename):
 
 
 def post_discord(webhook_url, content):
-    """Fire-and-forget POST to a Discord webhook. Silently ignores errors."""
+    """POST to a Discord webhook. Returns True on success, False otherwise.
+    Callers that fire-and-forget can ignore the return; the settings 'test'
+    button uses it to report whether delivery worked."""
     if not webhook_url:
-        return
+        return False
     try:
         payload = json.dumps({"content": content}).encode("utf-8")
         req = urllib.request.Request(
@@ -749,9 +751,10 @@ def post_discord(webhook_url, content):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        urllib.request.urlopen(req, timeout=5)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return 200 <= resp.status < 300
     except Exception:
-        pass  # Never let Discord errors break the app
+        return False  # Never let Discord errors break the app
 
 
 def _coerce_play(x):
@@ -2877,6 +2880,26 @@ def admin_settings():
                            tier_defs=get_tier_definitions(),
                            mechanic_config=mechanic_config,
                            league_name=settings.get("league_name", "Pokemon Draft League"))
+
+
+@app.route("/admin/test_webhook", methods=["POST"])
+@admin_required
+def admin_test_webhook():
+    """Send a test message to the saved Discord webhook and report the result."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
+        ).fetchone()
+        league = get_setting("league_name", "Pokemon Draft League")
+    webhook = row["value"] if row else None
+    if not webhook:
+        flash("No Discord webhook URL saved yet. Paste one and click Save first.", "warning")
+    elif post_discord(webhook, f"✅ **{league}** — Discord webhook test successful! "
+                               "Match results will post here."):
+        flash("Test message sent — check your Discord channel.", "success")
+    else:
+        flash("Could not deliver to Discord. Check the webhook URL is correct and saved.", "error")
+    return redirect(url_for("admin_settings"))
 
 
 LOGOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "logos")

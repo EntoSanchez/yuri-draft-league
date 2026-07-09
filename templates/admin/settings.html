@@ -56,7 +56,14 @@
     {{ txt('discord_webhook_url', 'Discord Webhook URL', 'url', 'https://discord.com/api/webhooks/...',
            'When set, match results auto-post to this Discord channel.') }}
     {% if settings.get('discord_webhook_url') %}
-    <p class="text-xs text-green-500">✓ Webhook configured — results will post to Discord</p>
+    <div class="flex items-center gap-3">
+      <p class="text-xs text-green-500">✓ Webhook configured — results will post to Discord</p>
+      <button type="submit" formaction="{{ url_for('admin_test_webhook') }}" formnovalidate
+              class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors">
+        Send test message
+      </button>
+    </div>
+    <p class="text-xs text-gray-500">Tip: Save first, then send a test to confirm it reaches Discord.</p>
     {% endif %}
     {{ txt('groq_api_key', 'Groq API Key (match commentary)', 'password', 'gsk_...',
            'Optional. A free Groq key (console.groq.com) enables AI-written match commentary on recaps. Without it, recaps use built-in commentary.') }}
