@@ -476,3 +476,29 @@
 .mdb-btn.cmp { background: var(--cyan); border: 1px solid var(--cyan); color: #000; }
 .mdb-btn.cmp.on { background: none; color: var(--cyan); }
 .mdb-btn.dex { background: none; border: 1px solid var(--hairline-2); color: var(--text); }
+
+/* Draft-board mobile: funnel button (hidden on desktop) */
+.mdb-funnel { display: none; }
+@media (max-width: 767px) {
+  .mdb-funnel {
+    display: inline-flex; align-items: center; justify-content: center; position: relative;
+    width: 44px; height: 44px; flex-shrink: 0;
+    background: var(--cyan-soft); border: 1px solid var(--cyan-dim); color: var(--cyan); cursor: pointer;
+  }
+  .mdb-funnel svg { width: 20px; height: 20px; }
+  .mdb-funnel-badge {
+    position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 3px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--cyan); color: #000; font-family: var(--font-mono); font-weight: 700; font-size: 9px;
+  }
+  /* Hide the desktop inline filter row on phones (the drawer relocates them) */
+  .dbl-filters { display: none; }
+}
+.mdb-drawer-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; color: var(--text); margin-bottom: 12px; }
+.mdb-x { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; }
+.mdb-drawer-body { display: flex; flex-direction: column; gap: 10px; }
+.mdb-field { display: flex; flex-direction: column; }
+.mdb-field input, .mdb-field select { font-size: 16px !important; min-height: 44px; width: 100% !important; max-width: none !important; }
+.mdb-drawer-foot { display: flex; gap: 10px; margin-top: 14px; }
+.mdb-btn.clear { flex: 0 0 110px; background: none; border: 1px solid var(--magenta); color: var(--magenta); }
+.mdb-btn.show { flex: 1; height: 46px; background: var(--cyan); border: 1px solid var(--cyan); color: #000; }

@@ -107,5 +107,89 @@
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && _open) { closeSheet(); if (window._mdb) window._mdb.closeDrawer && window._mdb.closeDrawer(); } });
 
-  window._mdb = { openSheet: openSheet, closeSheet: closeSheet, isMobile: isMobile };
+  // ── FILTER DRAWER (3c) ──
+  var drawer, drawerOverlay;
+  function $(id) { return document.getElementById(id); }
+  function activeFilterCount() {
+    var n = 0;
+    if (($("db-search") || {}).value) n++;
+    if (($("db-ability") || {}).value) n++;
+    if (($("db-move") || {}).value) n++;
+    var t = $("db-type"); if (t && t.value && t.value !== "all") n++;
+    var st = $("db-status"); if (st && st.value && st.value !== "all") n++;
+    var sp = $("db-speed"); if (sp && sp.value && sp.value !== "all") n++;
+    var starBtn = $("db-star-btn");  // star-only filter: state is the .active class
+    if (starBtn && starBtn.classList.contains("active")) n++;
+    return n;
+  }
+  function visibleCount() {
+    return document.querySelectorAll(".board-poke:not([style*='display: none'])").length;
+  }
+  function updateCount() {
+    var badge = $("mdb-funnel-badge");
+    if (badge) { var n = activeFilterCount(); badge.textContent = n; badge.style.display = n ? "flex" : "none"; }
+    var show = $("mdb-show-btn");
+    if (show) show.textContent = "SHOW " + visibleCount() + " MONS";
+  }
+  function buildDrawer() {
+    drawerOverlay = document.createElement("div");
+    drawerOverlay.className = "mdb-overlay";
+    drawerOverlay.addEventListener("click", closeDrawer);
+    drawer = document.createElement("div");
+    drawer.className = "mdb-drawer";
+    drawer.addEventListener("click", function (e) { e.stopPropagation(); });
+    drawer.innerHTML =
+      '<div class="mdb-grab"></div>' +
+      '<div class="mdb-drawer-head"><span>FILTERS</span><button class="mdb-x" id="mdb-drawer-x">✕</button></div>' +
+      '<div class="mdb-drawer-body" id="mdb-drawer-body"></div>' +
+      '<div class="mdb-drawer-foot">' +
+        '<button class="mdb-btn clear" id="mdb-clear-btn">CLEAR</button>' +
+        '<button class="mdb-btn show" id="mdb-show-btn">SHOW MONS</button>' +
+      "</div>";
+    document.body.appendChild(drawerOverlay);
+    document.body.appendChild(drawer);
+    // Move the REAL filter inputs into the drawer body so we reuse them directly
+    // (no proxy/mirroring — they keep their ids, listeners, and autocomplete).
+    var body = drawer.querySelector("#mdb-drawer-body");
+    ["db-search", "db-type", "db-status", "db-speed", "db-ability", "db-move"].forEach(function (id) {
+      var el = $(id);
+      if (el) { var wrap = document.createElement("div"); wrap.className = "mdb-field"; wrap.appendChild(el); body.appendChild(wrap); }
+    });
+    drawer.querySelector("#mdb-drawer-x").addEventListener("click", closeDrawer);
+    drawer.querySelector("#mdb-clear-btn").addEventListener("click", function () {
+      if (window.clearFilters) window.clearFilters();
+      updateCount();
+    });
+    drawer.querySelector("#mdb-show-btn").addEventListener("click", closeDrawer);
+  }
+  function openDrawer() {
+    if (!drawer) buildDrawer();
+    updateCount();
+    drawerOverlay.classList.add("open");
+    drawer.classList.add("open");
+    lockBody(true);
+    _open = "drawer";
+  }
+  function closeDrawer() {
+    if (drawer) drawer.classList.remove("open");
+    if (drawerOverlay) drawerOverlay.classList.remove("open");
+    lockBody(false);
+    _open = null;
+  }
+
+  // keep the live count in sync after any filter change
+  if (window.filterBoard) {
+    var _fb = window.filterBoard;
+    window.filterBoard = function () { _fb.apply(this, arguments); updateCount(); };
+  }
+
+  // ── suppress the hover stat-tooltip on touch devices (tap opens the sheet) ──
+  if (TOUCH.matches) {
+    document.addEventListener("mouseover", function (e) { e.stopImmediatePropagation(); }, true);
+  }
+
+  window._mdb = {
+    openSheet: openSheet, closeSheet: closeSheet, isMobile: isMobile,
+    openDrawer: openDrawer, closeDrawer: closeDrawer, updateCount: updateCount
+  };
 })();
