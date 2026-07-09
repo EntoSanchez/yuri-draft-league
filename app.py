@@ -8,7 +8,9 @@ import re
 import secrets
 import shutil
 import uuid
+import time
 import urllib.request
+import urllib.error
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_from_directory
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -801,18 +803,40 @@ def ai_commentary(recap, api_key, timeout=8):
                 {"role": "user", "content": "FACTS:\n" + json.dumps(facts)},
             ],
         }).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.groq.com/openai/v1/chat/completions",
-            data=body,
-            headers={"Content-Type": "application/json",
-                     "Authorization": "Bearer " + api_key,
-                     # Groq is behind Cloudflare, which 403s (error 1010) the
-                     # default urllib User-Agent — send an explicit one.
-                     "User-Agent": "yuri-draft-league/1.0"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read())
+        headers = {"Content-Type": "application/json",
+                   "Authorization": "Bearer " + api_key,
+                   # Groq is behind Cloudflare, which 403s (error 1010) the
+                   # default urllib User-Agent — send an explicit one.
+                   "User-Agent": "yuri-draft-league/1.0"}
+        # The free tier rate-limits back-to-back requests (429). Retry ONCE on a
+        # 429/timeout, honoring the Retry-After header (capped) before giving up
+        # and letting the caller fall back to template commentary.
+        data = None
+        for attempt in range(2):
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=body, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    data = json.loads(resp.read())
+                break
+            except urllib.error.HTTPError as he:
+                if he.code == 429 and attempt == 0:
+                    wait = 2.0
+                    try:
+                        wait = min(float(he.headers.get("Retry-After", "2")), 8.0)
+                    except (TypeError, ValueError):
+                        wait = 2.0
+                    time.sleep(wait)
+                    continue
+                return None
+            except Exception:
+                if attempt == 0:
+                    time.sleep(1.0)
+                    continue
+                return None
+        if data is None:
+            return None
         text = data["choices"][0]["message"]["content"]
         parsed = json.loads(text)
         if not isinstance(parsed, dict):
