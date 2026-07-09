@@ -748,7 +748,10 @@ def post_discord(webhook_url, content):
         req = urllib.request.Request(
             webhook_url,
             data=payload,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json",
+                     # Discord is behind Cloudflare, which 403s (error 1010) the
+                     # default urllib User-Agent — send an explicit one.
+                     "User-Agent": "yuri-draft-league/1.0"},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
