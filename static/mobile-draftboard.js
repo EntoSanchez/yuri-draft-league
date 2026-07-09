@@ -39,6 +39,8 @@
   }
 
   function openSheet(el) {
+    if (!isMobile()) return;
+    closeDrawer();
     if (!sheet) buildSheet();
     var d = el.dataset;
     var name = (el.querySelector(".poke-name") || {}).textContent || d.name || "";
@@ -163,6 +165,7 @@
     drawer.querySelector("#mdb-show-btn").addEventListener("click", closeDrawer);
   }
   function openDrawer() {
+    closeSheet();
     if (!drawer) buildDrawer();
     updateCount();
     drawerOverlay.classList.add("open");
