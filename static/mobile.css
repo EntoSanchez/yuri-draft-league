@@ -399,9 +399,23 @@
    and a 2-up tile grid. Desktop (≥768px) is untouched.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
-  /* Stack the tier columns vertically instead of a sideways flex row */
-  .dbl-cols { flex-direction: column !important; gap: 0 !important; }
-  .board-col { width: 100% !important; }
+  /* Kill horizontal scroll: the board strip is `display:flex; width:max-content`
+     laying the tier-band GROUPS out sideways. Stack the whole thing vertically so
+     nothing exceeds the viewport width. (These containers — .dbl-strip / .dbl-group
+     — sit ABOVE .dbl-cols; stacking .dbl-cols alone was not enough.) */
+  .dbl-board { overflow-x: hidden !important; }
+  /* Belt-and-suspenders: no horizontal scroll on the page/wrapper either. */
+  .dbl-wrapper { overflow-x: hidden !important; max-width: 100% !important; }
+  .dbl-strip {
+    flex-direction: column !important;
+    width: 100% !important; max-width: 100%;
+    gap: 0 !important;
+  }
+  .dbl-group { width: 100% !important; flex: 1 1 100% !important; min-width: 0 !important; }
+
+  /* Stack the point-tier columns within a band vertically too */
+  .dbl-cols { flex-direction: column !important; gap: 0 !important; width: 100%; }
+  .board-col { width: 100% !important; min-width: 0 !important; max-width: 100%; }
 
   /* Per-tier sticky band header (replaces the sideways column headers).
      Sticks under the site nav; ~52px is the mobile #main-nav height. */
