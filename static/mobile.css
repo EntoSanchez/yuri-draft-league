@@ -392,3 +392,47 @@
   .hero-title-l1, .hero-title-l2 { font-size: 1.8rem !important; }
   .stat-num { font-size: 1.7rem !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAFT BOARD (/draftboard) — phone vertical layout (3a)
+   Stacks tiers vertically; each point tier gets a sticky band header
+   and a 2-up tile grid. Desktop (≥768px) is untouched.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  /* Stack the tier columns vertically instead of a sideways flex row */
+  .dbl-cols { flex-direction: column !important; gap: 0 !important; }
+  .board-col { width: 100% !important; }
+
+  /* Per-tier sticky band header (replaces the sideways column headers).
+     Sticks under the site nav; ~52px is the mobile #main-nav height. */
+  .board-col-header {
+    position: sticky; top: 52px; z-index: 20;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px;
+    background: color-mix(in srgb, var(--ink) 92%, transparent);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .board-col-header .col-label { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--cyan); }
+  .board-col-header .col-count { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim); }
+
+  /* 2-up tile grid */
+  .board-col-body {
+    display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 6px 16px 12px;
+  }
+
+  /* Tile */
+  .board-poke {
+    min-height: 44px; align-items: center; gap: 8px;
+    padding: 8px 9px; border: 1px solid var(--hairline);
+    background: var(--panel); position: relative;
+    border-bottom: 1px solid var(--hairline);  /* override the desktop last-child rule */
+  }
+  .board-poke .poke-orb img { width: 32px; height: 32px; image-rendering: pixelated; }
+  .board-poke .poke-name { font-size: 11px; font-weight: 700; }
+  .drafted-poke { opacity: 0.42; }
+
+  /* Star / pin markers always visible on touch (desktop gates them on hover) */
+  .board-poke .star-btn, .board-poke .pin-btn { opacity: 1 !important; }
+}
