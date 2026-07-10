@@ -208,3 +208,148 @@ def test_future_sight_credits_the_user_even_after_it_leaves():
     p = R.parse_log(log)
     assert p["kills"]["p1"] == {"Slowking-Galar": 1}
     assert p["deaths"]["p2"] == {"Kingambit": 1}
+
+
+# ── Mega evolution / primal reversion attribution ──────────────────────────────
+# A mega/primal is a SEPARATELY-DRAFTED pick ("Mega Gardevoir", "Primal Kyogre").
+# Kills/deaths after |detailschange| must attribute to the mega/primal name, and
+# resolve_poke_name must bridge Showdown suffix form → roster prefix form. Battle
+# formes (Aegislash-Blade, etc.) fire the SAME |detailschange| but must stay
+# unified. Real fixtures: tests/fixtures/yuricup_s9_58.log, _59.log.
+
+def test_mega_same_trip_kill_attributes_to_mega():
+    """A kill before AND after the mega evolves both land on '-Mega'."""
+    log = "\n".join([
+        "|player|p1|Alice", "|player|p2|Bob",
+        "|switch|p1a: Gardy|Gardevoir, F|100/100",
+        "|switch|p2a: Foe1|Pikachu, M|100/100",
+        "|move|p1a: Gardy|Moonblast|p2a: Foe1",          # kill as BASE
+        "|faint|p2a: Foe1",
+        "|switch|p2a: Foe2|Snorlax, M|100/100",
+        "|detailschange|p1a: Gardy|Gardevoir-Mega, F",   # mega now
+        "|-mega|p1a: Gardy|Gardevoir|Gardevoirite",
+        "|move|p1a: Gardy|Moonblast|p2a: Foe2",          # kill as MEGA
+        "|faint|p2a: Foe2",
+        "|win|Alice",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p1"] == {"Gardevoir-Mega": 2}
+    assert "Gardevoir" not in p["kills"]["p1"]
+
+
+def test_mega_death_same_trip_attributes_to_mega():
+    log = "\n".join([
+        "|player|p1|Alice", "|player|p2|Bob",
+        "|switch|p1a: Sw|Swampert, M|100/100",
+        "|switch|p2a: F1|Pikachu, M|100/100",
+        "|detailschange|p1a: Sw|Swampert-Mega, M",
+        "|-mega|p1a: Sw|Swampert|Swampertite",
+        "|move|p2a: F1|Thunder|p1a: Sw",
+        "|faint|p1a: Sw",
+        "|win|Bob",
+    ])
+    p = R.parse_log(log)
+    assert p["deaths"]["p1"] == {"Swampert-Mega": 1}
+
+
+def test_battle_forme_toggle_stays_unified():
+    """Aegislash Blade<->Shield fires |detailschange| but is ONE drafted pick."""
+    log = "\n".join([
+        "|player|p1|Alice", "|player|p2|Bob",
+        "|switch|p1a: Aeg|Aegislash, M|100/100",
+        "|switch|p2a: F1|Pikachu, M|100/100",
+        "|detailschange|p1a: Aeg|Aegislash-Blade, M",
+        "|move|p1a: Aeg|Shadow Sneak|p2a: F1",
+        "|faint|p2a: F1",
+        "|switch|p2a: F2|Snorlax, M|100/100",
+        "|detailschange|p1a: Aeg|Aegislash-Shield, M",
+        "|move|p1a: Aeg|Shadow Ball|p2a: F2",
+        "|faint|p2a: F2",
+        "|win|Alice",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p1"] == {"Aegislash": 2}
+
+
+def test_primal_attributes_to_primal():
+    log = "\n".join([
+        "|player|p1|Alice", "|player|p2|Bob",
+        "|switch|p1a: Kyo|Kyogre|100/100",
+        "|switch|p2a: F1|Pikachu, M|100/100",
+        "|detailschange|p1a: Kyo|Kyogre-Primal",
+        "|-primal|p1a: Kyo",
+        "|move|p1a: Kyo|Water Spout|p2a: F1",
+        "|faint|p2a: F1",
+        "|win|Alice",
+    ])
+    p = R.parse_log(log)
+    assert p["kills"]["p1"] == {"Kyogre-Primal": 1}
+
+
+def test_resolve_suffix_to_prefix_roster():
+    r = ["Mega Gardevoir", "Gardevoir", "Mega Charizard X", "Mega Charizard Y",
+         "Primal Kyogre", "Kyogre", "Mega Absol Z"]
+    assert R.resolve_poke_name("Gardevoir-Mega", r) == "Mega Gardevoir"
+    assert R.resolve_poke_name("Charizard-Mega-X", r) == "Mega Charizard X"
+    assert R.resolve_poke_name("Charizard-Mega-Y", r) == "Mega Charizard Y"
+    assert R.resolve_poke_name("Kyogre-Primal", r) == "Primal Kyogre"
+    assert R.resolve_poke_name("Absol-Mega-Z", r) == "Mega Absol Z"
+    # base stays base; mega not on roster falls back to base
+    assert R.resolve_poke_name("Gardevoir", r) == "Gardevoir"
+    assert R.resolve_poke_name("Swampert-Mega", ["Swampert"]) == "Swampert"
+    # hyphenated base names must never be mangled
+    assert R.resolve_poke_name("Chien-Pao", ["Chien-Pao"]) == "Chien-Pao"
+    assert R.resolve_poke_name("Ho-Oh", ["Ho-Oh"]) == "Ho-Oh"
+
+
+def test_real_fixture_58_mega_resolution():
+    import os
+    fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_58.log")
+    if not os.path.exists(fx):
+        import pytest
+        pytest.skip("fixture not present")
+    log = open(fx, encoding="utf-8").read()
+    p = R.parse_log(log)
+    roster = ["Mega Swampert", "Swampert", "Mega Gardevoir", "Gardevoir"]
+    # Swampert megas and scores; must resolve to the drafted 'Mega Swampert'
+    assert R.resolve_poke_name("Swampert-Mega", roster) == "Mega Swampert"
+    assert R.resolve_poke_name("Gardevoir-Mega", roster) == "Mega Gardevoir"
+    # parser emits the mega suffix name (not base) for the mega's stats
+    all_names = set(p["kills"]["p1"]) | set(p["deaths"]["p1"]) | \
+        set(p["kills"]["p2"]) | set(p["deaths"]["p2"])
+    assert "Swampert-Mega" in all_names
+    assert "Gardevoir-Mega" in all_names
+
+
+def test_recap_shows_mega_ko_full_bring():
+    """Regression: when a coach drafts BOTH base and mega and brings a full team,
+    the mega's KO must appear on the recap card (not vanish under a name that's
+    never displayed). Adversarial-review finding."""
+    log = "\n".join([
+        "|player|p1|Alice", "|player|p2|Bob",
+        "|poke|p1|Gardevoir, F|", "|poke|p1|Politoed, M|",
+        "|poke|p2|Pikachu, M|", "|poke|p2|Snorlax, M|",
+        "|teampreview", "|start",
+        "|switch|p1a: Gardy|Gardevoir, F|100/100",
+        "|switch|p2a: Pika|Pikachu, M|100/100",
+        "|turn|1",
+        "|detailschange|p1a: Gardy|Gardevoir-Mega, F",
+        "|-mega|p1a: Gardy|Gardevoir|Gardevoirite",
+        "|move|p1a: Gardy|Moonblast|p2a: Pika",
+        "|faint|p2a: Pika",
+        "|switch|p2a: Snor|Snorlax, M|100/100",
+        "|switch|p1a: Poli|Politoed, M|100/100",
+        "|turn|2",
+        "|move|p1a: Poli|Hydro Pump|p2a: Snor",
+        "|faint|p2a: Snor",
+        "|win|Alice",
+    ])
+    raw = R.parse_log_recap(log)
+    roster = ["Mega Gardevoir", "Gardevoir", "Politoed"]
+    nmap = {n: R.resolve_poke_name(n, roster)
+            for n in set(raw["rosters"]["p1"]) | set(raw["brought"]["p1"])}
+    rec = R.build_recap(raw, name_map_p1=nmap, name_map_p2={})
+    home = rec.get("homeRoster") or rec.get("home_roster") or []
+    rows = {m["name"]: m.get("note", "") for m in home}
+    assert "Mega Gardevoir" in rows, f"mega missing from recap: {list(rows)}"
+    assert "Pikachu" in rows["Mega Gardevoir"], f"KO lost: {rows}"

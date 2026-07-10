@@ -9,6 +9,15 @@ def _norm(name: str) -> str:
     return re.sub(r"\s*\(.*?\)", "", name).strip()
 
 
+# A mega evolution / primal reversion PERMANENTLY changes which drafted pick a
+# slot represents ("Mega Gardevoir" and "Kyogre-Primal" are SEPARATE roster picks
+# from their base). Only these suffixes re-attribute kills/deaths on a
+# |detailschange|; every other forme change (Aegislash-Blade, Palafin-Hero,
+# Mimikyu-Busted, Terapagos-Terastal, Ogerpon-*, …) is the SAME pick and must
+# stay unified. -Mega-Z covers Legends Z-A megas (e.g. Absol-Mega-Z).
+_MEGA_PRIMAL_RE = re.compile(r"-(?:Mega(?:-[XYZ])?|Primal)$")
+
+
 def _slot_player(slot: str) -> str:
     return slot[:2]
 
@@ -123,9 +132,27 @@ def parse_log(log: str) -> dict:
                     last_hit_by.pop(slot, None)
                     status_by.pop(slot, None)
 
-        elif cmd in ("detailschange", "-formechange"):
-            # Intentionally ignored — kills/deaths stay attributed to base name.
-            pass
+        elif cmd in ("detailschange", "-formechange") and len(parts) >= 4:
+            # Mega/primal permanently re-points this slot to a DIFFERENT drafted
+            # pick. Move any kills already scored THIS trip (before the mega
+            # evolved) from the base name onto the mega/primal name — mirroring
+            # the 'replace' (Illusion) branch's kill-move — and re-point the slot
+            # so later kills/deaths attribute correctly. Non-mega/primal forme
+            # changes (Aegislash-Blade, …) are the SAME pick: the _MEGA_PRIMAL_RE
+            # guard below makes them a no-op, so they stay unified. (-formechange
+            # is accepted too in case an item-less mega like Rayquaza uses it.)
+            slot = _extract_slot(parts[2])
+            new_name = _norm(parts[3].split(",")[0].strip())
+            if slot and new_name and _MEGA_PRIMAL_RE.search(new_name):
+                sider = _slot_player(slot)
+                old_name = active.get(slot)
+                if old_name and old_name != new_name:
+                    moved = kills[sider].pop(old_name, 0)
+                    if moved:
+                        kills[sider][new_name] = kills[sider].get(new_name, 0) + moved
+                    used[sider].discard(old_name)
+                active[slot] = new_name
+                used[sider].add(new_name)
 
         elif cmd == "move" and len(parts) >= 5:
             atk_slot = _extract_slot(parts[2])
@@ -281,25 +308,68 @@ def parse_log(log: str) -> dict:
 def resolve_poke_name(raw: str, roster: list) -> str:
     """Map a Showdown slot name to the closest entry in the coach's roster.
 
-    Handles base↔mega mismatches, e.g.:
-      'Gallade'   + roster has 'Gallade-Mega'   → 'Gallade-Mega'
-      'Charizard' + roster has 'Charizard-Mega-X' → 'Charizard-Mega-X'
-    Returns raw unchanged if roster is empty or no match found.
+    Roster picks are stored in PREFIX form ("Mega Gardevoir", "Mega Charizard X",
+    "Primal Kyogre"), while Showdown battle logs use SUFFIX form ("Gardevoir-Mega",
+    "Charizard-Mega-X", "Kyogre-Primal"). This resolver bridges both directions and
+    also tolerates rosters that happen to store the suffix form ("Gardevoir-Mega").
+
+    Match precedence (first hit wins):
+      1. Exact (case-insensitive) match — covers suffix-form rosters and battle formes.
+      2. Suffix → prefix conversion  ("Gardevoir-Mega"   → "Mega Gardevoir",
+                                       "Charizard-Mega-X" → "Mega Charizard X",
+                                       "Kyogre-Primal"    → "Primal Kyogre").
+      3. Bare-base → mega/primal-on-roster (prefix probe, then legacy suffix probe).
+      4. Base-strip fallback ("Gardevoir-Mega" → "Gardevoir") ONLY if the mega/primal
+         pick is NOT on the roster — so a base-only pick absorbs the stats.
+    Returns raw unchanged if roster is empty or nothing matches.
     """
     if not roster:
         return raw
     by_lower = {n.lower(): n for n in roster}
+
+    # 1. Exact match. Handles suffix-form rosters AND every battle-forme mon
+    #    (Aegislash-Blade, Palafin-Hero, Terapagos-Terastal, Landorus-Therian, …)
+    #    which appear verbatim in both the log and the roster and stay unified.
     if raw.lower() in by_lower:
         return by_lower[raw.lower()]
-    for suffix in ("-Mega", "-Mega-X", "-Mega-Y"):
+
+    # 2. Showdown SUFFIX form → roster PREFIX form. Split on '-', find the
+    #    'mega'/'primal' token, reassemble as the DB stores it:
+    #    "Base-Mega[-V]" → "Mega Base [V]", "Base-Primal" → "Primal Base".
+    parts = [p.strip() for p in raw.split("-") if p.strip()]
+    if len(parts) >= 2:
+        base = parts[0]
+        suffix = parts[1:]
+        suffix_lower = [s.lower() for s in suffix]
+        for key, prefix in (("mega", "Mega"), ("primal", "Primal")):
+            if key in suffix_lower:
+                idx = suffix_lower.index(key)
+                variants = [suffix[j] for j in range(len(suffix)) if j != idx]
+                cand = (f"{prefix} {base} {' '.join(variants)}".strip()
+                        if variants else f"{prefix} {base}")
+                if cand.lower() in by_lower:
+                    return by_lower[cand.lower()]
+
+    # 3. Bare base in log, mega/primal pick on roster.
+    #    (a) prefix-form roster: "Gallade" + roster "Mega Gallade" → "Mega Gallade".
+    for prefix in ("Mega", "Primal"):
+        cand = f"{prefix} {raw}"
+        if cand.lower() in by_lower:
+            return by_lower[cand.lower()]
+    #    (b) legacy suffix-form roster: "Gallade" + roster "Gallade-Mega".
+    for suffix in ("-Mega", "-Mega-X", "-Mega-Y", "-Primal"):
         cand = raw + suffix
         if cand.lower() in by_lower:
             return by_lower[cand.lower()]
-    for suffix in ("-Mega-X", "-Mega-Y", "-Mega"):
+
+    # 4. Base-strip fallback — only reached when the mega/primal pick is absent, so
+    #    a base-only pick ("Gardevoir") legitimately absorbs the mega's stats.
+    for suffix in ("-Mega-X", "-Mega-Y", "-Mega-Z", "-Mega", "-Primal"):
         if raw.lower().endswith(suffix.lower()):
-            base = raw[: -len(suffix)]
-            if base.lower() in by_lower:
-                return by_lower[base.lower()]
+            stripped = raw[: -len(suffix)]
+            if stripped.lower() in by_lower:
+                return by_lower[stripped.lower()]
+
     return raw
 
 
@@ -1897,6 +1967,17 @@ def _norm_forme(name: str) -> str:
     return name
 
 
+def _norm_forme_keep_mega(name: str) -> str:
+    """Like _norm_forme but PRESERVES -Mega/-Mega-X/-Mega-Y/-Mega-Z/-Primal, which
+    are separately-drafted picks. Used on the recap switch-in so a mega that
+    switches out and back in ("Swampert-Mega") is not collapsed to base
+    "Swampert" (which would undo the |detailschange| re-attribution). Still strips
+    the cosmetic Ogerpon-mask / Tera suffixes that don't change the drafted pick."""
+    name = re.sub(r"-(Hearthflame|Wellspring|Cornerstone|Teal)(-Tera)?$", "", name)
+    name = re.sub(r"-Tera$", "", name)
+    return name
+
+
 def _mon_types(name: str, extra_typedex: dict = None) -> list:
     td = TYPEDEX
     if extra_typedex:
@@ -1961,7 +2042,9 @@ def parse_log_recap(log: str) -> dict:
             slot = _extract_slot(parts[2])
             # Use the SPECIES from parts[3], not the nickname in parts[2], so recap
             # rosters/KO-log attribute to the real mon (matches parse_log).
-            poke_name = _norm_forme(_norm(parts[3].split(",")[0].strip())) or _extract_name(parts[2])
+            # Keep -Mega/-Primal here (separate picks); a mega switching back in as
+            # "Swampert-Mega" must not collapse to base "Swampert".
+            poke_name = _norm_forme_keep_mega(_norm(parts[3].split(",")[0].strip())) or _extract_name(parts[2])
             if slot and poke_name:
                 active[slot] = poke_name
                 pside = _slot_player(slot)
@@ -1971,8 +2054,23 @@ def parse_log_recap(log: str) -> dict:
                 last_hit.pop(slot, None)
                 status_by.pop(slot, None)
 
-        elif cmd in ("detailschange", "-formechange"):
-            pass  # stay with base name
+        elif cmd in ("detailschange", "-formechange") and len(parts) >= 4:
+            # Mirror parse_log: mega/primal re-points the slot to the suffix species
+            # so recap ko_log + brought attribute to the mega pick (build_recap's
+            # resolve() maps it to the drafted "Mega X"). Battle formes stay unified
+            # via the _MEGA_PRIMAL_RE guard. The recap has no kills accumulator to
+            # migrate — re-pointing active[slot] covers both victim (|faint|) and
+            # killer (|move|) attribution; we only migrate `brought` so base+mega
+            # don't both appear.
+            slot = _extract_slot(parts[2])
+            new_name = _norm(parts[3].split(",")[0].strip())
+            if slot and new_name and _MEGA_PRIMAL_RE.search(new_name):
+                pside = _slot_player(slot)
+                old_name = active.get(slot)
+                if old_name and old_name != new_name:
+                    brought[pside].discard(old_name)
+                active[slot] = new_name
+                brought[pside].add(new_name)
 
         elif cmd == "move" and len(parts) >= 3:
             atk_slot = _extract_slot(parts[2])
@@ -2198,10 +2296,15 @@ def build_recap(raw: dict, meta: dict = None, typedex: dict = None,
     }
     for pside in ("p1", "p2"):
         b = brought_resolved[pside]
-        if b and len(b) < len(rosters_resolved[pside]):
+        # Reconcile whenever the brought SET differs from the team-preview set — not
+        # only when fewer were brought. A mega (team preview shows base "Swampert";
+        # the mon actually brought resolves to "Mega Swampert") is a same-count-but-
+        # different-name case: without this the mega's KOs land on a name that's
+        # never displayed and vanish from the recap card.
+        if b and set(rosters_resolved[pside]) != b:
             # Keep team-preview order but only for used mons
             rosters_resolved[pside] = [n for n in rosters_resolved[pside] if n in b]
-            # Append any used mon not in team preview (rare forme-change edge case)
+            # Append any used mon not in team preview (mega/primal or forme change)
             for n in sorted(b - set(rosters_resolved[pside])):
                 rosters_resolved[pside].append(n)
 

@@ -1,0 +1,279 @@
+|j|☆fiilterless
+|j|☆districtdittos
+|html|<table width="100%"><tr><td align="left">fiilterless</td><td align="right">districtdittos</tr><tr><td align="left"><i class="fa fa-circle"></i> <i class="fa fa-circle-o"></i> </td><td align="right"><i class="fa fa-circle-o"></i> <i class="fa fa-circle-o"></i> </tr></table>
+|uhtml|bestof|<h2><strong>Game 2</strong> of <a href="/game-bestof3-gen9natdexyuricupseason9-57">a best-of-3</a></h2>
+|t:|1783722491
+|gametype|doubles
+|player|p1|fiilterless|hilda|
+|player|p2|districtdittos|trainer.png|
+|gen|9
+|tier|[Gen 9] NatDex YuriCup Season 9
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|Species Clause: Limit one of each Pokémon
+|rule|Item Clause: Limit 1 of each item
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|clearpoke
+|poke|p1|Archaludon, F|
+|poke|p1|Swampert, F, shiny|
+|poke|p1|Politoed, M|
+|poke|p1|Armarouge, F, shiny|
+|poke|p1|Meowscarada, F, shiny|
+|poke|p1|Mr. Mime, M|
+|poke|p2|Rillaboom, F|
+|poke|p2|Gardevoir, F|
+|poke|p2|Gholdengo|
+|poke|p2|Hitmontop, M|
+|poke|p2|Clodsire, F|
+|poke|p2|Talonflame, F|
+|teampreview|4
+|j|~laxsanchez97
+|j| Lookout mudd
+|c| Lookout mudd|I would be so tilted if i was trey rn
+|
+|t:|1783722559
+|teamsize|p1|4
+|teamsize|p2|4
+|start
+|switch|p1a: Jupiter of Jollity|Politoed, M|100/100
+|switch|p1b: Uranus le Magician|Mr. Mime, M|100/100
+|switch|p2a: Rillaboom|Rillaboom, F|100/100
+|switch|p2b: Clodsire|Clodsire, F|100/100
+|-fieldstart|move: Grassy Terrain|[from] ability: Grassy Surge|[of] p2a: Rillaboom
+|-enditem|p1a: Jupiter of Jollity|Grassy Seed
+|-boost|p1a: Jupiter of Jollity|def|1|[from] item: Grassy Seed
+|-weather|RainDance|[from] ability: Drizzle|[of] p1a: Jupiter of Jollity
+|turn|1
+|l|~laxsanchez97
+|j|~laxsanchez97
+|
+|t:|1783722614
+|switch|p1b: Saturn the Aging|Archaludon, F|100/100
+|move|p1a: Jupiter of Jollity|Protect|p1a: Jupiter of Jollity
+|-singleturn|p1a: Jupiter of Jollity|Protect
+|move|p2a: Rillaboom|Fake Out|p1b: Saturn the Aging
+|-resisted|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|96/100
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|move|p2b: Clodsire|Yawn|p1a: Jupiter of Jollity
+|-activate|p1a: Jupiter of Jollity|move: Protect
+|
+|-weather|RainDance|[upkeep]
+|-heal|p1b: Saturn the Aging|100/100|[from] Grassy Terrain
+|upkeep
+|turn|2
+|
+|t:|1783722652
+|move|p1b: Saturn the Aging|Protect|p1b: Saturn the Aging
+|-singleturn|p1b: Saturn the Aging|Protect
+|move|p2a: Rillaboom|U-turn|p1a: Jupiter of Jollity
+|-damage|p1a: Jupiter of Jollity|89/100
+|
+|t:|1783722663
+|switch|p2a: Hitmontop|Hitmontop, M|100/100|[from] U-turn
+|-ability|p2a: Hitmontop|Intimidate|boost
+|-unboost|p1a: Jupiter of Jollity|atk|1
+|-unboost|p1b: Saturn the Aging|atk|1
+|move|p1a: Jupiter of Jollity|Weather Ball|p2a: Hitmontop
+|-damage|p2a: Hitmontop|57/100
+|-enditem|p2a: Hitmontop|Eject Button
+|
+|t:|1783722671
+|switch|p2a: Rillaboom|Rillaboom, F|100/100
+|move|p2b: Clodsire|Yawn|p1b: Saturn the Aging
+|-activate|p1b: Saturn the Aging|move: Protect
+|
+|-weather|RainDance|[upkeep]
+|-heal|p1a: Jupiter of Jollity|96/100|[from] Grassy Terrain
+|upkeep
+|turn|3
+|
+|t:|1783722704
+|move|p1a: Jupiter of Jollity|Helping Hand|p1b: Saturn the Aging
+|-singleturn|p1b: Saturn the Aging|Helping Hand|[of] p1a: Jupiter of Jollity
+|move|p2a: Rillaboom|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|73/100
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Rillaboom
+|-resisted|p2a: Rillaboom|1
+|-damage|p2a: Rillaboom|71/100
+|move|p2b: Clodsire|Yawn|p1b: Saturn the Aging
+|-start|p1b: Saturn the Aging|move: Yawn|[of] p2b: Clodsire
+|
+|-weather|RainDance|[upkeep]
+|-heal|p2a: Rillaboom|77/100|[from] Grassy Terrain
+|-heal|p1b: Saturn the Aging|79/100|[from] Grassy Terrain
+|-heal|p1a: Jupiter of Jollity|100/100|[from] Grassy Terrain
+|upkeep
+|turn|4
+|
+|t:|1783722748
+|-terastallize|p2b: Clodsire|Poison
+|move|p1a: Jupiter of Jollity|Helping Hand|p1b: Saturn the Aging
+|-singleturn|p1b: Saturn the Aging|Helping Hand|[of] p1a: Jupiter of Jollity
+|move|p2a: Rillaboom|U-turn|p1a: Jupiter of Jollity
+|-crit|p1a: Jupiter of Jollity
+|-damage|p1a: Jupiter of Jollity|74/100
+|
+|t:|1783722756
+|switch|p2a: Gardevoir|Gardevoir, F|100/100|[from] U-turn
+|-ability|p2a: Gardevoir|Drizzle|Trace|[from] ability: Trace|[of] p1a: Jupiter of Jollity
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Gardevoir
+|-damage|p2a: Gardevoir|0 fnt
+|faint|p2a: Gardevoir
+|move|p2b: Clodsire|Poison Jab|p1a: Jupiter of Jollity
+|-damage|p1a: Jupiter of Jollity|58/100
+|
+|-weather|RainDance|[upkeep]
+|-heal|p1b: Saturn the Aging|85/100|[from] Grassy Terrain
+|-heal|p1a: Jupiter of Jollity|65/100|[from] Grassy Terrain
+|-end|p1b: Saturn the Aging|move: Yawn|[silent]
+|-status|p1b: Saturn the Aging|slp
+|upkeep
+|
+|t:|1783722780
+|switch|p2a: Rillaboom|Rillaboom, F|77/100
+|turn|5
+|c| Lookout mudd|Trey now needs his own crits
+|
+|t:|1783722790
+|cant|p1b: Saturn the Aging|slp
+|move|p1a: Jupiter of Jollity|Protect|p1a: Jupiter of Jollity
+|-singleturn|p1a: Jupiter of Jollity|Protect
+|move|p2a: Rillaboom|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|65/100 slp
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|move|p2b: Clodsire|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|50/100 slp
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|-enditem|p1b: Saturn the Aging|Sitrus Berry|[eat]
+|-heal|p1b: Saturn the Aging|75/100 slp|[from] item: Sitrus Berry
+|
+|-weather|none
+|-heal|p2a: Rillaboom|83/100|[from] Grassy Terrain
+|-heal|p1b: Saturn the Aging|81/100 slp|[from] Grassy Terrain
+|-heal|p1a: Jupiter of Jollity|71/100|[from] Grassy Terrain
+|-fieldend|move: Grassy Terrain
+|upkeep
+|turn|6
+|
+|t:|1783722816
+|switch|p1a: Uranus le Magician|Mr. Mime, M|100/100
+|cant|p1b: Saturn the Aging|slp
+|move|p2a: Rillaboom|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|65/100 slp
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|move|p2b: Clodsire|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|53/100 slp
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|
+|upkeep
+|turn|7
+|
+|t:|1783722863
+|switch|p1a: Jupiter of Jollity|Politoed, M|71/100
+|-weather|RainDance|[from] ability: Drizzle|[of] p1a: Jupiter of Jollity
+|move|p2a: Rillaboom|High Horsepower|p1b: Saturn the Aging|[miss]
+|-miss|p2a: Rillaboom|p1b: Saturn the Aging
+|-curestatus|p1b: Saturn the Aging|slp|[msg]
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Rillaboom
+|-resisted|p2a: Rillaboom|1
+|-damage|p2a: Rillaboom|50/100
+|move|p2b: Clodsire|Yawn|p1b: Saturn the Aging
+|-start|p1b: Saturn the Aging|move: Yawn|[of] p2b: Clodsire
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|8
+|c| Lookout mudd|That’s not the rng
+|
+|t:|1783722894
+|move|p1a: Jupiter of Jollity|Helping Hand|p1b: Saturn the Aging
+|-singleturn|p1b: Saturn the Aging|Helping Hand|[of] p1a: Jupiter of Jollity
+|move|p2a: Rillaboom|Grassy Glide|p1a: Jupiter of Jollity
+|-supereffective|p1a: Jupiter of Jollity|1
+|-damage|p1a: Jupiter of Jollity|25/100
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Rillaboom
+|-resisted|p2a: Rillaboom|1
+|-damage|p2a: Rillaboom|0 fnt
+|faint|p2a: Rillaboom
+|move|p2b: Clodsire|Poison Jab|p1a: Jupiter of Jollity
+|-damage|p1a: Jupiter of Jollity|2/100
+|
+|-weather|RainDance|[upkeep]
+|-end|p1b: Saturn the Aging|move: Yawn|[silent]
+|-status|p1b: Saturn the Aging|slp
+|upkeep
+|
+|t:|1783722909
+|switch|p2a: Hitmontop|Hitmontop, M|57/100
+|-ability|p2a: Hitmontop|Intimidate|boost
+|-unboost|p1a: Jupiter of Jollity|atk|1
+|-unboost|p1b: Saturn the Aging|atk|1
+|turn|9
+|c| Lookout mudd|Final two
+|
+|t:|1783722952
+|cant|p1b: Saturn the Aging|slp
+|move|p2a: Hitmontop|Close Combat|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|37/100 slp
+|-unboost|p2a: Hitmontop|def|1
+|-unboost|p2a: Hitmontop|spd|1
+|move|p1a: Jupiter of Jollity|Weather Ball|p2a: Hitmontop
+|-damage|p2a: Hitmontop|0 fnt
+|faint|p2a: Hitmontop
+|move|p2b: Clodsire|Poison Jab|p1a: Jupiter of Jollity
+|-damage|p1a: Jupiter of Jollity|0 fnt
+|faint|p1a: Jupiter of Jollity
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|
+|t:|1783722963
+|switch|p1a: Mars War Bringer|Swampert, F, shiny|100/100
+|turn|10
+|
+|t:|1783722974
+|detailschange|p1a: Mars War Bringer|Swampert-Mega, F, shiny
+|-mega|p1a: Mars War Bringer|Swampert|Swampertite
+|cant|p1b: Saturn the Aging|slp
+|move|p1a: Mars War Bringer|Earthquake|p2b: Clodsire|[spread] p1b,p2b
+|-supereffective|p1b: Saturn the Aging|1
+|-crit|p1b: Saturn the Aging
+|-supereffective|p2b: Clodsire|1
+|-damage|p1b: Saturn the Aging|0 fnt
+|-damage|p2b: Clodsire|0 fnt
+|faint|p1b: Saturn the Aging
+|faint|p2b: Clodsire
+|
+|win|fiilterless
+|c|☆districtdittos|rip
+|c|☆fiilterless|ggs
+|c|☆districtdittos|ggs
+|c| Lookout mudd|Only caelyn is allowed to get crits

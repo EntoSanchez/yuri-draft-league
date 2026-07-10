@@ -1,0 +1,329 @@
+|j|☆fiilterless
+|j|☆districtdittos
+|html|<table width="100%"><tr><td align="left">fiilterless</td><td align="right">districtdittos</tr><tr><td align="left"><i class="fa fa-circle-o"></i> <i class="fa fa-circle-o"></i> </td><td align="right"><i class="fa fa-circle-o"></i> <i class="fa fa-circle-o"></i> </tr></table>
+|uhtml|bestof|<h2><strong>Game 1</strong> of <a href="/game-bestof3-gen9natdexyuricupseason9-57">a best-of-3</a></h2>
+|t:|1783721664
+|gametype|doubles
+|player|p1|fiilterless|hilda|
+|player|p2|districtdittos|trainer.png|
+|gen|9
+|tier|[Gen 9] NatDex YuriCup Season 9
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|Species Clause: Limit one of each Pokémon
+|rule|Item Clause: Limit 1 of each item
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|clearpoke
+|poke|p1|Archaludon, M|
+|poke|p1|Swampert, M, shiny|
+|poke|p1|Politoed, M|
+|poke|p1|Armarouge, M, shiny|
+|poke|p1|Meowscarada, F, shiny|
+|poke|p1|Mr. Mime, M|
+|poke|p2|Rillaboom, M|
+|poke|p2|Gardevoir, M|
+|poke|p2|Gholdengo|
+|poke|p2|Hitmontop, M|
+|poke|p2|Clodsire, M|
+|poke|p2|Talonflame, F|
+|teampreview|4
+|j|~laxsanchez97
+|
+|t:|1783721805
+|teamsize|p1|4
+|teamsize|p2|4
+|start
+|switch|p1a: Jupiter of Jollity|Politoed, M|100/100
+|switch|p1b: Uranus le Magician|Mr. Mime, M|100/100
+|switch|p2a: Rillaboom|Rillaboom, M|100/100
+|switch|p2b: Gardevoir|Gardevoir, M|100/100
+|-ability|p2b: Gardevoir|Filter|Trace|[from] ability: Trace|[of] p1b: Uranus le Magician
+|-fieldstart|move: Grassy Terrain|[from] ability: Grassy Surge|[of] p2a: Rillaboom
+|-enditem|p1a: Jupiter of Jollity|Grassy Seed
+|-boost|p1a: Jupiter of Jollity|def|1|[from] item: Grassy Seed
+|-weather|RainDance|[from] ability: Drizzle|[of] p1a: Jupiter of Jollity
+|turn|1
+|c|☆fiilterless|glhf!
+|c|☆districtdittos|you too!
+|
+|t:|1783721876
+|detailschange|p2b: Gardevoir|Gardevoir-Mega, M
+|-mega|p2b: Gardevoir|Gardevoir|Gardevoirite
+|move|p1a: Jupiter of Jollity|Protect|p1a: Jupiter of Jollity
+|-singleturn|p1a: Jupiter of Jollity|Protect
+|move|p2a: Rillaboom|Fake Out|p1b: Uranus le Magician
+|-damage|p1b: Uranus le Magician|81/100
+|move|p2b: Gardevoir|Calm Mind|p2b: Gardevoir
+|-boost|p2b: Gardevoir|spa|1
+|-boost|p2b: Gardevoir|spd|1
+|cant|p1b: Uranus le Magician|flinch
+|
+|-weather|RainDance|[upkeep]
+|-heal|p1b: Uranus le Magician|87/100|[from] Grassy Terrain
+|upkeep
+|turn|2
+|j| Lookout mudd
+|c| Lookout mudd|Trey gotta work on his nickname game
+|
+|t:|1783721953
+|move|p2a: Rillaboom|Grassy Glide|p1a: Jupiter of Jollity
+|-supereffective|p1a: Jupiter of Jollity|1
+|-damage|p1a: Jupiter of Jollity|66/100
+|move|p2b: Gardevoir|Shadow Ball|p1b: Uranus le Magician
+|-supereffective|p1b: Uranus le Magician|1
+|-damage|p1b: Uranus le Magician|15/100
+|move|p1b: Uranus le Magician|Light Screen|p1b: Uranus le Magician
+|-sidestart|p1: fiilterless|move: Light Screen
+|move|p1a: Jupiter of Jollity|Perish Song|p1a: Jupiter of Jollity
+|-start|p1a: Jupiter of Jollity|perish3|[silent]
+|-start|p1b: Uranus le Magician|perish3|[silent]
+|-start|p2a: Rillaboom|perish3|[silent]
+|-start|p2b: Gardevoir|perish3|[silent]
+|-fieldactivate|move: Perish Song
+|
+|-weather|RainDance|[upkeep]
+|-heal|p1b: Uranus le Magician|21/100|[from] Grassy Terrain
+|-heal|p1a: Jupiter of Jollity|72/100|[from] Grassy Terrain
+|-start|p2b: Gardevoir|perish3
+|-start|p2a: Rillaboom|perish3
+|-start|p1b: Uranus le Magician|perish3
+|-start|p1a: Jupiter of Jollity|perish3
+|upkeep
+|turn|3
+|l|~laxsanchez97
+|
+|t:|1783722015
+|switch|p2b: Clodsire|Clodsire, M|100/100
+|move|p1b: Uranus le Magician|Quick Guard|p1b: Uranus le Magician
+|-singleturn|p1b: Uranus le Magician|Quick Guard
+|move|p2a: Rillaboom|U-turn|p1b: Uranus le Magician
+|-damage|p1b: Uranus le Magician|0 fnt
+|faint|p1b: Uranus le Magician
+|
+|t:|1783722023
+|switch|p2a: Gardevoir|Gardevoir-Mega, M|100/100|[from] U-turn
+|move|p1a: Jupiter of Jollity|Weather Ball|p2b: Clodsire
+|-immune|p2b: Clodsire|[from] ability: Water Absorb
+|
+|-weather|RainDance|[upkeep]
+|-heal|p1a: Jupiter of Jollity|79/100|[from] Grassy Terrain
+|-start|p1a: Jupiter of Jollity|perish2
+|upkeep
+|j|~laxsanchez97
+|
+|t:|1783722029
+|switch|p1b: Saturn the Aging|Archaludon, M|100/100
+|turn|4
+|c| Lookout mudd|Perish song uno reverse card
+|l|~laxsanchez97
+|j|~laxsanchez97
+|
+|t:|1783722075
+|switch|p1a: Mars War Bringer|Swampert, M, shiny|100/100
+|move|p2a: Gardevoir|Protect|p2a: Gardevoir
+|-singleturn|p2a: Gardevoir|Protect
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Gardevoir
+|-activate|p2a: Gardevoir|move: Protect
+|move|p2b: Clodsire|Yawn|p1b: Saturn the Aging
+|-start|p1b: Saturn the Aging|move: Yawn|[of] p2b: Clodsire
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|5
+|
+|t:|1783722153
+|switch|p2a: Hitmontop|Hitmontop, M|100/100
+|-ability|p2a: Hitmontop|Intimidate|boost
+|-unboost|p1a: Mars War Bringer|atk|1
+|-unboost|p1b: Saturn the Aging|atk|1
+|detailschange|p1a: Mars War Bringer|Swampert-Mega, M, shiny
+|-mega|p1a: Mars War Bringer|Swampert|Swampertite
+|move|p1a: Mars War Bringer|Poison Jab|p2a: Hitmontop
+|-damage|p2a: Hitmontop|75/100
+|-status|p2a: Hitmontop|psn
+|-enditem|p2a: Hitmontop|Eject Button
+|
+|t:|1783722166
+|switch|p2a: Rillaboom|Rillaboom, M|100/100
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Rillaboom
+|-resisted|p2a: Rillaboom|1
+|-crit|p2a: Rillaboom
+|-damage|p2a: Rillaboom|55/100
+|move|p2b: Clodsire|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|61/100
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|
+|-weather|none
+|-heal|p2a: Rillaboom|61/100|[from] Grassy Terrain
+|-heal|p1b: Saturn the Aging|68/100|[from] Grassy Terrain
+|-end|p1b: Saturn the Aging|move: Yawn|[silent]
+|-status|p1b: Saturn the Aging|slp
+|-fieldend|move: Grassy Terrain
+|upkeep
+|turn|6
+|
+|t:|1783722213
+|switch|p1a: Jupiter of Jollity|Politoed, M|79/100
+|-weather|RainDance|[from] ability: Drizzle|[of] p1a: Jupiter of Jollity
+|cant|p1b: Saturn the Aging|slp
+|move|p2a: Rillaboom|Grassy Glide|p1a: Jupiter of Jollity
+|-supereffective|p1a: Jupiter of Jollity|1
+|-damage|p1a: Jupiter of Jollity|37/100
+|move|p2b: Clodsire|High Horsepower|p1a: Jupiter of Jollity
+|-damage|p1a: Jupiter of Jollity|18/100
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|7
+|
+|t:|1783722239
+|cant|p1b: Saturn the Aging|slp
+|move|p1a: Jupiter of Jollity|Protect|p1a: Jupiter of Jollity
+|-singleturn|p1a: Jupiter of Jollity|Protect
+|move|p2a: Rillaboom|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|39/100 slp
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|-enditem|p1b: Saturn the Aging|Sitrus Berry|[eat]
+|-heal|p1b: Saturn the Aging|64/100 slp|[from] item: Sitrus Berry
+|move|p2b: Clodsire|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|46/100 slp
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|8
+|c| Lookout mudd|Huge sitrus
+|c|~laxsanchez97|all the boosts
+|c| Lookout mudd|This thing is a monster
+|c| Lookout mudd|Fantastic protect read though
+|
+|t:|1783722276
+|move|p1a: Jupiter of Jollity|Helping Hand|p1b: Saturn the Aging
+|-singleturn|p1b: Saturn the Aging|Helping Hand|[of] p1a: Jupiter of Jollity
+|move|p2a: Rillaboom|Grassy Glide|p1a: Jupiter of Jollity
+|-supereffective|p1a: Jupiter of Jollity|1
+|-damage|p1a: Jupiter of Jollity|0 fnt
+|faint|p1a: Jupiter of Jollity
+|-curestatus|p1b: Saturn the Aging|slp|[msg]
+|move|p1b: Saturn the Aging|Electro Shot||[still]
+|-prepare|p1b: Saturn the Aging|Electro Shot
+|-boost|p1b: Saturn the Aging|spa|1
+|-anim|p1b: Saturn the Aging|Electro Shot|p2a: Rillaboom
+|-resisted|p2a: Rillaboom|1
+|-crit|p2a: Rillaboom
+|-damage|p2a: Rillaboom|0 fnt
+|faint|p2a: Rillaboom
+|move|p2b: Clodsire|Yawn|p1b: Saturn the Aging
+|-start|p1b: Saturn the Aging|move: Yawn|[of] p2b: Clodsire
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|c| Lookout mudd|Double crit lmao
+|
+|t:|1783722296
+|switch|p2a: Hitmontop|Hitmontop, M|75/100 psn
+|switch|p1a: Mars War Bringer|Swampert-Mega, M, shiny|100/100
+|-ability|p2a: Hitmontop|Intimidate|boost
+|-unboost|p1a: Mars War Bringer|atk|1
+|-unboost|p1b: Saturn the Aging|atk|1
+|turn|9
+|c| Lookout mudd|Intimidate here is also massive
+|
+|t:|1783722357
+|move|p2a: Hitmontop|Fake Out|p1a: Mars War Bringer
+|-damage|p1a: Mars War Bringer|92/100
+|cant|p1a: Mars War Bringer|flinch
+|move|p1b: Saturn the Aging|Flash Cannon|p2b: Clodsire
+|-crit|p2b: Clodsire
+|-damage|p2b: Clodsire|29/100
+|move|p2b: Clodsire|High Horsepower|p1a: Mars War Bringer
+|-damage|p1a: Mars War Bringer|72/100
+|
+|-weather|RainDance|[upkeep]
+|-heal|p2b: Clodsire|35/100|[from] item: Leftovers
+|-damage|p2a: Hitmontop|62/100 psn|[from] psn
+|-end|p1b: Saturn the Aging|move: Yawn|[silent]
+|-status|p1b: Saturn the Aging|slp
+|-sideend|p1: fiilterless|move: Light Screen
+|upkeep
+|turn|10
+|
+|t:|1783722406
+|cant|p1b: Saturn the Aging|slp
+|move|p1a: Mars War Bringer|Wave Crash|p2a: Hitmontop
+|-damage|p2a: Hitmontop|0 fnt
+|faint|p2a: Hitmontop
+|-damage|p1a: Mars War Bringer|54/100|[from] Recoil
+|move|p2b: Clodsire|Recover|p2b: Clodsire
+|-heal|p2b: Clodsire|85/100
+|
+|-weather|none
+|-heal|p2b: Clodsire|92/100|[from] item: Leftovers
+|upkeep
+|
+|t:|1783722417
+|switch|p2a: Gardevoir|Gardevoir-Mega, M|100/100
+|turn|11
+|c| Lookout mudd|Oooooh shit
+|
+|t:|1783722443
+|-curestatus|p1b: Saturn the Aging|slp|[msg]
+|move|p1b: Saturn the Aging|Protect|p1b: Saturn the Aging
+|-singleturn|p1b: Saturn the Aging|Protect
+|move|p2a: Gardevoir|Hyper Voice|p1b: Saturn the Aging|[spread] p1a
+|-activate|p1b: Saturn the Aging|move: Protect
+|-damage|p1a: Mars War Bringer|11/100
+|move|p1a: Mars War Bringer|Poison Jab|p2a: Gardevoir
+|-supereffective|p2a: Gardevoir|1
+|-crit|p2a: Gardevoir
+|-damage|p2a: Gardevoir|0 fnt
+|faint|p2a: Gardevoir
+|move|p2b: Clodsire|High Horsepower|p1a: Mars War Bringer
+|-damage|p1a: Mars War Bringer|0 fnt
+|faint|p1a: Mars War Bringer
+|
+|-heal|p2b: Clodsire|98/100|[from] item: Leftovers
+|upkeep
+|turn|12
+|c| Lookout mudd|I think that crit mattered xD
+|
+|t:|1783722460
+|move|p1b: Saturn the Aging|Dragon Pulse|p2b: Clodsire
+|-damage|p2b: Clodsire|43/100
+|move|p2b: Clodsire|High Horsepower|p1b: Saturn the Aging
+|-supereffective|p1b: Saturn the Aging|1
+|-damage|p1b: Saturn the Aging|31/100
+|-ability|p1b: Saturn the Aging|Stamina|boost
+|-boost|p1b: Saturn the Aging|def|1
+|
+|-heal|p2b: Clodsire|50/100|[from] item: Leftovers
+|upkeep
+|turn|13
+|c|☆fiilterless|that crit was massive
+|
+|t:|1783722473
+|move|p1b: Saturn the Aging|Dragon Pulse|p2b: Clodsire
+|-damage|p2b: Clodsire|0 fnt
+|faint|p2b: Clodsire
+|
+|win|fiilterless
+|c|☆districtdittos|omg the crits
+|inactive|fiilterless has 30 seconds to confirm battle start!
+|inactive|districtdittos has 30 seconds to confirm battle start!
+||fiilterless is ready for game 2.
+||districtdittos is ready for game 2.
+|uhtml|next|Next: <a href="/battle-gen9natdexyuricupseason9-59"><strong>Game 2 of 3</strong></a>
