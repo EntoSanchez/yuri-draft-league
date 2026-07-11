@@ -1,26 +1,41 @@
-import sqlite3
 import hashlib
-import os
-import random
 import json
 import math
+import os
+import random
 import re
 import secrets
 import shutil
-import uuid
+import sqlite3
 import time
-import urllib.request
 import urllib.error
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_from_directory
-from werkzeug.security import check_password_hash, generate_password_hash
-from functools import wraps
+import urllib.request
+import uuid
 from contextlib import contextmanager
-from replay_utils import (fetch_replay as _replay_fetch, parse_log as _replay_parse_log,
-                          resolve_poke_name as _replay_resolve_poke, remap_dict as _replay_remap,
-                          parse_log_recap as _replay_parse_recap, build_recap as _replay_build_recap,
-                          build_commentary as _replay_build_commentary,
-                          TYPE_COLORS as _RECAP_TYPE_COLORS)
+from datetime import datetime
+from functools import wraps
+
+from flask import (
+    Flask,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from replay_utils import TYPE_COLORS as _RECAP_TYPE_COLORS
+from replay_utils import build_commentary as _replay_build_commentary
+from replay_utils import build_recap as _replay_build_recap
+from replay_utils import fetch_replay as _replay_fetch
+from replay_utils import parse_log as _replay_parse_log
+from replay_utils import parse_log_recap as _replay_parse_recap
+from replay_utils import remap_dict as _replay_remap
+from replay_utils import resolve_poke_name as _replay_resolve_poke
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "yuricup-secret-key-change-me-in-production")
@@ -816,21 +831,31 @@ def ai_commentary(recap, api_key, timeout=8):
             "battle (Showdown DOUBLES — two Pokemon per side are active, so avoid "
             "'1v1' framing). Using ONLY the facts given (never invent events), "
             "respond with a JSON object with exactly two keys:\n"
-            '"summary": a vivid 4-6 sentence narrative. Go beyond who KO\'d whom — '
-            "call out a Pokemon that snowballed with stat boosts and got scary "
-            "(`snowball`), a Pokemon that swept multiple KOs (`sweeps`), critical "
-            "hits and whether they CHANGED the outcome (`crits`: mattered=true means "
-            "a normal hit would've left the target alive, mattered=false means it was "
-            "overkill — say so honestly), interesting item or Tera reveals (`items`, "
-            "`teras`), and a costly miss (`misses`) if one stands out. Name Pokemon "
-            "and trainers.\n"
+            '"summary": a vivid, FLOWING 4-6 sentence story of the match — NOT a '
+            "list of facts. Build a connected arc: how it opened, the mon that took "
+            "over and HOW (link the `snowball` stat boosts to the KOs that mon then "
+            "scored in `sweeps`/`stars`), the turning point (a `crits` entry — "
+            "mattered=true means a normal hit would've left the target alive, "
+            "mattered=false means overkill, say which honestly), and how it closed. "
+            "Weave in an interesting item or Tera reveal (`items`, `teras`) or a "
+            "costly miss (`misses`) as a detail, not a separate sentence. Use "
+            "transitions ('From there', 'The turning point came when', 'By the end') "
+            "so sentences connect. IMPORTANT: whenever you name a Pokemon, use the "
+            "nickname from the `nicknames` map in parentheses on first mention, e.g. "
+            "'Archaludon (Saturn the Aging)'. Name trainers too.\n"
             '"plays": an array of short punchy play-by-play strings in turn order — '
-            "one per knockout, and you may fold in a decisive crit or a setup turn.\n"
+            "one per knockout, and you may fold in a decisive crit or a setup turn. "
+            "Use 'Species (Nickname)' here as well when a nickname exists.\n"
             "Be dramatic but strictly accurate; the crit heuristic is approximate, so "
             "hedge ('likely'). Output ONLY the JSON object."
         )
+        # Model is configurable via Admin → Settings (groq_model) so a Groq
+        # deprecation never silently breaks commentary again. Default is Groq's
+        # current production model; llama-3.3-70b-versatile was deprecated
+        # (retires 2026-08-16) and is the likely cause of a silent AI fallback.
+        model = get_setting("groq_model", "") or "openai/gpt-oss-120b"
         body = json.dumps({
-            "model": "llama-3.3-70b-versatile",
+            "model": model,
             "temperature": 0.9,
             "response_format": {"type": "json_object"},
             "messages": [
@@ -891,6 +916,56 @@ def ai_commentary(recap, api_key, timeout=8):
         return {"summary": summary, "plays": plays, "source": "ai"}
     except Exception:
         return None  # Any failure -> caller falls back to template commentary
+
+
+def groq_diagnose(api_key):
+    """Make a minimal Groq call and return (ok: bool, message: str) describing the
+    real result — used by the Admin 'Test AI commentary' button so a failing key /
+    deprecated model / rate-limit is VISIBLE instead of silently falling back to
+    the template. Never raises."""
+    if not api_key:
+        return False, "No Groq API key saved. Paste one in Admin → Settings and save first."
+    model = get_setting("groq_model", "") or "openai/gpt-oss-120b"
+    try:
+        body = json.dumps({
+            "model": model,
+            "temperature": 0.5,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": 'Reply with JSON {"ok": true}.'},
+                {"role": "user", "content": "ping"},
+            ],
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=body,
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer " + api_key,
+                     "User-Agent": "yuri-draft-league/1.0"},
+            method="POST")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        _ = data["choices"][0]["message"]["content"]
+        return True, f"AI commentary is working (model: {model})."
+    except urllib.error.HTTPError as he:
+        detail = ""
+        try:
+            detail = he.read().decode("utf-8", "replace")[:300]
+        except Exception:
+            pass
+        if he.code == 401:
+            return False, f"Groq rejected the API key (401 Unauthorized). The key is invalid or was rotated. {detail}"
+        if he.code == 404:
+            return False, f"Model '{model}' not found (404) — it may be deprecated/retired. Set a current model in groq_model. {detail}"
+        if he.code == 429:
+            return False, f"Rate limited (429) — the free tier is throttling. Try again shortly. {detail}"
+        if he.code == 400:
+            return False, f"Bad request (400) — often a deprecated/decommissioned model '{model}'. {detail}"
+        return False, f"Groq HTTP {he.code}. {detail}"
+    except urllib.error.URLError as ue:
+        return False, f"Could not reach Groq: {ue.reason}"
+    except Exception as e:
+        return False, f"Unexpected error: {type(e).__name__}: {e}"
 
 
 def get_standings(pool=None):
@@ -2972,6 +3047,21 @@ def admin_test_webhook():
     return redirect(url_for("admin_settings"))
 
 
+@app.route("/admin/test_ai", methods=["POST"])
+@admin_required
+def admin_test_ai():
+    """Run a live Groq check and surface the REAL result — so a bad key or a
+    deprecated model is visible instead of silently falling back to the template."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT value FROM league_settings WHERE key='groq_api_key'"
+        ).fetchone()
+    key = row["value"] if row and row["value"] else None
+    ok, msg = groq_diagnose(key)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_settings"))
+
+
 LOGOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "logos")
 os.makedirs(LOGOS_DIR, exist_ok=True)
 ALLOWED_LOGO_EXTS = {".jpg", ".jpeg", ".png"}
@@ -3952,7 +4042,7 @@ def admin_board_template_download(tid):
     if not row:
         flash("Template not found.", "warning")
         return redirect(url_for("admin_board_templates"))
-    from flask import make_response          # local import (matches existing usage in app.py)
+    from flask import make_response  # local import (matches existing usage in app.py)
     safe = re.sub(r"[^A-Za-z0-9_-]+", "_", row["name"])[:40] or "board"
     resp = make_response(row["board_json"])
     resp.headers["Content-Type"] = "application/json"
@@ -6752,8 +6842,8 @@ def battle_prep():
 @app.route("/api/pokepaste", methods=["POST"])
 def api_pokepaste():
     """Proxy a team paste to pokepast.es and return the resulting URL."""
-    import urllib.request as _ur
     import urllib.parse as _up
+    import urllib.request as _ur
     data = request.get_json(silent=True) or {}
     paste_text = (data.get("paste") or "").strip()
     title      = (data.get("title") or "Battle Team").strip()

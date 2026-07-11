@@ -24,8 +24,12 @@ def test_commentary_one_play_per_ko_and_names_real_species():
     # one play line per KO in the koLog
     assert len(c["plays"]) == len(rc["koLog"])
     joined = c["summary"] + " " + " ".join(c["plays"])
-    # nickname resolved to species; no phantom disguise names
-    assert "Blaziken" in joined and "Chicken Jockey" not in joined
+    # The SPECIES is always present (attribution key). Nicknames are now surfaced
+    # as "Species (Nickname)", so Blaziken's real nickname "Chicken Jockey" appears
+    # alongside the species — verified NOT a Zoroark disguise (no |replace| in this
+    # replay), so this is the correct nickname, not a phantom.
+    assert "Blaziken" in joined
+    assert "Blaziken (Chicken Jockey)" in joined
     # the comeback (loser led, winner clawed back) is narrated
     assert "clawed all the way back" in c["summary"]
 

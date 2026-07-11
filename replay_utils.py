@@ -2107,6 +2107,7 @@ def parse_log_recap(log: str) -> dict:
     hl_misses = []
     hp_pct = {}  # slot -> last-known HP percent (0-100), for crit "mattered"
     _pending_crit = {}  # victim slot -> hp_before (percent) until the -damage resolves it
+    nicknames = {}  # species -> the trainer's custom nickname (for flavor in prose)
 
     for raw in log.splitlines():
         line = raw.strip()
@@ -2148,6 +2149,22 @@ def parse_log_recap(log: str) -> dict:
                 active[slot] = poke_name
                 pside = _slot_player(slot)
                 brought[pside].add(poke_name)
+                # Capture the trainer's custom nickname (from "p1a: Nickname") when
+                # it differs from the species — surfaced as "Species (Nickname)" in
+                # commentary for flavor. Species stays the attribution key. Guard
+                # against a NON-nickname: when a mega switches in, the slot label
+                # still shows the BASE species (e.g. "p2a: Gardevoir" for
+                # Gardevoir-Mega), which is not a real nickname — skip if the "nick"
+                # matches the species or its base forme.
+                nick = _extract_name(parts[2])
+                base = _norm_forme(poke_name)
+                if (
+                    nick
+                    and nick != poke_name
+                    and nick != base
+                    and poke_name not in nicknames
+                ):
+                    nicknames[poke_name] = nick
                 if not _leads_locked[pside] and poke_name not in leads[pside]:
                     leads[pside].append(poke_name)
                 last_hit.pop(slot, None)
@@ -2526,6 +2543,7 @@ def parse_log_recap(log: str) -> dict:
         "turns": turn,
         "winner_player": winner_player,
         "used": used,
+        "nicknames": nicknames,
         "highlights": {
             "boosts": hl_boosts,
             "peak_boosts": [
@@ -2868,6 +2886,7 @@ def build_recap(
         "stars": stars,
         "facts": facts,
         "highlights": raw.get("highlights", {}),
+        "nicknames": raw.get("nicknames", {}),
         "h2h": nm.get("h2h"),
         "homeRec": nm.get("homeRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
         "awayRec": nm.get("awayRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
@@ -3013,16 +3032,29 @@ def commentary_facts(recap: dict) -> dict:
         "teras": teras,
         "misses": misses,
         "sweeps": sweeps,
+        "nicknames": recap.get("nicknames", {}),
     }
 
 
-def _ordinal_move_phrase(p: dict) -> str:
+def _nick(name, nicknames):
+    """Format a species with its trainer nickname: 'Archaludon (Saturn the Aging)'.
+    Falls back to the bare name when there's no nickname or no name."""
+    if not name:
+        return name
+    nn = (nicknames or {}).get(name)
+    return f"{name} ({nn})" if nn else name
+
+
+def _ordinal_move_phrase(p: dict, nicknames: dict = None) -> str:
     """One KO play → a punchy sentence. Varies phrasing by index-free signals
-    (super-effective, indirect, move) so lines don't read identically."""
-    atk, vic, mv = p["attacker"], p["victim"], p["move"]
-    if p["indirect"] or not atk:
+    (super-effective, indirect, move) so lines don't read identically. Mon names
+    carry their trainer nickname as 'Species (Nickname)'."""
+    atk = _nick(p["attacker"], nicknames)
+    vic = _nick(p["victim"], nicknames)
+    mv = p["move"]
+    if p["indirect"] or not p["attacker"]:
         # hazard / status / self chip
-        if atk:
+        if p["attacker"]:
             return f"T{p['turn']}: {vic} went down to {atk}'s {mv}."
         return f"T{p['turn']}: {vic} was worn down by {mv}."
     if p["super_effective"]:
@@ -3043,90 +3075,117 @@ def build_commentary(recap: dict) -> dict:
     winner, loser, score = f["winner"], f["loser"], f["score"]
     turns, comeback = f["turns"], f["comeback_from"]
     n_plays = len(f["plays"])
+    nn = f.get("nicknames", {})
 
-    # ── narrative summary ──
+    def N(name):  # "Species (Nickname)"
+        return _nick(name, nn)
+
+    # ── narrative summary ── woven into a connected arc:
+    #   opening → the mon that took over (star/sweep + how: snowball) → a pivotal
+    #   crit → a notable reveal → close. Each beat links to the next instead of
+    #   standing alone, and mon names carry their trainer nickname.
     if n_plays == 0:
-        parts = [f"{winner} defeated {loser} {score}."]
+        parts = [f"{N(winner)} defeated {loser} {score}."]
     else:
         opener_side = f["plays"][0]["attacker_team"]
-        first_vic = f["plays"][0]["victim"]
-        first_atk = f["plays"][0]["attacker"] or "chip damage"
-        parts = [
-            f"{winner} beat {loser} {score}"
-            + (f" over {turns} turns." if turns else ".")
-        ]
+        first_vic = N(f["plays"][0]["victim"])
+        first_atk = (
+            N(f["plays"][0]["attacker"]) if f["plays"][0]["attacker"] else "chip damage"
+        )
+        turns_txt = f" across {turns} turns" if turns else ""
         if opener_side == loser and comeback >= 2:
-            # loser struck first / led, winner came back
-            parts.append(
-                f"{loser} drew first blood when {first_atk} took out {first_vic}, "
-                f"and pulled ahead by {comeback}, but {winner} clawed all the way back."
-            )
+            parts = [
+                f"{loser} drew first blood when {first_atk} took out {first_vic} and pulled "
+                f"ahead by {comeback}, but {winner} clawed all the way back to win {score}{turns_txt}."
+            ]
         elif opener_side == winner:
-            parts.append(
+            parts = [
                 f"{winner} set the tone early — {first_atk} opened the scoring on {first_vic} — "
-                f"and never let the lead go."
+                f"and never looked back, taking it {score}{turns_txt}."
+            ]
+        else:
+            parts = [
+                f"{loser} struck first ({first_atk} on {first_vic}), but {winner} answered and "
+                f"pulled away to win {score}{turns_txt}."
+            ]
+
+    # The mon that carried it — fold the star, the sweep count, and HOW it got
+    # there (snowball) into ONE connected beat instead of three separate lines.
+    # (Runs for both the 0-KO and >0-KO branches so a boost-heavy but KO-light
+    # game still gets its snowball mention.)
+    star = f["stars"][0] if f.get("stars") else None
+    sweep = max(f["sweeps"], key=lambda x: x["kos"]) if f.get("sweeps") else None
+    hero = None
+    if star:
+        hero = {
+            "mon": star["name"],
+            "team": star["team"],
+            "kos": (sweep["kos"] if sweep and sweep["mon"] == star["name"] else None),
+        }
+    elif sweep:
+        hero = {"mon": sweep["mon"], "team": sweep["team"], "kos": sweep["kos"]}
+    if hero:
+        # find a snowball on the hero to explain the takeover
+        hero_sb = next(
+            (s for s in f.get("snowball", []) if s["mon"] == hero["mon"]), None
+        )
+        if hero_sb:
+            sign = "+" if hero_sb["stage"] > 0 else ""
+            lead = (
+                f"{N(hero['mon'])} took over for {hero['team']}, snowballing to "
+                f"{sign}{hero_sb['stage']} {hero_sb['stat'].upper()}"
+            )
+            lead += (
+                f" and cleaning up {hero['kos']} KOs."
+                if hero["kos"]
+                else " and becoming the mon to fear."
+            )
+            parts.append(lead)
+        elif hero["kos"] and hero["kos"] >= 2:
+            parts.append(
+                f"{N(hero['mon'])} was the difference-maker for {hero['team']}, "
+                f"racking up {hero['kos']} KOs."
             )
         else:
-            parts.append(
-                f"{loser} landed the first blow ({first_atk} on {first_vic}), "
-                f"but {winner} answered and took control."
-            )
-        # top star
-        if f["stars"]:
-            s0 = f["stars"][0]
-            parts.append(
-                f"{s0['name']} was the difference-maker for {s0['team']} ({s0['kos']})."
-            )
-
-    # Multi-KO sweep (the clearest "got scary" signal). Skip it when the top
-    # sweeper is the same mon already named as the difference-maker star above —
-    # otherwise two consecutive sentences say the same thing. A 3+ KO tear is a
-    # strong enough standalone beat to keep even if it repeats the star.
-    if f.get("sweeps"):
-        sw = max(f["sweeps"], key=lambda x: x["kos"])
-        top_star_name = f["stars"][0]["name"] if f.get("stars") else None
-        if sw["kos"] >= 3:
-            parts.append(
-                f"{sw['mon']} went on a tear for {sw['team']}, racking up {sw['kos']} KOs."
-            )
-        elif sw["mon"] != top_star_name:
-            parts.append(
-                f"{sw['mon']} pulled its weight with {sw['kos']} KOs for {sw['team']}."
-            )
-    # Snowball / setup.
-    if f.get("snowball"):
+            parts.append(f"{N(hero['mon'])} led the way for {hero['team']}.")
+    elif f.get("snowball"):
+        # no star/sweep but a snowball worth naming (covers boost-heavy 0-KO games)
         sb = f["snowball"][0]
         sign = "+" if sb["stage"] > 0 else ""
         parts.append(
-            f"{sb['mon']} ({sb['team']}) built up to {sign}{sb['stage']} {sb['stat'].upper()} "
-            f"and started to look dangerous."
+            f"{N(sb['mon'])} ({sb['team']}) snowballed to {sign}{sb['stage']} "
+            f"{sb['stat'].upper()} and started to look dangerous."
         )
-    # A crit and whether it mattered.
+
+    # A pivotal crit — link it to the flow with "The swing play:" / "Even so,".
     ko_crit = next((c for c in f.get("crits", []) if c["ko"] and c["attacker"]), None)
     if ko_crit:
+        atk, vic = N(ko_crit["attacker"]), N(ko_crit["victim"])
+        mv = ko_crit["move"] or "attack"
         if ko_crit["mattered"] is True:
             parts.append(
-                f"A critical hit from {ko_crit['attacker']}'s {ko_crit['move'] or 'attack'} "
-                f"was the difference — a normal hit likely leaves {ko_crit['victim']} standing."
+                f"The swing play: a critical hit from {atk}'s {mv} that a normal hit "
+                f"likely wouldn't have gotten — {vic} would probably have survived."
             )
         elif ko_crit["mattered"] is False:
             parts.append(
-                f"{ko_crit['attacker']}'s {ko_crit['move'] or 'hit'} crit {ko_crit['victim']}, "
-                f"but it was overkill — the KO was coming anyway."
+                f"{atk} did crit {vic} with {mv}, though that one was overkill — the KO "
+                f"was coming regardless."
             )
         else:
-            parts.append(
-                f"{ko_crit['attacker']} landed a crucial critical hit on {ko_crit['victim']}."
-            )
-    # Tera / item reveal.
+            parts.append(f"{atk} landed a crucial critical hit on {vic}.")
+
+    # A notable reveal, tied in as a closing detail.
     if f.get("teras"):
         t0 = f["teras"][0]
-        parts.append(f"{t0['mon']} ({t0['team']}) Terastallized into {t0['type']}.")
+        parts.append(
+            f"Along the way, {N(t0['mon'])} ({t0['team']}) Terastallized into {t0['type']}."
+        )
     elif f.get("items"):
         i0 = f["items"][0]
         verb = "burned its" if i0["event"] == "consumed" else "revealed a"
-        parts.append(f"{i0['mon']} {verb} {i0['item']}.")
+        parts.append(f"{N(i0['mon'])} also {verb} {i0['item']}.")
     summary = " ".join(parts)
 
-    plays = [_ordinal_move_phrase(p) for p in f["plays"]]
+    plays = [_ordinal_move_phrase(p, nn) for p in f["plays"]]
     return {"summary": summary, "plays": plays, "source": "template"}

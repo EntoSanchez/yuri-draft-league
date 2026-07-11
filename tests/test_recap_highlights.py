@@ -259,3 +259,71 @@ def test_sweep_sentence_suppressed_when_equals_top_star():
     # Archaludon is both top star and top sweeper (2 KO) -> the "pulled its weight"
     # sweep line must be suppressed (star line already names it).
     assert "pulled its weight" not in summary
+
+
+# ── Nicknames in commentary: "Species (Nickname)" ──────────────────────────────
+
+
+def test_nicknames_captured_and_formatted():
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Saturn the Aging|Archaludon, M|100/100",  # nicknamed
+            "|switch|p2a: Snorlax|Snorlax, M|100/100",  # label == species: NO nickname
+            "|turn|1",
+            "|move|p1a: Saturn the Aging|Flash Cannon|p2a: Snorlax",
+            "|-damage|p2a: Snorlax|0 fnt",
+            "|faint|p2a: Snorlax",
+            "|win|Alice",
+        ]
+    )
+    raw = R.parse_log_recap(log)
+    assert raw["nicknames"].get("Archaludon") == "Saturn the Aging"
+    # Snorlax's slot label equals its species → not a nickname
+    assert "Snorlax" not in raw["nicknames"]
+    rec = R.build_recap(raw)
+    f = R.commentary_facts(rec)
+    assert f["nicknames"].get("Archaludon") == "Saturn the Aging"
+    assert R._nick("Archaludon", f["nicknames"]) == "Archaludon (Saturn the Aging)"
+    # a mon with no nickname stays bare
+    assert R._nick("Snorlax", f["nicknames"]) == "Snorlax"
+
+
+def test_mega_slot_label_not_treated_as_nickname():
+    """When a mega switches in, the slot label still shows the BASE species
+    (e.g. 'p2a: Gardevoir' for Gardevoir-Mega) — that is NOT a nickname."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p2a: Gardevoir|Gardevoir, M|100/100",
+            "|switch|p1a: Foe|Snorlax, M|100/100",
+            "|turn|1",
+            "|detailschange|p2a: Gardevoir|Gardevoir-Mega, M",
+            "|-mega|p2a: Gardevoir|Gardevoir|Gardevoirite",
+            "|switch|p2a: Gardevoir|Gardevoir-Mega, M|100/100",  # back in, label = base
+            "|win|Bob",
+        ]
+    )
+    raw = R.parse_log_recap(log)
+    # neither Gardevoir nor Gardevoir-Mega should get "Gardevoir" as a nickname
+    assert raw["nicknames"].get("Gardevoir-Mega") != "Gardevoir"
+    assert (
+        "Gardevoir" not in raw["nicknames"]
+        or raw["nicknames"]["Gardevoir"] != "Gardevoir"
+    )
+
+
+def test_template_summary_uses_nicknames():
+    import os
+
+    fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_58.log")
+    if not os.path.exists(fx):
+        import pytest
+
+        pytest.skip("fixture missing")
+    rec = R.build_recap(R.parse_log_recap(open(fx, encoding="utf-8").read()))
+    summary = R.build_commentary(rec)["summary"]
+    # Archaludon's nickname "Saturn the Aging" should appear in the narrative
+    assert "Saturn the Aging" in summary
