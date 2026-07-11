@@ -878,10 +878,11 @@ def ai_commentary(recap, api_key, timeout=8):
         body = json.dumps({
             "model": model,
             "temperature": 0.9,
-            # Give the model room to finish the narrative + all play lines. A 4-6
-            # sentence summary plus ~8 plays is well under this; without it, some
-            # models default low and cut the JSON off mid-string.
-            "max_tokens": 1200,
+            # NOTE: do NOT set a small max_tokens here. gpt-oss-120b is a REASONING
+            # model — its hidden reasoning tokens count against the completion
+            # budget, so a low cap (e.g. 1200) gets consumed by reasoning and
+            # truncates the JSON body → json.loads fails → silent template
+            # fallback. Leave it unset (model default) and truncate on OUR side.
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system},
@@ -972,8 +973,26 @@ def groq_diagnose(api_key):
             method="POST")
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())
-        _ = data["choices"][0]["message"]["content"]
-        return True, f"AI commentary is working (model: {model})."
+        choice = (data.get("choices") or [{}])[0]
+        content = (choice.get("message") or {}).get("content") or ""
+        finish = choice.get("finish_reason")
+        if finish == "length" or not content.strip():
+            return False, (
+                f"Model '{model}' responded but the output was empty or cut off "
+                f"(finish_reason={finish}). This model may consume the token budget "
+                "on reasoning — leave 'Groq Model' at the default and avoid a low "
+                "max_tokens. If it persists, try a non-reasoning model like "
+                "'llama-3.1-8b-instant' in the Groq Model setting."
+            )
+        try:
+            json.loads(content)
+        except Exception:
+            return False, (
+                f"Model '{model}' replied but not with valid JSON (finish_reason="
+                f"{finish}). The recap needs a JSON-mode model. Try a different "
+                "model in the Groq Model setting."
+            )
+        return True, f"AI commentary is working (model: {model}, finish_reason={finish})."
     except urllib.error.HTTPError as he:
         detail = ""
         try:
