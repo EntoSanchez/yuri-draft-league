@@ -1135,7 +1135,7 @@
                   <th style="width:30px;">WK</th>
                   <th>OPPONENT</th>
                   <th style="width:46px;text-align:center;">RES</th>
-                  <th style="width:46px;text-align:right;">DIFF</th>
+                  <th style="width:46px;text-align:right;" title="KO differential (KOs for minus against)">KO±</th>
                 </tr>
               </thead>
               <tbody>
@@ -1161,8 +1161,9 @@
                   </td>
                   <td class="num" style="text-align:right;">
                     {% if has_result %}
-                      {% set diff = my_score - opp_score %}
-                      <span style="color:{% if diff > 0 %}var(--cyan){% elif diff < 0 %}var(--red){% else %}var(--text-mute){% endif %};">{% if diff > 0 %}+{% endif %}{{ diff|int }}</span>
+                      {# KO differential (KOs for - against), NOT the game score. #}
+                      {% set diff = m.ko.diff if m.ko else 0 %}
+                      <span title="KO differential ({{ m.ko.for if m.ko else 0 }} for / {{ m.ko.against if m.ko else 0 }} against)" style="color:{% if diff > 0 %}var(--cyan){% elif diff < 0 %}var(--red){% else %}var(--text-mute){% endif %};">{% if diff > 0 %}+{% endif %}{{ diff|int }}</span>
                     {% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
                   </td>
                 </tr>

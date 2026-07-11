@@ -2211,6 +2211,30 @@ def team_detail(coach_id):
         """, (coach_id, coach_id)).fetchall()
         schedule = [dict(r) for r in schedule_rows]
 
+        # Per-match KO differential (KOs FOR minus KOs AGAINST), from match_stats.
+        # Kept SEPARATE from the game-score/win-loss record: score1/score2 on the
+        # schedule is games-won; this is the KO count. { schedule_id: {for,against,diff} }
+        ko_by_match = {}
+        sched_ids = [s["id"] for s in schedule]
+        if sched_ids:
+            ph_s = ",".join("?" for _ in sched_ids)
+            for row in db.execute(
+                f"SELECT schedule_id, coach_id, SUM(kills) AS k FROM match_stats "
+                f"WHERE schedule_id IN ({ph_s}) GROUP BY schedule_id, coach_id",
+                sched_ids,
+            ).fetchall():
+                sid = row["schedule_id"]
+                entry = ko_by_match.setdefault(sid, {"for": 0, "against": 0})
+                if row["coach_id"] == coach_id:
+                    entry["for"] += int(row["k"] or 0)
+                else:
+                    entry["against"] += int(row["k"] or 0)
+        for entry in ko_by_match.values():
+            entry["diff"] = entry["for"] - entry["against"]
+        # Attach the KO diff to each schedule row so the team table can show it.
+        for srow in schedule:
+            srow["ko"] = ko_by_match.get(srow["id"], {"for": 0, "against": 0, "diff": 0})
+
         # Current week from settings
         cw_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
         current_week = int(cw_row["value"]) if cw_row else 1
