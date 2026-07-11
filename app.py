@@ -762,6 +762,33 @@ def post_discord(webhook_url, content):
         return False  # Never let Discord errors break the app
 
 
+def build_discord_recap_message(recap, home_team, away_team, match_url, league_name):
+    """Compose the Discord recap post: score + narrative + top stars + link. Pure/testable."""
+    totals = recap.get("totals", {})
+    hk = totals.get("home", {}).get("ko", 0)
+    ak = totals.get("away", {}).get("ko", 0)
+    winner_side = totals.get("winner")
+    if winner_side == "HOME":
+        head = f"\U0001F3C6 **{home_team}** def. **{away_team}** {hk}–{ak}"
+    elif winner_side == "AWAY":
+        head = f"\U0001F3C6 **{away_team}** def. **{home_team}** {ak}–{hk}"
+    else:
+        head = f"\U0001F91D **{home_team}** {hk}–{ak} **{away_team}**"
+    lines = [f"\U0001F4FD️ **{league_name}** — Match Recap", head]
+    summary = (recap.get("commentary") or {}).get("summary")
+    if summary:
+        lines += ["", summary[:600]]
+    stars = recap.get("stars") or []
+    if stars:
+        lines.append("")
+        for s in stars[:2]:
+            nm = (s.get("mon") or {}).get("name", "?")
+            lines.append(f"⭐ {nm} — {s.get('line', '')}")
+    if match_url:
+        lines += ["", f"▸ Full recap: {match_url}"]
+    return "\n".join(lines)
+
+
 def _coerce_play(x):
     """Model 'plays' items should be strings; coerce a stray dict to its most
     likely text field rather than dumping a Python repr into the page."""
@@ -1008,26 +1035,10 @@ def my_matches():
                     "UPDATE schedule SET score1=?, score2=? WHERE id=?",
                     (s1, s2, match_id)
                 )
-                match_row = db.execute("""
-                    SELECT s.week, c1.team_name as t1, c2.team_name as t2
-                    FROM schedule s
-                    JOIN coaches c1 ON s.coach1_id = c1.id
-                    JOIN coaches c2 ON s.coach2_id = c2.id
-                    WHERE s.id=?
-                """, (match_id,)).fetchone()
-                webhook = db.execute(
-                    "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
-                ).fetchone()
             flash("Result submitted!", "success")
-            if s1 is not None and s2 is not None and match_row and webhook and webhook["value"]:
-                s1i, s2i = int(s1), int(s2)
-                t1, t2 = match_row["t1"], match_row["t2"]
-                winner = t1 if s1i > s2i else (t2 if s2i > s1i else None)
-                result_line = (f"**{t1}** {s1i}–{s2i} **{t2}** → 🏆 **{winner}** wins!"
-                               if winner else f"**{t1}** {s1i}–{s2i} **{t2}** → 🤝 Tie!")
-                league = get_setting("league_name", "Pokemon Draft League")
-                post_discord(webhook["value"],
-                    f"📣 **{league}** — Week {match_row['week']} Result\n{result_line}")
+            # NOTE: no Discord post here. The single rich recap post is fired on
+            # replay import (see _import_replays_for_match) so a match never gets
+            # both a bare score line and a recap. Result submission is score-only.
 
         elif action == "save_replay":
             game_number = request.form.get("game_number", type=int, default=1)
@@ -3230,6 +3241,7 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         ).fetchone()
         start_game = (row["mx"] or 0) + 1
 
+        last_recap = None  # most recent successfully built recap (BO1: the only game)
         for i, (url, parsed, parsed_recap, replay_data) in enumerate(parsed_games):
             game_number = start_game + i
 
@@ -3334,6 +3346,7 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                             recap_json_str = json.dumps(recap)
                     except Exception:
                         pass
+                last_recap = recap  # captured for the post-transaction Discord recap post
 
             # Upsert match_games
             existing = db.execute(
@@ -3374,6 +3387,25 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                     )
 
         _recalc_match_score(db, match_id, c1_id, c2_id)
+
+    # After the DB transaction closes — the Discord network call must not hold the
+    # SQLite write connection (a ~5s POST would block all other writers).
+    try:
+        with get_db() as db:
+            wh = db.execute(
+                "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
+            ).fetchone()
+            webhook = wh["value"] if wh else None
+        if webhook and last_recap is not None:
+            league = get_setting("league_name", "Pokemon Draft League")
+            base = get_setting("site_base_url", "").rstrip("/")
+            match_url = f"{base}/match/{match_id}" if base else ""
+            home_team = last_recap.get("home", {}).get("name", "Home")
+            away_team = last_recap.get("away", {}).get("name", "Away")
+            post_discord(webhook, build_discord_recap_message(
+                last_recap, home_team, away_team, match_url, league))
+    except Exception:
+        pass
 
     return errors
 
