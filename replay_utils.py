@@ -3026,7 +3026,7 @@ def build_commentary(recap: dict) -> dict:
 
     # ── narrative summary ──
     if n_plays == 0:
-        summary = f"{winner} defeated {loser} {score}."
+        parts = [f"{winner} defeated {loser} {score}."]
     else:
         opener_side = f["plays"][0]["attacker_team"]
         first_vic = f["plays"][0]["victim"]
@@ -3057,7 +3057,52 @@ def build_commentary(recap: dict) -> dict:
             parts.append(
                 f"{s0['name']} was the difference-maker for {s0['team']} ({s0['kos']})."
             )
-        summary = " ".join(parts)
+
+    # Multi-KO sweep (the clearest "got scary" signal).
+    if f.get("sweeps"):
+        sw = max(f["sweeps"], key=lambda x: x["kos"])
+        if sw["kos"] >= 3:
+            parts.append(
+                f"{sw['mon']} went on a tear for {sw['team']}, racking up {sw['kos']} KOs."
+            )
+        else:
+            parts.append(
+                f"{sw['mon']} pulled its weight with {sw['kos']} KOs for {sw['team']}."
+            )
+    # Snowball / setup.
+    if f.get("snowball"):
+        sb = f["snowball"][0]
+        sign = "+" if sb["stage"] > 0 else ""
+        parts.append(
+            f"{sb['mon']} ({sb['team']}) built up to {sign}{sb['stage']} {sb['stat'].upper()} "
+            f"and started to look dangerous."
+        )
+    # A crit and whether it mattered.
+    ko_crit = next((c for c in f.get("crits", []) if c["ko"] and c["attacker"]), None)
+    if ko_crit:
+        if ko_crit["mattered"] is True:
+            parts.append(
+                f"A critical hit from {ko_crit['attacker']}'s {ko_crit['move'] or 'attack'} "
+                f"was the difference — a normal hit likely leaves {ko_crit['victim']} standing."
+            )
+        elif ko_crit["mattered"] is False:
+            parts.append(
+                f"{ko_crit['attacker']}'s {ko_crit['move'] or 'hit'} crit {ko_crit['victim']}, "
+                f"but it was overkill — the KO was coming anyway."
+            )
+        else:
+            parts.append(
+                f"{ko_crit['attacker']} landed a crucial critical hit on {ko_crit['victim']}."
+            )
+    # Tera / item reveal.
+    if f.get("teras"):
+        t0 = f["teras"][0]
+        parts.append(f"{t0['mon']} ({t0['team']}) Terastallized into {t0['type']}.")
+    elif f.get("items"):
+        i0 = f["items"][0]
+        verb = "burned its" if i0["event"] == "consumed" else "revealed a"
+        parts.append(f"{i0['mon']} {verb} {i0['item']}.")
+    summary = " ".join(parts)
 
     plays = [_ordinal_move_phrase(p) for p in f["plays"]]
     return {"summary": summary, "plays": plays, "source": "template"}

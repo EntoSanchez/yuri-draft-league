@@ -1,6 +1,8 @@
 """Match-recap commentary: the deterministic template floor (build_commentary)
 turns a finished recap into a narrative summary + KO-by-KO play-by-play."""
+
 import replay_utils as R
+from tests.test_recap_highlights import CRIT_KO_LOG, SNOWBALL_LOG
 
 
 def _recap(url):
@@ -36,9 +38,15 @@ def test_commentary_super_effective_flagged():
 
 def test_commentary_handles_empty_kolog():
     # A recap with no KOs must not crash and yields a bare summary, no plays.
-    fake = {"home": {"name": "A"}, "away": {"name": "B"},
-            "totals": {"home": {"ko": 0}, "away": {"ko": 0}, "winner": "HOME"},
-            "koLog": [], "momentum": [], "stars": [], "facts": {"turns": 0}}
+    fake = {
+        "home": {"name": "A"},
+        "away": {"name": "B"},
+        "totals": {"home": {"ko": 0}, "away": {"ko": 0}, "winner": "HOME"},
+        "koLog": [],
+        "momentum": [],
+        "stars": [],
+        "facts": {"turns": 0},
+    }
     c = R.build_commentary(fake)
     assert c["plays"] == []
     assert "A" in c["summary"] and "B" in c["summary"]
@@ -46,16 +54,33 @@ def test_commentary_handles_empty_kolog():
 
 def test_coerce_play_handles_dicts_and_strings():
     import importlib.util
+
     spec = importlib.util.spec_from_file_location("app", "app.py")
     # app import has side effects (DB); use the function via a light import guard
     import app as A  # conftest already sets DATABASE for the suite
+
     assert A._coerce_play("  hello  ") == "hello"
     assert A._coerce_play({"text": "Pika KOs Chomp"}) == "Pika KOs Chomp"
     assert A._coerce_play({"play": "x"}) == "x"
-    assert A._coerce_play({"nope": 1}) == ""  # unknown dict -> empty (dropped by caller)
+    assert (
+        A._coerce_play({"nope": 1}) == ""
+    )  # unknown dict -> empty (dropped by caller)
 
 
 def test_ai_commentary_no_key_returns_none(app_mod):
     rc = _recap("https://replay.pokemonshowdown.com/gen9nationaldexubers-2501799475")
     assert app_mod.ai_commentary(rc, "") is None
     assert app_mod.ai_commentary(rc, None) is None
+
+
+def test_template_summary_mentions_snowball():
+    rec = R.build_recap(R.parse_log_recap(SNOWBALL_LOG))
+    s = R.build_commentary(rec)["summary"].lower()
+    assert "spa" in s or "special attack" in s or "boost" in s or "snowball" in s
+
+
+def test_template_crit_mattered_phrasing():
+    rec = R.build_recap(R.parse_log_recap(CRIT_KO_LOG))
+    s = R.build_commentary(rec)["summary"].lower()
+    # this crit mattered (100->0); phrasing should NOT call it overkill
+    assert "overkill" not in s
