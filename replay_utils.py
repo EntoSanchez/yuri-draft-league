@@ -336,8 +336,12 @@ def parse_log(log: str) -> dict:
                 killer = last_hit_by.get(slot)
                 if killer:
                     kplayer, kname = killer
-                    k = kills[kplayer]
-                    k[kname] = k.get(kname, 0) + 1
+                    # Friendly fire (a spread move KO'ing your own ally, self-KO):
+                    # the death still counts, but the attacker gets NO kill credit —
+                    # a coach must not be credited for KO'ing their own Pokémon.
+                    if kplayer != fplayer:
+                        k = kills[kplayer]
+                        k[kname] = k.get(kname, 0) + 1
             active.pop(slot, None)
             # A mon that just fainted can't be the culprit for a status/hazard
             # applied AFTER its faint line — invalidate stale actor credit.
@@ -2453,15 +2457,23 @@ def parse_log_recap(log: str) -> dict:
             fplayer = _slot_player(slot)
             if fainted:
                 k = last_hit.get(slot, {})
+                # Friendly fire (spread-move KO of an ally / self-KO): keep the faint
+                # in the log but strip the scorer so no coach is credited the KO
+                # (downstream KO tallies only count entries with bySide + by).
+                by = k.get("by")
+                by_side = k.get("bySide")
+                if by_side is not None and by_side == fplayer:
+                    by = None
+                    by_side = None
                 ko_log.append(
                     {
                         "t": turn,
                         "victimSide": fplayer,
                         "victim": fainted,
-                        "by": k.get("by"),
-                        "bySide": k.get("bySide"),
-                        "move": k.get("move", "?"),
-                        "se": bool(k.get("se")),
+                        "by": by,
+                        "bySide": by_side,
+                        "move": k.get("move", "?") if by_side else "?",
+                        "se": bool(k.get("se")) if by_side else False,
                         "indirect": bool(k.get("indirect")),
                     }
                 )

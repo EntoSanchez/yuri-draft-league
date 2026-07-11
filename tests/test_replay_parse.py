@@ -495,3 +495,54 @@ def test_real_fixture_58_winner_has_four_kos():
     assert sum(p["kills"][winner].values()) == 4, p["kills"][winner]
     # Archaludon's two Electro Shot KOs are recovered
     assert p["kills"][winner].get("Archaludon") == 2
+
+
+# ── Friendly fire: a coach must not be credited for KO'ing their own mon ────────
+
+
+def test_friendly_fire_ko_not_credited():
+    """A spread move that KOs the attacker's OWN ally counts as a death for that
+    side but gives NO kill credit to anyone."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Sw|Swampert, M|100/100",
+            "|switch|p1b: Ar|Archaludon, M|1/100",  # Alice's own ally, low HP
+            "|switch|p2a: F1|Snorlax, M|100/100",
+            "|switch|p2b: F2|Clodsire, M|100/100",
+            "|turn|1",
+            "|move|p1a: Sw|Earthquake|p2b: F2|[spread] p1b,p2b",
+            "|-damage|p1b: Ar|0 fnt",  # Alice's Archaludon dies to ally
+            "|faint|p1b: Ar",
+            "|-damage|p2b: F2|50/100",
+            "|win|Alice",
+        ]
+    )
+    p = R.parse_log(log)
+    # Archaludon's death counts for p1...
+    assert p["deaths"]["p1"].get("Archaludon") == 1
+    # ...but Swampert gets NO kill for it (friendly fire)
+    assert "Swampert" not in p["kills"]["p1"]
+    assert sum(p["kills"]["p1"].values()) == 0
+    # recap ko_log: the faint is logged with no scorer
+    raw = R.parse_log_recap(log)
+    ff = [e for e in raw["ko_log"] if e["victim"] == "Archaludon"]
+    assert ff and ff[0]["by"] is None and ff[0]["bySide"] is None
+
+
+def test_real_fixture_59_friendly_fire_ko_count():
+    import os
+
+    fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_59.log")
+    if not os.path.exists(fx):
+        import pytest
+
+        pytest.skip("fixture missing")
+    p = R.parse_log(open(fx, encoding="utf-8").read())
+    # Caelyn (p1) killed her own Archaludon with a spread Earthquake — that self-KO
+    # must NOT inflate her count. Real KOs on the opponent = 4, KO diff vs Trey = +3.
+    k1 = sum(p["kills"]["p1"].values())
+    k2 = sum(p["kills"]["p2"].values())
+    assert k1 == 4, p["kills"]["p1"]
+    assert k1 - k2 == 3
