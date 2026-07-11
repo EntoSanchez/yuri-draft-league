@@ -376,7 +376,9 @@ function renderPodium(){
   if(!REDUCED) requestAnimationFrame(()=>{
     wrap.querySelectorAll("[data-w]").forEach(el=>{
       const v=parseInt(el.dataset.w)||0;
-      countUp(el, v+"W", v, 650);
+      // suffix is just "W" — countUp prepends the counting number itself. Passing
+      // v+"W" produced "<v><v>W" (e.g. "11W" for 1 win).
+      countUp(el, "W", v, 650);
     });
   });
 }
