@@ -1021,12 +1021,23 @@ def get_standings(pool=None):
             (pool,) if pool else ()
         ).fetchall()
         schedule = db.execute("SELECT * FROM schedule").fetchall()
+        # Per-(match, coach) KO totals from match_stats — the basis for the KO
+        # differential (KOs for minus KOs against), which is the ranking tiebreaker
+        # AFTER the W-L record. This is SEPARATE from the game score (score1/score2).
+        ko_rows = db.execute(
+            "SELECT schedule_id, coach_id, SUM(kills) AS k FROM match_stats "
+            "GROUP BY schedule_id, coach_id"
+        ).fetchall()
+    ko_for = {}  # (schedule_id, coach_id) -> KOs that coach scored in that match
+    for r in ko_rows:
+        ko_for[(r["schedule_id"], r["coach_id"])] = int(r["k"] or 0)
 
     results = {}
     for c in coaches:
         results[c["id"]] = {
             "coach": dict(c), "W": 0, "L": 0, "T": 0,
-            "diff": 0.0, "weeks": {}
+            "diff": 0.0,          # KO differential (for - against), ranking tiebreaker
+            "weeks": {},
         }
 
     for m in schedule:
@@ -1039,13 +1050,14 @@ def get_standings(pool=None):
             results[c1]["weeks"][wk] = ""
             results[c2]["weeks"][wk] = ""
             continue
-        diff = s1 - s2
-        if diff > 0:
+        # W-L-T from the game result (score1/score2).
+        margin = s1 - s2
+        if margin > 0:
             results[c1]["W"] += 1
             results[c1]["weeks"][wk] = "W"
             results[c2]["L"] += 1
             results[c2]["weeks"][wk] = "L"
-        elif diff < 0:
+        elif margin < 0:
             results[c1]["L"] += 1
             results[c1]["weeks"][wk] = "L"
             results[c2]["W"] += 1
@@ -1055,10 +1067,18 @@ def get_standings(pool=None):
             results[c1]["weeks"][wk] = "T"
             results[c2]["T"] += 1
             results[c2]["weeks"][wk] = "T"
-        results[c1]["diff"] += diff
-        results[c2]["diff"] -= diff
+        # KO differential from match_stats: each coach's KOs-for minus the
+        # opponent's KOs (= this coach's KOs-against) in the same match.
+        k1 = ko_for.get((m["id"], c1), 0)
+        k2 = ko_for.get((m["id"], c2), 0)
+        results[c1]["diff"] += k1 - k2
+        results[c2]["diff"] += k2 - k1
 
-    rows = sorted(results.values(), key=lambda x: (-x["W"], -x["diff"]))
+    # Rank by W-L record FIRST (more wins, fewer losses), then KO differential.
+    rows = sorted(
+        results.values(),
+        key=lambda x: (-x["W"], x["L"], -x["diff"]),
+    )
     for i, r in enumerate(rows):
         r["rank"] = i + 1
     return rows

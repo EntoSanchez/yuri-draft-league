@@ -397,7 +397,7 @@ function renderLadder(){
       <th style="width:44px;text-align:center">W</th>
       <th style="width:44px;text-align:center">L</th>
       <th style="width:44px;text-align:center">T</th>
-      <th style="width:60px;text-align:center">DIFF</th>
+      <th style="width:60px;text-align:center" title="KO differential (KOs for minus against) — ranking tiebreaker after W-L">KO±</th>
       <th style="width:150px">MARGIN</th>
       <th style="width:96px">FORM</th>
     </tr></thead><tbody>`;
@@ -472,7 +472,7 @@ function renderLadder(){
           <span>COACH<b>${esc(t.coach_name)}</b></span>
           <span>POOL<b>${esc(t.pool)}</b></span>
           <span>W/L/T<b>${r.W} / ${r.L} / ${r.T||0}</b></span>
-          <span>DIFF<b class="${diffCls}">${diffStr}</b></span>
+          <span>KO±<b class="${diffCls}">${diffStr}</b></span>
         </div>
         <div class="lr-diffbar" style="margin-top:10px">
           <div class="lr-diffbar-mid"></div>

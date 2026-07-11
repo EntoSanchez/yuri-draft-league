@@ -496,15 +496,11 @@
         <div class="yc-record-cards">
           {% if standing %}
           <div class="yc-micro-card">
-            <span class="mc-label">W</span>
-            <span class="mc-value" style="color:var(--lime);">{{ standing.W }}</span>
+            <span class="mc-label">RECORD</span>
+            <span class="mc-value" style="color:var(--lime);">{{ standing.W }}-{{ standing.L }}{% if standing.T %}-{{ standing.T }}{% endif %}</span>
           </div>
-          <div class="yc-micro-card">
-            <span class="mc-label">L</span>
-            <span class="mc-value" style="color:var(--text-mute);">{{ standing.L }}</span>
-          </div>
-          <div class="yc-micro-card">
-            <span class="mc-label">DIFF</span>
+          <div class="yc-micro-card" title="KO differential (KOs for minus against) — ranking tiebreaker">
+            <span class="mc-label">KO±</span>
             <span class="mc-value" style="color:{% if standing.diff > 0 %}var(--cyan){% elif standing.diff < 0 %}var(--red){% else %}var(--text-mute){% endif %};">{% if standing.diff > 0 %}+{% endif %}{{ '%.0f'|format(standing.diff) }}</span>
           </div>
           <div class="yc-brackets mag" style="padding:2px;">
@@ -950,8 +946,8 @@
                 <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">RANK</div>
                 <div class="yc-mono" style="font-size:22px;color:var(--magenta);margin-top:2px;">#{{ standing.rank }}</div>
               </div>
-              <div>
-                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">DIFF</div>
+              <div title="KO differential (KOs for minus against) — ranking tiebreaker">
+                <div class="yc-mono" style="font-size:9px;color:var(--text-dim);">KO±</div>
                 <div class="yc-mono" style="font-size:22px;color:{% if standing.diff > 0 %}var(--cyan){% elif standing.diff < 0 %}var(--red){% else %}var(--text-mute){% endif %};margin-top:2px;">{{ '%+.0f' % standing.diff }}</div>
               </div>
               <div>
