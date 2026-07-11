@@ -785,14 +785,22 @@ def ai_commentary(recap, api_key, timeout=8):
         from replay_utils import commentary_facts
         facts = commentary_facts(recap)
         system = (
-            "You are an esports caster recapping a Pokemon draft-league battle. "
-            "Using ONLY the facts given, respond with a JSON object with exactly two "
-            "keys: \"summary\" (a 3-5 sentence narrative of how the match unfolded — "
-            "the opening, the turning point, and who carried it, naming Pokemon and "
-            "trainers) and \"plays\" (an array of short, punchy play-by-play strings, "
-            "one per knockout in turn order, calling out super-effective hits and "
-            "momentum swings). Be vivid but accurate; never invent events not in the "
-            "facts. Output ONLY the JSON object."
+            "You are an energetic esports caster recapping a Pokemon draft-league "
+            "battle (Showdown DOUBLES — two Pokemon per side are active, so avoid "
+            "'1v1' framing). Using ONLY the facts given (never invent events), "
+            "respond with a JSON object with exactly two keys:\n"
+            '"summary": a vivid 4-6 sentence narrative. Go beyond who KO\'d whom — '
+            "call out a Pokemon that snowballed with stat boosts and got scary "
+            "(`snowball`), a Pokemon that swept multiple KOs (`sweeps`), critical "
+            "hits and whether they CHANGED the outcome (`crits`: mattered=true means "
+            "a normal hit would've left the target alive, mattered=false means it was "
+            "overkill — say so honestly), interesting item or Tera reveals (`items`, "
+            "`teras`), and a costly miss (`misses`) if one stands out. Name Pokemon "
+            "and trainers.\n"
+            '"plays": an array of short punchy play-by-play strings in turn order — '
+            "one per knockout, and you may fold in a decisive crit or a setup turn.\n"
+            "Be dramatic but strictly accurate; the crit heuristic is approximate, so "
+            "hedge ('likely'). Output ONLY the JSON object."
         )
         body = json.dumps({
             "model": "llama-3.3-70b-versatile",
