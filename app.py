@@ -3424,10 +3424,9 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         if not c1_row or not c2_row:
             errors.append("Could not load coach rows from DB.")
             return errors
-        # Read the AI-commentary key once (not per game). NOTE: the Groq call
-        # still runs inside this db context; that's fine for BO1 (one ~1-2s call).
-        # Before enabling BO3 imports, move ai_commentary OUTSIDE this get_db()
-        # block so 3 sequential API calls can't hold the write connection ~45s.
+        # Read the AI-commentary key once (not per game). The Groq calls themselves
+        # run AFTER this transaction closes (see the pending_ai block below) so a
+        # BO3 import's 2-3 sequential API calls never hold the SQLite write lock.
         _gk = db.execute("SELECT value FROM league_settings WHERE key='groq_api_key'").fetchone()
         _groq_key = _gk["value"] if _gk and _gk["value"] else None
         c1 = dict(c1_row)
@@ -3465,6 +3464,7 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         start_game = (row["mx"] or 0) + 1
 
         last_recap = None  # most recent successfully built recap (BO1: the only game)
+        pending_ai = []    # (game_id, recap) to enhance with Groq AFTER this txn closes
         for i, (url, parsed, parsed_recap, replay_data) in enumerate(parsed_games):
             game_number = start_game + i
 
@@ -3553,22 +3553,15 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                 recap_json_str = None
 
             if recap is not None:
-                # Deterministic template commentary (the floor), then optionally the
-                # free-tier Groq AI enhancement. Each in its own guard; on any error
-                # we keep the last good recap_json_str.
+                # Deterministic template commentary (the floor). The free-tier Groq
+                # AI enhancement is deferred to AFTER this DB transaction closes (see
+                # the post-transaction block below) so 2-3 sequential ~1-2s API calls
+                # in a BO3 import can't hold the SQLite write connection ~45s.
                 try:
                     recap["commentary"] = _replay_build_commentary(recap)
                     recap_json_str = json.dumps(recap)
                 except Exception:
                     pass
-                if _groq_key:
-                    try:
-                        enhanced = ai_commentary(recap, _groq_key)
-                        if enhanced:
-                            recap["commentary"] = enhanced
-                            recap_json_str = json.dumps(recap)
-                    except Exception:
-                        pass
                 last_recap = recap  # captured for the post-transaction Discord recap post
 
             # Upsert match_games
@@ -3592,6 +3585,11 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                 )
                 game_id = db.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
 
+            # Queue this game for post-transaction Groq enhancement (network I/O
+            # must not run inside the write transaction — see block after the loop).
+            if recap is not None and _groq_key:
+                pending_ai.append((game_id, recap))
+
             for pkey in ("p1", "p2"):
                 cid = by_pkey[pkey]["id"]
                 r = resolved[pkey]
@@ -3610,6 +3608,32 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                     )
 
         _recalc_match_score(db, match_id, c1_id, c2_id)
+
+    # After the DB transaction closes — run the Groq AI commentary calls OUT here so
+    # the (2-3 in a BO3) sequential ~1-2s API calls never hold the SQLite write
+    # connection. Each success updates only that game's recap_json in a short txn.
+    # Every game already has deterministic template commentary written above, so a
+    # Groq failure just leaves the good template recap in place.
+    if _groq_key and pending_ai:
+        for game_id, recap in pending_ai:
+            try:
+                enhanced = ai_commentary(recap, _groq_key)
+            except Exception:
+                enhanced = None
+            if not enhanced:
+                continue
+            # Mutate the recap in place; `last_recap` references the last game's
+            # recap object, so the Discord post below automatically uses its AI
+            # version once enhanced — no extra sync needed.
+            recap["commentary"] = enhanced
+            try:
+                with get_db() as db:
+                    db.execute(
+                        "UPDATE match_games SET recap_json=? WHERE id=?",
+                        (json.dumps(recap), game_id),
+                    )
+            except Exception:
+                pass
 
     # After the DB transaction closes — the Discord network call must not hold the
     # SQLite write connection (a ~5s POST would block all other writers).
