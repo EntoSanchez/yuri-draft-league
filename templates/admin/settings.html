@@ -54,12 +54,12 @@
       <p class="text-xs text-gray-500 mt-1">BO3 allows up to 3 games per match.</p>
     </div>
     {{ txt('discord_webhook_url', 'Discord Webhook URL', 'url', 'https://discord.com/api/webhooks/...',
-           'When set, match results auto-post to this Discord channel.') }}
+           'When set, a rich match recap auto-posts to this Discord channel when a replay is imported.') }}
     {{ txt('site_base_url', 'Site Base URL', 'url', 'https://you.pythonanywhere.com',
            'Public base URL (e.g. https://you.pythonanywhere.com) — used to link recaps in Discord.') }}
     {% if settings.get('discord_webhook_url') %}
     <div class="flex items-center gap-3">
-      <p class="text-xs text-green-500">✓ Webhook configured — results will post to Discord</p>
+      <p class="text-xs text-green-500">✓ Webhook configured — recaps will post to Discord on import</p>
       <button type="submit" formaction="{{ url_for('admin_test_webhook') }}" formnovalidate
               class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors">
         Send test message

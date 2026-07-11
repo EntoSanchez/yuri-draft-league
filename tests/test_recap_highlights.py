@@ -183,3 +183,79 @@ def test_commentary_facts_distills_highlights():
         assert k in f
     if f["crits"]:
         assert f["crits"][0]["team"] in (f["home"], f["away"])
+
+
+# ── Whole-branch-review fixes: friendly-fire crits & snowball sign ──────────────
+
+
+def test_friendly_fire_crit_excluded_from_commentary():
+    """A spread move that crit-KOs its OWN ally must not be narrated as a decisive
+    crit for the attacking team (whole-branch review finding)."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Sw|Swampert, M|100/100",
+            "|switch|p1b: Ar|Archaludon, M|100/100",  # Alice's OWN second mon
+            "|switch|p2a: F1|Snorlax, M|100/100",
+            "|switch|p2b: F2|Clodsire, M|100/100",
+            "|turn|1",
+            "|move|p1a: Sw|Earthquake|p2b: F2|[spread] p1b,p2b",
+            "|-crit|p1b: Ar",  # crit on Alice's OWN ally
+            "|-damage|p1b: Ar|0 fnt",
+            "|faint|p1b: Ar",
+            "|-damage|p2b: F2|50/100",
+            "|win|Alice",
+        ]
+    )
+    rec = R.build_recap(R.parse_log_recap(log))
+    f = R.commentary_facts(rec)
+    # the friendly-fire crit (attacker side == victim side) must be filtered out
+    assert all(c["victim"] != "Archaludon" for c in f["crits"]), (
+        f"friendly-fire crit leaked: {f['crits']}"
+    )
+    # and the raw highlights DID capture attacker_side so the filter can work
+    ff = [c for c in rec["highlights"]["crits"] if c["victim"] == "Archaludon"]
+    assert ff and ff[0]["attacker_side"] == "p1" and ff[0]["victim_side"] == "p1"
+
+
+def test_snowball_excludes_debuffs():
+    """Intimidate/other debuffs (negative stages) must not appear as 'snowball'."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Gy|Gyarados, M|100/100",  # Intimidate on switch-in
+            "|switch|p2a: Foe|Snorlax, M|100/100",
+            "|-ability|p1a: Gy|Intimidate|boost",
+            "|-unboost|p2a: Foe|atk|1",
+            "|-unboost|p2a: Foe|atk|1",  # Snorlax at -2 atk
+            "|turn|1",
+            "|move|p1a: Gy|Dragon Dance|p1a: Gy",
+            "|-boost|p1a: Gy|atk|1",
+            "|-boost|p1a: Gy|spe|1",
+            "|-boost|p1a: Gy|atk|1",
+            "|-boost|p1a: Gy|spe|1",  # Gyarados +2/+2
+            "|win|Alice",
+        ]
+    )
+    f = R.commentary_facts(R.build_recap(R.parse_log_recap(log)))
+    # -2 atk on Snorlax must NOT be a snowball entry; only positive buildup
+    assert all(s["stage"] > 0 for s in f["snowball"]), f["snowball"]
+    assert not any(s["mon"] == "Snorlax" for s in f["snowball"])
+
+
+def test_sweep_sentence_suppressed_when_equals_top_star():
+    """No redundant sweep sentence when the top sweeper is already the top star."""
+    import os
+
+    fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_58.log")
+    if not os.path.exists(fx):
+        import pytest
+
+        pytest.skip("fixture missing")
+    rec = R.build_recap(R.parse_log_recap(open(fx, encoding="utf-8").read()))
+    summary = R.build_commentary(rec)["summary"]
+    # Archaludon is both top star and top sweeper (2 KO) -> the "pulled its weight"
+    # sweep line must be suppressed (star line already names it).
+    assert "pulled its weight" not in summary

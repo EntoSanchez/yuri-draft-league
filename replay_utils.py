@@ -2435,6 +2435,7 @@ def parse_log_recap(log: str) -> dict:
                         "victim_side": _slot_player(victim_slot),
                         "victim": active.get(victim_slot),
                         "attacker": lh.get("by"),
+                        "attacker_side": lh.get("bySide"),
                         "move": lh.get("move"),
                         "ko": fainted_now,
                         "mattered": mattered,
@@ -2908,6 +2909,8 @@ def commentary_facts(recap: dict) -> dict:
     def _team_of(side):
         return home if side == home_pid else away
 
+    # A "snowball" is a mon buffing itself into a threat — only POSITIVE stages
+    # count (a -2 Attack drop from Intimidate is not snowballing).
     snowball = sorted(
         (
             {
@@ -2917,9 +2920,13 @@ def commentary_facts(recap: dict) -> dict:
                 "stage": p["stage"],
             }
             for p in hl.get("peak_boosts", [])
+            if p["stage"] > 0
         ),
-        key=lambda x: -abs(x["stage"]),
+        key=lambda x: -x["stage"],
     )[:4]
+    # Skip friendly-fire crits (attacker and victim on the same side, e.g. a
+    # spread move that crit-KOs an ally) — narrating a self-KO as a decisive crit
+    # is misleading. `team` is the ATTACKER's team (the prose is attacker-framed).
     crits = [
         {
             "turn": c["turn"],
@@ -2928,9 +2935,10 @@ def commentary_facts(recap: dict) -> dict:
             "move": c["move"],
             "ko": c["ko"],
             "mattered": c["mattered"],
-            "team": _team_of(c["victim_side"]),
+            "team": _team_of(c.get("attacker_side") or c["victim_side"]),
         }
         for c in hl.get("crits", [])
+        if c.get("attacker_side") is None or c.get("attacker_side") != c["victim_side"]
     ][:6]
     seen = set()
     items = []
@@ -3058,14 +3066,18 @@ def build_commentary(recap: dict) -> dict:
                 f"{s0['name']} was the difference-maker for {s0['team']} ({s0['kos']})."
             )
 
-    # Multi-KO sweep (the clearest "got scary" signal).
+    # Multi-KO sweep (the clearest "got scary" signal). Skip it when the top
+    # sweeper is the same mon already named as the difference-maker star above —
+    # otherwise two consecutive sentences say the same thing. A 3+ KO tear is a
+    # strong enough standalone beat to keep even if it repeats the star.
     if f.get("sweeps"):
         sw = max(f["sweeps"], key=lambda x: x["kos"])
+        top_star_name = f["stars"][0]["name"] if f.get("stars") else None
         if sw["kos"] >= 3:
             parts.append(
                 f"{sw['mon']} went on a tear for {sw['team']}, racking up {sw['kos']} KOs."
             )
-        else:
+        elif sw["mon"] != top_star_name:
             parts.append(
                 f"{sw['mon']} pulled its weight with {sw['kos']} KOs for {sw['team']}."
             )

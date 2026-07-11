@@ -53,11 +53,8 @@ def test_commentary_handles_empty_kolog():
 
 
 def test_coerce_play_handles_dicts_and_strings():
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("app", "app.py")
-    # app import has side effects (DB); use the function via a light import guard
-    import app as A  # conftest already sets DATABASE for the suite
+    # app import has side effects (DB); conftest already sets DATABASE for the suite
+    import app as A
 
     assert A._coerce_play("  hello  ") == "hello"
     assert A._coerce_play({"text": "Pika KOs Chomp"}) == "Pika KOs Chomp"
