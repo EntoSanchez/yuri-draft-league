@@ -168,3 +168,18 @@ def test_highlights_present_on_real_fixture():
     assert h["crits"], "expected crits"
     assert h["items"], "expected consumed items (Sitrus Berry, Eject Button)"
     assert h["boosts"], "expected boosts"
+
+
+def test_build_recap_passes_highlights_and_homeside():
+    rec = R.build_recap(R.parse_log_recap(SNOWBALL_LOG))
+    assert "highlights" in rec and rec["highlights"]["peak_boosts"]
+    assert rec["facts"].get("homeSide") in ("p1", "p2")
+
+
+def test_commentary_facts_distills_highlights():
+    rec = R.build_recap(R.parse_log_recap(CRIT_KO_LOG))
+    f = R.commentary_facts(rec)
+    for k in ("snowball", "crits", "items", "teras", "misses", "sweeps"):
+        assert k in f
+    if f["crits"]:
+        assert f["crits"][0]["team"] in (f["home"], f["away"])

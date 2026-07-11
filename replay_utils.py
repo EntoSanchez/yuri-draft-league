@@ -2804,6 +2804,7 @@ def build_recap(
     # Facts
     facts = {
         "week": nm.get("week", "—"),
+        "homeSide": home_pid,
         "pool": nm.get("pool", "LADDER"),
         "status": nm.get("status", "FINAL"),
         "date": nm.get("date", ""),
@@ -2853,6 +2854,7 @@ def build_recap(
         "totals": totals,
         "stars": stars,
         "facts": facts,
+        "highlights": raw.get("highlights", {}),
         "h2h": nm.get("h2h"),
         "homeRec": nm.get("homeRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
         "awayRec": nm.get("awayRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
@@ -2899,6 +2901,82 @@ def commentary_facts(recap: dict) -> dict:
         }
         for s in recap.get("stars", [])
     ]
+    # ── Distill battle highlights (side p1/p2 → team display name) ──
+    hl = recap.get("highlights", {})
+    home_pid = recap.get("facts", {}).get("homeSide") or "p1"
+
+    def _team_of(side):
+        return home if side == home_pid else away
+
+    snowball = sorted(
+        (
+            {
+                "mon": p["mon"],
+                "team": _team_of(p["side"]),
+                "stat": p["stat"],
+                "stage": p["stage"],
+            }
+            for p in hl.get("peak_boosts", [])
+        ),
+        key=lambda x: -abs(x["stage"]),
+    )[:4]
+    crits = [
+        {
+            "turn": c["turn"],
+            "attacker": c["attacker"],
+            "victim": c["victim"],
+            "move": c["move"],
+            "ko": c["ko"],
+            "mattered": c["mattered"],
+            "team": _team_of(c["victim_side"]),
+        }
+        for c in hl.get("crits", [])
+    ][:6]
+    seen = set()
+    items = []
+    for it in hl.get("items", []):
+        k = (it["mon"], it["item"])
+        if k in seen:
+            continue
+        seen.add(k)
+        items.append(
+            {
+                "mon": it["mon"],
+                "team": _team_of(it["side"]),
+                "item": it["item"],
+                "event": it["event"],
+            }
+        )
+    items = items[:6]
+    teras = [
+        {"mon": t["mon"], "team": _team_of(t["side"]), "type": t["type"]}
+        for t in hl.get("teras", [])
+    ][:4]
+    misses = [
+        {
+            "attacker": m["attacker"],
+            "team": _team_of(m["attacker_side"]),
+            "target": m.get("target"),
+        }
+        for m in hl.get("misses", [])
+    ][:4]
+    # Multi-KO sweeps from stars (already computed with KO counts).
+    sweeps = []
+    for s in recap.get("stars", []):
+        # star "line" is like "2 KO · survived"; extract the leading integer
+        line = s.get("line", "")
+        n = 0
+        mt = re.match(r"\s*(\d+)", line)
+        if mt:
+            n = int(mt.group(1))
+        if n >= 2:
+            sweeps.append(
+                {
+                    "mon": (s.get("mon") or {}).get("name", "?"),
+                    "team": home if s.get("side") == "HOME" else away,
+                    "kos": n,
+                }
+            )
     return {
         "home": home,
         "away": away,
@@ -2909,6 +2987,12 @@ def commentary_facts(recap: dict) -> dict:
         "comeback_from": -max_deficit,  # how many mons down the winner was at worst
         "plays": plays,
         "stars": stars,
+        "snowball": snowball,
+        "crits": crits,
+        "items": items,
+        "teras": teras,
+        "misses": misses,
+        "sweeps": sweeps,
     }
 
 
