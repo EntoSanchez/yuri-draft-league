@@ -55,6 +55,8 @@
     </div>
     {{ txt('discord_webhook_url', 'Discord Webhook URL', 'url', 'https://discord.com/api/webhooks/...',
            'When set, match results auto-post to this Discord channel.') }}
+    {{ txt('site_base_url', 'Site Base URL', 'url', 'https://you.pythonanywhere.com',
+           'Public base URL (e.g. https://you.pythonanywhere.com) — used to link recaps in Discord.') }}
     {% if settings.get('discord_webhook_url') %}
     <div class="flex items-center gap-3">
       <p class="text-xs text-green-500">✓ Webhook configured — results will post to Discord</p>
