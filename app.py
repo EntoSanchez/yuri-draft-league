@@ -777,6 +777,25 @@ def post_discord(webhook_url, content):
         return False  # Never let Discord errors break the app
 
 
+def _clean_truncate(text, limit):
+    """Truncate to at most `limit` chars WITHOUT cutting mid-word/mid-sentence.
+    Prefer ending on the last complete sentence; else the last word; add an
+    ellipsis only if we actually cut. Never returns an empty string for non-empty
+    input unless the very first word exceeds the limit."""
+    if not text or len(text) <= limit:
+        return text
+    window = text[:limit]
+    # Prefer the last sentence boundary in the window.
+    cut = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+    if cut >= limit * 0.5:  # only if it keeps a reasonable amount
+        return window[: cut + 1]
+    # Otherwise fall back to the last whole word.
+    sp = window.rfind(" ")
+    if sp > 0:
+        return window[:sp].rstrip() + "…"
+    return window.rstrip() + "…"
+
+
 def build_discord_recap_message(recap, home_team, away_team, match_url, league_name):
     """Compose the Discord recap post: score + narrative + top stars + link. Pure/testable."""
     totals = recap.get("totals", {})
@@ -792,7 +811,9 @@ def build_discord_recap_message(recap, home_team, away_team, match_url, league_n
     lines = [f"\U0001F4FD️ **{league_name}** — Match Recap", head]
     summary = (recap.get("commentary") or {}).get("summary")
     if summary:
-        lines += ["", summary[:600]]
+        # Discord allows 2000 chars/message; header + stars + link use ~250, so give
+        # the narrative a generous budget and truncate CLEANLY (never mid-word).
+        lines += ["", _clean_truncate(summary, 1500)]
     stars = recap.get("stars") or []
     if stars:
         lines.append("")
@@ -857,6 +878,10 @@ def ai_commentary(recap, api_key, timeout=8):
         body = json.dumps({
             "model": model,
             "temperature": 0.9,
+            # Give the model room to finish the narrative + all play lines. A 4-6
+            # sentence summary plus ~8 plays is well under this; without it, some
+            # models default low and cut the JSON off mid-string.
+            "max_tokens": 1200,
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system},
@@ -904,7 +929,9 @@ def ai_commentary(recap, api_key, timeout=8):
         summary_raw = parsed.get("summary", "")
         if not isinstance(summary_raw, str):
             return None  # a dict/list summary would render as ugly repr
-        summary = summary_raw.strip()[:1000]
+        # Store the full narrative (the recap page shows all of it) but clean-cap
+        # at a generous length so a runaway response can't bloat recap_json.
+        summary = _clean_truncate(summary_raw.strip(), 1600)
         raw_plays = parsed.get("plays", [])
         plays = [p for p in (_coerce_play(x) for x in (raw_plays if isinstance(raw_plays, list) else [])) if p]
         # Cap count (to ~the real KO count) and per-line length so a verbose or
