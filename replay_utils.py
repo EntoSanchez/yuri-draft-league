@@ -2037,6 +2037,18 @@ def _norm_forme(name: str) -> str:
     return name
 
 
+def _parse_hp_pct(field: str):
+    """'55/100' -> 55.0, '0 fnt' -> 0.0, '100/100 slp' -> 100.0, unparseable -> None."""
+    field = field.strip()
+    if field.startswith("0 fnt") or field == "0":
+        return 0.0
+    m = re.match(r"(\d+)\s*/\s*(\d+)", field)
+    if m:
+        num, den = int(m.group(1)), int(m.group(2))
+        return (num / den * 100.0) if den else None
+    return None
+
+
 def _norm_forme_keep_mega(name: str) -> str:
     """Like _norm_forme but PRESERVES -Mega/-Mega-X/-Mega-Y/-Mega-Z/-Primal, which
     are separately-drafted picks. Used on the recap switch-in so a mega that
@@ -2080,6 +2092,17 @@ def parse_log_recap(log: str) -> dict:
     winner_player = None
     leads = {"p1": [], "p2": []}  # first 2 switch-ins per side before turn 2
     _leads_locked = {"p1": False, "p2": False}
+
+    # ── Battle-highlight collectors (additive; never affect KO attribution) ──
+    hl_boosts = []
+    hl_peak = {}  # (side, mon, stat) -> max cumulative stage (signed)
+    hl_stage = {}  # slot -> {stat: current cumulative stage}
+    hl_crits = []
+    hl_items = []
+    hl_teras = []
+    hl_misses = []
+    hp_pct = {}  # slot -> last-known HP percent (0-100), for crit "mattered"
+    _pending_crit = {}  # victim slot -> hp_before (percent) until the -damage resolves it
 
     for raw in log.splitlines():
         line = raw.strip()
@@ -2125,6 +2148,9 @@ def parse_log_recap(log: str) -> dict:
                     leads[pside].append(poke_name)
                 last_hit.pop(slot, None)
                 status_by.pop(slot, None)
+                hp_pct[slot] = 100
+                hl_stage.pop(slot, None)
+                _pending_crit.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange") and len(parts) >= 4:
             # Mirror parse_log: mega/primal re-points the slot to the suffix species
@@ -2177,6 +2203,115 @@ def parse_log_recap(log: str) -> dict:
                         else ("p2" if atk_side == "p1" else "p1")
                     )
                     future_move_by[tgt_side] = {"side": atk_side, "name": atk_name}
+
+        elif cmd == "-boost" and len(parts) >= 4:
+            slot = _extract_slot(parts[2])
+            stat = parts[3].strip()
+            try:
+                amt = (
+                    int(parts[4])
+                    if len(parts) >= 5 and parts[4].lstrip("-").isdigit()
+                    else 1
+                )
+            except (ValueError, IndexError):
+                amt = 1
+            if slot and stat and active.get(slot):
+                cur = hl_stage.setdefault(slot, {})
+                cur[stat] = cur.get(stat, 0) + amt
+                key = (_slot_player(slot), active[slot], stat)
+                if abs(cur[stat]) > abs(hl_peak.get(key, 0)):
+                    hl_peak[key] = cur[stat]
+                hl_boosts.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(slot),
+                        "mon": active[slot],
+                        "stat": stat,
+                        "by": amt,
+                    }
+                )
+
+        elif cmd == "-unboost" and len(parts) >= 4:
+            slot = _extract_slot(parts[2])
+            stat = parts[3].strip()
+            try:
+                amt = (
+                    int(parts[4])
+                    if len(parts) >= 5 and parts[4].lstrip("-").isdigit()
+                    else 1
+                )
+            except (ValueError, IndexError):
+                amt = 1
+            if slot and stat and active.get(slot):
+                cur = hl_stage.setdefault(slot, {})
+                cur[stat] = cur.get(stat, 0) - amt
+                key = (_slot_player(slot), active[slot], stat)
+                if abs(cur[stat]) > abs(hl_peak.get(key, 0)):
+                    hl_peak[key] = cur[stat]
+                hl_boosts.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(slot),
+                        "mon": active[slot],
+                        "stat": stat,
+                        "by": -amt,
+                    }
+                )
+
+        elif cmd == "-crit" and len(parts) >= 3:
+            slot = _extract_slot(parts[2])
+            if slot:
+                _pending_crit[slot] = hp_pct.get(slot, 100.0)  # HP BEFORE this hit
+
+        elif cmd == "-terastallize" and len(parts) >= 4:
+            slot = _extract_slot(parts[2])
+            ttype = parts[3].strip()
+            if slot and ttype and active.get(slot):
+                hl_teras.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(slot),
+                        "mon": active[slot],
+                        "type": ttype,
+                    }
+                )
+
+        elif cmd in ("-item", "-enditem") and len(parts) >= 4:
+            slot = _extract_slot(parts[2])
+            item = parts[3].strip()
+            if slot and item and active.get(slot):
+                hl_items.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(slot),
+                        "mon": active[slot],
+                        "item": item,
+                        "event": "consumed" if cmd == "-enditem" else "reveal",
+                    }
+                )
+
+        elif cmd == "-miss" and len(parts) >= 3:
+            atk_slot = _extract_slot(parts[2])
+            tgt_slot = _extract_slot(parts[3]) if len(parts) >= 4 else ""
+            if atk_slot and active.get(atk_slot):
+                hl_misses.append(
+                    {
+                        "turn": turn,
+                        "attacker_side": _slot_player(atk_slot),
+                        "attacker": active[atk_slot],
+                        "target": active.get(tgt_slot),
+                    }
+                )
+
+        elif cmd == "-heal" and len(parts) >= 3:
+            slot = _extract_slot(parts[2])
+            hp = (
+                _parse_hp_pct("|".join(parts[3:]).split("|")[0])
+                if len(parts) >= 3
+                else None
+            )
+            if slot and hp is not None:
+                hp_pct[slot] = hp
 
         elif cmd == "-sidestart" and len(parts) >= 4:
             side = parts[2].split(":")[0].strip()
@@ -2278,6 +2413,35 @@ def parse_log_recap(log: str) -> dict:
                     "se": is_se,
                     "indirect": False,
                 }
+            new_hp = (
+                _parse_hp_pct("|".join(parts[3:]).split("|")[0])
+                if len(parts) >= 3
+                else None
+            )
+            fainted_now = "fnt" in "|".join(parts[3:])
+            if victim_slot in _pending_crit:
+                hp_before = _pending_crit.pop(victim_slot)
+                mattered = None
+                if fainted_now and hp_before is not None:
+                    crit_dmg = hp_before  # went to 0
+                    normal_dmg = crit_dmg / 1.5
+                    # crit mattered if a normal hit would NOT have KO'd (victim survives)
+                    mattered = (hp_before - normal_dmg) > 0 and hp_before >= 34
+                    # (hp_before>=34 gate: below ~1/3, a full-power normal hit also KOs)
+                lh = last_hit.get(victim_slot) or {}
+                hl_crits.append(
+                    {
+                        "turn": turn,
+                        "victim_side": _slot_player(victim_slot),
+                        "victim": active.get(victim_slot),
+                        "attacker": lh.get("by"),
+                        "move": lh.get("move"),
+                        "ko": fainted_now,
+                        "mattered": mattered,
+                    }
+                )
+            if new_hp is not None:
+                hp_pct[victim_slot] = new_hp
             pending_se[victim_slot] = False
 
         elif cmd == "faint" and len(parts) >= 3:
@@ -2349,6 +2513,18 @@ def parse_log_recap(log: str) -> dict:
         "turns": turn,
         "winner_player": winner_player,
         "used": used,
+        "highlights": {
+            "boosts": hl_boosts,
+            "peak_boosts": [
+                {"side": s, "mon": m, "stat": st, "stage": v}
+                for (s, m, st), v in hl_peak.items()
+                if abs(v) >= 2
+            ],
+            "crits": hl_crits,
+            "items": hl_items,
+            "teras": hl_teras,
+            "misses": hl_misses,
+        },
     }
 
 
