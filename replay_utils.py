@@ -89,6 +89,9 @@ def parse_log(log: str) -> dict:
     # credited to the responsible Pokémon, not to no one.
     hazard_setter = {"p1": {}, "p2": {}}  # side -> {hazard_id: (player, name)}
     status_by = {}  # victim slot -> (player, name)
+    bound_by = {}  # victim slot -> (player, name) of the mon binding it (Infestation,
+    # Whirlpool, Fire Spin, Sand Tomb, Magma Storm, Bind, Wrap, Clamp, Thunder Cage,
+    # Snap Trap) — credits the caster for a later [partiallytrapped] residual KO.
     last_move_actor = None  # (player, name) of the most recent |move|
     future_move_by = {"p1": None, "p2": None}  # target side -> (player, name) of a
     # pending Future Sight / Doom Desire user
@@ -116,7 +119,13 @@ def parse_log(log: str) -> dict:
             # SPECIES so a nicknamed Pokémon's kills/deaths are attributed to the
             # real mon (not the nickname), which the roster leaderboard can match.
             # Fall back to the slot-descriptor name if the species field is absent.
-            poke_name = _norm(parts[3].split(",")[0].strip()) or _extract_name(parts[2])
+            # Collapse battle-only formes (Palafin-Hero -> Palafin, Aegislash-Blade
+            # -> Aegislash, …) so a mon that switches in already transformed isn't
+            # counted as a second Pokémon. Keeps -Mega/-Primal, which the
+            # |detailschange| handler re-attributes as separate drafted picks.
+            poke_name = _norm_forme_keep_mega(
+                _norm(parts[3].split(",")[0].strip())
+            ) or _extract_name(parts[2])
             if slot and poke_name:
                 sider = _slot_player(slot)
                 if cmd == "replace":
@@ -143,6 +152,7 @@ def parse_log(log: str) -> dict:
                     last_hit_by.pop(slot, None)
                     status_by.pop(slot, None)
                     pending_charge.pop(slot, None)
+                    bound_by.pop(slot, None)
 
         elif cmd in ("detailschange", "-formechange") and len(parts) >= 4:
             # Mega/primal permanently re-points this slot to a DIFFERENT drafted
@@ -241,6 +251,25 @@ def parse_log(log: str) -> dict:
             if side in ("p1", "p2") and hz:
                 hazard_setter[side].pop(hz, None)
 
+        elif cmd == "-activate" and len(parts) >= 4:
+            # "|-activate|p1b: Mawile|move: Infestation|[of] p2b: Toxapex" — a
+            # partial-trapping (binding) move latched on. Record the caster so a
+            # later [partiallytrapped] residual faint on this slot is credited to it.
+            victim_slot = _extract_slot(parts[2])
+            effect = parts[3].strip()
+            if victim_slot and effect.lower().startswith("move:"):
+                rest = "|".join(parts[4:])
+                of_m = re.search(r"\[of\]\s*(p[12][ab]):", rest)
+                src = of_m.group(1) if of_m else None
+                if src and active.get(src) and src != victim_slot:
+                    bound_by[victim_slot] = (_slot_player(src), active[src])
+
+        elif cmd == "-end" and len(parts) >= 3:
+            # Binding released (mon switched/fainted or the move's turns ran out).
+            end_slot = _extract_slot(parts[2])
+            if end_slot:
+                bound_by.pop(end_slot, None)
+
         elif cmd == "-status" and len(parts) >= 4:
             # "|-status|p1a: Mon|brn" — attribute the status to the mon responsible.
             victim_slot = _extract_slot(parts[2])
@@ -307,6 +336,12 @@ def parse_log(log: str) -> dict:
                     # Delayed attack landing now — credit the mon that used it 2
                     # turns ago (recorded by target side), even if it's since gone.
                     cause = future_move_by.get(victim_side)
+                elif "[partiallytrapped]" in rest or (
+                    source.startswith("move:") and victim_slot in bound_by
+                ):
+                    # Binding-move residual (Infestation/Whirlpool/Fire Spin/…):
+                    # credit the mon that cast the trap (recorded on -activate).
+                    cause = bound_by.get(victim_slot)
                 if cause:
                     last_hit_by[victim_slot] = cause
                 else:
@@ -2032,12 +2067,25 @@ def _type_color(t: str) -> str:
     return TYPE_COLORS.get(t, "#c9c9d2")
 
 
+# Battle-only forme suffixes: the SAME drafted Pokémon shape-shifts mid-battle
+# (Palafin Zero<->Hero via Zero to Hero, Aegislash Shield<->Blade, Minior shell
+# break, Cramorant gulp modes, Morpeko, Eiscue, Wishiwashi, Mimikyu busted,
+# Terapagos, Zygarde-Complete). These are NOT separate drafted picks, so their
+# kills/deaths must unify onto the base name. (Mega/Primal are handled separately
+# because they ARE separately-drafted picks — see _norm_forme_keep_mega.)
+_BATTLE_FORME_RE = re.compile(
+    r"-(Hero|Zero|Blade|Shield|Meteor|Core|Gulping|Gorging|Hangry|Noice|"
+    r"School|Solo|Busted|Complete|Terastal|Stellar)$"
+)
+
+
 def _norm_forme(name: str) -> str:
-    """Strip cosmetic/forme suffixes that don't change in-battle identity.
+    """Strip cosmetic/forme suffixes that don't change in-battle *drafted* identity.
     Mirrors normName() in replay-parser.js."""
     name = re.sub(r"-Mega(-[XY])?$", "", name)
     name = re.sub(r"-(Hearthflame|Wellspring|Cornerstone|Teal)(-Tera)?$", "", name)
     name = re.sub(r"-Tera$", "", name)
+    name = _BATTLE_FORME_RE.sub("", name)
     return name
 
 
@@ -2058,9 +2106,11 @@ def _norm_forme_keep_mega(name: str) -> str:
     are separately-drafted picks. Used on the recap switch-in so a mega that
     switches out and back in ("Swampert-Mega") is not collapsed to base
     "Swampert" (which would undo the |detailschange| re-attribution). Still strips
-    the cosmetic Ogerpon-mask / Tera suffixes that don't change the drafted pick."""
+    the cosmetic Ogerpon-mask / Tera suffixes AND the battle-only formes (Palafin
+    Zero<->Hero, Aegislash, …) that are the SAME drafted pick shape-shifting."""
     name = re.sub(r"-(Hearthflame|Wellspring|Cornerstone|Teal)(-Tera)?$", "", name)
     name = re.sub(r"-Tera$", "", name)
+    name = _BATTLE_FORME_RE.sub("", name)
     return name
 
 
@@ -2091,6 +2141,7 @@ def parse_log_recap(log: str) -> dict:
     ko_log = []  # raw chronological faints
     hazard_setter = {"p1": {}, "p2": {}}  # side -> {hazard_id: {side,name}}
     status_by = {}  # victim slot -> {side, name} that inflicted status
+    bound_by = {}  # victim slot -> {side, name} of the mon binding it (Infestation…)
     future_move_by = {"p1": None, "p2": None}  # target side -> {side,name} of a
     # pending Future Sight / Doom Desire user
     winner_player = None
@@ -2169,6 +2220,7 @@ def parse_log_recap(log: str) -> dict:
                     leads[pside].append(poke_name)
                 last_hit.pop(slot, None)
                 status_by.pop(slot, None)
+                bound_by.pop(slot, None)
                 hp_pct[slot] = 100
                 hl_stage.pop(slot, None)
                 _pending_crit.pop(slot, None)
@@ -2350,6 +2402,23 @@ def parse_log_recap(log: str) -> dict:
             if side in ("p1", "p2") and hz:
                 hazard_setter[side].pop(hz, None)
 
+        elif cmd == "-activate" and len(parts) >= 4:
+            # Binding move latched on (Infestation etc.): record the caster so a
+            # later [partiallytrapped] residual faint is credited to it.
+            vslot = _extract_slot(parts[2])
+            effect = parts[3].strip()
+            if vslot and effect.lower().startswith("move:"):
+                rest = "|".join(parts[4:])
+                of_m = re.search(r"\[of\]\s*(p[12][ab]):", rest)
+                src = of_m.group(1) if of_m else None
+                if src and active.get(src) and src != vslot:
+                    bound_by[vslot] = {"side": _slot_player(src), "name": active[src]}
+
+        elif cmd == "-end" and len(parts) >= 3:
+            eslot = _extract_slot(parts[2])
+            if eslot:
+                bound_by.pop(eslot, None)
+
         elif cmd == "-status" and len(parts) >= 4:
             vslot = _extract_slot(parts[2])
             rest = "|".join(parts[4:])
@@ -2418,6 +2487,12 @@ def parse_log_recap(log: str) -> dict:
                         cause = hazard_setter[vside]["toxic spikes"]
                 elif source in ("move: Future Sight", "move: Doom Desire"):
                     cause = future_move_by.get(vside)
+                elif "[partiallytrapped]" in rest or (
+                    source.startswith("move:") and victim_slot in bound_by
+                ):
+                    # Binding-move residual (Infestation/Whirlpool/Fire Spin/…) —
+                    # credit the mon that cast the trap (recorded on -activate).
+                    cause = bound_by.get(victim_slot)
                 last_hit[victim_slot] = {
                     "bySide": cause["side"] if cause else None,
                     "by": cause["name"] if cause else None,
