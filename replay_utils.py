@@ -17,6 +17,34 @@ def _norm(name: str) -> str:
 # stay unified. -Mega-Z covers Legends Z-A megas (e.g. Absol-Mega-Z).
 _MEGA_PRIMAL_RE = re.compile(r"-(?:Mega(?:-[XYZ])?|Primal)$")
 
+# Non-damaging moves — blocking one with Protect isn't a clutch life-saver, so the
+# protect detector ignores these (a Protect vs Yawn/Thunder Wave is routine scouting).
+_STATUS_MOVES = {
+    "Yawn",
+    "Will-O-Wisp",
+    "Thunder Wave",
+    "Toxic",
+    "Spore",
+    "Sleep Powder",
+    "Stun Spore",
+    "Confuse Ray",
+    "Taunt",
+    "Encore",
+    "Disable",
+    "Leech Seed",
+    "Nuzzle",
+    "Glare",
+    "Sing",
+    "Hypnosis",
+    "Follow Me",
+    "Rage Powder",
+    "Trick Room",
+    "Tailwind",
+    "Light Screen",
+    "Reflect",
+    "Aurora Veil",
+}
+
 
 def _slot_player(slot: str) -> str:
     return slot[:2]
@@ -2194,6 +2222,11 @@ def parse_log_recap(log: str) -> dict:
     hl_fields = []  # field conditions: weather, terrain, Trick Room, Tailwind, screens, Swamp
     hl_selfkos = []  # friendly-fire KOs (a coach KO'ing their own mon) as a narrative beat
     hl_clutch = []  # sliver survivals: Focus Sash / Sturdy / Endure / very-low-HP survival
+    hl_shutdowns = []  # setup reversals: boost-wipe (Haze) / Taunt / Encore / Disable
+    hl_statuses = []  # status inflicted: {turn, side, mon, status, by, byside}
+    hl_cants = []  # a mon COULDN'T act: {turn, side, mon, reason (slp/par/frz/flinch), move}
+    hl_abilities = []  # ability triggers that may matter (Intimidate, Trace, -immune wall)
+    hl_protects = []  # a Protect that blocked a DAMAGING move
     _min_hp = {}  # slot -> {"pct": lowest HP% seen, "turn": when, "mon": species}
     _residual = {}  # slot -> {source: set(turns)} — [from] chip ticks per victim, for grind-down
     _field_seen = set()  # de-dupe: only the FIRST activation of a given field effect
@@ -2472,6 +2505,66 @@ def parse_log_recap(log: str) -> dict:
                     }
                 )
 
+        elif cmd in ("-clearallboost", "-clearboost", "-clearpositiveboost"):
+            # Haze / Clear Smog boost-wipe. Bare "|-clearallboost" (real Haze) has no
+            # slot and hits every active mon. Only a mon whose setup reached an
+            # OFFENSIVE +2 (atk/spa/spe — a sweep, not defensive bulk) is dramatic.
+            vslot = _extract_slot(parts[2]) if len(parts) >= 3 else ""
+            victims = [vslot] if vslot else list(active)
+            for vs in victims:
+                if not active.get(vs):
+                    continue
+                stages = hl_stage.get(vs, {})
+                off = max(
+                    (
+                        v
+                        for st, v in stages.items()
+                        if v > 0 and st in ("atk", "spa", "spe")
+                    ),
+                    default=0,
+                )
+                if off >= 2:
+                    hl_shutdowns.append(
+                        {
+                            "turn": turn,
+                            "kind": "boost_wipe",
+                            "side": _slot_player(vs),
+                            "mon": active[vs],
+                            "peak": off,
+                        }
+                    )
+                for st in list(stages):  # zero positives so a re-Haze can't re-fire
+                    if stages[st] > 0:
+                        stages[st] = 0
+
+        elif cmd == "-start" and len(parts) >= 4:
+            # Taunt / Encore / Disable shutting a mon down. Whitelisted so perish/
+            # Yawn -start lines never fire. The "was it a threat?" gate is applied
+            # later in commentary_facts (needs sweeps/star data).
+            vslot = _extract_slot(parts[2])
+            el = parts[3].strip().lower()
+            if el.startswith("move:"):
+                el = el.split(":", 1)[1].strip()
+            if vslot and active.get(vslot) and el in ("taunt", "encore", "disable"):
+                stages = hl_stage.get(vslot, {})
+                off = max(
+                    (
+                        v
+                        for st, v in stages.items()
+                        if v > 0 and st in ("atk", "spa", "spe")
+                    ),
+                    default=0,
+                )
+                hl_shutdowns.append(
+                    {
+                        "turn": turn,
+                        "kind": el,
+                        "side": _slot_player(vslot),
+                        "mon": active[vslot],
+                        "peak": off,
+                    }
+                )
+
         elif cmd == "-heal" and len(parts) >= 3:
             slot = _extract_slot(parts[2])
             hp = (
@@ -2542,6 +2635,70 @@ def parse_log_recap(log: str) -> dict:
                         "mechanic": "Sturdy" if "sturdy" in el else "Endure",
                     }
                 )
+            # A Protect that BLOCKED a hit. Only dramatic if the blocked move was
+            # DAMAGING (not a status move like Yawn/Will-O-Wisp). cur_move holds the
+            # attacker's move; the danger gate (was it lethal?) is applied later.
+            if (
+                vslot
+                and active.get(vslot)
+                and el == "move: protect"
+                and cur_move
+                and cur_move["side"] != _slot_player(vslot)
+                and cur_move["move"] not in _STATUS_MOVES
+            ):
+                hl_protects.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(vslot),
+                        "mon": active[vslot],
+                        "blocked_move": cur_move["move"],
+                        "attacker": cur_move["user"],
+                        "attacker_side": cur_move["side"],
+                        "hp": hp_pct.get(vslot),
+                    }
+                )
+
+        elif cmd == "-ability" and len(parts) >= 4:
+            # Ability trigger. Intimidate (drops foe atk) and a Trace copy are the
+            # reveal moments; the impact gate is applied downstream. Stamina/other
+            # self-boosts are captured elsewhere and skipped here.
+            aslot = _extract_slot(parts[2])
+            abil = parts[3].strip()
+            if aslot and active.get(aslot) and abil.lower() in ("intimidate", "trace"):
+                hl_abilities.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(aslot),
+                        "mon": active[aslot],
+                        "ability": abil,
+                        "kind": "trigger",
+                    }
+                )
+
+        elif cmd == "-immune" and len(parts) >= 3:
+            # A move NEGATED by an ability (Water Absorb, Flash Fire, Levitate, …) —
+            # a "walled it" moment. Credit the mon that was attacking (cur_move).
+            vslot = _extract_slot(parts[2])
+            rest = "|".join(parts[3:])
+            am = re.search(r"ability:\s*([^|]+)", rest)
+            if (
+                vslot
+                and active.get(vslot)
+                and am
+                and cur_move
+                and cur_move["side"] != _slot_player(vslot)
+            ):
+                hl_abilities.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(vslot),
+                        "mon": active[vslot],
+                        "ability": am.group(1).strip(),
+                        "kind": "immune",
+                        "blocked_move": cur_move["move"],
+                        "attacker": cur_move["user"],
+                    }
+                )
 
         elif cmd == "-end" and len(parts) >= 3:
             eslot = _extract_slot(parts[2])
@@ -2565,6 +2722,46 @@ def parse_log_recap(log: str) -> dict:
                 pass
             elif cur_move and cur_move["side"] != _slot_player(vslot):
                 status_by[vslot] = {"side": cur_move["side"], "name": cur_move["user"]}
+            # Record the status for the key-status detector. par/slp/frz that later
+            # cost a turn (a |cant|) is a KEY moment; burn is recorded but only
+            # surfaces if corroborated. Attribution mirrors status_by above.
+            code = parts[3].strip().lower()
+            if vslot and active.get(vslot) and code in ("par", "slp", "frz", "brn"):
+                sb = status_by.get(vslot) or {}
+                hl_statuses.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(vslot),
+                        "mon": active[vslot],
+                        "status": code,
+                        "by": sb.get("name"),
+                        "byside": sb.get("side"),
+                    }
+                )
+
+        elif cmd == "cant" and len(parts) >= 4:
+            # A mon COULDN'T act (sleep/paralysis/freeze/flinch) — lost tempo. This is
+            # the corroboration the key-status detector needs. Fake Out flinch is
+            # excluded downstream (it's the move's baseline function, not drama).
+            vslot = _extract_slot(parts[2])
+            reason = parts[3].strip().lower()
+            if reason.startswith("move:"):
+                reason = (
+                    "flinch" if "flinch" in reason else reason.split(":", 1)[1].strip()
+                )
+            if vslot and active.get(vslot):
+                flinch_move = (
+                    cur_move["move"] if (reason == "flinch" and cur_move) else None
+                )
+                hl_cants.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(vslot),
+                        "mon": active[vslot],
+                        "reason": reason,
+                        "flinch_move": flinch_move,
+                    }
+                )
 
         elif cmd == "-supereffective" and len(parts) >= 3:
             slot = _extract_slot(parts[2])
@@ -2825,6 +3022,11 @@ def parse_log_recap(log: str) -> dict:
                 }
                 for d in _residual.values()
             },
+            "setup_shutdowns": hl_shutdowns,
+            "statuses": hl_statuses,
+            "cants": hl_cants,
+            "abilities": hl_abilities,
+            "protects": hl_protects,
         },
     }
 
@@ -3460,6 +3662,118 @@ def commentary_facts(recap: dict) -> dict:
             )
     grind_downs = grind_downs[:3]
 
+    # ── Batch-2 detectors (adversarially verified — guards kill the false positives
+    #    both reviewers reproduced on the fixtures) ──
+    # a mon that scored >=2 KOs is a "threat" (reuse batch-1's per-mon KO turns).
+    _threats = {mon for mon, ts in ko_by_mon_turns.items() if len(ts) >= 2}
+
+    # 6. SETUP REVERSAL — boost-wipe on an offensive +2 mon, OR Taunt/Encore/Disable
+    #    on a mon that actually had offensive boosts (peak>=2). (stars is padded to 3,
+    #    so the review says NOT to use it — require real offensive setup.)
+    setup_reversals = []
+    for s in hl.get("setup_shutdowns", []):
+        peak = s.get("peak", 0)
+        if s.get("kind") == "boost_wipe" or peak >= 2:
+            setup_reversals.append(
+                {
+                    "turn": s.get("turn"),
+                    "kind": s.get("kind"),
+                    "mon": s.get("mon"),
+                    "team": _team_of(s["side"]) if s.get("side") else None,
+                }
+            )
+    setup_reversals = setup_reversals[:3]
+
+    # 7. KEY STATUS — par/slp/frz ONLY when corroborated by a later |cant| with the
+    #    same status from that mon (proves lost tempo). Deduped to one per (mon,status).
+    #    Burn is dropped (no move-category data to prove it hit a physical attacker).
+    cant_by_mon = {}  # (mon, reason) -> [turns the mon couldn't act]
+    for c in hl.get("cants", []):
+        # Exclude Fake Out flinch (baseline function of the move, never drama).
+        if c.get("reason") == "flinch" and (c.get("flinch_move") or "") == "Fake Out":
+            continue
+        cant_by_mon.setdefault((c["mon"], c["reason"]), []).append(c["turn"])
+    key_status = []
+    seen_ks = set()
+    for st in hl.get("statuses", []):
+        if st["status"] == "brn":
+            continue  # unprovable without move category
+        missed = cant_by_mon.get((st["mon"], st["status"]))
+        if not missed:
+            continue  # no corroborated lost turn -> not a KEY status
+        key = (st["mon"], st["status"])
+        if key in seen_ks:
+            continue
+        seen_ks.add(key)
+        key_status.append(
+            {
+                "turn": st["turn"],
+                "mon": st["mon"],
+                "team": _team_of(st["side"]) if st.get("side") else None,
+                "status": st["status"],
+                "by": st.get("by"),
+                "by_team": _team_of(st["byside"]) if st.get("byside") else None,
+                "missed_turns": len(missed),
+            }
+        )
+    key_status = key_status[:3]
+
+    # 8. IMPACT ABILITY — an -immune wall (ability negated a move), or Intimidate
+    #    (deduped to one per mon). Trace kept only as a light reveal. Impact-first.
+    impact_abilities = []
+    seen_ab = set()
+    for ab in hl.get("abilities", []):
+        mon, name, kind = ab["mon"], ab["ability"], ab.get("kind")
+        k = (mon, name)
+        if k in seen_ab:
+            continue  # dedup Intimidate/Trace per mon
+        seen_ab.add(k)
+        if kind == "immune":
+            impact_abilities.append(
+                {
+                    "turn": ab["turn"],
+                    "mon": mon,
+                    "team": _team_of(ab["side"]) if ab.get("side") else None,
+                    "ability": name,
+                    "kind": "wall",
+                    "blocked_move": ab.get("blocked_move"),
+                    "attacker": ab.get("attacker"),
+                }
+            )
+        elif name.lower() == "intimidate":
+            impact_abilities.append(
+                {
+                    "turn": ab["turn"],
+                    "mon": mon,
+                    "team": _team_of(ab["side"]) if ab.get("side") else None,
+                    "ability": name,
+                    "kind": "intimidate",
+                }
+            )
+    impact_abilities = impact_abilities[:3]
+
+    # 9. CLUTCH PROTECT — a Protect that blocked a DAMAGING move (status moves already
+    #    excluded at capture). DANGER GATE (reviewer): the blocker must have been in
+    #    real danger — at <=50% HP — AND the attacker a genuine threat (>=2 KOs). A
+    #    full-HP Protect vs a non-lethal hit is routine scouting, not a life-saver.
+    clutch_protects = []
+    for p in hl.get("protects", []):
+        hp = p.get("hp")
+        low = hp is not None and hp <= 50
+        by_threat = p.get("attacker") in _threats
+        if low and by_threat:
+            clutch_protects.append(
+                {
+                    "turn": p["turn"],
+                    "mon": p["mon"],
+                    "team": _team_of(p["side"]) if p.get("side") else None,
+                    "blocked_move": p.get("blocked_move"),
+                    "attacker": p.get("attacker"),
+                    "hp": round(hp) if hp is not None else None,
+                }
+            )
+    clutch_protects = clutch_protects[:2]
+
     # Multi-KO sweeps from stars (already computed with KO counts).
     sweeps = []
     for s in recap.get("stars", []):
@@ -3501,6 +3815,10 @@ def commentary_facts(recap: dict) -> dict:
         "comeback": comeback,
         "clutch": clutch,
         "grind_downs": grind_downs,
+        "setup_reversals": setup_reversals,
+        "key_status": key_status,
+        "impact_abilities": impact_abilities,
+        "clutch_protects": clutch_protects,
         "nicknames": recap.get("nicknames", {}),
     }
 
@@ -3709,6 +4027,39 @@ def build_commentary(recap: dict) -> dict:
         gd = f["grind_downs"][0]
         parts.append(
             f"{N(gd['victim'])} was ground down by {gd['source']} over {gd['ticks']} turns."
+        )
+    # Batch-2 beats (add the biggest one or two).
+    if f.get("setup_reversals"):
+        sr = f["setup_reversals"][0]
+        if sr["kind"] == "boost_wipe":
+            parts.append(f"{N(sr['mon'])}'s ({sr['team']}) setup was Hazed away.")
+        else:
+            parts.append(
+                f"{N(sr['mon'])} ({sr['team']}) was locked down by {sr['kind'].title()}."
+            )
+    if f.get("key_status"):
+        ks = f["key_status"][0]
+        word = {"slp": "put to sleep", "par": "paralyzed", "frz": "frozen"}.get(
+            ks["status"], ks["status"]
+        )
+        miss = (
+            f" and lost {ks['missed_turns']} turns"
+            if ks.get("missed_turns", 0) >= 2
+            else ""
+        )
+        parts.append(f"{N(ks['mon'])} was {word}{miss} — a costly momentum swing.")
+    if f.get("impact_abilities"):
+        ia = f["impact_abilities"][0]
+        if ia["kind"] == "wall":
+            parts.append(
+                f"{N(ia['mon'])}'s {ia['ability']} walled {N(ia.get('attacker'))}'s "
+                f"{ia.get('blocked_move')} outright."
+            )
+    if f.get("clutch_protects"):
+        cp = f["clutch_protects"][0]
+        parts.append(
+            f"On {cp['hp']}% HP, {N(cp['mon'])} Protected away {N(cp.get('attacker'))}'s "
+            f"{cp.get('blocked_move')} to survive."
         )
     # A notable reveal, tied in as a closing detail.
     if f.get("teras"):

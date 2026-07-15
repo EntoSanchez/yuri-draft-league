@@ -530,3 +530,122 @@ def test_true_1v1_only_when_persists():
     )
     assert r58["one_v_one"] is not None
     assert r59["one_v_one"] is None
+
+
+# ── Batch-2 detectors (each test guards a false positive the review flagged) ────
+
+
+def test_key_status_deduped_and_corroborated():
+    """Repeated sleep on one mon = ONE fact with missed-turns folded in; requires
+    a |cant| corroboration (not just the status line)."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_59.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    slps = [
+        k for k in f["key_status"] if k["mon"] == "Archaludon" and k["status"] == "slp"
+    ]
+    assert len(slps) == 1, slps  # deduped
+    assert slps[0]["missed_turns"] >= 2  # corroborated by cants
+
+
+def test_key_status_needs_a_missed_turn():
+    """A status with no subsequent |cant| is NOT a key status."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Star|Garchomp, M|100/100",
+            "|switch|p2a: Foe|Sylveon, M|100/100",
+            "|turn|1",
+            "|move|p2a: Foe|Thunder Wave|p1a: Star",
+            "|-status|p1a: Star|par",  # paralyzed but NEVER fully-paralyzed (no |cant|)
+            "|turn|2",
+            "|move|p1a: Star|Earthquake|p2a: Foe",
+            "|-damage|p2a: Foe|0 fnt",
+            "|faint|p2a: Foe",
+            "|win|Alice",
+        ]
+    )
+    f = R.commentary_facts(R.build_recap(R.parse_log_recap(log)))
+    assert f["key_status"] == []  # no lost turn -> not key
+
+
+def test_fake_out_flinch_excluded_from_key_status():
+    """Fake Out flinch is the move's baseline function, never a key-status beat."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Inc|Incineroar, M|100/100",
+            "|switch|p2a: Star|Garchomp, M|100/100",
+            "|turn|1",
+            "|move|p1a: Inc|Fake Out|p2a: Star",
+            "|cant|p2a: Star|flinch",  # Fake Out flinch — must NOT be key status
+            "|win|Alice",
+        ]
+    )
+    f = R.commentary_facts(R.build_recap(R.parse_log_recap(log)))
+    # no par/slp/frz here, and the flinch is Fake Out -> nothing
+    assert f["key_status"] == []
+
+
+def test_intimidate_deduped_per_mon():
+    """Intimidate fires on every switch-in; the fact must be one per mon."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_58.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    intims = [
+        a
+        for a in f["impact_abilities"]
+        if a.get("ability") == "Intimidate" and a["mon"] == "Hitmontop"
+    ]
+    assert len(intims) <= 1
+
+
+def test_immune_wall_captured():
+    """An ability negating a move ('walled it') is an impact ability."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_58.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    walls = [a for a in f["impact_abilities"] if a["kind"] == "wall"]
+    assert any(w["ability"] == "Water Absorb" for w in walls)
+
+
+def test_full_hp_protect_not_clutch():
+    """A Protect at full HP vs a non-lethal hit is routine, not a clutch Protect."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_58.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    assert all(p["hp"] is None or p["hp"] <= 50 for p in f["clutch_protects"])
+
+
+def test_protect_vs_status_move_ignored():
+    """A Protect blocking a status move (Yawn) is not a clutch protect (fixture 59)."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_59.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    assert f["clutch_protects"] == []
+
+
+def test_setup_reversal_silent_without_haze():
+    """No Haze/Taunt in the fixtures -> no setup reversals (guards perish/Yawn)."""
+    for fx in ("yuricup_s9_58.log", "yuricup_s9_59.log"):
+        rec = R.build_recap(
+            R.parse_log_recap(open(f"tests/fixtures/{fx}", encoding="utf-8").read())
+        )
+        assert R.commentary_facts(rec)["setup_reversals"] == []
