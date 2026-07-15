@@ -327,3 +327,98 @@ def test_template_summary_uses_nicknames():
     summary = R.build_commentary(rec)["summary"]
     # Archaludon's nickname "Saturn the Aging" should appear in the narrative
     assert "Saturn the Aging" in summary
+
+
+# ── Field conditions & self-KOs (weather, terrain, TR, Tailwind, Swamp, friendly fire) ──
+
+
+def test_field_conditions_captured():
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Bronzong|Bronzong|100/100",
+            "|switch|p2a: Politoed|Politoed, M|100/100",
+            "|-weather|RainDance|[from] ability: Drizzle|[of] p2a: Politoed",
+            "|turn|1",
+            "|move|p1a: Bronzong|Trick Room|p1a: Bronzong",
+            "|-fieldstart|move: Trick Room|[of] p1a: Bronzong",
+            "|-weather|RainDance|[upkeep]",  # upkeep must be IGNORED
+            "|turn|2",
+            "|move|p2a: Politoed|Tailwind|p2a: Politoed",
+            "|-sidestart|p2: Bob|move: Tailwind",
+            "|win|Bob",
+        ]
+    )
+    h = R.parse_log_recap(log)["highlights"]
+    labels = {fe["label"] for fe in h["fields"]}
+    assert "rain" in labels
+    assert "Trick Room" in labels
+    assert "Tailwind" in labels
+    # exactly ONE rain entry (upkeep de-duped)
+    assert sum(1 for fe in h["fields"] if fe["label"] == "rain") == 1
+    # setter attribution
+    tr = next(fe for fe in h["fields"] if fe["label"] == "Trick Room")
+    assert tr["setter"] == "Bronzong"
+
+
+def test_pledge_swamp_captured():
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Zong|Bronzong|100/100",
+            "|switch|p2a: Foe|Snorlax, M|100/100",
+            "|turn|1",
+            "|move|p1a: Zong|Grass Pledge|p2a: Foe",
+            "|-sidestart|p2: Bob|Grass Pledge",  # water+grass = the Swamp
+            "|win|Alice",
+        ]
+    )
+    h = R.parse_log_recap(log)["highlights"]
+    assert any("Swamp" in fe["label"] for fe in h["fields"])
+
+
+def test_self_ko_captured_as_narrative():
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Sw|Swampert, M|100/100",
+            "|switch|p1b: Ar|Archaludon, M|1/100",  # Alice's own ally, low HP
+            "|switch|p2a: F1|Snorlax, M|100/100",
+            "|switch|p2b: F2|Clodsire, M|100/100",
+            "|turn|1",
+            "|move|p1a: Sw|Earthquake|p2b: F2|[spread] p1b,p2b",
+            "|-damage|p1b: Ar|0 fnt",
+            "|faint|p1b: Ar",
+            "|-damage|p2b: F2|50/100",
+            "|win|Alice",
+        ]
+    )
+    h = R.parse_log_recap(log)["highlights"]
+    assert h["self_kos"], "self-KO not captured"
+    sk = h["self_kos"][0]
+    assert sk["attacker"] == "Swampert" and sk["victim"] == "Archaludon"
+    assert sk["move"] == "Earthquake"
+
+
+def test_mega_inherits_base_nickname():
+    # A mega form should use the base species' nickname.
+    nn = {"Swampert": "Mars War Bringer"}
+    assert R._nick("Swampert-Mega", nn) == "Swampert-Mega (Mars War Bringer)"
+    assert R._nick("Swampert", nn) == "Swampert (Mars War Bringer)"
+
+
+def test_template_mentions_self_ko_and_field():
+    import os
+
+    fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_59.log")
+    if not os.path.exists(fx):
+        import pytest
+
+        pytest.skip("fixture missing")
+    rec = R.build_recap(R.parse_log_recap(open(fx, encoding="utf-8").read()))
+    summary = R.build_commentary(rec)["summary"]
+    assert "own ally" in summary or "misplay" in summary  # self-KO narrated
+    assert "Grassy Terrain" in summary or "rain" in summary.lower()  # field mentioned

@@ -2101,6 +2101,41 @@ def _parse_hp_pct(field: str):
     return None
 
 
+# Human-readable labels for field conditions the caster should mention. Keyed by
+# the normalized Showdown effect name (lowercased, "move:" stripped).
+_WEATHER_LABELS = {
+    "raindance": "rain",
+    "sunnyday": "harsh sunlight",
+    "sandstorm": "a sandstorm",
+    "snow": "snow",
+    "snowscape": "snow",
+    "hail": "hail",
+    "deltastream": "strong winds",
+    "primordialsea": "heavy rain",
+    "desolateland": "extremely harsh sunlight",
+}
+_FIELD_LABELS = {
+    "trick room": "Trick Room",
+    "magic room": "Magic Room",
+    "wonder room": "Wonder Room",
+    "gravity": "Gravity",
+    "grassy terrain": "Grassy Terrain",
+    "electric terrain": "Electric Terrain",
+    "psychic terrain": "Psychic Terrain",
+    "misty terrain": "Misty Terrain",
+}
+_SIDE_LABELS = {
+    "tailwind": "Tailwind",
+    "light screen": "Light Screen",
+    "reflect": "Reflect",
+    "aurora veil": "Aurora Veil",
+    # Pledge combos — the "Swamp" is Water+Grass Pledge (halves opposing Speed).
+    "grass pledge": "the Swamp (Grass + Water Pledge)",
+    "water pledge": "the Rainbow (Water + Fire Pledge)",
+    "fire pledge": "the Sea of Fire (Fire + Grass Pledge)",
+}
+
+
 def _norm_forme_keep_mega(name: str) -> str:
     """Like _norm_forme but PRESERVES -Mega/-Mega-X/-Mega-Y/-Mega-Z/-Primal, which
     are separately-drafted picks. Used on the recap switch-in so a mega that
@@ -2156,6 +2191,9 @@ def parse_log_recap(log: str) -> dict:
     hl_items = []
     hl_teras = []
     hl_misses = []
+    hl_fields = []  # field conditions: weather, terrain, Trick Room, Tailwind, screens, Swamp
+    hl_selfkos = []  # friendly-fire KOs (a coach KO'ing their own mon) as a narrative beat
+    _field_seen = set()  # de-dupe: only the FIRST activation of a given field effect
     hp_pct = {}  # slot -> last-known HP percent (0-100), for crit "mattered"
     _pending_crit = {}  # victim slot -> hp_before (percent) until the -damage resolves it
     nicknames = {}  # species -> the trainer's custom nickname (for flavor in prose)
@@ -2349,6 +2387,50 @@ def parse_log_recap(log: str) -> dict:
                     }
                 )
 
+        elif cmd == "-weather" and len(parts) >= 3:
+            # Weather ACTIVATION only — skip the per-turn [upkeep] spam and 'none'
+            # (weather clearing). Credit the setter from the [of] tag when present.
+            wid = parts[2].strip().lower()
+            rest = "|".join(parts[3:]) if len(parts) > 3 else ""
+            if (
+                wid in _WEATHER_LABELS
+                and "[upkeep]" not in rest
+                and ("weather", wid) not in _field_seen
+            ):
+                _field_seen.add(("weather", wid))
+                of_m = re.search(r"\[of\]\s*(p[12][ab]):", rest)
+                setter = active.get(of_m.group(1)) if of_m else None
+                hl_fields.append(
+                    {
+                        "turn": turn,
+                        "kind": "weather",
+                        "label": _WEATHER_LABELS[wid],
+                        "side": _slot_player(of_m.group(1)) if of_m else None,
+                        "setter": setter,
+                    }
+                )
+
+        elif cmd == "-fieldstart" and len(parts) >= 3:
+            # Terrain / Trick Room / Gravity / Magic Room / Wonder Room.
+            fid = parts[2].strip()
+            if fid.lower().startswith("move:"):
+                fid = fid.split(":", 1)[1].strip()
+            key = fid.lower()
+            if key in _FIELD_LABELS and ("field", key) not in _field_seen:
+                _field_seen.add(("field", key))
+                rest = "|".join(parts[3:]) if len(parts) > 3 else ""
+                of_m = re.search(r"\[of\]\s*(p[12][ab]):", rest)
+                setter = active.get(of_m.group(1)) if of_m else None
+                hl_fields.append(
+                    {
+                        "turn": turn,
+                        "kind": "field",
+                        "label": _FIELD_LABELS[key],
+                        "side": _slot_player(of_m.group(1)) if of_m else None,
+                        "setter": setter,
+                    }
+                )
+
         elif cmd in ("-item", "-enditem") and len(parts) >= 4:
             slot = _extract_slot(parts[2])
             item = parts[3].strip()
@@ -2395,6 +2477,23 @@ def parse_log_recap(log: str) -> dict:
                     "side": cur_move["side"],
                     "name": cur_move["user"],
                 }
+            # Screens / Tailwind / Pledge combos (Swamp etc.) — narrative field beats.
+            eff = parts[3].strip()
+            if eff.lower().startswith("move:"):
+                eff = eff.split(":", 1)[1].strip()
+            key = eff.lower()
+            if key in _SIDE_LABELS and ("side", side, key) not in _field_seen:
+                _field_seen.add(("side", side, key))
+                setter = cur_move["user"] if cur_move else None
+                hl_fields.append(
+                    {
+                        "turn": turn,
+                        "kind": "side",
+                        "label": _SIDE_LABELS[key],
+                        "side": cur_move["side"] if cur_move else side,
+                        "setter": setter,
+                    }
+                )
 
         elif cmd == "-sideend" and len(parts) >= 4:
             side = parts[2].split(":")[0].strip()
@@ -2555,6 +2654,18 @@ def parse_log_recap(log: str) -> dict:
                 by = k.get("by")
                 by_side = k.get("bySide")
                 if by_side is not None and by_side == fplayer:
+                    # Friendly fire: record it as a narrative beat (attacker KO'd its
+                    # OWN ally) BEFORE stripping the scorer from the KO stat.
+                    if by and by != fainted:
+                        hl_selfkos.append(
+                            {
+                                "turn": turn,
+                                "side": fplayer,
+                                "attacker": by,
+                                "victim": fainted,
+                                "move": k.get("move", "?"),
+                            }
+                        )
                     by = None
                     by_side = None
                 ko_log.append(
@@ -2630,6 +2741,8 @@ def parse_log_recap(log: str) -> dict:
             "items": hl_items,
             "teras": hl_teras,
             "misses": hl_misses,
+            "fields": hl_fields,
+            "self_kos": hl_selfkos,
         },
     }
 
@@ -3074,6 +3187,29 @@ def commentary_facts(recap: dict) -> dict:
         }
         for m in hl.get("misses", [])
     ][:4]
+    # Field conditions (weather, terrain, Trick Room, Tailwind, screens, Swamp) —
+    # in the order they were set, with the setter's team + nickname where known.
+    fields = [
+        {
+            "turn": fe.get("turn"),
+            "kind": fe.get("kind"),
+            "label": fe.get("label"),
+            "team": _team_of(fe["side"]) if fe.get("side") else None,
+            "setter": fe.get("setter"),
+        }
+        for fe in hl.get("fields", [])
+    ][:8]
+    # Self-KOs / friendly fire — a coach KO'ing their own mon (a caster moment).
+    self_kos = [
+        {
+            "turn": s.get("turn"),
+            "team": _team_of(s["side"]) if s.get("side") else None,
+            "attacker": s.get("attacker"),
+            "victim": s.get("victim"),
+            "move": s.get("move"),
+        }
+        for s in hl.get("self_kos", [])
+    ][:4]
     # Multi-KO sweeps from stars (already computed with KO counts).
     sweeps = []
     for s in recap.get("stars", []):
@@ -3107,16 +3243,25 @@ def commentary_facts(recap: dict) -> dict:
         "teras": teras,
         "misses": misses,
         "sweeps": sweeps,
+        "fields": fields,
+        "self_kos": self_kos,
         "nicknames": recap.get("nicknames", {}),
     }
 
 
 def _nick(name, nicknames):
     """Format a species with its trainer nickname: 'Archaludon (Saturn the Aging)'.
-    Falls back to the bare name when there's no nickname or no name."""
+    Falls back to the bare name when there's no nickname. A mega/primal form
+    ('Swampert-Mega') inherits the base species' nickname, since the trainer
+    nicknamed the base mon."""
     if not name:
         return name
-    nn = (nicknames or {}).get(name)
+    nicknames = nicknames or {}
+    nn = nicknames.get(name)
+    if not nn:
+        base = _norm_forme(name)  # 'Swampert-Mega' -> 'Swampert'
+        if base != name:
+            nn = nicknames.get(base)
     return f"{name} ({nn})" if nn else name
 
 
@@ -3250,6 +3395,38 @@ def build_commentary(recap: dict) -> dict:
         else:
             parts.append(f"{atk} landed a crucial critical hit on {vic}.")
 
+    # Friendly fire — a mon KO'ing its own ally is a memorable blunder.
+    if f.get("self_kos"):
+        sk = f["self_kos"][0]
+        parts.append(
+            f"In a costly misplay, {N(sk['attacker'])} caught its own ally "
+            f"{N(sk['victim'])} with {sk['move']}, KO'ing it for {sk['team']}."
+        )
+    # A field condition that shaped the game (prefer TR/Tailwind/Swamp/weather over
+    # a plain screen). Name the setter.
+    fields = f.get("fields", [])
+    key_field = next(
+        (
+            fe
+            for fe in fields
+            if fe["kind"] in ("weather", "field")
+            or fe["label"].startswith(
+                ("Tailwind", "the Swamp", "the Rainbow", "the Sea")
+            )
+        ),
+        fields[0] if fields else None,
+    )
+    if key_field:
+        setter = key_field.get("setter")
+        who = (
+            f" ({N(setter)}, {key_field['team']})"
+            if setter and key_field.get("team")
+            else ""
+        )
+        if key_field["kind"] == "weather":
+            parts.append(f"{key_field['label'].capitalize()} set in{who}.")
+        else:
+            parts.append(f"{key_field['label']} went up{who}.")
     # A notable reveal, tied in as a closing detail.
     if f.get("teras"):
         t0 = f["teras"][0]
