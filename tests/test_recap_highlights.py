@@ -422,3 +422,111 @@ def test_template_mentions_self_ko_and_field():
     summary = R.build_commentary(rec)["summary"]
     assert "own ally" in summary or "misplay" in summary  # self-KO narrated
     assert "Grassy Terrain" in summary or "rain" in summary.lower()  # field mentioned
+
+
+# ── Dramatic-moment detectors (each test guards a false positive the adversarial
+#    review reproduced on the real fixtures) ──────────────────────────────────
+
+
+def test_alive_count_includes_passive_faints():
+    """The alive-count helper must count self-KOs (momentum drops them)."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_59.log", encoding="utf-8").read()
+        )
+    )
+    sh, sa, ws, tl = R._alive_by_turn(rec)
+    final_h = tl[-1][1]
+    # winner (HOME) finished with 2 alive (momentum wrongly said 3 due to self-KO)
+    assert final_h == rec["totals"]["home"]["left"] == 2
+
+
+def test_double_ko_requires_both_sides():
+    """A spread move KO'ing TWO opponents is NOT a mutual double-KO."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Gara|Garchomp, M|100/100",
+            "|switch|p2a: F1|Amoonguss, M|100/100",
+            "|switch|p2b: F2|Incineroar, M|100/100",
+            "|turn|1",
+            "|move|p1a: Gara|Earthquake|p2a: F1|[spread] p2a,p2b",
+            "|-damage|p2a: F1|0 fnt",
+            "|faint|p2a: F1",
+            "|-damage|p2b: F2|0 fnt",
+            "|faint|p2b: F2",
+            "|win|Alice",
+        ]
+    )
+    f = R.commentary_facts(R.build_recap(R.parse_log_recap(log)))
+    # both faints are AWAY — one side's blowout, not a trade
+    assert f["double_kos"] == []
+
+
+def test_clutch_excludes_survive_then_die_same_turn():
+    """Politoed: sliver at t8, KO+death both at t9 = a trade, NOT a clutch."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_59.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    assert f["clutch"] == [], f["clutch"]
+
+
+def test_clutch_fires_on_durable_sash_survival():
+    """A Focus Sash survivor that lives multiple more turns IS a clutch."""
+    log = "\n".join(
+        [
+            "|player|p1|Alice",
+            "|player|p2|Bob",
+            "|switch|p1a: Drag|Dragapult, M|100/100",
+            "|switch|p2a: Foe|Snorlax, M|100/100",
+            "|turn|1",
+            "|move|p2a: Foe|Body Slam|p1a: Drag",
+            "|-damage|p1a: Drag|1/100",
+            "|-enditem|p1a: Drag|Focus Sash",  # survived at 1 HP via Sash
+            "|turn|2",
+            "|move|p1a: Drag|Draco Meteor|p2a: Foe",
+            "|-damage|p2a: Foe|0 fnt",
+            "|faint|p2a: Foe",  # KO on a LATER turn, survives
+            "|turn|3",
+            "|win|Alice",  # Dragapult never faints
+        ]
+    )
+    f = R.commentary_facts(R.build_recap(R.parse_log_recap(log)))
+    assert any(
+        c["mon"] == "Dragapult" and c["mechanic"] == "Focus Sash" for c in f["clutch"]
+    )
+
+
+def test_grind_down_needs_two_ticks_and_indirect_ko():
+    """One poison tick finishing a mon is NOT a grind-down (fixture 58 Hitmontop)."""
+    rec = R.build_recap(
+        R.parse_log_recap(
+            open("tests/fixtures/yuricup_s9_58.log", encoding="utf-8").read()
+        )
+    )
+    f = R.commentary_facts(rec)
+    assert f["grind_downs"] == []
+
+
+def test_true_1v1_only_when_persists():
+    """Fixture 58 has a real 1v1 at t11 that persists to t13; fixture 59 has none."""
+    r58 = R.commentary_facts(
+        R.build_recap(
+            R.parse_log_recap(
+                open("tests/fixtures/yuricup_s9_58.log", encoding="utf-8").read()
+            )
+        )
+    )
+    r59 = R.commentary_facts(
+        R.build_recap(
+            R.parse_log_recap(
+                open("tests/fixtures/yuricup_s9_59.log", encoding="utf-8").read()
+            )
+        )
+    )
+    assert r58["one_v_one"] is not None
+    assert r59["one_v_one"] is None

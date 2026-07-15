@@ -2193,6 +2193,9 @@ def parse_log_recap(log: str) -> dict:
     hl_misses = []
     hl_fields = []  # field conditions: weather, terrain, Trick Room, Tailwind, screens, Swamp
     hl_selfkos = []  # friendly-fire KOs (a coach KO'ing their own mon) as a narrative beat
+    hl_clutch = []  # sliver survivals: Focus Sash / Sturdy / Endure / very-low-HP survival
+    _min_hp = {}  # slot -> {"pct": lowest HP% seen, "turn": when, "mon": species}
+    _residual = {}  # slot -> {source: set(turns)} — [from] chip ticks per victim, for grind-down
     _field_seen = set()  # de-dupe: only the FIRST activation of a given field effect
     hp_pct = {}  # slot -> last-known HP percent (0-100), for crit "mattered"
     _pending_crit = {}  # victim slot -> hp_before (percent) until the -damage resolves it
@@ -2444,6 +2447,17 @@ def parse_log_recap(log: str) -> dict:
                         "event": "consumed" if cmd == "-enditem" else "reveal",
                     }
                 )
+                # Focus Sash / Focus Band consumed = survived a KO hit at 1 HP.
+                if cmd == "-enditem" and item.lower() in ("focus sash", "focus band"):
+                    hl_clutch.append(
+                        {
+                            "turn": turn,
+                            "side": _slot_player(slot),
+                            "mon": active[slot],
+                            "pct": 1,
+                            "mechanic": item,
+                        }
+                    )
 
         elif cmd == "-miss" and len(parts) >= 3:
             atk_slot = _extract_slot(parts[2])
@@ -2512,6 +2526,22 @@ def parse_log_recap(log: str) -> dict:
                 src = of_m.group(1) if of_m else None
                 if src and active.get(src) and src != vslot:
                     bound_by[vslot] = {"side": _slot_player(src), "name": active[src]}
+            # Sturdy / Endure survived a KO hit at 1 HP — a sliver-survival mechanic.
+            el = effect.lower()
+            if (
+                vslot
+                and active.get(vslot)
+                and (el == "ability: sturdy" or el == "move: endure")
+            ):
+                hl_clutch.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(vslot),
+                        "mon": active[vslot],
+                        "pct": 1,
+                        "mechanic": "Sturdy" if "sturdy" in el else "Endure",
+                    }
+                )
 
         elif cmd == "-end" and len(parts) >= 3:
             eslot = _extract_slot(parts[2])
@@ -2638,6 +2668,36 @@ def parse_log_recap(log: str) -> dict:
                 )
             if new_hp is not None:
                 hp_pct[victim_slot] = new_hp
+                # Track the lowest HP this mon survived at (for clutch survival). Only
+                # a non-fainting tick counts (>0); a faint is handled at |faint|.
+                if new_hp > 0 and active.get(victim_slot):
+                    cur = _min_hp.get(victim_slot)
+                    if cur is None or new_hp < cur["pct"]:
+                        _min_hp[victim_slot] = {
+                            "pct": new_hp,
+                            "turn": turn,
+                            "mon": active[victim_slot],
+                        }
+            # Residual [from] chip (poison/burn/hazard/sandstorm) — count DISTINCT
+            # turns per victim+source, for the grind-down gate (needs >=2 ticks).
+            if "[from]" in rest and not of_m:
+                fm2 = re.search(r"\[from\]\s*([^|]+)", rest)
+                src = fm2.group(1).strip().lower() if fm2 else ""
+                bucket = None
+                if src in ("psn", "tox") or "toxic" in src:
+                    bucket = "poison"
+                elif src == "brn" or "burn" in src:
+                    bucket = "burn"
+                elif _hazard_id(src):
+                    bucket = "hazards"
+                elif "sandstorm" in src:
+                    bucket = "sandstorm"
+                if bucket and active.get(victim_slot):
+                    ent = _residual.setdefault(
+                        victim_slot, {"mon": active[victim_slot]}
+                    )
+                    ent["mon"] = active[victim_slot]
+                    ent.setdefault(bucket, set()).add(turn)
             pending_se[victim_slot] = False
 
         elif cmd == "faint" and len(parts) >= 3:
@@ -2743,6 +2803,28 @@ def parse_log_recap(log: str) -> dict:
             "misses": hl_misses,
             "fields": hl_fields,
             "self_kos": hl_selfkos,
+            # Clutch: explicit sliver mechanics (Sash/Sturdy/Endure) PLUS any mon that
+            # dipped to <=10% HP and survived the tick. commentary_facts applies the
+            # "still contributed / survived later" gate before narrating.
+            "clutch": hl_clutch
+            + [
+                {
+                    "turn": v["turn"],
+                    "side": _slot_player(slot),
+                    "mon": v["mon"],
+                    "pct": round(v["pct"]),
+                    "mechanic": None,
+                }
+                for slot, v in _min_hp.items()
+                if v["pct"] <= 10
+            ],
+            # Residual chip per victim: {mon: {source: [turns]}} — for grind-down gate.
+            "residual": {
+                d["mon"]: {
+                    src: sorted(turns) for src, turns in d.items() if src != "mon"
+                }
+                for d in _residual.values()
+            },
         },
     }
 
@@ -3081,6 +3163,51 @@ def build_recap(
     }
 
 
+def _alive_by_turn(recap):
+    """End-of-turn alive counts per side, derived from koLog by VICTIM side —
+    INCLUDING passive/self-KO faints that recap['momentum'] silently drops.
+    Returns (start_home, start_away, [(turn, home_alive, away_alive), ...]) with one
+    entry per settled turn boundary (all faints of a turn collapsed). This is the
+    trustworthy basis for last-mon / 1v1 / comeback reads (momentum desyncs on
+    friendly fire — see the adversarial review)."""
+    totals = recap.get("totals", {})
+    winner_side = totals.get("winner")  # "HOME"/"AWAY"
+    start_h = (
+        totals.get("home", {}).get("used") or totals.get("home", {}).get("brought") or 0
+    )
+    start_a = (
+        totals.get("away", {}).get("used") or totals.get("away", {}).get("brought") or 0
+    )
+    # self-KO victims are keyed by p1/p2 → map to HOME/AWAY via homeSide.
+    home_pid = recap.get("facts", {}).get("homeSide") or "p1"
+    self_ko_turns = {}  # turn -> Counter of victim-HOME/AWAY faints from friendly fire
+    for s in recap.get("highlights", {}).get("self_kos", []):
+        vside = "HOME" if s.get("side") == home_pid else "AWAY"
+        self_ko_turns.setdefault(s.get("turn"), []).append(vside)
+    # Count faints per turn, per VICTIM side. A koLog entry's `side` is the ATTACKER
+    # side, so a HOME-attributed KO removed an AWAY mon and vice-versa. PASSIVE
+    # entries are self-KOs, already counted via self_kos above (skip to avoid double).
+    faints = {}  # turn -> {"HOME": n, "AWAY": n}
+    for k in recap.get("koLog", []):
+        t = k.get("t")
+        side = k.get("side")
+        if side == "HOME":
+            faints.setdefault(t, {"HOME": 0, "AWAY": 0})["AWAY"] += 1
+        elif side == "AWAY":
+            faints.setdefault(t, {"HOME": 0, "AWAY": 0})["HOME"] += 1
+    for t, vsides in self_ko_turns.items():
+        f = faints.setdefault(t, {"HOME": 0, "AWAY": 0})
+        for vs in vsides:
+            f[vs] += 1
+    h, a = start_h, start_a
+    timeline = []
+    for t in sorted(faints):
+        h -= faints[t]["HOME"]
+        a -= faints[t]["AWAY"]
+        timeline.append((t, max(0, h), max(0, a)))
+    return start_h, start_a, winner_side, timeline
+
+
 def commentary_facts(recap: dict) -> dict:
     """Distill a finished build_recap dict into the compact fact set both the
     template commentary and an LLM prompt work from. Kept separate so the LLM
@@ -3210,6 +3337,129 @@ def commentary_facts(recap: dict) -> dict:
         }
         for s in hl.get("self_kos", [])
     ][:4]
+
+    # ── Dramatic-moment detectors (adversarially verified — each guard below
+    #    kills a false positive the review reproduced on the real fixtures) ──
+    ko_log = recap.get("koLog", [])
+    start_h, start_a, wside, alive_tl = _alive_by_turn(recap)
+    ko_turns = {}  # turn -> set of sides that scored a real (non-passive) KO
+    for k in ko_log:
+        if k.get("side") in ("HOME", "AWAY"):
+            ko_turns.setdefault(k.get("t"), set()).add(k["side"])
+
+    def _team_side(side):  # "HOME"/"AWAY" -> team name
+        return home if side == "HOME" else away
+
+    # 1. DOUBLE-KO / mutual trade: a turn where BOTH sides lost a mon to a REAL
+    #    attacker (passive/self-KOs excluded — they're not a trade).
+    double_kos = []
+    for k in ko_log:
+        t = k.get("t")
+        if k.get("side") in ("HOME", "AWAY") and ko_turns.get(t, set()) >= {
+            "HOME",
+            "AWAY",
+        }:
+            if not any(d["turn"] == t for d in double_kos):
+                vics = [
+                    (kk.get("by"), kk.get("vs"))
+                    for kk in ko_log
+                    if kk.get("t") == t and kk.get("side") in ("HOME", "AWAY")
+                ]
+                double_kos.append({"turn": t, "trades": vics})
+    double_kos = double_kos[:3]
+
+    # 2. TRUE 1v1 ENDGAME: both sides settle at exactly 1 mon AND it persists to the
+    #    end (no later boundary shows either side >1). Transient mid-double-KO 1-1
+    #    rows are excluded because we only read SETTLED end-of-turn counts.
+    one_v_one = None
+    for i, (t, h, a) in enumerate(alive_tl):
+        if h == 1 and a == 1 and all(hh <= 1 and aa <= 1 for _, hh, aa in alive_tl[i:]):
+            one_v_one = {"turn": t}
+            break
+    # "On the ropes": a side down to its LAST mon while the opponent still has >=2
+    # (outnumbered, but only dramatic if that mon then acts again) — minor beat.
+    last_stand = None
+    for i, (t, h, a) in enumerate(alive_tl[:-1]):
+        thin, opp = (h, a) if wside == "AWAY" else (a, h)  # the trailing side
+        if thin == 1 and opp >= 2:
+            last_stand = {
+                "turn": t,
+                "team": _team_side("HOME" if thin == h else "AWAY"),
+            }
+            break
+
+    # 3. COMEBACK: the eventual WINNER fell behind in mons then recovered. Uses the
+    #    corrected alive timeline (momentum desyncs on friendly fire).
+    comeback = None
+    worst = 0
+    for t, h, a in alive_tl:
+        lead = (h - a) if wside == "HOME" else (a - h)  # winner's mon lead
+        worst = min(worst, lead)
+    if worst <= -2:
+        comeback = {"deficit": -worst}
+
+    # 4. CLUTCH SURVIVAL: a sliver mechanic (Sash/Sturdy/Endure) or <=10% HP survival
+    #    that DURABLY held — the mon must survive to a STRICTLY LATER turn, OR score
+    #    a KO on a later turn. (Kills the "survived 2%, KO'd and died same turn" FP.)
+    faint_turn = {}  # mon -> earliest faint turn (by victim name)
+    for k in ko_log:
+        v = k.get("vs")
+        if v and (v not in faint_turn or k.get("t", 0) < faint_turn[v]):
+            faint_turn[v] = k.get("t")
+    ko_by_mon_turns = {}  # attacker mon -> [turns it scored a KO]
+    for k in ko_log:
+        if k.get("by") and k.get("side") in ("HOME", "AWAY"):
+            ko_by_mon_turns.setdefault(k["by"], []).append(k.get("t"))
+    clutch = []
+    for c in hl.get("clutch", []):
+        mon, ct = c["mon"], c["turn"]
+        died = faint_turn.get(mon)
+        # DURABLE survival is required (adversarial-review guard): the mon must be
+        # alive at the END of a turn STRICTLY AFTER the sliver turn — i.e. it lived
+        # through a whole subsequent turn. A mon that survives low then dies the very
+        # next turn it acts (even if it scored a KO that turn) is a trade, not a
+        # clutch. died is None => survived to game end (durable).
+        durable = died is None or died > ct + 1
+        # A KO counts as contribution only if scored STRICTLY BEFORE it died.
+        later_ko = any(
+            t > ct and (died is None or t < died) for t in ko_by_mon_turns.get(mon, [])
+        )
+        if durable:
+            clutch.append(
+                {
+                    "turn": ct,
+                    "team": _team_of(c["side"]) if c.get("side") else None,
+                    "mon": mon,
+                    "pct": c.get("pct"),
+                    "mechanic": c.get("mechanic"),
+                    "then_ko": bool(later_ko),
+                }
+            )
+    clutch = clutch[:3]
+
+    # 5. GRIND-DOWN: a mon worn down by the SAME residual source over >=2 turns AND
+    #    finished by an indirect KO. (A single chip tick finishing a mon is not a grind.)
+    residual = hl.get("residual", {})
+    grind_downs = []
+    for k in ko_log:
+        if not k.get("indirect") or not k.get("by"):
+            continue
+        vic = k.get("vs")
+        srcs = residual.get(vic, {})
+        heavy = [(src, turns) for src, turns in srcs.items() if len(turns) >= 2]
+        if heavy:
+            src, turns = max(heavy, key=lambda x: len(x[1]))
+            grind_downs.append(
+                {
+                    "turn": k.get("t"),
+                    "victim": vic,
+                    "team": away if _team_side(k.get("side")) == home else home,
+                    "source": src,
+                    "ticks": len(turns),
+                }
+            )
+    grind_downs = grind_downs[:3]
+
     # Multi-KO sweeps from stars (already computed with KO counts).
     sweeps = []
     for s in recap.get("stars", []):
@@ -3245,6 +3495,12 @@ def commentary_facts(recap: dict) -> dict:
         "sweeps": sweeps,
         "fields": fields,
         "self_kos": self_kos,
+        "double_kos": double_kos,
+        "one_v_one": one_v_one,
+        "last_stand": last_stand,
+        "comeback": comeback,
+        "clutch": clutch,
+        "grind_downs": grind_downs,
         "nicknames": recap.get("nicknames", {}),
     }
 
@@ -3427,6 +3683,33 @@ def build_commentary(recap: dict) -> dict:
             parts.append(f"{key_field['label'].capitalize()} set in{who}.")
         else:
             parts.append(f"{key_field['label']} went up{who}.")
+    # ── New dramatic beats (verified true) — add the single biggest one or two ──
+    if f.get("comeback"):
+        parts.append(
+            f"{winner} was down {f['comeback']['deficit']} Pokemon at the low point "
+            f"and stormed all the way back."
+        )
+    if f.get("clutch"):
+        cl = f["clutch"][0]
+        how = f"a {cl['mechanic']}" if cl.get("mechanic") else f"just {cl['pct']}% HP"
+        tail = (
+            " and lived to strike back" if cl.get("then_ko") else " and refused to fall"
+        )
+        parts.append(f"{N(cl['mon'])} clung on with {how}{tail}.")
+    if f.get("one_v_one"):
+        parts.append(
+            f"It came down to a true last-Pokemon standoff on turn {f['one_v_one']['turn']}."
+        )
+    elif f.get("double_kos"):
+        dk = f["double_kos"][0]
+        parts.append(
+            f"Turn {dk['turn']} was a wild double-KO as both sides traded blows."
+        )
+    if f.get("grind_downs"):
+        gd = f["grind_downs"][0]
+        parts.append(
+            f"{N(gd['victim'])} was ground down by {gd['source']} over {gd['ticks']} turns."
+        )
     # A notable reveal, tied in as a closing detail.
     if f.get("teras"):
         t0 = f["teras"][0]
