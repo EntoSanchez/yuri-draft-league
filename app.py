@@ -4070,9 +4070,71 @@ def admin_transactions():
             flash("Transaction added!", "success")
         elif action == "delete":
             tid = request.form["transaction_id"]
+            reverse = request.form.get("reverse_roster")
             with get_db() as db:
+                txn = db.execute("SELECT * FROM transactions WHERE id=?", (tid,)).fetchone()
+                # Undo the roster change this transaction made (unless opted out):
+                # remove the acquired mon, restore the dropped mon. Guarding against
+                # the duplicate/missing-mon state that a bare delete leaves behind.
+                if reverse and txn:
+                    coach1_id = txn["coach1_id"]
+                    pokemon_in = txn["pokemon_in"] or ""
+                    pokemon_out = txn["pokemon_out"] or ""
+                    if pokemon_in:
+                        # Delete a single copy of the acquired mon (not all), so a
+                        # mon a coach legitimately holds twice isn't over-removed.
+                        row = db.execute(
+                            "SELECT id FROM pokemon_roster WHERE coach_id=? AND pokemon_name=? "
+                            "ORDER BY id DESC LIMIT 1",
+                            (coach1_id, pokemon_in)
+                        ).fetchone()
+                        if row:
+                            db.execute("DELETE FROM pokemon_roster WHERE id=?", (row["id"],))
+                    if pokemon_out:
+                        # Restore the dropped mon with its real points/slot, but only
+                        # if it isn't already back on the roster.
+                        exists = db.execute(
+                            "SELECT 1 FROM pokemon_roster WHERE coach_id=? AND pokemon_name=?",
+                            (coach1_id, pokemon_out)
+                        ).fetchone()
+                        if not exists:
+                            pr = db.execute(
+                                "SELECT points, tier_label, is_mega FROM draft_tiers WHERE name=?",
+                                (pokemon_out,)
+                            ).fetchone()
+                            if pr:
+                                pts = pr["points"] or 0
+                                settings = {r["key"]: r["value"] for r in db.execute(
+                                    "SELECT key, value FROM league_settings"
+                                ).fetchall()}
+                                mega_names_set = {r["name"] for r in db.execute(
+                                    "SELECT name FROM draft_tiers WHERE is_mega=1"
+                                ).fetchall()}
+                                coach_roster = db.execute(
+                                    "SELECT tier, is_free_pick FROM pokemon_roster WHERE coach_id=?",
+                                    (coach1_id,)
+                                ).fetchall()
+                                slot, is_free = _transaction_slot(
+                                    db, coach1_id, pokemon_out, pts,
+                                    pr["tier_label"], pr["is_mega"],
+                                    mega_names_set, coach_roster, settings
+                                )
+                                db.execute(
+                                    "INSERT INTO pokemon_roster "
+                                    "(coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) "
+                                    "VALUES (?,?,?,?,0,0,?)",
+                                    (coach1_id, pokemon_out, pts, slot, 1 if is_free else 0)
+                                )
+                            else:
+                                db.execute(
+                                    "INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier) VALUES (?,?,0,'FA')",
+                                    (coach1_id, pokemon_out)
+                                )
                 db.execute("DELETE FROM transactions WHERE id=?", (tid,))
-            flash("Transaction deleted.", "warning")
+            if reverse:
+                flash("Transaction deleted and its roster change reversed.", "warning")
+            else:
+                flash("Transaction deleted (roster left unchanged).", "warning")
         return redirect(url_for("admin_transactions"))
     with get_db() as db:
         tier_rows = db.execute(
@@ -4084,6 +4146,7 @@ def admin_transactions():
                            transactions=txns,
                            draft_pokemon=draft_pokemon,
                            roster_fixes=_compute_roster_point_fixes(),
+                           roster_dupes=_compute_roster_duplicates(),
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 
@@ -4174,6 +4237,68 @@ def admin_backfill_roster_points():
             )
     flash(f"Corrected point values for {len(fixes)} roster entr"
           f"{'y' if len(fixes) == 1 else 'ies'}.", "success")
+    return redirect(url_for("admin_transactions"))
+
+
+def _compute_roster_duplicates():
+    """Find (coach_id, pokemon_name) pairs a coach holds more than once on their
+    roster — e.g. a transaction was deleted without reversing its roster add.
+    Returns a list of groups: for each, the row we'd KEEP and the extra row ids
+    we'd DELETE. The kept row prefers real points and a non-FA tier. Read-only."""
+    groups = []
+    with get_db() as db:
+        dups = db.execute("""
+            SELECT coach_id, pokemon_name, COUNT(*) n
+            FROM pokemon_roster
+            GROUP BY coach_id, pokemon_name
+            HAVING n > 1
+        """).fetchall()
+        for d in dups:
+            rows = db.execute(
+                "SELECT pr.id, pr.points, pr.tier, pr.is_free_pick, c.coach_name "
+                "FROM pokemon_roster pr JOIN coaches c ON c.id = pr.coach_id "
+                "WHERE pr.coach_id=? AND pr.pokemon_name=? ORDER BY pr.id",
+                (d["coach_id"], d["pokemon_name"])
+            ).fetchall()
+            # Rank rows "best first": real points beats 0, a real tier beats 'FA'
+            # / blank, then lowest id (the original) as a stable tiebreak.
+            def _rank(r):
+                has_pts = 1 if (r["points"] or 0) > 0 else 0
+                real_tier = 0 if (r["tier"] or "") in ("", "FA") else 1
+                return (has_pts, real_tier, -r["id"])
+            ordered = sorted(rows, key=_rank, reverse=True)
+            keep = ordered[0]
+            delete_ids = [r["id"] for r in ordered[1:]]
+            groups.append({
+                "coach_id": d["coach_id"],
+                "coach_name": keep["coach_name"],
+                "pokemon_name": d["pokemon_name"],
+                "count": d["n"],
+                "keep_id": keep["id"],
+                "keep_points": keep["points"] or 0,
+                "keep_tier": keep["tier"] or "",
+                "delete_ids": delete_ids,
+            })
+    return groups
+
+
+@app.route("/admin/transactions/dedup_roster", methods=["POST"])
+@admin_required
+def admin_dedup_roster():
+    """Remove duplicate roster entries, keeping the best row per (coach, pokemon).
+    Recomputes fresh at apply time so the DB is the source of truth."""
+    groups = _compute_roster_duplicates()
+    if not groups:
+        flash("No duplicate roster entries found — nothing to fix.", "info")
+        return redirect(url_for("admin_transactions"))
+    removed = 0
+    with get_db() as db:
+        for g in groups:
+            for did in g["delete_ids"]:
+                db.execute("DELETE FROM pokemon_roster WHERE id=?", (did,))
+                removed += 1
+    flash(f"Removed {removed} duplicate roster entr"
+          f"{'y' if removed == 1 else 'ies'}.", "success")
     return redirect(url_for("admin_transactions"))
 
 

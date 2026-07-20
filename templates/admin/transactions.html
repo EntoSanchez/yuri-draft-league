@@ -132,6 +132,53 @@
 </div>
 {% endif %}
 
+<!-- Duplicate roster cleanup (only shown when a coach holds a mon more than once) -->
+{% if roster_dupes %}
+<div class="bg-red-950/40 border border-red-700/60 rounded-xl p-5 mb-8 max-w-3xl">
+    <h2 class="font-bold text-lg mb-1 text-red-300 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Remove duplicate roster entries
+    </h2>
+    <p class="text-sm text-red-200/80 mb-4">
+        {{ roster_dupes|length }} Pokemon {{ 'is' if roster_dupes|length == 1 else 'are' }}
+        listed more than once on a roster (usually from deleting a transaction without
+        undoing its roster change). One copy of each will be kept and the extras removed.
+    </p>
+    <div class="overflow-x-auto rounded-lg border border-red-800/50 mb-4">
+        <table class="w-full text-sm">
+            <thead class="bg-red-900/40 text-red-200/70 uppercase text-xs">
+                <tr>
+                    <th class="px-3 py-2 text-left">Coach</th>
+                    <th class="px-3 py-2 text-left">Pokemon</th>
+                    <th class="px-3 py-2 text-center">Copies</th>
+                    <th class="px-3 py-2 text-center">Keeping</th>
+                    <th class="px-3 py-2 text-center">Removing</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in roster_dupes %}
+                <tr class="border-t border-red-800/40">
+                    <td class="px-3 py-2 text-gray-200">{{ g.coach_name }}</td>
+                    <td class="px-3 py-2 text-gray-200">{{ g.pokemon_name }}</td>
+                    <td class="px-3 py-2 text-center font-mono">{{ g.count }}</td>
+                    <td class="px-3 py-2 text-center text-xs text-green-400">
+                        {{ g.keep_points }} pts · {{ g.keep_tier or '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-center font-mono text-red-400">{{ g.delete_ids|length }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <form method="POST" action="{{ url_for('admin_dedup_roster') }}"
+          onsubmit="return confirm('Remove duplicate roster entries? One copy of each Pokemon is kept.')">
+        <button type="submit" class="px-5 py-2 bg-red-700 hover:bg-red-600 rounded font-semibold">
+            Remove duplicates
+        </button>
+    </form>
+</div>
+{% endif %}
+
 <!-- Transaction List -->
 {% if transactions %}
 <div class="overflow-x-auto rounded-lg border border-gray-700 max-w-4xl">
@@ -164,9 +211,10 @@
                     {{ t.notes or '' }}
                 </td>
                 <td class="px-3 py-3">
-                    <form method="POST" onsubmit="return confirm('Delete this transaction?')">
+                    <form method="POST" onsubmit="return confirm('Delete this transaction and undo its roster change (remove {{ t.pokemon_in or 'the acquired mon' }}, restore {{ t.pokemon_out or 'the dropped mon' }})?')">
                         <input type="hidden" name="action" value="delete">
                         <input type="hidden" name="transaction_id" value="{{ t.id }}">
+                        <input type="hidden" name="reverse_roster" value="1">
                         <button type="submit" class="text-red-500 hover:text-red-400 text-xs">Delete</button>
                     </form>
                 </td>
