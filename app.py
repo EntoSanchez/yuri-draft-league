@@ -4076,7 +4076,73 @@ def admin_transactions():
                            coaches=coaches,
                            transactions=txns,
                            draft_pokemon=draft_pokemon,
+                           roster_fixes=_compute_roster_point_fixes(),
                            league_name=get_setting("league_name", "Pokemon Draft League"))
+
+
+def _compute_roster_point_fixes():
+    """Find pokemon_roster rows whose stored points disagree with the draft
+    tier list (e.g. transaction adds that were saved with points=0/tier='FA'
+    before the lookup fix). Returns a list of dicts describing the correction
+    each row needs. Rows already matching, or whose name isn't in the tier
+    list, are skipped. Read-only — does not modify anything."""
+    fixes = []
+    with get_db() as db:
+        mega_names_set = {r["name"] for r in db.execute(
+            "SELECT name FROM draft_tiers WHERE is_mega=1"
+        ).fetchall()}
+        rows = db.execute("""
+            SELECT pr.id, pr.coach_id, pr.pokemon_name, pr.points AS roster_pts,
+                   pr.tier AS roster_tier, dt.points AS real_pts,
+                   c.coach_name
+            FROM pokemon_roster pr
+            JOIN draft_tiers dt ON dt.name = pr.pokemon_name
+            JOIN coaches c ON c.id = pr.coach_id
+            WHERE COALESCE(pr.points, 0) != COALESCE(dt.points, 0)
+            ORDER BY c.coach_name, pr.pokemon_name
+        """).fetchall()
+        for r in rows:
+            real_pts = r["real_pts"] or 0
+            # Recompute the slot the way a live pick / a fixed transaction would,
+            # excluding this row itself from the "existing roster" tally so it
+            # doesn't double-count against its own tier's slot limits.
+            coach_roster = db.execute(
+                "SELECT tier, is_free_pick FROM pokemon_roster WHERE coach_id=? AND id!=?",
+                (r["coach_id"], r["id"])
+            ).fetchall()
+            slot, is_free = _auto_slot(r["pokemon_name"], real_pts, mega_names_set, coach_roster)
+            fixes.append({
+                "id": r["id"],
+                "coach_name": r["coach_name"],
+                "pokemon_name": r["pokemon_name"],
+                "old_points": r["roster_pts"] or 0,
+                "new_points": real_pts,
+                "old_tier": r["roster_tier"] or "",
+                "new_tier": slot,
+                "is_free": 1 if is_free else 0,
+            })
+    return fixes
+
+
+@app.route("/admin/transactions/backfill_points", methods=["POST"])
+@admin_required
+def admin_backfill_roster_points():
+    """Apply the point/tier corrections computed by _compute_roster_point_fixes
+    to the live roster. Recomputes fixes fresh at apply time (not from form
+    data) so the DB is the single source of truth."""
+    fixes = _compute_roster_point_fixes()
+    if not fixes:
+        flash("No roster point mismatches found — nothing to fix.", "info")
+        return redirect(url_for("admin_transactions"))
+    with get_db() as db:
+        for f in fixes:
+            db.execute(
+                "UPDATE pokemon_roster SET points=?, tier=?, is_free_pick=? WHERE id=?",
+                (f["new_points"], f["new_tier"], f["is_free"], f["id"])
+            )
+    flash(f"Corrected point values for {len(fixes)} roster entr"
+          f"{'y' if len(fixes) == 1 else 'ies'}.", "success")
+    return redirect(url_for("admin_transactions"))
 
 
 @app.route("/admin/rules", methods=["GET", "POST"])

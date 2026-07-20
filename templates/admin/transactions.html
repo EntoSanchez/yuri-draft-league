@@ -81,6 +81,57 @@
     </form>
 </div>
 
+<!-- Roster point-value backfill (only shown when there are mismatches to fix) -->
+{% if roster_fixes %}
+<div class="bg-amber-950/40 border border-amber-700/60 rounded-xl p-5 mb-8 max-w-3xl">
+    <h2 class="font-bold text-lg mb-1 text-amber-300 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+        Fix roster point values
+    </h2>
+    <p class="text-sm text-amber-200/80 mb-4">
+        {{ roster_fixes|length }} roster entr{{ 'y has' if roster_fixes|length == 1 else 'ies have' }}
+        point values that don't match the tier list (older transactions saved before the fix).
+        Review the corrections below and apply them.
+    </p>
+    <div class="overflow-x-auto rounded-lg border border-amber-800/50 mb-4">
+        <table class="w-full text-sm">
+            <thead class="bg-amber-900/40 text-amber-200/70 uppercase text-xs">
+                <tr>
+                    <th class="px-3 py-2 text-left">Coach</th>
+                    <th class="px-3 py-2 text-left">Pokemon</th>
+                    <th class="px-3 py-2 text-center">Points</th>
+                    <th class="px-3 py-2 text-center">Tier / Slot</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in roster_fixes %}
+                <tr class="border-t border-amber-800/40">
+                    <td class="px-3 py-2 text-gray-200">{{ f.coach_name }}</td>
+                    <td class="px-3 py-2 text-gray-200">{{ f.pokemon_name }}</td>
+                    <td class="px-3 py-2 text-center font-mono">
+                        <span class="text-red-400">{{ f.old_points }}</span>
+                        <span class="text-gray-500">→</span>
+                        <span class="text-green-400">{{ f.new_points }}</span>
+                    </td>
+                    <td class="px-3 py-2 text-center text-xs">
+                        <span class="text-red-400">{{ f.old_tier or '—' }}</span>
+                        <span class="text-gray-500">→</span>
+                        <span class="text-green-400">{{ f.new_tier }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <form method="POST" action="{{ url_for('admin_backfill_roster_points') }}"
+          onsubmit="return confirm('Apply {{ roster_fixes|length }} point-value correction(s) to the roster?')">
+        <button type="submit" class="px-5 py-2 bg-amber-700 hover:bg-amber-600 rounded font-semibold">
+            Apply {{ roster_fixes|length }} correction{{ '' if roster_fixes|length == 1 else 's' }}
+        </button>
+    </form>
+</div>
+{% endif %}
+
 <!-- Transaction List -->
 {% if transactions %}
 <div class="overflow-x-auto rounded-lg border border-gray-700 max-w-4xl">
