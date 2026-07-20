@@ -4036,11 +4036,14 @@ def admin_transactions():
                         # a live draft pick (see draft_live_pick). Falls back to a
                         # 0-pt "FA" slot only if the name isn't in the tier list.
                         poke_row = db.execute(
-                            "SELECT points, is_mega FROM draft_tiers WHERE name=?",
+                            "SELECT points, tier_label, is_mega FROM draft_tiers WHERE name=?",
                             (pokemon_in,)
                         ).fetchone()
                         if poke_row:
                             points = poke_row["points"] or 0
+                            settings = {r["key"]: r["value"] for r in db.execute(
+                                "SELECT key, value FROM league_settings"
+                            ).fetchall()}
                             mega_names_set = {r["name"] for r in db.execute(
                                 "SELECT name FROM draft_tiers WHERE is_mega=1"
                             ).fetchall()}
@@ -4048,7 +4051,11 @@ def admin_transactions():
                                 "SELECT tier, is_free_pick FROM pokemon_roster WHERE coach_id=?",
                                 (coach1_id,)
                             ).fetchall()
-                            slot, is_free = _auto_slot(pokemon_in, points, mega_names_set, coach_roster)
+                            slot, is_free = _transaction_slot(
+                                db, coach1_id, pokemon_in, points,
+                                poke_row["tier_label"], poke_row["is_mega"],
+                                mega_names_set, coach_roster, settings
+                            )
                             db.execute(
                                 "INSERT OR IGNORE INTO pokemon_roster "
                                 "(coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) "
@@ -4080,6 +4087,24 @@ def admin_transactions():
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 
+def _transaction_slot(db, coach_id, pokemon_name, points, tier_label, is_mega,
+                      mega_names_set, coach_roster, settings):
+    """Decide the roster slot for a transaction-acquired mon, mirroring the
+    live-draft flow (draft_live_pick): uber-cost mons route to 'Uber 1'/'Uber 2'
+    instead of a regular tier. A mon is uber if its tier_label is an uber name,
+    it's a mega at an uber-cost tier, or its points fall in UBER_POINTS (27-30).
+    Non-uber mons fall through to _auto_slot. Returns (slot_name, is_free_pick)."""
+    poke_uber = _uber_named(tier_label or "")
+    mega_uber = _mega_tier_label(points, settings) if is_mega else ""
+    if poke_uber or mega_uber or points in UBER_POINTS:
+        # Fill Uber 1 before Uber 2 (each holds up to 2 picks, matching the
+        # live-draft assignment in draft_live_pick).
+        uber1 = sum(1 for p in coach_roster if p["tier"] == "Uber 1")
+        slot = "Uber 2" if uber1 >= 2 else "Uber 1"
+        return slot, False
+    return _auto_slot(pokemon_name, points, mega_names_set, coach_roster)
+
+
 def _compute_roster_point_fixes():
     """Find pokemon_roster rows whose stored points disagree with the draft
     tier list (e.g. transaction adds that were saved with points=0/tier='FA'
@@ -4088,12 +4113,16 @@ def _compute_roster_point_fixes():
     list, are skipped. Read-only — does not modify anything."""
     fixes = []
     with get_db() as db:
+        settings = {r["key"]: r["value"] for r in db.execute(
+            "SELECT key, value FROM league_settings"
+        ).fetchall()}
         mega_names_set = {r["name"] for r in db.execute(
             "SELECT name FROM draft_tiers WHERE is_mega=1"
         ).fetchall()}
         rows = db.execute("""
             SELECT pr.id, pr.coach_id, pr.pokemon_name, pr.points AS roster_pts,
                    pr.tier AS roster_tier, dt.points AS real_pts,
+                   dt.tier_label AS real_label, dt.is_mega AS is_mega,
                    c.coach_name
             FROM pokemon_roster pr
             JOIN draft_tiers dt ON dt.name = pr.pokemon_name
@@ -4110,7 +4139,10 @@ def _compute_roster_point_fixes():
                 "SELECT tier, is_free_pick FROM pokemon_roster WHERE coach_id=? AND id!=?",
                 (r["coach_id"], r["id"])
             ).fetchall()
-            slot, is_free = _auto_slot(r["pokemon_name"], real_pts, mega_names_set, coach_roster)
+            slot, is_free = _transaction_slot(
+                db, r["coach_id"], r["pokemon_name"], real_pts,
+                r["real_label"], r["is_mega"], mega_names_set, coach_roster, settings
+            )
             fixes.append({
                 "id": r["id"],
                 "coach_name": r["coach_name"],
