@@ -4031,10 +4031,35 @@ def admin_transactions():
                             (coach1_id, pokemon_out)
                         )
                     if pokemon_in:
-                        db.execute(
-                            "INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier) VALUES (?,?,0,'FA')",
-                            (coach1_id, pokemon_in)
-                        )
+                        # Resolve the real point value / tier slot from the draft
+                        # tier list so the roster shows correct points — exactly like
+                        # a live draft pick (see draft_live_pick). Falls back to a
+                        # 0-pt "FA" slot only if the name isn't in the tier list.
+                        poke_row = db.execute(
+                            "SELECT points, is_mega FROM draft_tiers WHERE name=?",
+                            (pokemon_in,)
+                        ).fetchone()
+                        if poke_row:
+                            points = poke_row["points"] or 0
+                            mega_names_set = {r["name"] for r in db.execute(
+                                "SELECT name FROM draft_tiers WHERE is_mega=1"
+                            ).fetchall()}
+                            coach_roster = db.execute(
+                                "SELECT tier, is_free_pick FROM pokemon_roster WHERE coach_id=?",
+                                (coach1_id,)
+                            ).fetchall()
+                            slot, is_free = _auto_slot(pokemon_in, points, mega_names_set, coach_roster)
+                            db.execute(
+                                "INSERT OR IGNORE INTO pokemon_roster "
+                                "(coach_id, pokemon_name, points, tier, is_tera_captain, is_zmove_captain, is_free_pick) "
+                                "VALUES (?,?,?,?,0,0,?)",
+                                (coach1_id, pokemon_in, points, slot, 1 if is_free else 0)
+                            )
+                        else:
+                            db.execute(
+                                "INSERT INTO pokemon_roster (coach_id, pokemon_name, points, tier) VALUES (?,?,0,'FA')",
+                                (coach1_id, pokemon_in)
+                            )
             flash("Transaction added!", "success")
         elif action == "delete":
             tid = request.form["transaction_id"]
@@ -4042,9 +4067,15 @@ def admin_transactions():
                 db.execute("DELETE FROM transactions WHERE id=?", (tid,))
             flash("Transaction deleted.", "warning")
         return redirect(url_for("admin_transactions"))
+    with get_db() as db:
+        tier_rows = db.execute(
+            "SELECT name, points FROM draft_tiers WHERE is_banned != 1 ORDER BY name"
+        ).fetchall()
+    draft_pokemon = [{"name": r["name"], "points": r["points"] or 0} for r in tier_rows]
     return render_template("admin/transactions.html",
                            coaches=coaches,
                            transactions=txns,
+                           draft_pokemon=draft_pokemon,
                            league_name=get_setting("league_name", "Pokemon Draft League"))
 
 

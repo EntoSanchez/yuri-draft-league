@@ -36,14 +36,23 @@
         </div>
         <div>
             <label class="block text-xs text-gray-400 mb-1">Dropped (out)</label>
-            <input type="text" name="pokemon_out" placeholder="Pokemon dropped"
+            <input type="text" name="pokemon_out" list="pokemon_list" autocomplete="off"
+                   oninput="updatePts('pokemon_out')" placeholder="Type to search…"
                    class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+            <p id="pokemon_out_pts" class="text-xs text-gray-500 mt-1 h-4"></p>
         </div>
         <div>
             <label class="block text-xs text-gray-400 mb-1">Acquired (in)</label>
-            <input type="text" name="pokemon_in" placeholder="Pokemon acquired"
+            <input type="text" name="pokemon_in" list="pokemon_list" autocomplete="off"
+                   oninput="updatePts('pokemon_in')" placeholder="Type to search…"
                    class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
+            <p id="pokemon_in_pts" class="text-xs text-gray-500 mt-1 h-4"></p>
         </div>
+        <datalist id="pokemon_list">
+            {% for p in draft_pokemon %}
+            <option value="{{ p.name }}">{{ p.points }} pts</option>
+            {% endfor %}
+        </datalist>
         <div id="coach2_field" class="hidden">
             <label class="block text-xs text-gray-400 mb-1">Trade Partner</label>
             <select name="coach2_id" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-yellow-500 focus:outline-none">
@@ -60,7 +69,7 @@
         </div>
         <div class="col-span-2 sm:col-span-3 flex items-center gap-4">
             <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
-                <input type="checkbox" name="update_roster" class="accent-blue-500">
+                <input type="checkbox" name="update_roster" class="accent-blue-500" checked>
                 Auto-update roster (drop/add pokemon)
             </label>
         </div>
@@ -123,6 +132,27 @@
 function toggleTradeField() {
     const type = document.getElementById('event_type').value;
     document.getElementById('coach2_field').classList.toggle('hidden', type !== 'Trade');
+}
+
+// name → point value, from the draft tier list
+const POKE_PTS = {
+    {% for p in draft_pokemon %}"{{ p.name|e }}": {{ p.points }},
+    {% endfor %}
+};
+
+function updatePts(field) {
+    const name = document.querySelector('[name="' + field + '"]').value.trim();
+    const out = document.getElementById(field + '_pts');
+    if (name && Object.prototype.hasOwnProperty.call(POKE_PTS, name)) {
+        out.textContent = POKE_PTS[name] + ' pts';
+        out.className = 'text-xs text-yellow-400 mt-1 h-4';
+    } else if (name) {
+        out.textContent = 'not in tier list';
+        out.className = 'text-xs text-gray-600 mt-1 h-4';
+    } else {
+        out.textContent = '';
+        out.className = 'text-xs text-gray-500 mt-1 h-4';
+    }
 }
 </script>
 
