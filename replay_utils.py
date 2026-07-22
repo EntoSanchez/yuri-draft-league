@@ -138,8 +138,12 @@ def parse_log(log: str) -> dict:
 
         if cmd == "player" and len(parts) >= 4:
             pkey = parts[2]
-            if pkey in ("p1", "p2"):
-                players[pkey] = parts[3].strip()
+            # Showdown emits a trailing "|player|p2|" (empty name) at game end to
+            # clear the slot; that line must NOT wipe the recorded username, or the
+            # winner/loser ends up nameless. Only set when a real name is given.
+            name = parts[3].strip()
+            if pkey in ("p1", "p2") and name:
+                players[pkey] = name
 
         elif cmd in ("switch", "drag", "replace") and len(parts) >= 4:
             slot = _extract_slot(parts[2])
@@ -2245,8 +2249,12 @@ def parse_log_recap(log: str) -> dict:
 
         if cmd == "player" and len(parts) >= 4:
             pkey = parts[2]
-            if pkey in ("p1", "p2"):
-                players[pkey] = parts[3].strip()
+            # Showdown emits a trailing "|player|p2|" (empty name) at game end to
+            # clear the slot; that line must NOT wipe the recorded username, or the
+            # winner/loser ends up nameless. Only set when a real name is given.
+            name = parts[3].strip()
+            if pkey in ("p1", "p2") and name:
+                players[pkey] = name
 
         elif cmd == "poke" and len(parts) >= 4:
             pside = parts[2]

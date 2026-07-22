@@ -546,3 +546,49 @@ def test_real_fixture_59_friendly_fire_ko_count():
     k2 = sum(p["kills"]["p2"].values())
     assert k1 == 4, p["kills"]["p1"]
     assert k1 - k2 == 3
+
+
+def test_trailing_empty_player_line_keeps_username():
+    # Showdown emits a trailing "|player|p2|" (no name) at game end to clear the
+    # slot. That must NOT wipe the recorded username, or the winner ends up
+    # nameless and the match can't be recorded / recapped.
+    log = "\n".join(
+        [
+            "|player|p1|Alice|cheryl|",
+            "|player|p2|Bob|trainer.png|",
+            "|switch|p1a: A|Garchomp, M|100/100",
+            "|switch|p2a: B|Pikachu, F|100/100",
+            "|move|p2a: B|Thunderbolt|p1a: A",
+            "|-damage|p1a: A|0 fnt",
+            "|faint|p1a: A",
+            "|win|Bob",
+            "|player|p2|",  # slot-clearing line — must not blank Bob
+        ]
+    )
+    p = R.parse_log(log)
+    assert p["p1"]["username"] == "Alice"
+    assert p["p2"]["username"] == "Bob", "trailing |player|p2| wiped the username"
+    assert p["winner_player"] == "p2"
+
+
+def test_recap_parser_keeps_username_after_empty_player_line():
+    log = "\n".join(
+        [
+            "|player|p1|Alice|cheryl|",
+            "|player|p2|Bob|trainer.png|",
+            "|poke|p1|Garchomp, M|",
+            "|poke|p2|Pikachu, F|",
+            "|start",
+            "|switch|p1a: A|Garchomp, M|100/100",
+            "|switch|p2a: B|Pikachu, F|100/100",
+            "|turn|1",
+            "|move|p2a: B|Thunderbolt|p1a: A",
+            "|-damage|p1a: A|0 fnt",
+            "|faint|p1a: A",
+            "|win|Bob",
+            "|player|p2|",
+        ]
+    )
+    r = R.parse_log_recap(log)
+    assert r["players"]["p1"] == "Alice"
+    assert r["players"]["p2"] == "Bob", "trailing |player|p2| wiped the recap username"
