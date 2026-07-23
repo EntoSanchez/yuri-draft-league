@@ -57,3 +57,10 @@ def test_setting_clamped_to_schedule_range(app_mod):
             "INSERT OR REPLACE INTO league_settings (key, value) VALUES ('current_week', '99')"
         )
         assert app_mod._display_current_week(db) == 2
+
+
+def test_home_and_standings_routes_render(client):
+    # Regression: the helper was once inserted between @app.route("/") and
+    # def index(), silently stealing the homepage route and 500ing "/".
+    assert client.get("/").status_code == 200
+    assert client.get("/standings").status_code == 200

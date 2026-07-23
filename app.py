@@ -1474,7 +1474,6 @@ def my_matches():
 
 # ─── Public Routes ────────────────────────────────────────────────────────────
 
-@app.route("/")
 def _display_current_week(db):
     """Current week for the home/standings week tracker.
 
@@ -1500,6 +1499,7 @@ def _display_current_week(db):
     return max(min(max(setting, active, weeks[0]), weeks[-1]), weeks[0])
 
 
+@app.route("/")
 def index():
     """Esports-style home / landing page."""
     league_name = get_setting("league_name", "Pokemon Draft League")
