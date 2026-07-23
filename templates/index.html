@@ -246,8 +246,8 @@
     <span class="lr-rule"></span>
     {% if total_weeks > 0 %}
     <div class="lr-prog">
-      <span class="lr-mono">WEEK {{ '%02d' % [completed_weeks+1, total_weeks]|min }} / {{ '%02d' % total_weeks }}</span>
-      <span class="lr-prog-track"><span class="lr-prog-fill" id="lr-prog-fill" style="--w:{{ (completed_weeks/total_weeks*100)|round(1) }}%"></span></span>
+      <span class="lr-mono">WEEK {{ '%02d' % [current_week, total_weeks]|min }} / {{ '%02d' % total_weeks }}</span>
+      <span class="lr-prog-track"><span class="lr-prog-fill" id="lr-prog-fill" style="--w:{{ ((completed_matches/total_matches*100) if total_matches else 0)|round(1) }}%"></span></span>
       <span class="lr-mono">{{ completed_matches }} PLAYED</span>
     </div>
     {% endif %}

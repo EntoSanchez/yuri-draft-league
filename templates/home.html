@@ -737,7 +737,7 @@
         </span>
         {% if season %}<span class="badge-pill">{{ season.name | upper }}</span>{% endif %}
         {% if total_weeks > 0 %}
-        <span class="badge-pill">WK {{ '%02d' % ([completed_weeks + 1, total_weeks] | min) }} / {{ '%02d' % total_weeks }}</span>
+        <span class="badge-pill">WK {{ '%02d' % ([current_week, total_weeks] | min) }} / {{ '%02d' % total_weeks }}</span>
         {% endif %}
       </div>
 
@@ -867,7 +867,7 @@
       </div>
       <div class="stat-item">
         <div class="stat-label">SEASON</div>
-        <div class="stat-num">{{ ((completed_weeks / total_weeks * 100) | round(0) | int) if total_weeks > 0 else 0 }}<span style="font-size:1.4rem;opacity:0.4;"> %</span></div>
+        <div class="stat-num">{{ ((completed_matches / total_matches * 100) | round(0) | int) if total_matches else 0 }}<span style="font-size:1.4rem;opacity:0.4;"> %</span></div>
         <div class="stat-sublabel">COMPLETE</div>
       </div>
     </div>

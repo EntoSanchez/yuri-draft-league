@@ -1475,6 +1475,31 @@ def my_matches():
 # ─── Public Routes ────────────────────────────────────────────────────────────
 
 @app.route("/")
+def _display_current_week(db):
+    """Current week for the home/standings week tracker.
+
+    The old display used completed_weeks+1, where a week only counted once EVERY
+    match in it was scored — a single unplayed straggler froze the tracker at
+    week 1 all season. Instead, take the max of:
+      - the admin-set league_settings.current_week (pickems uses this), and
+      - the latest week that has ANY recorded result (activity high-water mark),
+    clamped to the schedule's week range. Stragglers can't freeze it, and an
+    admin bump is always respected."""
+    weeks = [r[0] for r in db.execute("SELECT DISTINCT week FROM schedule ORDER BY week").fetchall()]
+    if not weeks:
+        return 1
+    row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
+    try:
+        setting = int(row["value"]) if row else 0
+    except (TypeError, ValueError):
+        setting = 0
+    active_row = db.execute(
+        "SELECT MAX(week) FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
+    ).fetchone()
+    active = active_row[0] or 0
+    return max(min(max(setting, active, weeks[0]), weeks[-1]), weeks[0])
+
+
 def index():
     """Esports-style home / landing page."""
     league_name = get_setting("league_name", "Pokemon Draft League")
@@ -1486,8 +1511,7 @@ def index():
         completed_matches = db.execute(
             "SELECT COUNT(*) FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
         ).fetchone()[0]
-        current_week_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
-        current_week = int(current_week_row["value"]) if current_week_row else (weeks[-1]["week"] if weeks else 1)
+        current_week = _display_current_week(db)
         # Recent 6 results
         recent_rows = db.execute("""
             SELECT s.week, s.pool, s.score1, s.score2,
@@ -1588,10 +1612,9 @@ def standings():
         completed_matches = db.execute(
             "SELECT COUNT(*) FROM schedule WHERE score1 IS NOT NULL AND score2 IS NOT NULL"
         ).fetchone()[0]
-        current_week_row = db.execute("SELECT value FROM league_settings WHERE key='current_week'").fetchone()
+        current_week = _display_current_week(db)
     all_weeks = [w["week"] for w in weeks]
     total_weeks = len(all_weeks)
-    current_week = int(current_week_row["value"]) if current_week_row else (all_weeks[-1] if all_weeks else 1)
     completed_weeks = 0
     with get_db() as db:
         for w in all_weeks:
