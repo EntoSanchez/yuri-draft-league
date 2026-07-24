@@ -1136,11 +1136,14 @@ def ai_commentary(recap, api_key, timeout=45, series_context=None):
                             pass
                     time.sleep(min(max(wait, 2.0), 90.0))
                     continue
+                # Server log breadcrumb: WHY this game fell back to template.
+                print(f"[ai_commentary] giving up: HTTP {he.code}", flush=True)
                 return None
-            except Exception:
+            except Exception as ex:
                 if attempt < 2:
                     time.sleep(2.0)
                     continue
+                print(f"[ai_commentary] giving up: {type(ex).__name__}: {ex}", flush=True)
                 return None
         if data is None:
             return None
@@ -1161,10 +1164,14 @@ def ai_commentary(recap, api_key, timeout=45, series_context=None):
         cap = len(recap.get("koLog", [])) + 3
         plays = [p[:300] for p in plays[:cap]]
         if not summary:
+            print("[ai_commentary] giving up: empty summary in model response", flush=True)
             return None
         return {"summary": summary, "plays": plays, "source": "ai"}
-    except Exception:
-        return None  # Any failure -> caller falls back to template commentary
+    except Exception as ex:
+        # Any failure -> caller falls back to template commentary; leave a
+        # breadcrumb in the server log so the cause is diagnosable.
+        print(f"[ai_commentary] giving up: {type(ex).__name__}: {ex}", flush=True)
+        return None
 
 
 def groq_diagnose(api_key):
@@ -3372,6 +3379,61 @@ def admin_test_ai():
     ok, msg = groq_diagnose(key)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_settings"))
+
+
+@app.route("/admin/regenerate_ai/<int:game_id>", methods=["POST"])
+@admin_required
+def admin_regenerate_ai(game_id):
+    """Re-run the Groq AI commentary for one stored game recap. Transient API
+    failures (rate limits, timeouts) leave a game on template commentary; this
+    makes recovery a one-click action instead of a full re-import."""
+    key = get_setting("groq_api_key", "")
+    if not key:
+        flash("No Groq API key saved — add one in Admin → Settings first.", "warning")
+        return redirect(request.referrer or url_for("index"))
+    with get_db() as db:
+        g = db.execute(
+            "SELECT id, schedule_id, game_number, recap_json FROM match_games WHERE id=?",
+            (game_id,),
+        ).fetchone()
+        prev_rows = []
+        if g and g["schedule_id"] and (g["game_number"] or 0) > 1:
+            prev_rows = db.execute(
+                "SELECT game_number, recap_json FROM match_games "
+                "WHERE schedule_id=? AND game_number<? AND recap_json IS NOT NULL "
+                "ORDER BY game_number",
+                (g["schedule_id"], g["game_number"]),
+            ).fetchall()
+    if not g or not g["recap_json"]:
+        flash("No stored recap for that game.", "warning")
+        return redirect(request.referrer or url_for("index"))
+    recap = json.loads(g["recap_json"])
+    sc = None
+    if prev_rows:
+        try:
+            sc = {
+                "game_number": g["game_number"],
+                "previous_games": [
+                    dict(_series_bits(json.loads(p["recap_json"])),
+                         game_number=p["game_number"])
+                    for p in prev_rows
+                ],
+            }
+        except Exception:
+            sc = None
+    enhanced = ai_commentary(recap, key, series_context=sc)
+    if enhanced:
+        recap["commentary"] = enhanced
+        with get_db() as db:
+            db.execute(
+                "UPDATE match_games SET recap_json=? WHERE id=?",
+                (json.dumps(recap), game_id),
+            )
+        flash(f"AI recap regenerated for game {g['game_number'] or '?'}.", "success")
+    else:
+        flash("AI regeneration failed (rate limit or API error) — wait a minute "
+              "and try again; the server log has the reason.", "warning")
+    return redirect(request.referrer or url_for("index"))
 
 
 LOGOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "logos")

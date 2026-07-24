@@ -367,6 +367,55 @@ def test_discord_header_score_matches_mons_downed(app_mod):
     assert "1–0" in head, head
 
 
+def test_admin_regenerate_ai_route(app_mod, client, monkeypatch):
+    # A game stuck on template commentary gets one-click AI regeneration.
+    import json as _json
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|0 fnt",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    recap["commentary"] = {"summary": "template text", "plays": [], "source": "template"}
+    with app_mod.get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS match_games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                schedule_id INTEGER NOT NULL,
+                game_number INTEGER NOT NULL DEFAULT 1,
+                replay_url TEXT DEFAULT '',
+                winner_coach_id INTEGER DEFAULT NULL,
+                playoff_match_id INTEGER DEFAULT NULL,
+                recap_json TEXT
+            )
+        """)
+        db.execute(
+            "INSERT INTO schedule (week, coach1_id, coach2_id) VALUES (1, 1, 2)"
+        )
+        sid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        db.execute(
+            "INSERT INTO match_games (schedule_id, game_number, recap_json) VALUES (?,?,?)",
+            (sid, 1, _json.dumps(recap)),
+        )
+        gid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        db.execute(
+            "INSERT OR REPLACE INTO league_settings (key, value) VALUES ('groq_api_key','k')"
+        )
+    monkeypatch.setattr(
+        app_mod, "ai_commentary",
+        lambda r, k, timeout=45, series_context=None: {
+            "summary": "AI!", "plays": ["T1: hype"], "source": "ai"},
+    )
+    resp = client.post(f"/admin/regenerate_ai/{gid}")
+    assert resp.status_code in (302, 303)
+    with app_mod.get_db() as db:
+        row = db.execute("SELECT recap_json FROM match_games WHERE id=?", (gid,)).fetchone()
+    stored = _json.loads(row["recap_json"])
+    assert stored["commentary"]["source"] == "ai"
+    assert stored["commentary"]["summary"] == "AI!"
+
+
 def test_series_bits_for_bo3_context(app_mod):
     recap = _recap(BASE + [
         "|turn|1",

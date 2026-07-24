@@ -166,6 +166,20 @@
   </div>
   {% endif %}
 
+  {# Admin: re-run Groq commentary for THIS game (rate-limited imports leave
+     some games on template commentary — this recovers them in one click). #}
+  {% if session.get('role') == 'admin' and M._game_id %}
+  <form method="POST" action="/admin/regenerate_ai/{{ M._game_id }}" style="margin:6px 0 2px"
+        onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='Regenerating… can take a minute';">
+    <button type="submit"
+            style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;
+                   padding:4px 10px;background:none;border:1px dashed var(--hairline-2);
+                   color:var(--text-dim);cursor:pointer">
+      &#8635; REGENERATE AI RECAP{% if not (M.commentary and M.commentary.source == 'ai') %} · CURRENTLY: TEMPLATE{% endif %}
+    </button>
+  </form>
+  {% endif %}
+
   {# ===== HERO SCOREBOARD ===== #}
   <div class="mr-hero">
     <div class="mr-hero-top">
