@@ -351,6 +351,22 @@ def test_recap_json_serializable_and_roundtrip_safe():
     assert f1["luck_summary"] == f2["luck_summary"]
 
 
+def test_discord_header_score_matches_mons_downed(app_mod):
+    # Final Gambit self-KO: Bob's mon went down, so Alice wins 1-0. The Discord
+    # header must use the same mons-downed convention as the commentary body —
+    # never "def. ... 0–0" (KOs-scored) beside a body saying 1-0.
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p2a: Dragonite|Final Gambit|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|1/100",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    msg = app_mod.build_discord_recap_message(recap, "Alice", "Bob", None, "Test League")
+    head = msg.split("\n")[1]
+    assert "1–0" in head, head
+
+
 def test_series_bits_for_bo3_context(app_mod):
     recap = _recap(BASE + [
         "|turn|1",

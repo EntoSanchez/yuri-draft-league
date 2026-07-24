@@ -799,8 +799,17 @@ def _clean_truncate(text, limit):
 def build_discord_recap_message(recap, home_team, away_team, match_url, league_name):
     """Compose the Discord recap post: score + narrative + top stars + link. Pure/testable."""
     totals = recap.get("totals", {})
-    hk = totals.get("home", {}).get("ko", 0)
-    ak = totals.get("away", {}).get("ko", 0)
+    # Score = mons TAKEN DOWN per side (self-KOs count toward the opponent's
+    # tally), matching the commentary body — the header must never say "3–2"
+    # while the narrative says 4-2. Fall back to KOs-scored for older recaps
+    # whose koLog lacks victim sides.
+    ko_log = recap.get("koLog") or []
+    if ko_log and all(k.get("vsSide") in ("HOME", "AWAY") for k in ko_log):
+        hk = sum(1 for k in ko_log if k.get("vsSide") == "AWAY")
+        ak = sum(1 for k in ko_log if k.get("vsSide") == "HOME")
+    else:
+        hk = totals.get("home", {}).get("ko", 0)
+        ak = totals.get("away", {}).get("ko", 0)
     winner_side = totals.get("winner")
     if winner_side == "HOME":
         head = f"\U0001F3C6 **{home_team}** def. **{away_team}** {hk}–{ak}"
@@ -876,8 +885,8 @@ def _series_bits(recap):
     }
 
 
-def ai_commentary(recap, api_key, timeout=30, series_context=None):
-    # timeout raised 8→30s: gpt-oss-120b is a reasoning model and the richer
+def ai_commentary(recap, api_key, timeout=45, series_context=None):
+    # timeout raised 8→30→45s: gpt-oss-120b is a reasoning model and the richer
     # timeline facts give it more to chew on; the user prefers a slower, better
     # recap over a fast template fallback. Runs post-transaction, so the extra
     # wait never holds a DB write.
@@ -1095,11 +1104,14 @@ def ai_commentary(recap, api_key, timeout=30, series_context=None):
                    # Groq is behind Cloudflare, which 403s (error 1010) the
                    # default urllib User-Agent — send an explicit one.
                    "User-Agent": "yuri-draft-league/1.0"}
-        # The free tier rate-limits back-to-back requests (429). Retry ONCE on a
-        # 429/timeout, honoring the Retry-After header (capped) before giving up
-        # and letting the caller fall back to template commentary.
+        # Free-tier Groq enforces PER-MINUTE token limits: after game 1's big
+        # reasoning call, games 2-3 of a BO3 get 429s whose Retry-After is far
+        # beyond the old 8s cap — which is exactly how a set ended up with one
+        # AI recap and two template fallbacks. Honor Retry-After up to 90s and
+        # retry twice (the user prefers slow-and-good over fast fallback; this
+        # runs post-transaction so nothing is blocked while we wait).
         data = None
-        for attempt in range(2):
+        for attempt in range(3):
             req = urllib.request.Request(
                 "https://api.groq.com/openai/v1/chat/completions",
                 data=body, headers=headers, method="POST")
@@ -1108,18 +1120,26 @@ def ai_commentary(recap, api_key, timeout=30, series_context=None):
                     data = json.loads(resp.read())
                 break
             except urllib.error.HTTPError as he:
-                if he.code == 429 and attempt == 0:
-                    wait = 2.0
+                if he.code == 429 and attempt < 2:
+                    wait = 15.0
                     try:
-                        wait = min(float(he.headers.get("Retry-After", "2")), 8.0)
+                        wait = float(he.headers.get("Retry-After", "15"))
                     except (TypeError, ValueError):
-                        wait = 2.0
-                    time.sleep(wait)
+                        # Groq puts "Please try again in 23.5s" in the JSON body
+                        # when the header is absent — use it if we can read it.
+                        try:
+                            m = re.search(r"try again in ([0-9.]+)s",
+                                          he.read().decode("utf-8", "replace"))
+                            if m:
+                                wait = float(m.group(1)) + 1.0
+                        except Exception:
+                            pass
+                    time.sleep(min(max(wait, 2.0), 90.0))
                     continue
                 return None
             except Exception:
-                if attempt == 0:
-                    time.sleep(1.0)
+                if attempt < 2:
+                    time.sleep(2.0)
                     continue
                 return None
         if data is None:
@@ -3806,13 +3826,16 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             # so the recap can narrate the adjustments, not just this game.
             sc = None
             if i > 0:
-                sc = {
-                    "game_number": i + 1,
-                    "previous_games": [
-                        dict(_series_bits(r), game_number=j + 1)
-                        for j, (_gid, r) in enumerate(pending_ai[:i])
-                    ],
-                }
+                try:
+                    sc = {
+                        "game_number": i + 1,
+                        "previous_games": [
+                            dict(_series_bits(r), game_number=j + 1)
+                            for j, (_gid, r) in enumerate(pending_ai[:i])
+                        ],
+                    }
+                except Exception:
+                    sc = None  # context is a bonus — never let it kill the recap
             try:
                 enhanced = ai_commentary(recap, _groq_key, series_context=sc)
             except Exception:
