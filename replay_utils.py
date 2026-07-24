@@ -17,6 +17,55 @@ def _norm(name: str) -> str:
 # stay unified. -Mega-Z covers Legends Z-A megas (e.g. Absol-Mega-Z).
 _MEGA_PRIMAL_RE = re.compile(r"-(?:Mega(?:-[XYZ])?|Primal)$")
 
+# Full self-sacrifice moves: using one KOs the user by design. A death on the
+# same turn as one of these is "its own <move>", never an opponent's KO.
+_SELFKO_MOVES = {
+    "Final Gambit", "Explosion", "Self-Destruct", "Misty Explosion",
+    "Memento", "Healing Wish", "Lunar Dance",
+}
+
+# Pivot moves — the user swaps out as part of the move. Tempo tools; counting
+# them per side feeds the "who kept momentum" read in commentary.
+_PIVOT_MOVES = {
+    "U-turn", "Volt Switch", "Flip Turn", "Parting Shot", "Teleport",
+    "Baton Pass", "Shed Tail", "Chilly Reception",
+}
+
+# Curated accuracy table for the miss-EV luck score: the famous <100% moves.
+# Moves not listed are treated as sure things (their misses still COUNT as
+# misses, they just contribute 0 expected misses — conservative both ways).
+_MOVE_ACCURACY = {
+    "Stone Edge": 0.80, "Hydro Pump": 0.80, "Focus Blast": 0.70,
+    "Blizzard": 0.70, "Hurricane": 0.70, "Thunder": 0.70, "Fire Blast": 0.85,
+    "Heat Wave": 0.90, "Rock Slide": 0.90, "Icy Wind": 0.95, "Muddy Water": 0.85,
+    "High Horsepower": 0.95, "Megahorn": 0.85, "Gunk Shot": 0.80,
+    "Iron Tail": 0.75, "Play Rough": 0.90, "Draco Meteor": 0.90,
+    "Leaf Storm": 0.90, "Overheat": 0.90, "Air Slash": 0.95, "Snarl": 0.95,
+    "Dark Void": 0.50, "Sleep Powder": 0.75, "Spore": 1.0, "Hypnosis": 0.60,
+    "Will-O-Wisp": 0.85, "Thunder Wave": 0.90, "Sing": 0.55,
+    "Zing Zap": 1.0, "Precipice Blades": 0.85, "Origin Pulse": 0.85,
+    "Dragon Rush": 0.75, "Zen Headbutt": 0.90, "Meteor Mash": 0.90,
+    "Hammer Arm": 0.90, "Superpower": 1.0, "Close Combat": 1.0,
+    "Supercell Slam": 0.95, "Mighty Cleave": 1.0, "Crabhammer": 0.90,
+    "Aqua Tail": 0.90, "Power Whip": 0.85, "Seed Flare": 0.85,
+    "Diamond Storm": 0.95, "Sacred Fire": 0.95, "Fleur Cannon": 0.90,
+    "Head Smash": 0.80, "Steel Beam": 0.95, "Make It Rain": 1.0,
+    "Bleakwind Storm": 0.80, "Wildbolt Storm": 0.80, "Sandsear Storm": 0.80,
+    "Springtide Storm": 0.80, "Glaive Rush": 1.0, "Stomping Tantrum": 1.0,
+}
+
+# Priority / order-warping moves — turns involving these are excluded from
+# speed-order inference (they don't reveal raw Speed).
+_PRIORITY_MOVES = {
+    "Fake Out", "Quick Attack", "Extreme Speed", "Aqua Jet", "Bullet Punch",
+    "Sucker Punch", "Ice Shard", "Shadow Sneak", "Mach Punch", "Vacuum Wave",
+    "Jet Punch", "Grassy Glide", "Accelerock", "Water Shuriken", "First Impression",
+    "Protect", "Detect", "Spiky Shield", "Baneful Bunker", "Burning Bulwark",
+    "Silk Trap", "Obstruct", "King's Shield", "Endure", "Follow Me", "Rage Powder",
+    "Wide Guard", "Quick Guard", "Ally Switch", "Helping Hand", "Trick Room",
+    "Whirlwind", "Roar", "Dragon Tail", "Circle Throw", "Teleport", "Upper Hand",
+}
+
 # Non-damaging moves — blocking one with Protect isn't a clutch life-saver, so the
 # protect detector ignores these (a Protect vs Yawn/Thunder Wave is routine scouting).
 _STATUS_MOVES = {
@@ -2199,6 +2248,11 @@ def parse_log_recap(log: str) -> dict:
     rating_from = {}
     rating_to = {}
     rosters = {"p1": [], "p2": []}  # team-preview order
+    last_move_of = {}  # slot -> (move, turn): the mon's own last attempted move
+    fatal_from = {}  # slot -> [from] tag on the damage line that dropped it to 0
+    move_uses = {"p1": {}, "p2": {}}  # side -> {(mon, move): count} for pivots/EV luck
+    turn_move_order = {}  # turn -> [{side, mon, move} in action order] for speed reads
+    chip_taken = {}  # mon -> cumulative % of NON-direct damage ([from]-tagged chip)
     brought = {"p1": set(), "p2": set()}
     active = {}  # slot → name
     turn = 0
@@ -2334,6 +2388,12 @@ def parse_log_recap(log: str) -> dict:
                 atk_side = _slot_player(atk_slot)
                 move_name = parts[3].strip() if len(parts) >= 4 else "?"
                 cur_move = {"side": atk_side, "user": atk_name, "move": move_name}
+                last_move_of[atk_slot] = (move_name, turn)
+                mu = move_uses.setdefault(atk_side, {})
+                mu[(atk_name, move_name)] = mu.get((atk_name, move_name), 0) + 1
+                turn_move_order.setdefault(turn, []).append(
+                    {"side": atk_side, "mon": atk_name, "move": move_name}
+                )
                 primary = _extract_slot(parts[4]) if len(parts) > 4 else ""
                 targets = set()
                 if primary and primary != atk_slot:
@@ -2804,6 +2864,24 @@ def parse_log_recap(log: str) -> dict:
             if not victim_slot:
                 continue
             rest = "|".join(parts[3:])
+            # Remember the [from] tag on the blow that dropped a mon to 0 — the
+            # faint handler names unattributed deaths (recoil, Life Orb, status)
+            # with it instead of leaving "?".
+            if parts[3].strip().startswith("0"):
+                _fm_fatal = re.search(r"\[from\]\s*([^|]+)", rest)
+                fatal_from[victim_slot] = _fm_fatal.group(1).strip() if _fm_fatal else None
+            # Damage ledger: accumulate NON-direct ([from]-tagged) damage per mon —
+            # "chip" — so the recap can say what wore a KO victim into range.
+            # (read-only here: the branch updates hp_pct[victim_slot] itself further
+            # down, after the clutch/lowest-HP bookkeeping that needs the old value)
+            _new_hp = _parse_hp_pct(parts[3])
+            if _new_hp is not None:
+                _prev_hp = hp_pct.get(victim_slot)
+                if "[from]" in rest and _prev_hp is not None and active.get(victim_slot):
+                    _vic_mon = active[victim_slot]
+                    chip_taken[_vic_mon] = chip_taken.get(_vic_mon, 0.0) + max(
+                        0.0, _prev_hp - _new_hp
+                    )
             of_m = re.search(r"\[of\]\s*(p[12][ab]):\s*(.+)", rest)
             if of_m:
                 # [from] X |[of] p2a: Ferrothorn — a mon (Rocky Helmet, Rough Skin,
@@ -2954,6 +3032,25 @@ def parse_log_recap(log: str) -> dict:
                         )
                     by = None
                     by_side = None
+                # Name the cause of an unattributed death (self-KO move like Final
+                # Gambit/Explosion, recoil, Life Orb chip, status) so the recap can
+                # say what actually happened instead of "— KO'd X with ?".
+                cause = None
+                if by_side is None:
+                    lm = last_move_of.get(slot)
+                    ff = fatal_from.get(slot)
+                    if lm and lm[1] == turn and lm[0] in _SELFKO_MOVES:
+                        cause = f"its own {lm[0]}"
+                    elif ff:
+                        ffl = ff.lower()
+                        if "recoil" in ffl:
+                            cause = "recoil" + (
+                                f" from its own {lm[0]}" if lm and lm[1] == turn else ""
+                            )
+                        elif ffl.startswith("item:"):
+                            cause = ff.split(":", 1)[1].strip() + " chip"
+                        else:
+                            cause = ff
                 ko_log.append(
                     {
                         "t": turn,
@@ -2964,6 +3061,7 @@ def parse_log_recap(log: str) -> dict:
                         "move": k.get("move", "?") if by_side else "?",
                         "se": bool(k.get("se")) if by_side else False,
                         "indirect": bool(k.get("indirect")),
+                        "cause": cause,
                     }
                 )
             active.pop(slot, None)
@@ -3016,6 +3114,9 @@ def parse_log_recap(log: str) -> dict:
         "winner_player": winner_player,
         "used": used,
         "nicknames": nicknames,
+        "move_uses": move_uses,
+        "turn_move_order": turn_move_order,
+        "chip_taken": chip_taken,
         "highlights": {
             "boosts": hl_boosts,
             "peak_boosts": [
@@ -3201,9 +3302,11 @@ def build_recap(
                 "side": side_label,
                 "by": resolve(entry["bySide"] or home_pid, entry["by"] or "—"),
                 "vs": resolve(entry["victimSide"], entry["victim"]),
+                "vsSide": "HOME" if entry["victimSide"] == home_pid else "AWAY",
                 "move": entry["move"],
                 "se": entry["se"],
                 "indirect": entry["indirect"],
+                "cause": entry.get("cause"),
                 "note": "",
             }
         )
@@ -3398,6 +3501,9 @@ def build_recap(
             "home": list(raw.get("leads", {}).get(home_pid, []))[:2],
             "away": list(raw.get("leads", {}).get(away_pid, []))[:2],
         },
+        "moveUses": raw.get("move_uses", {}),
+        "turnOrder": raw.get("turn_move_order", {}),
+        "chipTaken": raw.get("chip_taken", {}),
         "nicknames": raw.get("nicknames", {}),
         "h2h": nm.get("h2h"),
         "homeRec": nm.get("homeRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
@@ -3450,7 +3556,7 @@ def _alive_by_turn(recap):
     return start_h, start_a, winner_side, timeline
 
 
-def commentary_facts(recap: dict) -> dict:
+def commentary_facts(recap: dict, speed_map: dict = None) -> dict:
     """Distill a finished build_recap dict into the compact fact set both the
     template commentary and an LLM prompt work from. Kept separate so the LLM
     path can hand the model clean structured data, not the whole recap."""
@@ -3460,16 +3566,35 @@ def commentary_facts(recap: dict) -> dict:
     winner_side = totals.get("winner")  # "HOME"/"AWAY"
     winner = home if winner_side == "HOME" else away
     loser = away if winner_side == "HOME" else home
+    _chip = recap.get("chipTaken", {}) or {}
     plays = []
     for k in recap.get("koLog", []):
-        by_name = home if k.get("side") == "HOME" else away
+        passive = k.get("side") not in ("HOME", "AWAY")
+        atk = k.get("by")
+        if not atk or atk == "—":
+            atk = None
+        mv = k.get("move")
+        if mv == "?":
+            mv = None
+        vic = k.get("vs")
+        vic_team = (
+            home if k.get("vsSide") == "HOME"
+            else away if k.get("vsSide") == "AWAY"
+            else None
+        )
+        # Range math v1: how much NON-direct chip this victim had absorbed across
+        # the game — >=15% means the chip meaningfully set the KO up.
+        chip_pct = int(round(_chip.get(vic, 0.0))) if vic else 0
         plays.append(
             {
                 "turn": k.get("t"),
-                "attacker_team": by_name,
-                "attacker": k.get("by") or None,
-                "victim": k.get("vs"),
-                "move": k.get("move"),
+                "attacker_team": None if passive else (home if k.get("side") == "HOME" else away),
+                "attacker": None if passive else atk,
+                "victim": vic,
+                "victim_team": vic_team,
+                "move": None if passive else mv,
+                "cause": k.get("cause"),
+                "chip_pct": chip_pct if chip_pct >= 15 else 0,
                 "super_effective": bool(k.get("se")),
                 "indirect": bool(k.get("indirect")),
             }
@@ -3980,6 +4105,113 @@ def commentary_facts(recap: dict) -> dict:
     loser_left = _tot.get(_loser_key, {}).get("left", 0)
     ended_by = "forfeit_or_timer" if loser_left and loser_left > 0 else "ko"
 
+    # Score as MONS TAKEN DOWN per side (how players read a 4-3 game) — a
+    # self-KO'd mon still counts toward its opponent's tally. Falls back to
+    # KOs-scored when victim sides are unknown (older stored recaps).
+    _vh = sum(1 for p in plays if p.get("victim_team") == home)
+    _va = sum(1 for p in plays if p.get("victim_team") == away)
+    if plays and all(p.get("victim_team") for p in plays):
+        score_str = f"{_va}-{_vh}"
+    else:
+        score_str = (
+            f"{recap.get('totals', {}).get('home', {}).get('ko', 0)}"
+            f"-{recap.get('totals', {}).get('away', {}).get('ko', 0)}"
+        )
+
+    # ── PIVOTS — U-turn/Volt Switch family as tempo tools. Counts per side plus
+    # who pivoted most; the prompt frames pivots as momentum currency.
+    mu = recap.get("moveUses", {}) or {}
+    pivots = {}
+    for pid, uses in mu.items():
+        team = _pid_team.get(pid)
+        if not team:
+            continue
+        total = 0
+        by_mon = {}
+        for (mon, move), n in uses.items():
+            if move in _PIVOT_MOVES:
+                total += n
+                by_mon[mon] = by_mon.get(mon, 0) + n
+        if total:
+            top = max(by_mon.items(), key=lambda kv: kv[1])
+            pivots[team] = {"count": total, "top_pivoter": top[0], "top_count": top[1]}
+
+    # ── EXPECTED-VALUE LUCK — receipts, not vibes. Expected misses from a curated
+    # accuracy table over actual move uses; expected crits ~ damaging uses / 24.
+    # Both approximate — the prompt hedges them as such.
+    for pid in (home_pid, away_pid):
+        team = _pid_team[pid]
+        uses = mu.get(pid, {})
+        exp_miss = 0.0
+        attacking_uses = 0
+        for (mon, move), n in uses.items():
+            acc = _MOVE_ACCURACY.get(move)
+            if acc is not None and acc < 1.0:
+                exp_miss += (1.0 - acc) * n
+            if move not in _STATUS_MOVES:
+                attacking_uses += n
+        ls = luck_summary.get(team)
+        if ls is not None:
+            ls["expected_misses"] = round(exp_miss, 1)
+            ls["expected_crits"] = round(attacking_uses / 24.0, 1)
+
+    # ── SPEED READS — a mon acting before a significantly base-faster opposing mon
+    # (same turn, no priority/Trick Room/Tailwind/para/speed-stage interference)
+    # signals Scarf/booster/heavy investment. Strict guards: every excluded factor
+    # kills the read rather than risk a false call.
+    speed_reads = []
+    if speed_map:
+        # Turns tainted by speed-warping field state: TR (5 turns), Tailwind (4).
+        tainted_turns = set()
+        for fe in hl.get("fields", []):
+            lbl = (fe.get("label") or "").lower()
+            t0 = fe.get("turn")
+            if t0 is None:
+                continue
+            if "trick room" in lbl:
+                tainted_turns.update(range(t0, t0 + 5))
+            elif "tailwind" in lbl:
+                tainted_turns.update(range(t0, t0 + 4))
+        # Mons with ANY Speed-stage event or paralysis: excluded outright.
+        tainted_mons = {
+            b["mon"] for b in hl.get("boosts", []) if b.get("stat") == "spe"
+        } | {
+            st["mon"] for st in hl.get("statuses", []) if st.get("status") == "par"
+        }
+        seen_pairs = set()
+        for t, order in sorted((recap.get("turnOrder", {}) or {}).items()):
+            if t in tainted_turns:
+                continue
+            for i in range(len(order)):
+                for j in range(i + 1, len(order)):
+                    a, b = order[i], order[j]  # a acted BEFORE b
+                    if a["side"] == b["side"]:
+                        continue
+                    if a["move"] in _PRIORITY_MOVES or b["move"] in _PRIORITY_MOVES:
+                        continue
+                    if a["mon"] in tainted_mons or b["mon"] in tainted_mons:
+                        continue
+                    spa, spb = speed_map.get(a["mon"]), speed_map.get(b["mon"])
+                    if spa is None or spb is None:
+                        continue  # unknown base speed (forme etc.) -> never guess
+                    if spa + 20 <= spb and spa <= spb * 0.8:
+                        key = (a["mon"], b["mon"])
+                        if key in seen_pairs:
+                            continue
+                        seen_pairs.add(key)
+                        speed_reads.append(
+                            {
+                                "turn": t,
+                                "mon": a["mon"],
+                                "team": _team_of(a["side"]),
+                                "outsped": b["mon"],
+                                "base_speeds": [spa, spb],
+                                "note": "moved first despite much lower base Speed — "
+                                        "likely Choice Scarf, Booster Energy, or heavy investment",
+                            }
+                        )
+        speed_reads = speed_reads[:2]
+
     # ── TIMELINE — one merged, turn-ordered spine of everything notable. The AI
     # narrates by walking THIS list, which kills the scrambled-chronology recaps
     # (each thematic list alone loses the global order). Same-turn tiebreak:
@@ -4013,9 +4245,19 @@ def commentary_facts(recap: dict) -> dict:
         _tl(c.get("turn"), 2, f"CRIT: {c['attacker']}'s {c['move']} critically hit {c['victim']}"
             + (" (KO)" if c.get("ko") else "") + " — likely changed the outcome")
     for p in plays:
-        who = f"{p['attacker']} ({p['attacker_team']})" if p.get("attacker") else "residual damage"
-        mv = f" with {p['move']}" if p.get("move") else ""
-        _tl(p.get("turn"), 3, f"{who} KO'd {p['victim']}{mv}")
+        if p.get("attacker"):
+            who = f"{p['attacker']} ({p['attacker_team']})" if p.get("attacker_team") else p["attacker"]
+            mv = f" with {p['move']}" if p.get("move") else ""
+            chip_txt = (
+                f" (worn down by ~{p['chip_pct']}% chip beforehand)"
+                if p.get("chip_pct") else ""
+            )
+            _tl(p.get("turn"), 3, f"{who} KO'd {p['victim']}{mv}{chip_txt}")
+        else:
+            cause = p.get("cause") or (
+                "residual damage" if p.get("indirect") else "self-inflicted damage"
+            )
+            _tl(p.get("turn"), 3, f"{p['victim']} went down to {cause}")
     for s in self_kos:
         _tl(s.get("turn"), 3, f"FRIENDLY FIRE: {s.get('victim')} was KO'd by its own side's {s.get('move')}")
     for c in clutch:
@@ -4031,6 +4273,10 @@ def commentary_facts(recap: dict) -> dict:
         first = ms["turns"][0] if ms.get("turns") else None
         _tl(first, 6, f"{ms['mon']} ({ms['team']}) kept missing — {ms['count']} misses"
             + (f" (turns {', '.join(map(str, ms['turns']))})" if ms.get("turns") else ""))
+    for sr2 in speed_reads:
+        _tl(sr2.get("turn"), 2,
+            f"SPEED TELL: {sr2['mon']} ({sr2['team']}) moved before the base-faster "
+            f"{sr2['outsped']} — likely Scarf/booster/investment")
     timeline.sort(key=lambda e: (e["turn"], e["_o"]))
     timeline = [{"turn": e["turn"], "event": e["event"]} for e in timeline][:24]
 
@@ -4039,10 +4285,12 @@ def commentary_facts(recap: dict) -> dict:
         "away": away,
         "winner": winner,
         "loser": loser,
-        "score": f"{totals.get('home', {}).get('ko', 0)}-{totals.get('away', {}).get('ko', 0)}",
+        "score": score_str,      # mons taken down per side (home-away)
         "turns": recap.get("facts", {}).get("turns"),
         "comeback_from": -max_deficit,  # how many mons down the winner was at worst
         "genre": genre,          # sweep | comeback | coinflip | grind | control
+        "pivots": pivots,        # tempo tools: U-turn family counts per team
+        "speed_reads": speed_reads,  # "moved first despite lower base Speed" tells
         "ended_by": ended_by,    # "ko" or "forfeit_or_timer"
         "lead_changes": lead_changes,
         "leads": leads,          # opening pair per team (telegraphs the game plan)
@@ -4112,12 +4360,12 @@ def _ordinal_move_phrase(p: dict, nicknames: dict = None) -> str:
     return f"T{p['turn']}: {atk}'s {mv} {v} {vic}."
 
 
-def build_commentary(recap: dict) -> dict:
+def build_commentary(recap: dict, speed_map: dict = None) -> dict:
     """Deterministic 'both' commentary from a finished recap: a short narrative
     summary + a KO-by-KO play-by-play. Always available (no network/model). An
     LLM enhancement can replace `summary`/`plays` later; `source` marks which.
     Returns {"summary": str, "plays": [str], "source": "template"}."""
-    f = commentary_facts(recap)
+    f = commentary_facts(recap, speed_map)
     winner, loser, score = f["winner"], f["loser"], f["score"]
     turns, comeback = f["turns"], f["comeback_from"]
     n_plays = len(f["plays"])
@@ -4133,25 +4381,39 @@ def build_commentary(recap: dict) -> dict:
     if n_plays == 0:
         parts = [f"{N(winner)} defeated {loser} {score}."]
     else:
-        opener_side = f["plays"][0]["attacker_team"]
-        first_vic = N(f["plays"][0]["victim"])
-        first_atk = (
-            N(f["plays"][0]["attacker"]) if f["plays"][0]["attacker"] else "chip damage"
-        )
+        p0 = f["plays"][0]
+        first_vic = N(p0["victim"])
         turns_txt = f" across {turns} turns" if turns else ""
-        if opener_side == loser and comeback >= 2:
+        if p0.get("attacker"):
+            opener_side = p0["attacker_team"]
+            opener_txt = f"{N(p0['attacker'])} took out {first_vic}"
+        else:
+            # Unattributed first faint (Final Gambit, recoil, chip): the BENEFIT
+            # goes to the victim's opponent — never credit the victim's own team.
+            vic_team = p0.get("victim_team")
+            opener_side = winner if vic_team == loser else (loser if vic_team == winner else None)
+            cause0 = p0.get("cause") or "self-inflicted damage"
+            opener_txt = f"{first_vic} went down early to {cause0}"
+        if comeback >= 2 and opener_side == loser:
             parts = [
-                f"{loser} drew first blood when {first_atk} took out {first_vic} and pulled "
+                f"{loser} drew first blood when {opener_txt} and pulled "
                 f"ahead by {comeback}, but {winner} clawed all the way back to win {score}{turns_txt}."
+            ]
+        elif comeback >= 2:
+            # Winner had the opening moment yet still fell badly behind — don't
+            # write "never looked back" over a comeback.
+            parts = [
+                f"{winner} had the first say ({opener_txt}), yet still wound up "
+                f"down {comeback} Pokemon before storming back to win {score}{turns_txt}."
             ]
         elif opener_side == winner:
             parts = [
-                f"{winner} set the tone early — {first_atk} opened the scoring on {first_vic} — "
+                f"{winner} set the tone early — {opener_txt} — "
                 f"and never looked back, taking it {score}{turns_txt}."
             ]
         else:
             parts = [
-                f"{loser} struck first ({first_atk} on {first_vic}), but {winner} answered and "
+                f"{loser} struck first ({opener_txt}), but {winner} answered and "
                 f"pulled away to win {score}{turns_txt}."
             ]
 

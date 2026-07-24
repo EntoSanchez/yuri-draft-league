@@ -199,6 +199,146 @@ def test_wasted_turns_and_luck_counts():
     assert f["wasted_turns"][f["winner"]]["turns_lost"] == 1
 
 
+def test_final_gambit_death_cause_and_score():
+    # Dragonite sacrifices itself with Final Gambit: the death gets a CAUSE (its
+    # own move), no opponent is credited, and the score still counts the downed
+    # mon for the opponent ("1-0", mons taken down).
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p2a: Dragonite|Final Gambit|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|1/100",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    f = R.commentary_facts(recap)
+    p0 = f["plays"][0]
+    assert p0["attacker"] is None
+    assert p0["cause"] == "its own Final Gambit", p0
+    assert f["score"] == "1-0"
+    assert any("Final Gambit" in e["event"] for e in f["timeline"])
+
+
+def test_recoil_death_cause():
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p2a: Dragonite|Flare Blitz|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|0 fnt",
+        "|faint|p1a: Glaceon",
+        "|-damage|p2a: Dragonite|0 fnt|[from] Recoil",
+        "|faint|p2a: Dragonite",
+        "|win|Bob",
+    ])
+    f = R.commentary_facts(recap)
+    recoil_play = next(p for p in f["plays"] if p["victim"] == "Dragonite")
+    assert recoil_play["attacker"] is None
+    assert "recoil" in (recoil_play["cause"] or ""), recoil_play
+
+
+def test_chip_annotated_on_ko():
+    # Toxic chip wears Glaceon down before the direct KO — the play should carry
+    # a chip_pct so the recap can say the poison put it in range.
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p2a: Dragonite|Toxic|p1a: Glaceon",
+        "|-status|p1a: Glaceon|tox",
+        "|turn|2",
+        "|-damage|p1a: Glaceon|84/100 tox|[from] psn",
+        "|turn|3",
+        "|-damage|p1a: Glaceon|63/100 tox|[from] psn",
+        "|turn|4",
+        "|move|p2a: Dragonite|Earthquake|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|0 fnt",
+        "|faint|p1a: Glaceon",
+        "|win|Bob",
+    ])
+    f = R.commentary_facts(recap)
+    ko = next(p for p in f["plays"] if p["victim"] == "Glaceon")
+    assert ko["chip_pct"] >= 15, ko
+
+
+def test_pivot_counts():
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p2a: Dragonite|U-turn|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|80/100",
+        "|switch|p2a: Pikachu|Pikachu, F|100/100",
+        "|turn|2",
+        "|switch|p2a: Dragonite|Dragonite, M|100/100",
+        "|turn|3",
+        "|move|p2a: Dragonite|U-turn|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|60/100",
+        "|turn|4",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|0 fnt",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    f = R.commentary_facts(recap)
+    piv = f["pivots"].get(f["loser"])
+    assert piv and piv["count"] == 2 and piv["top_pivoter"] == "Dragonite", f["pivots"]
+
+
+def test_expected_misses_from_accuracy_table():
+    # Five Stone Edges (80% acc) -> expected misses 5 * 0.2 = 1.0
+    lines = list(BASE)
+    lines.append("|turn|1")
+    for _ in range(5):
+        lines.append("|move|p2a: Dragonite|Stone Edge|p1a: Glaceon")
+        lines.append("|-damage|p1a: Glaceon|90/100")
+    lines += [
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|0 fnt",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ]
+    f = R.commentary_facts(_recap(lines))
+    assert f["luck_summary"][f["loser"]]["expected_misses"] == 1.0
+
+
+def test_speed_read_flagged_with_guards():
+    smap = {"Slowpoke": 15, "Ninjask": 160, "Glaceon": 65, "Dragonite": 80}
+    lines = [
+        "|player|p1|Alice|cheryl|", "|player|p2|Bob|trainer.png|",
+        "|poke|p1|Slowpoke, F|", "|poke|p2|Ninjask, M|", "|start",
+        "|switch|p1a: Slowpoke|Slowpoke, F|100/100",
+        "|switch|p2a: Ninjask|Ninjask, M|100/100",
+        "|turn|1",
+        "|move|p1a: Slowpoke|Water Gun|p2a: Ninjask",
+        "|-damage|p2a: Ninjask|70/100",
+        "|move|p2a: Ninjask|Hyper Beam|p1a: Slowpoke",
+        "|-damage|p1a: Slowpoke|0 fnt",
+        "|faint|p1a: Slowpoke",
+        "|win|Bob",
+    ]
+    f = R.commentary_facts(_recap(lines), speed_map=smap)
+    assert f["speed_reads"], "Slowpoke outspeeding Ninjask must be flagged"
+    assert f["speed_reads"][0]["mon"] == "Slowpoke"
+
+    # Same order under Tailwind: the read must be suppressed (tainted turn).
+    tw = lines[:7] + [
+        "|move|p2a: Ninjask|Tailwind|p2a: Ninjask",
+        "|-sidestart|p2: Bob|move: Tailwind",
+        "|turn|2",
+    ] + [ln.replace("|turn|1", "|turn|2") for ln in lines[7:]]
+    f2 = R.commentary_facts(_recap(tw), speed_map=smap)
+    assert f2["speed_reads"] == [], f2["speed_reads"]
+
+
+def test_series_bits_for_bo3_context(app_mod):
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|-terastallize|p2a: Dragonite|Flying",
+        "|move|p2a: Dragonite|Tera Blast|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|0 fnt",
+        "|faint|p1a: Glaceon",
+        "|win|Bob",
+    ])
+    bits = app_mod._series_bits(recap)
+    assert bits["winner"] == "Bob"
+    assert any(t["mon"] == "Dragonite" and t["type"] == "Flying" for t in bits["teras"])
+    assert "Bob" in bits["leads"] and "Alice" in bits["leads"]
+
+
 def test_timeline_is_turn_sorted_and_crits_mattered_only():
     import os
     fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_58.log")

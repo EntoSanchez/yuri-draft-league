@@ -833,7 +833,50 @@ def _coerce_play(x):
     return str(x).strip()
 
 
-def ai_commentary(recap, api_key, timeout=30):
+_SPEED_MAP_CACHE = None
+
+
+def _pokedex_speed_map():
+    """name -> base Speed from the pokedex table, for commentary speed reads.
+    Cached for the process lifetime (base stats don't change). Empty dict when
+    the table is missing so commentary degrades gracefully."""
+    global _SPEED_MAP_CACHE
+    if _SPEED_MAP_CACHE is None:
+        try:
+            with get_db() as db:
+                _SPEED_MAP_CACHE = {
+                    r["display_name"]: r["spe"]
+                    for r in db.execute("SELECT display_name, spe FROM pokedex").fetchall()
+                }
+        except Exception:
+            _SPEED_MAP_CACHE = {}
+    return _SPEED_MAP_CACHE
+
+
+def _series_bits(recap):
+    """Tiny per-game summary (winner, leads, teras) for Bo3 adaptation context —
+    games 2-3 recaps get the earlier games' choices to diff against."""
+    home = recap.get("home", {}).get("name", "home")
+    away = recap.get("away", {}).get("name", "away")
+    home_pid = recap.get("facts", {}).get("homeSide") or "p1"
+    winner_key = recap.get("totals", {}).get("winner")
+    winner = home if winner_key == "HOME" else away if winner_key == "AWAY" else None
+    teras = [
+        {"team": home if x.get("side") == home_pid else away,
+         "mon": x.get("mon"), "type": x.get("type")}
+        for x in recap.get("highlights", {}).get("teras", [])
+    ]
+    return {
+        "winner": winner,
+        "leads": {
+            home: recap.get("leads", {}).get("home", []),
+            away: recap.get("leads", {}).get("away", []),
+        },
+        "teras": teras,
+    }
+
+
+def ai_commentary(recap, api_key, timeout=30, series_context=None):
     # timeout raised 8→30s: gpt-oss-120b is a reasoning model and the richer
     # timeline facts give it more to chew on; the user prefers a slower, better
     # recap over a fast template fallback. Runs post-transaction, so the extra
@@ -850,7 +893,9 @@ def ai_commentary(recap, api_key, timeout=30):
         return None
     try:
         from replay_utils import commentary_facts
-        facts = commentary_facts(recap)
+        facts = commentary_facts(recap, speed_map=_pokedex_speed_map())
+        if series_context:
+            facts["series_context"] = series_context
         # Prompt informed by docs/groq-commentary-prompt.md (VGC_RECAP_GUIDE_1).
         # Input is STRUCTURED FACTS (commentary_facts), not the raw log; output MUST be
         # the JSON {"summary","plays"} the recap page renders.
@@ -911,6 +956,33 @@ def ai_commentary(recap, api_key, timeout=30):
             "or did it expire wasted? `wasted_turns` (turns lost + attacks into "
             "Protect) is the currency of momentum; a lopsided count is the quiet "
             "story of a loss.\n"
+            "- SCORE = MONS TAKEN DOWN per side (a self-KO'd mon counts toward its "
+            "opponent's tally). A play with `attacker`=null and a `cause` is a "
+            "self-inflicted death — 'went down to its own Final Gambit', 'recoil "
+            "from its own Flare Blitz' — narrate the sacrifice or the price paid, "
+            "never credit it as an opponent's KO.\n"
+            "- CHIP SETS UP KOs: a play with `chip_pct` means that victim had "
+            "absorbed ~that much non-direct damage (status/hazards/items/recoil) "
+            "before the killing blow — 'the poison chip is what put it in range' "
+            "is a classic caster beat. Use it when present.\n"
+            "- PIVOTS (`pivots`): U-turn/Volt Switch-family counts per team — tempo "
+            "tools. A team that pivoted repeatedly was dictating matchups; worth one "
+            "clause when the count is 3+ or clearly one-sided.\n"
+            "- SPEED TELLS (`speed_reads`): a mon that moved before a much "
+            "base-faster opposing mon (guards already applied: no Trick Room, "
+            "Tailwind, priority, para, or speed boosts involved) — 'that Gouging "
+            "Fire is clearly Scarfed/invested' territory. Hedge as 'likely'; casters "
+            "love calling this out.\n"
+            "- LUCK BY THE NUMBERS: `luck_summary` includes expected_misses vs "
+            "moves_missed and expected_crits vs crits_landed (approximations). Only "
+            "invoke when actual clearly diverges from expected ('three Stone Edge "
+            "misses against an expected 0.6 — the rocks just would not land'); if "
+            "actual ~= expected, luck was a non-story: silence.\n"
+            "- BO3 ADAPTATION (`series_context`, when present): this is game 2 or 3 "
+            "of a set — the story INCLUDES the adjustments. Diff this game's leads/"
+            "Tera against `previous_games`: a changed lead pair, a new Tera target, "
+            "or a repeated game-plan that got punished/vindicated is the opening "
+            "angle ('after dropping game 1, X swapped the lead pair').\n"
             "- TURNING POINT FIRST: the one moment the game swung for good — where "
             "`momentum`/`score` flips and stays flipped, the KO that opened a `sweep`, "
             "a `crits` entry with mattered=true (a normal hit would've left the target "
@@ -3729,9 +3801,20 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
     # Every game already has deterministic template commentary written above, so a
     # Groq failure just leaves the good template recap in place.
     if _groq_key and pending_ai:
-        for game_id, recap in pending_ai:
+        for i, (game_id, recap) in enumerate(pending_ai):
+            # Bo3 adaptation: games 2-3 get the earlier games' winner/leads/teras
+            # so the recap can narrate the adjustments, not just this game.
+            sc = None
+            if i > 0:
+                sc = {
+                    "game_number": i + 1,
+                    "previous_games": [
+                        dict(_series_bits(r), game_number=j + 1)
+                        for j, (_gid, r) in enumerate(pending_ai[:i])
+                    ],
+                }
             try:
-                enhanced = ai_commentary(recap, _groq_key)
+                enhanced = ai_commentary(recap, _groq_key, series_context=sc)
             except Exception:
                 enhanced = None
             if not enhanced:
