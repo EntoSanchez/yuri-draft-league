@@ -3388,6 +3388,16 @@ def build_recap(
         "stars": stars,
         "facts": facts,
         "highlights": raw.get("highlights", {}),
+        # Team-preview rosters (all 6) and opening leads, for bench/lead analysis
+        # in commentary_facts ("which two stayed home" is itself commentary).
+        "preview": {
+            "home": list(raw.get("rosters", {}).get(home_pid, [])),
+            "away": list(raw.get("rosters", {}).get(away_pid, [])),
+        },
+        "leads": {
+            "home": list(raw.get("leads", {}).get(home_pid, []))[:2],
+            "away": list(raw.get("leads", {}).get(away_pid, []))[:2],
+        },
         "nicknames": raw.get("nicknames", {}),
         "h2h": nm.get("h2h"),
         "homeRec": nm.get("homeRec", {"w": 0, "l": 0, "t": 0, "df": 0}),
@@ -3885,6 +3895,91 @@ def commentary_facts(recap: dict) -> dict:
                     "kos": n,
                 }
             )
+    # ── Match-level narrative stats (leads/bench, wasted turns, luck counts,
+    # genre, ending) — the cheap ledgers a caster's verdict paragraph runs on.
+    away_pid = "p2" if home_pid == "p1" else "p1"
+    _pid_team = {home_pid: home, away_pid: away}
+
+    leads = {
+        home: recap.get("leads", {}).get("home", []),
+        away: recap.get("leads", {}).get("away", []),
+    }
+    # Preview lists base formes ("Gardevoir") while brought mons may appear as
+    # their mega ("Gardevoir-Mega") — compare on the base forme too, or every
+    # mega reads as "benched" while it's busy sweeping.
+    def _bench_of(preview_key, roster_key):
+        brought = {m["name"] for m in recap.get(roster_key, [])}
+        brought_bases = {_MEGA_PRIMAL_RE.sub("", n) for n in brought}
+        return [
+            n for n in recap.get("preview", {}).get(preview_key, [])
+            if n not in brought and n not in brought_bases
+        ]
+
+    benched = {home: _bench_of("home", "homeRoster"), away: _bench_of("away", "awayRoster")}
+
+    # Wasted turns are the currency of momentum: turns lost to status/flinch
+    # (Fake Out excluded — baseline function) plus attacks thrown into a Protect.
+    def _wasted_and_luck(pid):
+        cant_n = sum(
+            1 for c in hl.get("cants", [])
+            if c.get("side") == pid
+            and not (c.get("reason") == "flinch" and (c.get("flinch_move") or "") == "Fake Out")
+        )
+        into_protect = sum(
+            1 for p in hl.get("protects", []) if p.get("side") and p["side"] != pid
+        )
+        crits_landed = sum(1 for c in hl.get("crits", []) if c.get("attacker_side") == pid)
+        crits_taken = sum(1 for c in hl.get("crits", []) if c.get("victim_side") == pid)
+        whiffs = sum(1 for m in hl.get("misses", []) if m.get("attacker_side") == pid)
+        return (
+            {"turns_lost": cant_n, "attacks_into_protect": into_protect},
+            {"crits_landed": crits_landed, "crits_taken": crits_taken,
+             "moves_missed": whiffs, "turns_lost_to_status": cant_n},
+        )
+
+    _wh, _lh = _wasted_and_luck(home_pid)
+    _wa, _la = _wasted_and_luck(away_pid)
+    wasted_turns = {home: _wh, away: _wa}
+    luck_summary = {home: _lh, away: _la}
+
+    # Momentum-curve shape: lead changes + closest gap → match genre. The genre
+    # steers the recap's emphasis (a sweep is a preview autopsy; a coinflip is
+    # about the swings; a comeback builds to the turn the curve bent back).
+    mom = recap.get("momentum", [])
+    lead_changes = 0
+    last_sign = 0
+    closest = None
+    for m in mom[1:]:
+        d = (m.get("home", 0) or 0) - (m.get("away", 0) or 0)
+        sign = (d > 0) - (d < 0)
+        if sign != 0:
+            if last_sign != 0 and sign != last_sign:
+                lead_changes += 1
+            last_sign = sign
+        if closest is None or abs(d) < closest:
+            closest = abs(d)
+    _tot = recap.get("totals", {})
+    _winner_key = "home" if winner_side == "HOME" else "away"
+    _loser_key = "away" if winner_side == "HOME" else "home"
+    winner_deaths = _tot.get(_loser_key, {}).get("ko", 0)
+    margin = abs(_tot.get("home", {}).get("ko", 0) - _tot.get("away", {}).get("ko", 0))
+    n_turns = recap.get("facts", {}).get("turns") or 0
+    if -max_deficit >= 2:
+        genre = "comeback"
+    elif winner_deaths == 0:
+        genre = "sweep"
+    elif lead_changes >= 2 and margin <= 2:
+        genre = "coinflip"
+    elif n_turns >= 12 and margin <= 2:
+        genre = "grind"
+    else:
+        genre = "control"
+
+    # A |win| while the loser still had Pokemon standing = forfeit/timer ending.
+    # The recap must say so — never fabricate a knockout finish.
+    loser_left = _tot.get(_loser_key, {}).get("left", 0)
+    ended_by = "forfeit_or_timer" if loser_left and loser_left > 0 else "ko"
+
     # ── TIMELINE — one merged, turn-ordered spine of everything notable. The AI
     # narrates by walking THIS list, which kills the scrambled-chronology recaps
     # (each thematic list alone loses the global order). Same-turn tiebreak:
@@ -3947,6 +4042,13 @@ def commentary_facts(recap: dict) -> dict:
         "score": f"{totals.get('home', {}).get('ko', 0)}-{totals.get('away', {}).get('ko', 0)}",
         "turns": recap.get("facts", {}).get("turns"),
         "comeback_from": -max_deficit,  # how many mons down the winner was at worst
+        "genre": genre,          # sweep | comeback | coinflip | grind | control
+        "ended_by": ended_by,    # "ko" or "forfeit_or_timer"
+        "lead_changes": lead_changes,
+        "leads": leads,          # opening pair per team (telegraphs the game plan)
+        "benched": benched,      # preview mons that never appeared
+        "wasted_turns": wasted_turns,
+        "luck_summary": luck_summary,
         "timeline": timeline,
         "plays": plays,
         "stars": stars,

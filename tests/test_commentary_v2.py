@@ -129,6 +129,76 @@ def test_single_miss_is_not_a_streak():
     assert f["miss_streaks"] == []
 
 
+def test_sweep_genre_and_ko_ending():
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|0 fnt",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    f = R.commentary_facts(recap)
+    assert f["genre"] == "sweep"
+    assert f["ended_by"] == "ko"
+
+
+def test_forfeit_ending_detected():
+    # |win| while Bob's Dragonite is still standing — forfeit/timer, not a KO.
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|60/100",
+        "|win|Alice",
+    ])
+    f = R.commentary_facts(recap)
+    assert f["ended_by"] == "forfeit_or_timer"
+
+
+def test_benched_mega_not_listed_as_benched():
+    # Preview says "Gardevoir"; the mon enters as Gardevoir-Mega. It played —
+    # it must not appear in benched. Pikachu never appeared: genuinely benched.
+    recap = _recap([
+        "|player|p1|Alice|cheryl|",
+        "|player|p2|Bob|trainer.png|",
+        "|poke|p1|Glaceon, F|",
+        "|poke|p2|Gardevoir, F|",
+        "|poke|p2|Pikachu, F|",
+        "|start",
+        "|switch|p1a: Glaceon|Glaceon, F|100/100",
+        "|switch|p2a: Gardevoir|Gardevoir, F|100/100",
+        "|detailschange|p2a: Gardevoir|Gardevoir-Mega, F",
+        "|turn|1",
+        "|move|p2a: Gardevoir|Hyper Voice|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|0 fnt",
+        "|faint|p1a: Glaceon",
+        "|win|Bob",
+    ])
+    f = R.commentary_facts(recap)
+    bob_bench = f["benched"][f["winner"]]
+    assert "Gardevoir" not in bob_bench, bob_bench
+    assert "Pikachu" in bob_bench
+
+
+def test_wasted_turns_and_luck_counts():
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|60/100",
+        "|-status|p2a: Dragonite|par",
+        "|turn|2",
+        "|cant|p2a: Dragonite|par",
+        "|turn|3",
+        "|move|p2a: Dragonite|Earthquake|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|0 fnt",
+        "|faint|p1a: Glaceon",
+        "|win|Bob",
+    ])
+    f = R.commentary_facts(recap)
+    loser_luck = f["luck_summary"][f["winner"]]  # Bob's side lost the para turn
+    assert loser_luck["turns_lost_to_status"] == 1
+    assert f["wasted_turns"][f["winner"]]["turns_lost"] == 1
+
+
 def test_timeline_is_turn_sorted_and_crits_mattered_only():
     import os
     fx = os.path.join(os.path.dirname(__file__), "fixtures", "yuricup_s9_58.log")
