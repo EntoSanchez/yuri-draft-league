@@ -3501,7 +3501,13 @@ def build_recap(
             "home": list(raw.get("leads", {}).get(home_pid, []))[:2],
             "away": list(raw.get("leads", {}).get(away_pid, []))[:2],
         },
-        "moveUses": raw.get("move_uses", {}),
+        # JSON-SAFE shapes only: this dict is json.dumps'd into recap_json at
+        # import time, and a TypeError there silently kills the whole recap.
+        # move_uses has (mon, move) TUPLE keys -> flatten to [mon, move, count].
+        "moveUses": {
+            side: [[mon, move, n] for (mon, move), n in (uses or {}).items()]
+            for side, uses in (raw.get("move_uses") or {}).items()
+        },
         "turnOrder": raw.get("turn_move_order", {}),
         "chipTaken": raw.get("chip_taken", {}),
         "nicknames": raw.get("nicknames", {}),
@@ -4120,6 +4126,7 @@ def commentary_facts(recap: dict, speed_map: dict = None) -> dict:
 
     # ── PIVOTS — U-turn/Volt Switch family as tempo tools. Counts per side plus
     # who pivoted most; the prompt frames pivots as momentum currency.
+    # moveUses arrives as {side: [[mon, move, count], ...]} (JSON-safe triples).
     mu = recap.get("moveUses", {}) or {}
     pivots = {}
     for pid, uses in mu.items():
@@ -4128,7 +4135,7 @@ def commentary_facts(recap: dict, speed_map: dict = None) -> dict:
             continue
         total = 0
         by_mon = {}
-        for (mon, move), n in uses.items():
+        for mon, move, n in uses or []:
             if move in _PIVOT_MOVES:
                 total += n
                 by_mon[mon] = by_mon.get(mon, 0) + n
@@ -4141,10 +4148,10 @@ def commentary_facts(recap: dict, speed_map: dict = None) -> dict:
     # Both approximate — the prompt hedges them as such.
     for pid in (home_pid, away_pid):
         team = _pid_team[pid]
-        uses = mu.get(pid, {})
+        uses = mu.get(pid) or []
         exp_miss = 0.0
         attacking_uses = 0
-        for (mon, move), n in uses.items():
+        for mon, move, n in uses:
             acc = _MOVE_ACCURACY.get(move)
             if acc is not None and acc < 1.0:
                 exp_miss += (1.0 - acc) * n
@@ -4179,7 +4186,15 @@ def commentary_facts(recap: dict, speed_map: dict = None) -> dict:
             st["mon"] for st in hl.get("statuses", []) if st.get("status") == "par"
         }
         seen_pairs = set()
-        for t, order in sorted((recap.get("turnOrder", {}) or {}).items()):
+        # turnOrder keys are ints fresh from the parser but STRINGS after a
+        # recap_json round-trip — normalize so both paths work identically.
+        _torder = {}
+        for k, v in (recap.get("turnOrder", {}) or {}).items():
+            try:
+                _torder[int(k)] = v
+            except (TypeError, ValueError):
+                continue
+        for t, order in sorted(_torder.items()):
             if t in tainted_turns:
                 continue
             for i in range(len(order)):

@@ -324,6 +324,33 @@ def test_speed_read_flagged_with_guards():
     assert f2["speed_reads"] == [], f2["speed_reads"]
 
 
+def test_recap_json_serializable_and_roundtrip_safe():
+    # The import flow json.dumps(recap) inside a silent try/except — a
+    # non-serializable key (e.g. tuple) kills the ENTIRE recap while stats
+    # still record. This is exactly the "stats but no recap" failure.
+    import json
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p2a: Dragonite|U-turn|p1a: Glaceon",
+        "|-damage|p1a: Glaceon|80/100",
+        "|switch|p2a: Pikachu|Pikachu, F|100/100",
+        "|turn|2",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Pikachu",
+        "|-damage|p2a: Pikachu|0 fnt",
+        "|faint|p2a: Pikachu",
+        "|win|Alice",
+    ])
+    s = json.dumps(recap)  # must not raise
+    # commentary_facts must also work on a recap re-loaded from stored JSON
+    # (int dict keys become strings there).
+    reloaded = json.loads(s)
+    f1 = R.commentary_facts(recap, speed_map={"Glaceon": 65, "Dragonite": 80})
+    f2 = R.commentary_facts(reloaded, speed_map={"Glaceon": 65, "Dragonite": 80})
+    assert f1["score"] == f2["score"]
+    assert f1["pivots"] == f2["pivots"]
+    assert f1["luck_summary"] == f2["luck_summary"]
+
+
 def test_series_bits_for_bo3_context(app_mod):
     recap = _recap(BASE + [
         "|turn|1",
