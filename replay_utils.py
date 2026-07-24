@@ -2229,6 +2229,8 @@ def parse_log_recap(log: str) -> dict:
     hl_shutdowns = []  # setup reversals: boost-wipe (Haze) / Taunt / Encore / Disable
     hl_statuses = []  # status inflicted: {turn, side, mon, status, by, byside}
     hl_cants = []  # a mon COULDN'T act: {turn, side, mon, reason (slp/par/frz/flinch), move}
+    hl_cures = []  # a status ended (thaw/wake/heal): {turn, side, mon, status} — lets
+    # the key-status detector distinguish "never thawed before fainting" from "recovered"
     hl_abilities = []  # ability triggers that may matter (Intimidate, Trace, -immune wall)
     hl_protects = []  # a Protect that blocked a DAMAGING move
     _min_hp = {}  # slot -> {"pct": lowest HP% seen, "turn": when, "mon": species}
@@ -2510,6 +2512,25 @@ def parse_log_recap(log: str) -> dict:
                         "attacker_side": _slot_player(atk_slot),
                         "attacker": active[atk_slot],
                         "target": active.get(tgt_slot),
+                        "move": (cur_move or {}).get("move"),
+                    }
+                )
+
+        elif cmd == "-curestatus" and len(parts) >= 4:
+            # "|-curestatus|p1a: Mon|frz" — a thaw/wake/heal. Some sources (Heal
+            # Bell, Natural Cure on switch) use party form "p1: Mon" with no slot;
+            # fall back to the name after the colon so the cure is still recorded.
+            cslot = _extract_slot(parts[2])
+            cured_mon = active.get(cslot) if cslot else None
+            if not cured_mon and ":" in parts[2]:
+                cured_mon = _norm_forme(_norm(parts[2].split(":", 1)[1].strip()))
+            if cured_mon:
+                hl_cures.append(
+                    {
+                        "turn": turn,
+                        "side": _slot_player(cslot) if cslot else None,
+                        "mon": cured_mon,
+                        "status": parts[3].strip().lower(),
                     }
                 )
 
@@ -3033,6 +3054,7 @@ def parse_log_recap(log: str) -> dict:
             "setup_shutdowns": hl_shutdowns,
             "statuses": hl_statuses,
             "cants": hl_cants,
+            "cures": hl_cures,
             "abilities": hl_abilities,
             "protects": hl_protects,
         },
@@ -3483,6 +3505,9 @@ def commentary_facts(recap: dict) -> dict:
     # Skip friendly-fire crits (attacker and victim on the same side, e.g. a
     # spread move that crit-KOs an ally) — narrating a self-KO as a decisive crit
     # is misleading. `team` is the ATTACKER's team (the prose is attacker-framed).
+    # Only crits that plausibly CHANGED an outcome reach the facts. Routine crits
+    # (mattered=False/None) generated "the crit was lucky but not decisive" filler
+    # in AI recaps — if nothing here, the recap should say nothing about luck.
     crits = [
         {
             "turn": c["turn"],
@@ -3490,12 +3515,13 @@ def commentary_facts(recap: dict) -> dict:
             "victim": c["victim"],
             "move": c["move"],
             "ko": c["ko"],
-            "mattered": c["mattered"],
+            "mattered": True,
             "team": _team_of(c.get("attacker_side") or c["victim_side"]),
         }
         for c in hl.get("crits", [])
-        if c.get("attacker_side") is None or c.get("attacker_side") != c["victim_side"]
-    ][:6]
+        if (c.get("attacker_side") is None or c.get("attacker_side") != c["victim_side"])
+        and c.get("mattered") is True
+    ][:4]
     seen = set()
     items = []
     for it in hl.get("items", []):
@@ -3513,17 +3539,39 @@ def commentary_facts(recap: dict) -> dict:
         )
     items = items[:6]
     teras = [
-        {"mon": t["mon"], "team": _team_of(t["side"]), "type": t["type"]}
+        {"turn": t.get("turn"), "mon": t["mon"], "team": _team_of(t["side"]), "type": t["type"]}
         for t in hl.get("teras", [])
     ][:4]
     misses = [
         {
+            "turn": m.get("turn"),
             "attacker": m["attacker"],
             "team": _team_of(m["attacker_side"]),
             "target": m.get("target"),
+            "move": m.get("move"),
         }
         for m in hl.get("misses", [])
-    ][:4]
+    ][:6]
+    # MISS STREAK — the same mon whiffing repeatedly is a real story beat ("just
+    # couldn't buy a hit"), unlike a lone miss which is noise. Guard: >= 2 misses
+    # by the same mon.
+    _miss_groups = {}
+    for m in hl.get("misses", []):
+        _miss_groups.setdefault((m["attacker"], m["attacker_side"]), []).append(m)
+    miss_streaks = []
+    for (mon, mside), ms in _miss_groups.items():
+        if len(ms) >= 2:
+            miss_streaks.append(
+                {
+                    "mon": mon,
+                    "team": _team_of(mside),
+                    "count": len(ms),
+                    "turns": sorted({x["turn"] for x in ms if x.get("turn") is not None}),
+                    "moves": sorted({x["move"] for x in ms if x.get("move")}),
+                }
+            )
+    miss_streaks.sort(key=lambda s: -s["count"])
+    miss_streaks = miss_streaks[:2]
     # Field conditions (weather, terrain, Trick Room, Tailwind, screens, Swamp) —
     # in the order they were set, with the setter's team + nickname where known.
     fields = [
@@ -3701,29 +3749,67 @@ def commentary_facts(recap: dict) -> dict:
         if c.get("reason") == "flinch" and (c.get("flinch_move") or "") == "Fake Out":
             continue
         cant_by_mon.setdefault((c["mon"], c["reason"]), []).append(c["turn"])
+    # Cures (thaw/wake/heal) and faint turns let us tell apart three stories:
+    # "lost N turns to it", "never recovered and died with it", and "was KO'd
+    # before it could even act" — the last two matter even with zero cant lines.
+    cures_by_mon = {}
+    for cu in hl.get("cures", []):
+        cures_by_mon.setdefault((cu["mon"], cu["status"]), []).append(cu.get("turn"))
+    faint_turn_by_mon = {}
+    for p in plays:
+        v = p.get("victim")
+        if v and v not in faint_turn_by_mon and p.get("turn") is not None:
+            faint_turn_by_mon[v] = p["turn"]
+
     key_status = []
     seen_ks = set()
     for st in hl.get("statuses", []):
         if st["status"] == "brn":
             continue  # unprovable without move category
-        missed = cant_by_mon.get((st["mon"], st["status"]))
-        if not missed:
-            continue  # no corroborated lost turn -> not a KEY status
+        missed = cant_by_mon.get((st["mon"], st["status"])) or []
+        cure_turns = [
+            t for t in cures_by_mon.get((st["mon"], st["status"]), [])
+            if t is not None and st.get("turn") is not None and t >= st["turn"]
+        ]
+        faint_t = faint_turn_by_mon.get(st["mon"])
+        died_statused = (
+            faint_t is not None
+            and st.get("turn") is not None
+            and faint_t >= st["turn"]
+            and not any(ct <= faint_t for ct in cure_turns)
+        )
+        fate = None
+        if died_statused and missed:
+            fate = "never_recovered"  # lost turns AND died still statused
+        elif (
+            died_statused
+            and not missed
+            and st["status"] in ("frz", "slp")
+            and faint_t - st["turn"] <= 1
+        ):
+            # Frozen/put to sleep and KO'd before it ever acted again — no cant
+            # line exists, but the status still decided that mon's game. Tight
+            # window (same/next turn) so a much-later unrelated faint can't
+            # masquerade as a status story.
+            fate = "koed_before_acting"
+        if not missed and not fate:
+            continue  # no corroborated impact -> not a KEY status
         key = (st["mon"], st["status"])
         if key in seen_ks:
             continue
         seen_ks.add(key)
-        key_status.append(
-            {
-                "turn": st["turn"],
-                "mon": st["mon"],
-                "team": _team_of(st["side"]) if st.get("side") else None,
-                "status": st["status"],
-                "by": st.get("by"),
-                "by_team": _team_of(st["byside"]) if st.get("byside") else None,
-                "missed_turns": len(missed),
-            }
-        )
+        entry = {
+            "turn": st["turn"],
+            "mon": st["mon"],
+            "team": _team_of(st["side"]) if st.get("side") else None,
+            "status": st["status"],
+            "by": st.get("by"),
+            "by_team": _team_of(st["byside"]) if st.get("byside") else None,
+            "missed_turns": len(missed),
+        }
+        if fate:
+            entry["fate"] = fate
+        key_status.append(entry)
     key_status = key_status[:3]
 
     # 8. IMPACT ABILITY — an -immune wall (ability negated a move), or Intimidate
@@ -3799,6 +3885,60 @@ def commentary_facts(recap: dict) -> dict:
                     "kos": n,
                 }
             )
+    # ── TIMELINE — one merged, turn-ordered spine of everything notable. The AI
+    # narrates by walking THIS list, which kills the scrambled-chronology recaps
+    # (each thematic list alone loses the global order). Same-turn tiebreak:
+    # field/status context first, then the hits, then aftermath.
+    _STATUS_WORDS = {"slp": "put to sleep", "par": "paralyzed", "frz": "frozen solid",
+                     "psn": "poisoned", "tox": "badly poisoned"}
+    timeline = []
+
+    def _tl(turn, order, event):
+        if turn is not None:
+            timeline.append({"turn": turn, "_o": order, "event": event})
+
+    for fe in fields:
+        who = f" by {fe['setter']}" if fe.get("setter") else ""
+        team = f" ({fe['team']})" if fe.get("team") else ""
+        _tl(fe.get("turn"), 0, f"{fe.get('label')} set{who}{team}")
+    for ks in key_status:
+        word = _STATUS_WORDS.get(ks["status"], ks["status"])
+        by = f" by {ks['by']}" if ks.get("by") else ""
+        tail = ""
+        if ks.get("fate") == "koed_before_acting":
+            tail = " and was KO'd before it could act again"
+        elif ks.get("fate") == "never_recovered":
+            tail = f" — lost {ks['missed_turns']} turn(s) and never recovered"
+        elif ks.get("missed_turns"):
+            tail = f" — lost {ks['missed_turns']} turn(s)"
+        _tl(ks.get("turn"), 1, f"{ks['mon']} was {word}{by}{tail}")
+    for t in teras:
+        _tl(t.get("turn"), 1, f"{t['mon']} ({t['team']}) Terastallized into {t['type']}")
+    for c in crits:
+        _tl(c.get("turn"), 2, f"CRIT: {c['attacker']}'s {c['move']} critically hit {c['victim']}"
+            + (" (KO)" if c.get("ko") else "") + " — likely changed the outcome")
+    for p in plays:
+        who = f"{p['attacker']} ({p['attacker_team']})" if p.get("attacker") else "residual damage"
+        mv = f" with {p['move']}" if p.get("move") else ""
+        _tl(p.get("turn"), 3, f"{who} KO'd {p['victim']}{mv}")
+    for s in self_kos:
+        _tl(s.get("turn"), 3, f"FRIENDLY FIRE: {s.get('victim')} was KO'd by its own side's {s.get('move')}")
+    for c in clutch:
+        mech = f" via {c['mechanic']}" if c.get("mechanic") else ""
+        pct = f" at {c['pct']}% HP" if c.get("pct") is not None else ""
+        _tl(c.get("turn"), 4, f"{c['mon']} clung on{pct}{mech}")
+    for sr in setup_reversals:
+        _tl(sr.get("turn"), 4,
+            f"SETUP ERASED: {sr.get('mon')}'s boosts were shut down ({sr.get('kind')})")
+    for dk in double_kos:
+        _tl(dk.get("turn"), 5, "DOUBLE KO — both sides lost a Pokemon this turn")
+    for ms in miss_streaks:
+        first = ms["turns"][0] if ms.get("turns") else None
+        _tl(first, 6, f"{ms['mon']} ({ms['team']}) kept missing — {ms['count']} misses"
+            + (f" (turns {', '.join(map(str, ms['turns']))})" if ms.get("turns") else ""))
+    timeline.sort(key=lambda e: (e["turn"], e["_o"]))
+    timeline = [{"turn": e["turn"], "event": e["event"]} for e in timeline][:24]
+
     return {
         "home": home,
         "away": away,
@@ -3807,6 +3947,7 @@ def commentary_facts(recap: dict) -> dict:
         "score": f"{totals.get('home', {}).get('ko', 0)}-{totals.get('away', {}).get('ko', 0)}",
         "turns": recap.get("facts", {}).get("turns"),
         "comeback_from": -max_deficit,  # how many mons down the winner was at worst
+        "timeline": timeline,
         "plays": plays,
         "stars": stars,
         "snowball": snowball,
@@ -3814,6 +3955,7 @@ def commentary_facts(recap: dict) -> dict:
         "items": items,
         "teras": teras,
         "misses": misses,
+        "miss_streaks": miss_streaks,
         "sweeps": sweeps,
         "fields": fields,
         "self_kos": self_kos,
@@ -4047,15 +4189,30 @@ def build_commentary(recap: dict) -> dict:
             )
     if f.get("key_status"):
         ks = f["key_status"][0]
-        word = {"slp": "put to sleep", "par": "paralyzed", "frz": "frozen"}.get(
+        word = {"slp": "put to sleep", "par": "paralyzed", "frz": "frozen solid"}.get(
             ks["status"], ks["status"]
         )
-        miss = (
-            f" and lost {ks['missed_turns']} turns"
-            if ks.get("missed_turns", 0) >= 2
-            else ""
+        if ks.get("fate") == "koed_before_acting":
+            tail = " and was KO'd before it could act again — brutal"
+        elif ks.get("fate") == "never_recovered":
+            tail = (
+                f", lost {ks['missed_turns']} turn{'s' if ks['missed_turns'] != 1 else ''}"
+                " and never recovered"
+            )
+        elif ks.get("missed_turns", 0) >= 2:
+            tail = f" and lost {ks['missed_turns']} turns — a costly momentum swing"
+        else:
+            tail = " — a costly momentum swing"
+        parts.append(f"{N(ks['mon'])} was {word}{tail}.")
+    if f.get("miss_streaks"):
+        ms = f["miss_streaks"][0]
+        turns_txt = (
+            f" (turns {', '.join(map(str, ms['turns']))})" if ms.get("turns") else ""
         )
-        parts.append(f"{N(ks['mon'])} was {word}{miss} — a costly momentum swing.")
+        parts.append(
+            f"{N(ms['mon'])} ({ms['team']}) just couldn't buy a hit — "
+            f"{ms['count']} misses{turns_txt}."
+        )
     if f.get("impact_abilities"):
         ia = f["impact_abilities"][0]
         if ia["kind"] == "wall":

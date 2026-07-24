@@ -833,7 +833,11 @@ def _coerce_play(x):
     return str(x).strip()
 
 
-def ai_commentary(recap, api_key, timeout=8):
+def ai_commentary(recap, api_key, timeout=30):
+    # timeout raised 8→30s: gpt-oss-120b is a reasoning model and the richer
+    # timeline facts give it more to chew on; the user prefers a slower, better
+    # recap over a fast template fallback. Runs post-transaction, so the extra
+    # wait never holds a DB write.
     """Ask Groq (free tier, Llama-3.3-70B) to write creative match commentary from
     the recap's structured facts. Returns {"summary": str, "plays": [str],
     "source": "ai"} on success, or None on ANY failure (missing key, network, bad
@@ -873,6 +877,10 @@ def ai_commentary(recap, api_key, timeout=8):
             "Use 'Species (Nickname)' here too when a nickname exists.\n"
             "\n"
             "READ THE FACTS LIKE A VGC ANALYST before writing:\n"
+            "- CHRONOLOGY IS LAW: `timeline` is the authoritative turn-by-turn order "
+            "of everything notable. After the hook sentence, your summary MUST narrate "
+            "events in timeline order — never describe a later event before an earlier "
+            "one. Cross-check every beat you write against `timeline` position.\n"
             "- TURNING POINT FIRST: the one moment the game swung for good — where "
             "`momentum`/`score` flips and stays flipped, the KO that opened a `sweep`, "
             "a `crits` entry with mattered=true (a normal hit would've left the target "
@@ -909,16 +917,26 @@ def ai_commentary(recap, api_key, timeout=8):
             "all of them.\n"
             "- TACTICAL BEATS (all pre-verified TRUE — use if present): `setup_reversals` = "
             "a boosted threat erased by Haze or shut down by Taunt/Encore (a huge swing). "
-            "`key_status` = a mon put to sleep/paralyzed and it LOST `missed_turns` turns "
-            "(corroborated tempo loss — name who inflicted it). `impact_abilities` (kind="
+            "`key_status` = a status that provably mattered: `missed_turns` = turns lost "
+            "to sleep/para/freeze (name who inflicted it); fate='koed_before_acting' = the "
+            "mon was frozen/put to sleep and KO'd before it EVER acted again (a death "
+            "sentence — narrate it as such); fate='never_recovered' = it lost turns and "
+            "died still statused. A freeze that decides a mon's game is a headline beat, "
+            "not a footnote. `impact_abilities` (kind="
             "'wall') = an ability that NEGATED a move outright ('walled it') — great flavor; "
             "kind='intimidate' = softened a physical attacker. `clutch_protects` = a Protect "
             "on `hp`% HP that blocked a would-be lethal hit. These are the tactical texture a "
             "VGC caster lives for — fold in the 1-2 that mattered most; never list them all.\n"
-            "- LUCK AUDIT, HONESTLY: judge which `crits`/`misses` MATTERED. mattered="
-            "true can be the turning point; mattered=false is overkill (say which). "
-            "Hedge ('likely') — the crit heuristic is approximate. Never make the whole "
-            "recap about luck unless the game was decided by it.\n"
+            "- LUCK, ONLY WHEN IT'S THE STORY: `crits` contains ONLY crits that "
+            "plausibly changed an outcome (pre-filtered) — narrate those as real "
+            "beats, hedged ('likely'). If `crits` is EMPTY, luck was not a factor: "
+            "say NOTHING about crits or luck. NEVER write filler like 'no lucky "
+            "crits altered the outcome' or 'the crit was lucky but not decisive'.\n"
+            "- ACCURACY WOES (`miss_streaks`): a mon that kept missing (2+ whiffs, "
+            "turns listed) is a genuine story beat — the player who couldn't buy a "
+            "hit. Tie it to what those misses cost if the timeline shows a KO "
+            "against that side right after. A single miss in `misses` is noise — "
+            "ignore it unless it directly preceded a KO.\n"
             "- CLUTCH SURVIVAL: a Focus Sash / Sturdy survival in `items` (a mon living "
             "on 1 HP and still contributing) is a highlight.\n"
             "- DON'T call every faint a blunder — sacking for tempo is legit. Respect "
