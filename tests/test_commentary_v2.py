@@ -416,6 +416,66 @@ def test_admin_regenerate_ai_route(app_mod, client, monkeypatch):
     assert stored["commentary"]["summary"] == "AI!"
 
 
+def test_facts_payload_compaction_and_slim(app_mod):
+    facts = {
+        "home": "A", "away": "B", "winner": "A", "loser": "B", "score": "1-0",
+        "timeline": [{"turn": 1, "event": "x"}],
+        "misses": [], "items": [], "pivots": {}, "benched": None,
+        "wasted_turns": {"A": {"turns_lost": 0}},
+        "luck_summary": {"A": {"crits_landed": 0}},
+    }
+    full = app_mod._facts_payload(facts)
+    assert '"misses"' not in full and '"benched"' not in full, "empty keys must be stripped"
+    assert ", " not in full, "separators must be compact"
+    slim = app_mod._facts_payload(facts, slim=True)
+    assert '"wasted_turns"' not in slim and '"luck_summary"' not in slim
+    assert '"timeline"' in slim and '"score"' in slim
+    assert len(slim) <= len(full)
+
+
+def test_ai_commentary_slims_on_413(app_mod, monkeypatch):
+    # Groq rejects an oversize request with 413 — the call must retry once with
+    # the slim fact set instead of silently falling back to template.
+    import io
+    import json as _json
+    import urllib.error
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|0 fnt",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    calls = []
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            content = _json.dumps({"summary": "AI recap!", "plays": ["T1: hype"]})
+            return _json.dumps(
+                {"choices": [{"message": {"content": content}}]}
+            ).encode()
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(len(req.data))
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(
+                req.full_url, 413, "too large", {}, io.BytesIO(b"")
+            )
+        return _Resp()
+
+    monkeypatch.setattr(app_mod.urllib.request, "urlopen", fake_urlopen)
+    out = app_mod.ai_commentary(recap, "test-key")
+    assert out and out["source"] == "ai" and out["summary"] == "AI recap!"
+    assert len(calls) == 2, "must retry exactly once after 413"
+    assert calls[1] < calls[0], "the retry body must be the slimmer payload"
+
+
 def test_series_bits_for_bo3_context(app_mod):
     recap = _recap(BASE + [
         "|turn|1",

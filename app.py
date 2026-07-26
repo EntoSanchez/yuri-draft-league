@@ -885,6 +885,25 @@ def _series_bits(recap):
     }
 
 
+def _facts_payload(facts, slim=False):
+    """Serialize commentary facts compactly for the Groq prompt. Empty keys are
+    stripped and separators tightened (free-tier tokens are scarce). slim=True
+    keeps only the story-critical keys — the fallback when Groq rejects the
+    request as too large for the per-minute token budget (HTTP 413)."""
+    f = facts
+    if slim:
+        keep = {
+            "home", "away", "winner", "loser", "score", "turns", "genre",
+            "ended_by", "comeback_from", "timeline", "plays", "stars", "teras",
+            "crits", "fields", "self_kos", "key_status", "clutch", "comeback",
+            "one_v_one", "last_stand", "sweeps", "miss_streaks", "nicknames",
+            "series_context",
+        }
+        f = {k: v for k, v in facts.items() if k in keep}
+    f = {k: v for k, v in f.items() if v not in (None, "", [], {})}
+    return json.dumps(f, separators=(",", ":"))
+
+
 def ai_commentary(recap, api_key, timeout=45, series_context=None):
     # timeout raised 8→30→45s: gpt-oss-120b is a reasoning model and the richer
     # timeline facts give it more to chew on; the user prefers a slower, better
@@ -1085,20 +1104,24 @@ def ai_commentary(recap, api_key, timeout=45, series_context=None):
         # current production model; llama-3.3-70b-versatile was deprecated
         # (retires 2026-08-16) and is the likely cause of a silent AI fallback.
         model = get_setting("groq_model", "") or "openai/gpt-oss-120b"
-        body = json.dumps({
-            "model": model,
-            "temperature": 0.9,
-            # NOTE: do NOT set a small max_tokens here. gpt-oss-120b is a REASONING
-            # model — its hidden reasoning tokens count against the completion
-            # budget, so a low cap (e.g. 1200) gets consumed by reasoning and
-            # truncates the JSON body → json.loads fails → silent template
-            # fallback. Leave it unset (model default) and truncate on OUR side.
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": "FACTS:\n" + json.dumps(facts)},
-            ],
-        }).encode("utf-8")
+        def _mk_body(slim):
+            return json.dumps({
+                "model": model,
+                "temperature": 0.9,
+                # NOTE: do NOT set a small max_tokens here. gpt-oss-120b is a
+                # REASONING model — its hidden reasoning tokens count against the
+                # completion budget, so a low cap (e.g. 1200) gets consumed by
+                # reasoning and truncates the JSON body → json.loads fails →
+                # silent template fallback. Leave it unset and truncate OUR side.
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": "FACTS:\n" + _facts_payload(facts, slim)},
+                ],
+            }).encode("utf-8")
+
+        body = _mk_body(slim=False)
+        slim_used = False
         headers = {"Content-Type": "application/json",
                    "Authorization": "Bearer " + api_key,
                    # Groq is behind Cloudflare, which 403s (error 1010) the
@@ -1120,6 +1143,14 @@ def ai_commentary(recap, api_key, timeout=45, series_context=None):
                     data = json.loads(resp.read())
                 break
             except urllib.error.HTTPError as he:
+                if he.code == 413 and not slim_used:
+                    # Request too large for the per-minute token budget — the
+                    # richest game of a set can tip over where the others fit.
+                    # Retry immediately with the slimmed fact set.
+                    print("[ai_commentary] 413 too large — retrying with slim facts", flush=True)
+                    body = _mk_body(slim=True)
+                    slim_used = True
+                    continue
                 if he.code == 429 and attempt < 2:
                     wait = 15.0
                     try:
@@ -3909,30 +3940,33 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
     # Every game already has deterministic template commentary written above, so a
     # Groq failure just leaves the good template recap in place.
     if _groq_key and pending_ai:
-        for i, (game_id, recap) in enumerate(pending_ai):
+        def _series_ctx(i):
             # Bo3 adaptation: games 2-3 get the earlier games' winner/leads/teras
             # so the recap can narrate the adjustments, not just this game.
-            sc = None
-            if i > 0:
-                try:
-                    sc = {
-                        "game_number": i + 1,
-                        "previous_games": [
-                            dict(_series_bits(r), game_number=j + 1)
-                            for j, (_gid, r) in enumerate(pending_ai[:i])
-                        ],
-                    }
-                except Exception:
-                    sc = None  # context is a bonus — never let it kill the recap
+            if i == 0:
+                return None
             try:
-                enhanced = ai_commentary(recap, _groq_key, series_context=sc)
+                return {
+                    "game_number": i + 1,
+                    "previous_games": [
+                        dict(_series_bits(r), game_number=j + 1)
+                        for j, (_gid, r) in enumerate(pending_ai[:i])
+                    ],
+                }
+            except Exception:
+                return None  # context is a bonus — never let it kill the recap
+
+        def _enhance(i, game_id, recap):
+            try:
+                enhanced = ai_commentary(recap, _groq_key, series_context=_series_ctx(i))
             except Exception:
                 enhanced = None
             if not enhanced:
-                continue
-            # Mutate the recap in place; `last_recap` references the last game's
-            # recap object, so the Discord post below automatically uses its AI
-            # version once enhanced — no extra sync needed.
+                print(f"[ai_commentary] game {i + 1} (id {game_id}) fell back to template",
+                      flush=True)
+                return False
+            # Mutate the recap in place; the Discord post below uses these same
+            # objects, so it automatically carries the AI version — no extra sync.
             recap["commentary"] = enhanced
             try:
                 with get_db() as db:
@@ -3942,6 +3976,20 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
                     )
             except Exception:
                 pass
+            return True
+
+        failed = []
+        for i, (game_id, recap) in enumerate(pending_ai):
+            if not _enhance(i, game_id, recap):
+                failed.append((i, game_id, recap))
+        # SECOND PASS — the universal safety net. Whatever felled a game on the
+        # first try (per-minute token window, oversize, timeout), minutes have
+        # passed by now; give each failed game one more shot before the Discord
+        # post goes out, so a set never ships with one template recap in it.
+        if failed:
+            time.sleep(30)
+            for i, game_id, recap in failed:
+                _enhance(i, game_id, recap)
 
     # After the DB transaction closes — the Discord network call must not hold the
     # SQLite write connection (a ~5s POST would block all other writers).
