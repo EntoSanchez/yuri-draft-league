@@ -3979,17 +3979,28 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             return True
 
         failed = []
+        last_call_start = 0.0
         for i, (game_id, recap) in enumerate(pending_ai):
+            # PACING: one call comfortably fits the free tier's per-minute token
+            # budget, two do not. Give every call after the first a fresh minute
+            # instead of gambling on 429 Retry-After waits — deterministic beats
+            # reactive here, and the user prefers slow-and-complete.
+            if i > 0:
+                elapsed = time.time() - last_call_start
+                if elapsed < 65:
+                    time.sleep(65 - elapsed)
+            last_call_start = time.time()
             if not _enhance(i, game_id, recap):
                 failed.append((i, game_id, recap))
         # SECOND PASS — the universal safety net. Whatever felled a game on the
-        # first try (per-minute token window, oversize, timeout), minutes have
-        # passed by now; give each failed game one more shot before the Discord
-        # post goes out, so a set never ships with one template recap in it.
-        if failed:
-            time.sleep(30)
-            for i, game_id, recap in failed:
-                _enhance(i, game_id, recap)
+        # first try (window collision, oversize, timeout), give each failed game
+        # one more shot in its own fresh minute before the Discord post goes out.
+        for i, game_id, recap in failed:
+            elapsed = time.time() - last_call_start
+            if elapsed < 65:
+                time.sleep(65 - elapsed)
+            last_call_start = time.time()
+            _enhance(i, game_id, recap)
 
     # After the DB transaction closes — the Discord network call must not hold the
     # SQLite write connection (a ~5s POST would block all other writers).
