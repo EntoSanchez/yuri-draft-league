@@ -2550,6 +2550,18 @@ def _pokemon_slug(name):
     return _name_to_slug(name)[0]
 
 
+def _pokedex_lookup(pd_map, name):
+    """First pokedex hit across ALL slug candidates for a display name.
+    _pokemon_slug alone returns the Showdown-CDN candidate ([0]), which for
+    X/Y megas is "charizard-megay" while the pokedex table keys use PokeAPI's
+    "charizard-mega-y" — so single-candidate lookups silently lose type data."""
+    for cand in _name_to_slug(name):
+        hit = pd_map.get(cand)
+        if hit:
+            return hit
+    return {}
+
+
 def _speed_tiers(base_spe):
     """Return (0ev, 252ev, 252+) speed stats at level 100, 31 IVs."""
     if not base_spe:
@@ -2703,12 +2715,27 @@ def team_detail(coach_id):
                     "SELECT * FROM pokemon_roster WHERE coach_id=? ORDER BY points DESC",
                     (opp_id,)
                 ).fetchall()
-                opp_slugs = [_pokemon_slug(p["pokemon_name"]) for p in opp_roster_rows]
+                # Query with ALL slug candidates per mon (X/Y megas resolve via
+                # the pokeapi-format candidate, not _pokemon_slug's Showdown one).
+                opp_slugs = sorted({
+                    s for p in opp_roster_rows for s in _name_to_slug(p["pokemon_name"])
+                })
                 opp_pd_map = {}
                 if opp_slugs:
                     ph2 = ",".join("?" for _ in opp_slugs)
                     for row in db.execute(f"SELECT * FROM pokedex WHERE pokeapi_name IN ({ph2})", opp_slugs).fetchall():
                         opp_pd_map[row["pokeapi_name"]] = dict(row)
+                # Attach types in Python — the template used to re-derive slugs
+                # naively, so megas and regional formes ("Mega Charizard Y",
+                # "Hisuian Typhlosion") missed their type chips and the two
+                # roster columns drifted out of line.
+                opp_roster_list = []
+                for r in opp_roster_rows:
+                    d = dict(r)
+                    pd = _pokedex_lookup(opp_pd_map, r["pokemon_name"])
+                    d["type1"] = pd.get("type1", "")
+                    d["type2"] = pd.get("type2", "")
+                    opp_roster_list.append(d)
                 matchup = {
                     "week": current_week,
                     "my_score":  m["score1"] if is_c1 else m["score2"],
@@ -2718,7 +2745,7 @@ def team_detail(coach_id):
                     "opp_coach": m["c2_name"] if is_c1 else m["c1_name"],
                     "opp_color": m["c2_color"] if is_c1 else m["c1_color"],
                     "opp_logo":  m["c2_logo"]  if is_c1 else m["c1_logo"],
-                    "opp_roster": [dict(r) for r in opp_roster_rows],
+                    "opp_roster": opp_roster_list,
                     "opp_pd_map": opp_pd_map,
                 }
                 break
@@ -2733,8 +2760,7 @@ def team_detail(coach_id):
     # Build enriched roster list
     roster = []
     for p in roster_rows:
-        slug = _pokemon_slug(p["pokemon_name"])
-        pd   = pokedex_map.get(slug, {})
+        pd = _pokedex_lookup(pokedex_map, p["pokemon_name"])
         stat = stats_map.get(p["pokemon_name"], {"k": 0, "d": 0, "gp": 0})
         spe  = pd.get("spe") or 0
         s0, s252, s252p = _speed_tiers(spe) if spe else (None, None, None)
