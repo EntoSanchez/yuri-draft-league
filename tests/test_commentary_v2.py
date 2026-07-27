@@ -314,6 +314,18 @@ def test_speed_read_flagged_with_guards():
     assert f["speed_reads"], "Slowpoke outspeeding Ninjask must be flagged"
     assert f["speed_reads"][0]["mon"] == "Slowpoke"
 
+    # Prankster trap: a slow mon using a STATUS move first (hidden +1 priority)
+    # must never read as a Scarf tell — only damaging-vs-damaging order counts.
+    pr = lines[:7] + [
+        "|move|p1a: Slowpoke|Light Screen|p1a: Slowpoke",
+        "|move|p2a: Ninjask|Hyper Beam|p1a: Slowpoke",
+        "|-damage|p1a: Slowpoke|0 fnt",
+        "|faint|p1a: Slowpoke",
+        "|win|Bob",
+    ]
+    fpr = R.commentary_facts(_recap(["|turn|1" if l == "|turn|1" else l for l in pr]), speed_map=smap)
+    assert fpr["speed_reads"] == [], fpr["speed_reads"]
+
     # Same order under Tailwind: the read must be suppressed (tainted turn).
     tw = lines[:7] + [
         "|move|p2a: Ninjask|Tailwind|p2a: Ninjask",

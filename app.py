@@ -1097,7 +1097,17 @@ def ai_commentary(recap, api_key, timeout=45, series_context=None):
             "your recap MUST exist in the facts. Compute the score from the facts. "
             "Don't confuse nicknames with species. If a beat isn't in the facts (an "
             "exact Protect read, Fake Out, redirection, Trick Room timing), do NOT "
-            "narrate it. Output ONLY the JSON object."
+            "narrate it.\n"
+            "ONE EVENT, ONE SUBJECT (the #1 error to avoid): every timeline event has "
+            "exactly one actor. NEVER fuse two same-turn events into one action — if "
+            "'Walking Wake Terastallized' and 'Baxcalibur KO'd Walking Wake' share a "
+            "turn, they are TWO sentences (or clauses with their own subjects); "
+            "writing 'Baxcalibur Terastallized Walking Wake' is a factual error. A "
+            "Tera belongs only to the mon named in the Tera event; a KO only to the "
+            "attacker in the KO event; chip damage belongs to the mon it was dealt "
+            "TO. Before finishing, re-check each sentence: does its subject match the "
+            "timeline event it describes? If a sentence mentions mons from two "
+            "different events, split it. Output ONLY the JSON object."
         )
         # Model is configurable via Admin → Settings (groq_model) so a Groq
         # deprecation never silently breaks commentary again. Default is Groq's
@@ -1107,7 +1117,10 @@ def ai_commentary(recap, api_key, timeout=45, series_context=None):
         def _mk_body(slim):
             return json.dumps({
                 "model": model,
-                "temperature": 0.9,
+                # 0.9 produced vivid prose but scrambled facts (fusing same-turn
+                # events onto the wrong subject). 0.6 keeps the voice while making
+                # the model stick to the timeline.
+                "temperature": 0.6,
                 # NOTE: do NOT set a small max_tokens here. gpt-oss-120b is a
                 # REASONING model — its hidden reasoning tokens count against the
                 # completion budget, so a low cap (e.g. 1200) gets consumed by

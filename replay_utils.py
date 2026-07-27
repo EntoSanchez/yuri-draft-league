@@ -92,6 +92,23 @@ _STATUS_MOVES = {
     "Light Screen",
     "Reflect",
     "Aurora Veil",
+    # Non-damaging moves matter beyond Protect drama: any of these can carry
+    # hidden Prankster priority (the speed-read guard skips turns with them)
+    # and none can crit (the EV estimate excludes them).
+    "Parting Shot", "After You", "Quash", "Instruct", "Coaching", "Decorate",
+    "Heal Pulse", "Life Dew", "Spotlight", "Helping Hand", "Ally Switch",
+    "Curse", "Swords Dance", "Nasty Plot", "Calm Mind", "Dragon Dance",
+    "Bulk Up", "Iron Defense", "Agility", "Shell Smash", "Belly Drum",
+    "Substitute", "Recover", "Roost", "Slack Off", "Moonlight", "Synthesis",
+    "Morning Sun", "Strength Sap", "Wish", "Haze", "Perish Song", "Safeguard",
+    "Fake Tears", "Charm", "Screech", "Growl", "Baby-Doll Eyes",
+    "Eerie Impulse", "Scary Face", "String Shot", "Trick", "Switcheroo",
+    "Skill Swap", "Torment", "Attract", "Rain Dance", "Sunny Day",
+    "Sandstorm", "Snowscape", "Chilly Reception", "Grassy Terrain",
+    "Electric Terrain", "Psychic Terrain", "Misty Terrain", "Stealth Rock",
+    "Spikes", "Toxic Spikes", "Sticky Web", "Defog", "Court Change",
+    "Heal Bell", "Aromatherapy", "Wide Guard", "Quick Guard", "Protect",
+    "Detect", "Endure",
 }
 
 
@@ -4203,6 +4220,14 @@ def commentary_facts(recap: dict, speed_map: dict = None) -> dict:
                     if a["side"] == b["side"]:
                         continue
                     if a["move"] in _PRIORITY_MOVES or b["move"] in _PRIORITY_MOVES:
+                        continue
+                    # Status moves reveal nothing: Prankster gives them hidden +1
+                    # priority (a slow Morgrem Light-Screening before Tapu Koko is
+                    # ability priority, not a Scarf). Require BOTH moves damaging.
+                    if a["move"] in _STATUS_MOVES or b["move"] in _STATUS_MOVES:
+                        continue
+                    # Gale Wings mons get hidden priority on damaging Flying moves.
+                    if a["mon"] in ("Talonflame", "Fletchinder", "Fletchling"):
                         continue
                     if a["mon"] in tainted_mons or b["mon"] in tainted_mons:
                         continue
