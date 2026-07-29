@@ -2796,9 +2796,11 @@ def team_detail(coach_id):
                 }
                 break
 
-    # Pool standings for record
+    # OVERALL standings for the record + rank badge — the rank shown on a team
+    # page is the coach's position in the WHOLE league, not within their pool
+    # (the standings page still offers per-pool ladders via its A/B toggle).
     standing = None
-    for s in get_standings(coach["pool"]):
+    for s in get_standings(None):
         if s["coach"]["id"] == coach_id:
             standing = s
             break
