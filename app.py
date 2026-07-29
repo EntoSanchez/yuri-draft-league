@@ -1314,39 +1314,41 @@ def get_standings(pool=None):
 
     for m in schedule:
         c1, c2 = m["coach1_id"], m["coach2_id"]
-        if c1 not in results or c2 not in results:
+        # Count the match for WHICHEVER side is in this standings scope.
+        # Requiring BOTH coaches silently dropped cross-pool matches (e.g. after
+        # mid-season team additions or a mis-set coach pool), so a coach's own
+        # win vanished from their record while the schedule page showed it fine.
+        r1, r2 = results.get(c1), results.get(c2)
+        if r1 is None and r2 is None:
             continue
         s1, s2 = m["score1"], m["score2"]
         wk = m["week"]
         if s1 is None or s2 is None:
-            results[c1]["weeks"][wk] = ""
-            results[c2]["weeks"][wk] = ""
+            if r1 is not None:
+                r1["weeks"][wk] = ""
+            if r2 is not None:
+                r2["weeks"][wk] = ""
             continue
         # W/L count GAMES won, not matches: score1/score2 are the per-match game-win
         # counts (e.g. a 2-1 set gives the winner 2 game-wins and 1 game-loss). So a
         # coach's record is total games won vs total games lost across all matches.
         g1, g2 = int(s1), int(s2)
-        results[c1]["W"] += g1
-        results[c1]["L"] += g2
-        results[c2]["W"] += g2
-        results[c2]["L"] += g1
         # The weekly FORM marker still reflects who won the MATCH that week.
         margin = g1 - g2
-        if margin > 0:
-            results[c1]["weeks"][wk] = "W"
-            results[c2]["weeks"][wk] = "L"
-        elif margin < 0:
-            results[c1]["weeks"][wk] = "L"
-            results[c2]["weeks"][wk] = "W"
-        else:
-            results[c1]["weeks"][wk] = "T"
-            results[c2]["weeks"][wk] = "T"
         # KO differential from match_stats: each coach's KOs-for minus the
         # opponent's KOs (= this coach's KOs-against) in the same match.
         k1 = ko_for.get((m["id"], c1), 0)
         k2 = ko_for.get((m["id"], c2), 0)
-        results[c1]["diff"] += k1 - k2
-        results[c2]["diff"] += k2 - k1
+        if r1 is not None:
+            r1["W"] += g1
+            r1["L"] += g2
+            r1["weeks"][wk] = "W" if margin > 0 else ("L" if margin < 0 else "T")
+            r1["diff"] += k1 - k2
+        if r2 is not None:
+            r2["W"] += g2
+            r2["L"] += g1
+            r2["weeks"][wk] = "W" if margin < 0 else ("L" if margin > 0 else "T")
+            r2["diff"] += k2 - k1
 
     # Rank by W-L record FIRST (more wins, fewer losses), then KO differential.
     rows = sorted(
