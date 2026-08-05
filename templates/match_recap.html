@@ -144,6 +144,20 @@
   </div>
   {% endif %}
 
+  {# Admin: re-post this match's recaps to Discord (recovery when the import's
+     background tail died before the posts went out). #}
+  {% if session.get('role') == 'admin' and all_recaps %}
+  <form method="POST" action="/admin/post_discord/{{ match.id }}" style="margin:4px 0"
+        onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='Posting…';">
+    <button type="submit"
+            style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;
+                   padding:4px 10px;background:none;border:1px dashed var(--hairline-2);
+                   color:var(--text-dim);cursor:pointer">
+      &#128228; POST RECAPS TO DISCORD
+    </button>
+  </form>
+  {% endif %}
+
   {# ── Loop over all games (BO1 = 1 iteration; BO3 = up to 3) ── #}
   {% for M in all_recaps %}
   {% set home_win = M.totals.winner == "HOME" %}

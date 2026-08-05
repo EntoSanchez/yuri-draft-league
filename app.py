@@ -7,6 +7,7 @@ import re
 import secrets
 import shutil
 import sqlite3
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -3455,6 +3456,52 @@ def admin_test_ai():
     return redirect(url_for("admin_settings"))
 
 
+@app.route("/admin/post_discord/<int:match_id>", methods=["POST"])
+@admin_required
+def admin_post_discord(match_id):
+    """Re-post a match's stored game recaps to Discord. Recovery for imports
+    whose background tail died before the posts went out."""
+    with get_db() as db:
+        wh = db.execute(
+            "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
+        ).fetchone()
+        webhook = wh["value"] if wh and wh["value"] else None
+        games = db.execute(
+            "SELECT game_number, recap_json FROM match_games "
+            "WHERE schedule_id=? AND recap_json IS NOT NULL ORDER BY game_number",
+            (match_id,),
+        ).fetchall()
+    if not webhook:
+        flash("No Discord webhook configured in Admin → Settings.", "warning")
+        return redirect(request.referrer or url_for("index"))
+    if not games:
+        flash("No stored recaps for that match.", "warning")
+        return redirect(request.referrer or url_for("index"))
+    league = get_setting("league_name", "Pokemon Draft League")
+    base = get_setting("site_base_url", "").rstrip("/")
+    match_url = f"{base}/match/{match_id}" if base else ""
+    multi = len(games) > 1
+    posted = 0
+    for g in games:
+        recap = json.loads(g["recap_json"])
+        msg = build_discord_recap_message(
+            recap,
+            recap.get("home", {}).get("name", "Home"),
+            recap.get("away", {}).get("name", "Away"),
+            match_url, league,
+        )
+        if multi:
+            msg = f"**— Game {g['game_number']} —**\n{msg}"
+        try:
+            post_discord(webhook, msg)
+            posted += 1
+        except Exception:
+            pass
+    flash(f"Posted {posted} game recap{'s' if posted != 1 else ''} to Discord.",
+          "success" if posted else "warning")
+    return redirect(request.referrer or url_for("index"))
+
+
 @app.route("/admin/regenerate_ai/<int:game_id>", methods=["POST"])
 @admin_required
 def admin_regenerate_ai(game_id):
@@ -3956,7 +4003,19 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
     # connection. Each success updates only that game's recap_json in a short txn.
     # Every game already has deterministic template commentary written above, so a
     # Groq failure just leaves the good template recap in place.
-    if _groq_key and pending_ai:
+    # ── Post-import tail: AI enhancement + Discord posts. This can take MINUTES
+    # (deliberate 65s pacing between Groq calls), and PythonAnywhere kills
+    # long-running web requests — which silently killed the Discord posts that
+    # sit at the end. Run the whole tail in a background thread so the import
+    # request returns immediately; recaps upgrade and posts go out within a few
+    # minutes. Under TESTING it runs synchronously so tests stay deterministic.
+    def _post_import_tail():
+        _ai_enhance_all()
+        _post_discord_recaps()
+
+    def _ai_enhance_all():
+        if not (_groq_key and pending_ai):
+            return
         def _series_ctx(i):
             # Bo3 adaptation: games 2-3 get the earlier games' winner/leads/teras
             # so the recap can narrate the adjustments, not just this game.
@@ -4019,37 +4078,41 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             last_call_start = time.time()
             _enhance(i, game_id, recap)
 
-    # After the DB transaction closes — the Discord network call must not hold the
-    # SQLite write connection (a ~5s POST would block all other writers).
-    # Post EVERY imported game's recap (a BO3 set posts each game, not just the last).
-    # The recap objects in all_game_recaps are the same ones enhanced by Groq above
-    # (mutated in place), so they carry the AI commentary by now.
-    try:
-        with get_db() as db:
-            wh = db.execute(
-                "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
-            ).fetchone()
-            webhook = wh["value"] if wh else None
-        if webhook and all_game_recaps:
-            league = get_setting("league_name", "Pokemon Draft League")
-            base = get_setting("site_base_url", "").rstrip("/")
-            match_url = f"{base}/match/{match_id}" if base else ""
-            multi = len(all_game_recaps) > 1
-            for game_number, recap in all_game_recaps:
-                home_team = recap.get("home", {}).get("name", "Home")
-                away_team = recap.get("away", {}).get("name", "Away")
-                msg = build_discord_recap_message(
-                    recap, home_team, away_team, match_url, league)
-                # Prefix a game header for multi-game (BO3) imports so each post is
-                # clearly labeled Game 1 / Game 2 / Game 3.
-                if multi:
-                    msg = f"**— Game {game_number} —**\n{msg}"
-                try:
-                    post_discord(webhook, msg)
-                except Exception:
-                    pass  # one game's post failing must not block the others
-    except Exception:
-        pass
+    # Post EVERY imported game's recap (a BO3 set posts each game, not just the
+    # last). The recap objects in all_game_recaps are the same ones enhanced by
+    # Groq above (mutated in place), so they carry the AI commentary by then.
+    def _post_discord_recaps():
+        try:
+            with get_db() as db:
+                wh = db.execute(
+                    "SELECT value FROM league_settings WHERE key='discord_webhook_url'"
+                ).fetchone()
+                webhook = wh["value"] if wh else None
+            if webhook and all_game_recaps:
+                league = get_setting("league_name", "Pokemon Draft League")
+                base = get_setting("site_base_url", "").rstrip("/")
+                match_url = f"{base}/match/{match_id}" if base else ""
+                multi = len(all_game_recaps) > 1
+                for game_number, recap in all_game_recaps:
+                    home_team = recap.get("home", {}).get("name", "Home")
+                    away_team = recap.get("away", {}).get("name", "Away")
+                    msg = build_discord_recap_message(
+                        recap, home_team, away_team, match_url, league)
+                    # Prefix a game header for multi-game (BO3) imports so each
+                    # post is clearly labeled Game 1 / Game 2 / Game 3.
+                    if multi:
+                        msg = f"**— Game {game_number} —**\n{msg}"
+                    try:
+                        post_discord(webhook, msg)
+                    except Exception:
+                        pass  # one game's post failing must not block the others
+        except Exception:
+            pass
+
+    if app.config.get("TESTING"):
+        _post_import_tail()
+    else:
+        threading.Thread(target=_post_import_tail, daemon=True).start()
 
     return errors
 

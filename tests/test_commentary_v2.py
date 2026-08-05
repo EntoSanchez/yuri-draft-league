@@ -488,6 +488,49 @@ def test_ai_commentary_slims_on_413(app_mod, monkeypatch):
     assert calls[1] < calls[0], "the retry body must be the slimmer payload"
 
 
+def test_admin_post_discord_route(app_mod, client, monkeypatch):
+    # Recovery path: re-post stored recaps to Discord after a dead import tail.
+    import json as _json
+    recap = _recap(BASE + [
+        "|turn|1",
+        "|move|p1a: Glaceon|Ice Beam|p2a: Dragonite",
+        "|-damage|p2a: Dragonite|0 fnt",
+        "|faint|p2a: Dragonite",
+        "|win|Alice",
+    ])
+    recap["commentary"] = {"summary": "story", "plays": [], "source": "ai"}
+    with app_mod.get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS match_games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                schedule_id INTEGER NOT NULL,
+                game_number INTEGER NOT NULL DEFAULT 1,
+                replay_url TEXT DEFAULT '',
+                winner_coach_id INTEGER DEFAULT NULL,
+                playoff_match_id INTEGER DEFAULT NULL,
+                recap_json TEXT
+            )
+        """)
+        db.execute("INSERT INTO schedule (week, coach1_id, coach2_id) VALUES (1, 1, 2)")
+        sid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        for gn in (1, 2):
+            db.execute(
+                "INSERT INTO match_games (schedule_id, game_number, recap_json) VALUES (?,?,?)",
+                (sid, gn, _json.dumps(recap)),
+            )
+        db.execute(
+            "INSERT OR REPLACE INTO league_settings (key, value) VALUES "
+            "('discord_webhook_url','https://example.test/hook')"
+        )
+    sent = []
+    monkeypatch.setattr(app_mod, "post_discord", lambda wh, msg: sent.append(msg))
+    resp = client.post(f"/admin/post_discord/{sid}")
+    assert resp.status_code in (302, 303)
+    assert len(sent) == 2
+    assert sent[0].startswith("**— Game 1 —**")
+    assert "story" in sent[0]
+
+
 def test_series_bits_for_bo3_context(app_mod):
     recap = _recap(BASE + [
         "|turn|1",
