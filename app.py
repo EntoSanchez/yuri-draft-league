@@ -772,9 +772,19 @@ def post_discord(webhook_url, content):
                      "User-Agent": "yuri-draft-league/1.0"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
-    except Exception:
+    except urllib.error.HTTPError as he:
+        # Breadcrumb in the server log — a dead/rotated webhook 404s forever
+        # and silent False made that undiagnosable.
+        try:
+            body = he.read().decode("utf-8", "replace")[:200]
+        except Exception:
+            body = ""
+        print(f"[post_discord] HTTP {he.code}: {body}", flush=True)
+        return False
+    except Exception as ex:
+        print(f"[post_discord] {type(ex).__name__}: {ex}", flush=True)
         return False  # Never let Discord errors break the app
 
 
@@ -3492,13 +3502,17 @@ def admin_post_discord(match_id):
         )
         if multi:
             msg = f"**— Game {g['game_number']} —**\n{msg}"
-        try:
-            post_discord(webhook, msg)
+        if post_discord(webhook, msg):
             posted += 1
-        except Exception:
-            pass
-    flash(f"Posted {posted} game recap{'s' if posted != 1 else ''} to Discord.",
-          "success" if posted else "warning")
+    if posted == len(games):
+        flash(f"Posted {posted} game recap{'s' if posted != 1 else ''} to Discord.", "success")
+    else:
+        flash(
+            f"Posted {posted} of {len(games)} recaps — Discord rejected the rest. "
+            "The webhook URL is likely dead or rotated: check Admin → Settings and "
+            "use the webhook Test button (server log has the HTTP error).",
+            "warning" if posted else "error",
+        )
     return redirect(request.referrer or url_for("index"))
 
 
