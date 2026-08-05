@@ -773,19 +773,32 @@ def post_discord(webhook_url, content):
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return 200 <= resp.status < 300
+            ok = 200 <= resp.status < 300
+            if ok:
+                global _LAST_DISCORD_ERROR
+                _LAST_DISCORD_ERROR = None
+            return ok
     except urllib.error.HTTPError as he:
-        # Breadcrumb in the server log — a dead/rotated webhook 404s forever
-        # and silent False made that undiagnosable.
+        # Remember + log the real rejection — a dead/rotated webhook 404s
+        # forever and silent False made that undiagnosable.
         try:
             body = he.read().decode("utf-8", "replace")[:200]
         except Exception:
             body = ""
-        print(f"[post_discord] HTTP {he.code}: {body}", flush=True)
+        _remember_discord_error(f"HTTP {he.code}: {body}")
         return False
     except Exception as ex:
-        print(f"[post_discord] {type(ex).__name__}: {ex}", flush=True)
+        _remember_discord_error(f"{type(ex).__name__}: {ex}")
         return False  # Never let Discord errors break the app
+
+
+_LAST_DISCORD_ERROR = None
+
+
+def _remember_discord_error(msg):
+    global _LAST_DISCORD_ERROR
+    _LAST_DISCORD_ERROR = msg
+    print(f"[post_discord] {msg}", flush=True)
 
 
 def _clean_truncate(text, limit):
@@ -3447,7 +3460,9 @@ def admin_test_webhook():
                                "Match results will post here."):
         flash("Test message sent — check your Discord channel.", "success")
     else:
-        flash("Could not deliver to Discord. Check the webhook URL is correct and saved.", "error")
+        detail = f" Discord said: {_LAST_DISCORD_ERROR}" if _LAST_DISCORD_ERROR else ""
+        flash("Could not deliver to Discord." + detail +
+              " Check the webhook URL is correct and saved.", "error")
     return redirect(url_for("admin_settings"))
 
 
