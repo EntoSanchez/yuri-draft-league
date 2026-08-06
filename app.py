@@ -886,6 +886,42 @@ def _pokedex_speed_map():
     return _SPEED_MAP_CACHE
 
 
+def _norm_showdown_name(s):
+    """Normalize a Showdown username like toID: lowercase, alphanumerics only.
+    'lookout mudd' == 'LookoutMudd' == 'lookout-mudd' — admin-entered names
+    shouldn't fail on spacing or case."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def _map_players_to_coaches(u1, u2, sn1, sn2, c1, c2):
+    """Map replay players p1/p2 (usernames u1/u2) to schedule coaches c1/c2.
+
+    Name-match first (normalized). If exactly one side is identified, the other
+    side is the OTHER coach — never the same coach twice. That rule is the fix
+    for a real incident: c1's stored name matched the p2 username while p1
+    matched nobody, and the old positional fallback assigned BOTH sides to c1,
+    crediting every Pokemon in the match to one coach."""
+    n1, n2 = _norm_showdown_name(sn1), _norm_showdown_name(sn2)
+    nu1, nu2 = _norm_showdown_name(u1), _norm_showdown_name(u2)
+
+    def _match(nu):
+        if nu and nu == n1:
+            return c1
+        if nu and nu == n2:
+            return c2
+        return None
+
+    m1, m2 = _match(nu1), _match(nu2)
+    if m1 is not None and m2 is not None and m1 is not m2:
+        return m1, m2
+    if m1 is not None and m2 is None:
+        return m1, (c2 if m1 is c1 else c1)
+    if m2 is not None and m1 is None:
+        return (c2 if m2 is c1 else c1), m2
+    # Neither matched (or both matched the SAME coach — ambiguous): positional.
+    return c1, c2
+
+
 def _series_bits(recap):
     """Tiny per-game summary (winner, leads, teras) for Bo3 adaptation context —
     games 2-3 recaps get the earlier games' choices to diff against."""
@@ -3863,8 +3899,11 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
             return errors
 
         for url, parsed, _pr, _rd in parsed_games:
-            replay_players = {parsed["p1"]["username"].lower(), parsed["p2"]["username"].lower()}
-            if not ({sn1, sn2} & replay_players):
+            replay_players = {
+                _norm_showdown_name(parsed["p1"]["username"]),
+                _norm_showdown_name(parsed["p2"]["username"]),
+            }
+            if not ({_norm_showdown_name(sn1), _norm_showdown_name(sn2)} & replay_players):
                 errors.append(
                     f"Replay players {replay_players} don't match coaches "
                     f"'{c1['coach_name']}' ({sn1}) / '{c2['coach_name']}' ({sn2})."
@@ -3885,16 +3924,10 @@ def _import_replays_for_match(match_id, c1_id, c2_id, urls):
         for i, (url, parsed, parsed_recap, replay_data) in enumerate(parsed_games):
             game_number = start_game + i
 
-            # Map p1/p2 → coach
-            by_pkey = {}
-            for pkey in ("p1", "p2"):
-                uname = parsed[pkey]["username"].lower()
-                if sn1 == uname:
-                    by_pkey[pkey] = c1
-                elif sn2 == uname:
-                    by_pkey[pkey] = c2
-                else:
-                    by_pkey[pkey] = c1 if pkey == "p1" else c2
+            # Map p1/p2 → coach (normalized names; never both sides to one coach)
+            _bp1, _bp2 = _map_players_to_coaches(
+                parsed["p1"]["username"], parsed["p2"]["username"], sn1, sn2, c1, c2)
+            by_pkey = {"p1": _bp1, "p2": _bp2}
 
             winner_pkey = parsed["winner_player"]
             winner_cid = by_pkey[winner_pkey]["id"] if winner_pkey else None

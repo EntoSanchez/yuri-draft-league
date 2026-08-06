@@ -531,6 +531,30 @@ def test_admin_post_discord_route(app_mod, client, monkeypatch):
     assert "story" in sent[0]
 
 
+def test_map_players_never_assigns_both_sides_to_one_coach(app_mod):
+    # Real incident: c1's stored Showdown name matched the P2 username while p1
+    # matched nobody — the old positional fallback gave BOTH sides to c1 and
+    # every Pokemon in the match was credited to one coach.
+    c1, c2 = {"id": 1, "n": "Sumpter"}, {"id": 2, "n": "Opp"}
+    p1c, p2c = app_mod._map_players_to_coaches(
+        "Skyterror963", "lookout mudd", "lookout mudd", "someoldname", c1, c2)
+    assert p2c is c1, "p2 matched c1's stored name"
+    assert p1c is c2, "unmatched p1 must get the OTHER coach, never c1 again"
+
+
+def test_map_players_normalizes_spacing_and_case(app_mod):
+    c1, c2 = {"id": 1}, {"id": 2}
+    p1c, p2c = app_mod._map_players_to_coaches(
+        "Lookout Mudd", "SkyTerror963", "lookoutmudd", "skyterror963", c1, c2)
+    assert p1c is c1 and p2c is c2
+
+
+def test_map_players_positional_when_no_match(app_mod):
+    c1, c2 = {"id": 1}, {"id": 2}
+    p1c, p2c = app_mod._map_players_to_coaches("aaa", "bbb", "xxx", "yyy", c1, c2)
+    assert p1c is c1 and p2c is c2
+
+
 def test_series_bits_for_bo3_context(app_mod):
     recap = _recap(BASE + [
         "|turn|1",
